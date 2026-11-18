@@ -63,13 +63,8 @@ const MIX =
 const HEX_ALPHA = /^#([0-9a-f]{6})([0-9a-f]{2})$/i
 
 /**
- * A frame's colors as its source states them, read through the static
- * cascade the checks use, so a `var()` over a name a token sheet declares
- * is named exactly, one over a name only the frame declares answers the
- * value it resolves to, and a raw
- * value is answered raw rather than matched to a token that happens to
- * share its value. `index` is the edit address's, naming the selected
- * element, whose subtree the colors then cover in place of the frame's.
+ * A frame's colors as its source states them, a raw value answered raw rather
+ * than matched to a token sharing its value.
  */
 export function frameStyles(
   source: FrameSource,
@@ -79,9 +74,7 @@ export function frameStyles(
   const cascade = buildCascade(source, tokens, { properties: PROPERTIES })
   const tokenNames = declaredNames(tokens)
   const target = index === undefined ? undefined : source.elements[index]
-  // A name only the frame declares is no token, so it answers as the value it
-  // resolves to, or the token its chain reaches first. A name nothing
-  // declares stays named for `unknown-token`.
+  // A frame-only name is no token, so it answers as what it resolves to.
   const named = (written: string, element: Element): StyleValue => {
     const value = styleValue(written)
     if (!value.token || tokenNames.has(value.token)) return value
@@ -165,10 +158,8 @@ const RGB =
   /^rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)\s*(?:[,/]\s*([\d.]+%?)\s*)?\)$/i
 
 /**
- * One color however the source writes it, so `#4F46E5`, `#4f46e5`, and
- * `rgb(79, 70, 229)` group as one Selection colors row and one color
- * replace reaches each. A token keys by its name, and an alpha
- * a raw value carries joins its percent.
+ * One key per color however it is written, so its spellings group as one row
+ * and one replace reaches each.
  */
 export function colorKey(value: StyleValue): string {
   if (value.token) return `${value.token}:${value.percent}`

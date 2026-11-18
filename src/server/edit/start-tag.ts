@@ -25,10 +25,8 @@ function isSpace(char: string | undefined): boolean {
 }
 
 /**
- * Scans one start tag through the tokenizer's start-tag states, since parse5
- * records neither the self-closing flag nor a duplicated attribute. A `/`
- * ending an unquoted value is part of the value, so `<circle id=x/>` is not
- * self-closed, and only following the states tells the two apart.
+ * Scans a start tag through the tokenizer states, since parse5 records neither
+ * self-closing nor duplicates, and `<circle id=x/>` is not self-closed.
  */
 export function scanStartTag(
   source: string,

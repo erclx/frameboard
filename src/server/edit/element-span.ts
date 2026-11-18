@@ -90,15 +90,9 @@ function locate(
 }
 
 /**
- * Finds again in `source` the element `index` named in `was`, the source an
- * edit was made from, by the bytes its scope covers there, the way an undo
- * finds its element. The index holds while every byte through the whole
- * element is unchanged, its text included, since a start tag alone reads the
- * same on two swapped siblings. Otherwise the bytes must read once in `was` and once in
- * `source`, since a sibling sharing them could be the one left after a swap
- * or a removal. Answers undefined when those bytes changed, read twice, or
- * name no stated element, since writing on a guess would land over the
- * agent's work.
+ * Finds an element again by its bytes, the index holding while the whole
+ * element is unchanged, else the bytes reading once on each side, since a
+ * guess would land over the agent's work.
  */
 export function relocate(
   was: string,
@@ -138,10 +132,8 @@ export function holdsSpan(
 }
 
 /**
- * Finds the element reading `side` of the span and writes the other side in
- * its place, leaving every other byte as it stands. Answers undefined when the
- * element is not found, or when the swap would leave it unfound, as a write
- * the parser reads across element bounds would.
+ * Swaps one side of the span for the other, undefined when the element is not
+ * found or the swap would leave it unfound.
  */
 export function swapSpan(
   source: string,
@@ -154,8 +146,7 @@ export function swapSpan(
   const [start, end] = found.range
   const html = source.slice(0, start) + span[OTHER[side]] + source.slice(end)
   const written = parseFrame(html)
-  // A whole element's two sides may hold different elements, as a wrap's
-  // parent does, so its count is the one the file holds after the swap.
+  // Counted after the swap, since a wrap's two sides hold different elements.
   const moved = {
     ...span,
     index: found.index,

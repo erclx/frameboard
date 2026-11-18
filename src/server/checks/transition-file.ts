@@ -51,14 +51,8 @@ const STEP =
   /^(?:from|to|\d+(?:\.\d+)?%)(?:\s*,\s*(?:from|to|\d+(?:\.\d+)?%))*$/i
 
 /**
- * Reads one transition sheet named `name`, its file's stem. The board plays
- * what this returns in its own document, so the sheet is refused whole on
- * any stray rather than read past it: a name the board does not take, a
- * break postcss refuses, anything at the top level but a comment and the
- * `enter` and `leave` keyframes, anything in a keyframes block but steps of
- * declarations, and a value that could load a file. A value loads one
- * through `url()`, through a quoted string such as `image-set()` takes, or
- * through an escape spelling either, so all three are refused.
+ * Reads one transition sheet, refused whole on any stray, since the board plays
+ * it in its own document, a value that could load a file included.
  */
 export function readTransitionSheet(
   name: string,
@@ -255,11 +249,8 @@ export function checkTransitionSheet(
 }
 
 /**
- * Every stylesheet directly under a project's `assets/transitions/` by
- * name, each named by its stem whether or not the board takes that name, so
- * a misnamed file is reported rather than skipped. A dot-named file, a
- * folder, a link, and a file of another type are no transition. A folder
- * that does not exist lists none.
+ * Every stylesheet in `assets/transitions/` by stem, a misnamed file listed so
+ * it is reported rather than skipped.
  */
 export async function transitionFiles(
   projectDir: string,

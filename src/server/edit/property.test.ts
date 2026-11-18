@@ -169,9 +169,7 @@ function windowOf(
   const name = change.kind === 'style' ? 'style' : change.name.toLowerCase()
   const span = location.attrs?.[name]
   if (span) {
-    // Removing `\n  style` before `\n  id` leaves the same bytes as removing
-    // `style\n  `, and a byte diff cannot tell which, so the window takes in
-    // the whitespace on both sides.
+    // Widened over whitespace, since a byte diff cannot tell which side was removed.
     let start = span.startOffset
     while (/\s/.test(source[start - 1] ?? '')) start -= 1
     let end = span.endOffset
@@ -203,11 +201,8 @@ function keepsOutside(
 }
 
 /**
- * Applies one edit and, unless the writer refused, checks the four
- * properties: the changed bytes lie inside the window, swapping the recorded
- * span back reproduces the source, the reparsed tree is the original with
- * that one change, and a style edit keeps every other declaration's decoded
- * value.
+ * Applies one edit and checks the four properties unless the writer refused:
+ * window, undo, tree, and kept declarations.
  */
 function checkEdit(source: string, index: number, change: SingleChange): void {
   const result = applyEdit(source, { index }, change)

@@ -76,11 +76,8 @@ interface LayoutRead {
 }
 
 /**
- * Runs the three layout rules on a frame open at its own box, at most one
- * finding each. `viewport` reads a second time with the viewport twice as
- * tall, then puts the box back. Each resize settles before the next read, so
- * a script sizing content on `resize` reads as the CSS case does, and the
- * rules after this one see the page back at its box.
+ * Runs the three layout rules, `viewport` re-reading at twice the height, each
+ * resize settling first so a `resize` script reads as the CSS case does.
  */
 export async function checkLayout(
   page: Page,
@@ -107,11 +104,9 @@ export async function checkLayout(
   }
 }
 
-// It reads its own boxes rather than `readContentSize`, since it reaches past
-// the width as well and names the boxes that do. The two readers are twins
-// that both leave out a box a cropping ancestor hides, so an image cropped on
-// purpose reads as neither clipped nor content to fit. A scroll frame
-// overflows its height on purpose, so only its width is read.
+// Its own reader, since it names boxes past the width too, twinned with
+// `readContentSize` in leaving out cropped boxes, and a scroll frame's width
+// alone is read.
 function clipped(target: RenderedTarget, read: LayoutRead): Finding | null {
   const { width, height } = target.box
   const shown = read.boxes.filter((box) => !box.cropped)
@@ -211,11 +206,7 @@ function readLayout(): LayoutRead {
     const style = getComputedStyle(element)
     return style.overflowX !== 'visible' || style.overflowY !== 'visible'
   }
-  // A copy of the test in `readContentSize`, which a page function cannot
-  // import, so a change to one is a change to both.
-  // An ancestor crops only what its box contains, so the walk follows the
-  // containing block chain: an absolute element skips every static ancestor
-  // up to the one positioned, and a fixed one anchors to the viewport.
+  // Copies `readContentSize`'s containing-block walk, so a change to one changes both.
   const anchors = (element: Element) => {
     const style = getComputedStyle(element)
     return style.position !== 'static' || style.transform !== 'none'
@@ -243,14 +234,7 @@ function readLayout(): LayoutRead {
     }
     return false
   }
-  // Text laid out past its own block widens no box, as a `nowrap` heading
-  // running out of a phone frame, so each element reaches as far as the text
-  // it holds directly. An element that crops itself hides that text. A Range
-  // reaches text nodes alone, so `::before` and `::after` content stays
-  // unmeasured. A text rect is the font's content area, which a line height
-  // below it leaves hanging out of the line box on both sides, so the bottom
-  // reads to the line box. A copy of `textBottom` in `readContentSize`, so a
-  // change to one is a change to both.
+  // Text overflow widens no box, so this reaches its text, a copy of `textBottom`.
   const hangOf = (lineHeight: number, height: number) =>
     lineHeight < height ? (height - lineHeight) / 2 : 0
   const textReach = (element: Element) => {
@@ -270,13 +254,7 @@ function readLayout(): LayoutRead {
     }
     return { bottom, right }
   }
-  // A plain inline element's box is the font's content area too, so a heading
-  // wrapping its text in a link hangs out of its line box the way bare text
-  // does. Padding and border paint outward from the content edge, so an
-  // element with a bottom edge reads to its full box, and a top edge only
-  // shortens the content height the hang comes from. A replaced element's box
-  // is its own, so it reads as laid out. A copy of `ownBottom` in
-  // `readContentSize`, so a change to one is a change to both.
+  // An inline box hangs out of its line box as text does, a copy of `ownBottom`.
   const replaced = [
     'img',
     'video',

@@ -23,10 +23,8 @@ export interface AssetsRoutesOptions {
 }
 
 /**
- * A project's `assets/` folder over the board's JSON envelope: the listing the
- * Assets tab draws, the drop that writes into it, and the keyframes of the
- * project's own transitions. The drop needs a writer and is held in memory,
- * so the body limit is its only bound. Both reads answer any caller.
+ * A project's `assets/` routes, the drop held in memory, so the body limit is
+ * its only bound.
  */
 export function assetsRoutes(
   root: string,
@@ -58,10 +56,7 @@ export function assetsRoutes(
     })
   })
 
-  /**
-   * The keyframes present mode may play for the project's own transitions.
-   * It answers what the reader kept, renamed, and never a file's own bytes.
-   */
+  // Answers what the reader kept, renamed, never a file's own bytes.
   app.get('/api/projects/:project/transitions', async (c) => {
     const project = c.req.param('project')
     const projectDir = projectFolder(root, project)

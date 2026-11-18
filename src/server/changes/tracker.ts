@@ -62,11 +62,8 @@ interface Held {
 }
 
 /**
- * Tells an agent's frame writes from the board's own. It holds each frame's
- * source by ref, so a batch whose file matches what it holds is a write the
- * history already told it of, or no write at all, and one that differs is an
- * agent's, diffed against the source it held. Every caller runs in the
- * server's scan turn, since `own` and a batch reading one frame would race.
+ * Tells an agent's writes from the board's own by each frame's held source.
+ * Every caller runs in the scan turn, since `own` and a batch would race.
  */
 export function createChangeTracker(
   root: string,
@@ -155,9 +152,7 @@ export function createChangeTracker(
           hold(ref, join(root, ...ref.split('/')) + FRAME_EXTENSION),
         ),
       )
-      // A write slower than the batch window reached `update` first. Only a
-      // step that wrote the frame's file claims it, since one that moved the
-      // frame or named its page leaves the agent's bytes in place.
+      // Only a step that wrote the file claims it, since a move leaves the agent's bytes.
       const written = writtenPaths(step)
       for (const [id, change] of pending) {
         const file = join(root, ...change.frame.split('/')) + FRAME_EXTENSION

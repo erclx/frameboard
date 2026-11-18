@@ -26,10 +26,8 @@ export interface FrameHostOptions {
 }
 
 /**
- * Serves the board's frames on a loopback port of its own, for a verb that
- * renders with no board server running. It mounts the same look and frame
- * routes the server does, so a capture sees the bytes and the look the board
- * shows, reading a running server's `--tokens` sheet from the address file.
+ * Serves frames on a loopback port for a verb with no server running, through
+ * the server's own routes, so a capture sees what the board shows.
  */
 export async function startFrameHost({
   root,

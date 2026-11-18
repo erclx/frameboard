@@ -350,8 +350,7 @@ describe('createHub', () => {
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'other' }))
     socket.send('not json')
-    // Messages are handled in order, so once the board hello's snapshot
-    // arrives the two before it have been read.
+    // Handled in order, so the snapshot arriving means the two before it were read.
     const snapshot = nextMessage(socket)
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
     await snapshot

@@ -15,11 +15,8 @@ type Isolated =
   | { kind: 'unboxed'; tag: string }
 
 /**
- * Leaves one element of a loaded frame showing alone on a transparent
- * ground, and answers its box in page coordinates, which can run past the
- * frame's. `index` is the element's `edit` index, the one `inspect` reports.
- * An index naming no element, or one with no layout box or a box of no
- * width or height, refuses `invalid-address`. The page stays that way, so it is shot once and closed.
+ * Leaves one element showing alone on a transparent ground, answering its box,
+ * which can run past the frame's, so the page is shot once and closed.
  */
 export async function isolateElement(
   page: Page,
@@ -44,10 +41,8 @@ export async function isolateElement(
   return isolated.box
 }
 
-// Runs in the page, so it carries everything it reads. It counts the way
-// inspect's `readLiveElements` does, skipping the elements the look routes
-// inject. Hiding is by `visibility`, which moves no layout, and it leaves the
-// element's descendants as the frame styled them.
+// Runs in the page, counting as `readLiveElements` does, and hides by
+// `visibility`, which moves no layout.
 function hideAllBut(index: number): Isolated {
   let count = 0
   let target: Element | null = null

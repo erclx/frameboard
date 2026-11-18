@@ -7,10 +7,8 @@ import { type Access, requireWriter } from '../access/guard'
 import { answerRefusal } from './envelope'
 
 /**
- * Undo and redo of the board's own writes, behind `requireWriter`. Each
- * answers the page to show and the frames the step touched, and refuses with
- * `undo-overtaken` when an agent changed what the step would write, or
- * `frame-claimed`, keeping the step, while another session holds what it names.
+ * Undo and redo of the board's own writes, keeping the step on
+ * `frame-claimed` while another session holds what it names.
  */
 export function historyRoutes(access: Access, history: History): Hono {
   const app = new Hono()

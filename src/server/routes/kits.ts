@@ -27,12 +27,8 @@ import { decodeSegments } from './frames'
 const name = z.string().min(1).max(256)
 
 /**
- * The policy a kit's sample frame is served under for a preview card. A
- * saved kit's samples come from a project an agent drew, and the card runs
- * them on the board's origin as soon as New project opens, so the policy
- * lets the injected theme script alone run, by its hash, and blocks every
- * script and inline handler the sample carries. A sandbox would block the
- * theme script too, and draw every preview in light.
+ * A preview card's policy, running the theme script alone by hash, since a
+ * saved kit's sample runs on the board's origin, and a sandbox would draw it light.
  */
 const PREVIEW_POLICY = `script-src 'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'`
 
@@ -64,13 +60,8 @@ export interface KitRouteOptions {
 }
 
 /**
- * The kit routes. `GET /api/kits` answers every kit the board can install.
- * `POST /api/kits/install` installs one into a project and
- * `POST /api/kits/save` saves a project's look as a kit, each behind
- * `requireWriter`, recording one undo step, and answering the record the
- * `kit` verb prints. `GET /frameboard/kits/<name>/<path>` serves a kit's files read
- * only, a sample frame with the faces and the kit's own sheets spliced into
- * its head, so a preview card renders the kit before any project holds it.
+ * The kit routes, each write one undo step, and a kit's files served read only
+ * so a preview card renders it before any project holds it.
  */
 export function kitRoutes(
   root: string,

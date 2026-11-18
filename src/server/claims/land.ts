@@ -16,11 +16,8 @@ interface Due {
 }
 
 /**
- * Moves each reserved frame whose file now exists from its claim into the
- * layout: an entry at the claim's box on top of its page, unless the page
- * already holds one, then the claim drops its box and holds the frame as any
- * editing claim does. Answers the refs it landed, and none when the claims
- * file does not parse.
+ * Lands each reserved frame whose file now exists at its claim's box, which
+ * the claim then drops, answering none for an unparsable claims file.
  */
 export async function landReserved(root: string, now: Date): Promise<string[]> {
   let claims: Claim[]

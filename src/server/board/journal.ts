@@ -38,10 +38,8 @@ export interface Journal {
 }
 
 /**
- * The keys a hand write sets in `project.json`, being a filing's `group` and
- * `archived`, a retitle's `title`, and the `checks.off` a rule switch writes, each present only
- * where the file holds it, so an absent key and a written one never read as
- * equal.
+ * The `project.json` keys a hand write sets, each present only where the file
+ * holds it, so an absent key and a written one never read as equal.
  */
 export interface ProjectFiling {
   group?: unknown

@@ -10,10 +10,8 @@ export {
 } from '@/shared/motion'
 
 /**
- * Stops the page's animation clock, through the DevTools Animation domain,
- * before the page loads. A CSS animation with no fill that ended during the
- * load would otherwise drop out of `document.getAnimations()` before the seek
- * reads it. Script timelines run on their own clocks and keep running.
+ * Stops the animation clock before load, since an unfilled CSS animation
+ * ending mid-load would drop out of `getAnimations()` before the seek.
  */
 export async function holdAnimationClock(page: Page): Promise<void> {
   const session = await page.context().newCDPSession(page)
@@ -22,11 +20,8 @@ export async function holdAnimationClock(page: Page): Promise<void> {
 }
 
 /**
- * Finds the timeline a frame's motion runs on, taking `window.__hf` alone
- * when present, else every `window.__timelines` entry, else the page's
- * animations. A script loading its timeline late gets until `timeoutMs` to
- * register one, and a frame showing none by then refuses `motion-missing`,
- * since a scene stepped by a script timer cannot be held at a moment.
+ * Finds the frame's timeline, refusing `motion-missing` when none registers by
+ * `timeoutMs`, since a script-timer scene cannot be held at a moment.
  */
 export async function findMotion(
   page: Page,

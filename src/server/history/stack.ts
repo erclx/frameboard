@@ -51,11 +51,8 @@ export interface HistoryCounts {
 }
 
 /**
- * The developer's undo and redo stacks, in memory, holding the board's own
- * writes and never an agent's. Undo and redo run one at a time, each
- * checking every change of a step under its records' locks before writing
- * any, and refusing with `undo-overtaken` and dropping the step when an
- * agent has since changed one.
+ * The developer's in-memory undo and redo stacks, checking a whole step before
+ * writing any, and dropping it with `undo-overtaken` once an agent changed one.
  */
 export class History {
   #undo: Step[] = []
@@ -90,10 +87,8 @@ export class History {
   }
 
   /**
-   * The refs the top undo or redo step would write, without popping it, so a
-   * route can refuse a claimed frame before the step is taken. These are the
-   * step's frames, and the page or project folder and frame file each move
-   * or removal names, since a page or project step names no frames.
+   * The refs the top step would write, without popping it, so a route can refuse
+   * a claimed frame before the step is taken.
    */
   peek(side: 'undo' | 'redo'): string[] {
     const step = (side === 'undo' ? this.#undo : this.#redo).at(-1)
@@ -154,10 +149,7 @@ export class History {
     const standing = step.changes.map((change, index) =>
       standingAt(change, step.changes.slice(index + 1), was),
     )
-    // A record inside a folder an agent removed has no folder to lock in, and
-    // its change cannot hold, so the check refuses it unlocked. One inside a
-    // folder the step moves goes unlocked too, as the move does, since its
-    // lock file would move with the folder and outlive the release.
+    // Unlocked inside a removed or moved folder, where a lock would move or outlive the release.
     const hashes: Record<string, string> = {}
     const moves = step.changes.flatMap((change) =>
       change.kind === 'moved' ? [change.from, change.to] : [],
@@ -166,9 +158,7 @@ export class History {
       .flatMap(lockPaths)
       .filter((path) => existsSync(dirname(path)))
       .filter((path) => !moves.some((folder) => path.startsWith(folder + sep)))
-    // A filing is not an edit to the project, so neither is its undo. Each
-    // file's time is kept where it stands now and put back where the step
-    // leaves it, which differ for a title that moved its folder.
+    // A filing's undo keeps the times too, since a filing is not an edit.
     const landing = new Map(
       standing.flatMap((change, index) =>
         change.kind === 'project'
@@ -241,10 +231,8 @@ export class History {
 }
 
 /**
- * The change as the board stands at `side`, reading a project file where the
- * moves `later` in its step left it on the after side, since a retitle writes
- * the file under the old folder and then moves the folder. Restoring keeps the
- * recorded path, since the moves are undone first and redone last.
+ * The change as the board stands at `side`, following later folder moves,
+ * since a retitle writes the file before moving its folder.
  */
 function standingAt(change: Change, later: Change[], side: Side): Change {
   if (side === 'before' || change.kind !== 'project') return change

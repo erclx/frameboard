@@ -138,10 +138,8 @@ export async function movePage(
 }
 
 /**
- * Sets the transition present mode draws between the page's slides, or
- * clears it with null, writing only the `present` key of its `layout.json`
- * and leaving every frame file as it stands. A name that is neither built
- * in nor the project's own refuses `usage` and writes nothing.
+ * Sets or clears a page's present transition, writing only the `present` key
+ * and refusing a name neither built in nor the project's own.
  */
 export async function setPageTransition(
   root: string,
@@ -180,11 +178,8 @@ export async function deletePage(
 }
 
 /**
- * Runs one page change under the project file's lock, returning the page's
- * name after it and the order written. The file is read and
- * validated before `change` touches a folder, and written back holding exactly
- * the page folders on disk, in the order `change` returns, which the journal
- * is told of when it differs from the order the file held.
+ * Runs one page change under the project file's lock, validating before
+ * `change` touches a folder, then writing exactly the page folders on disk.
  */
 async function reorder(
   root: string,

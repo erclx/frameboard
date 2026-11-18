@@ -24,11 +24,8 @@ type Trigger =
   | { kind: 'listener'; target: 'window' | 'document' }
 
 /**
- * `scroll-effect`, at most one finding, on a frame that hugs its height and
- * holds no `scroll` key, naming the first trigger found. A listener counts
- * only on the window or the document, since those are the objects the
- * DevTools protocol is asked about, so one on an inner scroll container or an
- * observer driving the effect goes unseen and costs a hint, never an error.
+ * `scroll-effect`, at most one finding on a hugging frame, counting listeners
+ * on the window or document alone, so a missed one costs a hint, never an error.
  */
 export async function checkScrollEffect(
   page: Page,
@@ -80,17 +77,14 @@ async function readListener(page: Page): Promise<Trigger | null> {
   }
 }
 
-// Runs in the page, so it carries everything it reads. The index counts
-// `querySelectorAll('*')` skipping Frameboard's own elements, as the layout
-// rules do, so a finding names the index edit takes. A timeline started from
-// script carries no element, so it reads as the root's.
+// Runs in the page, counting as the layout rules do, and a script timeline,
+// which carries no element, reads as the root's.
 function readScrollStyles(): Trigger | null {
   const isScrollTimeline = (timeline: AnimationTimeline | null) => {
     const name = timeline?.constructor.name
     return name === 'ScrollTimeline' || name === 'ViewTimeline'
   }
-  // A sticky element inside its own scroll box sticks there whatever the
-  // frame does, so only one sticking to the page counts.
+  // Only sticky content sticking to the page counts.
   const insideScroller = (element: Element) => {
     for (
       let parent = element.parentElement;

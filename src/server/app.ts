@@ -148,10 +148,7 @@ export function createApp({
     version: frameVersion,
   })
 
-  // A second serve reads the root back to tell this board's server from
-  // another, and the sheet to report the one this server was started with.
-  // The board reads `clipboard` at load, so Copy as PNG picks its path inside
-  // the key press that grants a browser clipboard write.
+  // `clipboard` is read at load, so Copy as PNG picks its path inside the key press.
   app.get('/api/health', (c) =>
     c.json({
       version,

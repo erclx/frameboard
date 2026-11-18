@@ -25,19 +25,15 @@ export function hasTag(node: DefaultTreeAdapterTypes.Node): node is Element {
 }
 
 /**
- * Parses a frame the way the browser builds it, with source offsets into the
- * given string. A browser's decoder drops a leading BOM before the tokenizer,
- * while parse5 would read it as text and imply the wrappers, stripping the
- * file's own of their locations. A space is ignored the same way and keeps
- * every offset.
+ * Parses a frame as the browser builds it, a leading BOM read as a space,
+ * since parse5 would imply wrappers where the browser drops it.
  */
 export function parseFrame(source: string): FrameTree {
   const document = parse(source.replace(/^\uFEFF/, ' '), {
     sourceCodeLocationInfo: true,
   })
   const elements: Element[] = []
-  // A template's children sit in `content`, outside `childNodes`, so the walk
-  // skips them the way `querySelectorAll` does.
+  // Skips a template's `content`, as `querySelectorAll` does.
   const walk = (node: DefaultTreeAdapterTypes.ParentNode): void => {
     for (const child of node.childNodes) {
       if (!hasTag(child)) continue

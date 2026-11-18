@@ -331,8 +331,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
         type: 'claims',
         claims: [{ frame: 'studio/home/hero', session: 'sess-a' }],
       })
-    // The watcher can report the claims file in two batches under load, so a
-    // repeated claims push is allowed, and anything else is a rescan.
+    // A repeated claims push is allowed, since load can split the batch.
     expect(messages.filter((message) => message.type !== 'claims')).toEqual([])
   })
 
@@ -354,8 +353,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
         ],
       }),
     )
-    // A loaded runner can step over the window the claim is the latest push
-    // for, so this settles on any push that carried it.
+    // Any push carrying the claim, since a loaded runner can skip its window.
     await expect
       .poll(
         () =>
@@ -418,12 +416,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
   it('pushes the board, the changed frame, its stale thumbnails, its findings, and then the change after a write', async () => {
     writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
 
-    // The watcher can report the write in two batches under load, and the
-    // second repeats board, reload, thumbnails, and findings, all with the
-    // first batch's data. This reads the pushes without those repeats, so a
-    // reorder, a changed payload, or a repeated changes still fails. A batch
-    // still pending is not seen, since absence cannot be awaited without a
-    // fixed pause.
+    // Reads without a split batch's repeats, so a reorder or new payload still fails.
     await expect
       .poll(() => withoutRepeats(messages).map((message) => message.type), {
         timeout: 5000,
@@ -485,8 +478,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
 
     const { atimeMs, mtimeMs } = statSync(hero)
 
-    // A split batch scans one write, so the second scan carries the first's
-    // mtime. The restore follows the write in the same tick, ahead of any scan.
+    // Restored in the same tick, ahead of any scan, so a split batch keeps the mtime.
     writeFileSync(hero, '<p>new</p>')
     utimesSync(hero, atimeMs / 1000, mtimeMs / 1000)
 
@@ -545,8 +537,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
   })
 
   it('saves a change it has pushed before close resolves', async () => {
-    // Closing on the push lands inside the turn that broadcast it, while
-    // the change log still saves.
+    // Closes inside the broadcasting turn, while the change log still saves.
     let closing: Promise<void> | undefined
     socket.on('message', (data) => {
       const message: ServerMessage = JSON.parse(String(data))
@@ -583,8 +574,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     )
     expect(response.status).toBe(200)
 
-    // An agent write after it is the sentinel: the rename's batch is read
-    // before or with the sentinel's, so its change arrives last and alone.
+    // A sentinel write, so its change arrives last and alone.
     writeFileSync(join(board.root, 'studio/pricing/plans.html'), '<p>new</p>')
 
     await expect
@@ -647,8 +637,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     writeFileSync(`${frame}.swap`, '<p>saved</p>')
     renameSync(`${frame}.swap`, frame)
 
-    // The temp write and the rename can land in one batch or two, and either
-    // way no reload may name another frame on the page.
+    // In one batch or two, no reload may name another frame on the page.
     const reloads = () =>
       messages.flatMap((message) =>
         message.type === 'reload' ? message.refs : [],
@@ -728,9 +717,7 @@ describe.skipIf(shell === null)(
         '<!doctype html><html><head><style>body { margin: 0 }</style></head><body><div style="height: 1200px"></div></body></html>',
       )
 
-      // A sweep still settling from hello can push a board ahead of the write's,
-      // so this reads the board that announces the write, being the last one
-      // before its reload.
+      // The last board before the reload, since a settling sweep can push one ahead.
       const announcing = () => {
         const reload = messages.findIndex(
           (message) =>
@@ -785,9 +772,7 @@ describe.skipIf(shell === null)(
           { timeout: 10_000 },
         )
         .toBe(true)
-      // The watcher can split the write into two batches under load. A frame
-      // written after it is read in the second batch or a later one, so its
-      // reload means no reload of tall is still on its way.
+      // A sentinel's reload means no reload of tall is still on its way.
       writeFileSync(join(board.root, 'studio/home/sentinel.html'), '<p>s</p>')
       await expect
         .poll(
@@ -840,8 +825,7 @@ describe.skipIf(shell === null)(
           { timeout: 10_000 },
         )
         .toBe(true)
-      // The browser checker loading a frame ahead of the hero's batch would
-      // take the held request, so the board settles first.
+      // Settles first, so the checker cannot take the held request.
       await expect
         .poll(
           () =>
@@ -853,8 +837,7 @@ describe.skipIf(shell === null)(
           { timeout: 10_000 },
         )
         .toBe(true)
-      // The hero's script answers only once the add has landed, so the add
-      // lands while the hero's write batch is measuring it.
+      // Held until the add lands, so it lands mid-measure.
       let requested: () => void = () => {}
       const measuring = new Promise<void>((resolve) => {
         requested = resolve

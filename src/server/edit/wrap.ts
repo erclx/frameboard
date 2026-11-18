@@ -60,16 +60,9 @@ function isFree(facts: PlaceFacts | undefined): boolean {
 }
 
 /**
- * Wraps the sibling elements `indexes` names in one new `div` laid out as
- * `flow`, written at the first one's place, with every one moved into it in
- * document order. A free member leaves the flow it is wrapped in otherwise,
- * so each puts back `position`, `left`, and `top` as back in flow does, and
- * the container takes `spot` instead, placed freely where the group sat, or
- * sits in the flow when `spot` is null. `facts` is the static cascade read
- * by the same index. Elements that are not siblings, the document's own
- * wrappers, and a parent the file does not state are refused, and the
- * output is parsed again and refused as `verify-failed` unless only the
- * parent's contents changed, holding the container and its members.
+ * Wraps siblings in one new flow `div` at the first one's place, free members
+ * going back in flow while the container takes `spot`, refusing `verify-failed`
+ * unless only the parent's contents changed.
  */
 export function wrapElements(
   source: string,
@@ -150,8 +143,7 @@ export function wrapElements(
     .map((range) => `${inner}${html.slice(range?.[0], range?.[1])}`)
     .join('')}${indent}</div>`
 
-  // Later members leave with the whitespace before them, from the end back,
-  // so each range still names the bytes it was read from.
+  // From the end back, so each range still names the bytes it was read from.
   let wrapped = html
   for (const range of ranges.slice(1).toReversed()) {
     if (!range) continue

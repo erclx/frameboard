@@ -58,11 +58,8 @@ export interface HubOptions {
 }
 
 /**
- * The live socket every board tab holds. A client opens with a hello naming
- * its role, and only a `board` client counts as an open tab and receives the
- * board's messages. An `inbox` client is a session's follower, kept apart so
- * it never counts as a tab, and taken only from a socket upgraded with the
- * address token as a bearer, since a browser page must never register one.
+ * The live socket every board tab holds. An `inbox` client never counts as a
+ * tab and needs the bearer token, since a browser page must never register one.
  */
 export function createHub({
   tabs,

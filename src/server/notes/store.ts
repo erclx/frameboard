@@ -242,13 +242,8 @@ export function threadOf(file: NotesFile, rootId: string): Note[] {
 }
 
 /**
- * Carries each note anchored on `frame` across a write the board made from
- * the bytes `before` names to the bytes `after` names, recording the index
- * `remap` gives its element. A note not resolving at `before`, or whose
- * element the write took out, is left as it is, so it falls back to the
- * frame. Each anchor keeps the last `HISTORY_CAP` hashes, since no undo
- * reaches further. Writes nothing when no note follows, and leaves a notes
- * file that does not parse, since the frame write already landed.
+ * Carries each note's anchor across a board write, an unresolved one falling
+ * back to the frame, keeping `HISTORY_CAP` hashes, since no undo reaches further.
  */
 export async function followEdit(
   path: string,

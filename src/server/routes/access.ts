@@ -8,15 +8,8 @@ import type { Tickets } from '../access/tickets'
 const COOKIE_MAX_AGE_S = 34_560_000
 
 /**
- * How a tab becomes a writer. A redeem URL carries a single-use ticket that
- * trades for the board's cookie, and answers a 303 home either way so a used
- * ticket still lands on a board that reads. A failed redeem lands on
- * `/?link=expired`, the flag the client's expired-link toast reads.
- *
- * With `openRoute`, `GET /api/access/open` mints a ticket per request and
- * redirects through redeem, so a browser with no shell, such as a recorder's,
- * lands on a writing board. It is off unless `serve` is asked for it, since it
- * makes any local browser navigating to it a writer.
+ * How a tab becomes a writer, a used ticket still landing on a reading board.
+ * `openRoute` stays off unless asked, since it makes any local browser a writer.
  */
 export function accessRoutes(
   access: Access,
@@ -40,8 +33,7 @@ export function accessRoutes(
   })
 
   if (openRoute) {
-    // A relative target, never one built from the Host header, keeps the
-    // ticket on the origin that minted it.
+    // Relative, never from the Host header, so the ticket stays on its origin.
     app.get('/api/access/open', (c) =>
       c.redirect(`/api/access/redeem?ticket=${tickets.mint().ticket}`, 303),
     )

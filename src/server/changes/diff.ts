@@ -15,10 +15,8 @@ export interface ElementDiff {
 }
 
 /**
- * Which elements of `after` an agent changed against `before`, matching both
- * in index order by tag, attributes, and own text with a longest common
- * subsequence. An unmatched element inside another unmatched one is left out,
- * so an inserted card glows once and not with each child.
+ * The elements an agent changed, matched by a longest common subsequence,
+ * leaving out an unmatched child of an unmatched parent so a card glows once.
  */
 export function changedElements(before: string, after: string): ElementDiff {
   const old = parseFrame(before)

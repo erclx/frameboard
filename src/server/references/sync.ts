@@ -96,8 +96,7 @@ async function buildOutput({
   const frames = await mappedFrames(root, map)
 
   const output: Output = new Map()
-  // Every frame is read and formatted ahead of the browser, so a frame the
-  // formatter refuses costs no capture.
+  // Formatted ahead of the browser, so a refused frame costs no capture.
   await Promise.all(
     [...map].map(async ([reference, value]) => {
       const { project, page, name } = frameOf(frames, mappedTarget(value).ref)
@@ -115,8 +114,7 @@ async function buildOutput({
     }),
   )
 
-  // Each mapped value captures at the one width it names, the frame's own
-  // when it names none, so a frame's linked widths never stand in for it.
+  // One width per value, so linked widths never stand in for the frame.
   const targets = new Map(
     [...map.values()].map((value) => {
       const { ref, width } = mappedTarget(value)

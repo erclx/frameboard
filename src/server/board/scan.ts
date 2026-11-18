@@ -104,11 +104,8 @@ export async function listFrames(pageDir: string): Promise<string[]> {
 }
 
 /**
- * The page order a reader shows: listed pages that exist in that order, then
- * unlisted ones by name. A file that fails to read orders every page by name.
- * The creation time, title, folder, archive flag, and turned-off rules come from the
- * same read, each read as absent when the file holds none or holds one of
- * another type.
+ * The page order, listed pages first, then unlisted by name, all by name for
+ * an unreadable file, each other key absent when of another type.
  */
 export async function readPageOrder(projectDir: string): Promise<{
   pages: string[]
@@ -194,10 +191,8 @@ export function emptyProject(): ProjectFile {
 }
 
 /**
- * Every frame's placement, placed ones from their entry and unplaced ones by
- * `placeNext`. Entries with no frame file beside them are left out.
- * `readTransition` reads an entry's override, a writer keeping any stored
- * one and the scanner passing only those the project holds.
+ * Every frame's placement, unplaced ones by `placeNext`, leaving out entries
+ * with no frame file.
  */
 export function placeFrames(
   frames: Record<string, LayoutEntry>,
@@ -212,8 +207,7 @@ export function placeFrames(
       unplaced.push(name)
       continue
     }
-    // A scroll frame fixes both axes, so a hug flag an older `frame fit` left
-    // beside the key reads as off and the hug step never measures it.
+    // A scroll frame reads hug flags as off, so the hug step never measures it.
     const scroll = entry.scroll ?? false
     const box = {
       x: entry.x,
@@ -255,10 +249,8 @@ export function showsDevice(entry: LayoutEntry | undefined): boolean {
 }
 
 /**
- * Where a frame with no layout entry sits: desktop size at `y` 0, 80 past the
- * right edge of every frame already placed and the linked widths it draws, on top of all of them. The board
- * draws what the scanner returns, and `frame add` persists the same box for
- * the first unplaced file, placing any other past the placed frames alone.
+ * Where an unplaced frame sits, desktop size 80 past the right edge of every
+ * placed frame and its linked widths, the box `frame add` persists.
  */
 export function placeNext(placed: Placement[]): Placement {
   const right = Math.max(

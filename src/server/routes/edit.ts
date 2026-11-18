@@ -221,16 +221,8 @@ export type SettledVersion = (
 ) => Promise<string | null>
 
 /**
- * A hand edit of one element, a placed element, and a deleted one, each behind
- * `requireWriter` and refused on a frame another session holds.
- *
- * Every write names the frame by the `hash` the board rendered and goes through
- * `editFrameFile`, which finds the element again in a frame an agent wrote
- * since and records the span as one undoable step. A refusal answers 409 with
- * its code, such as `stale-address`, and writes nothing. A batch field
- * (`edits`, `indexes`, `places`) writes each item as one step and is refused
- * whole on any refusal. An insert takes an element kind, never markup, and a
- * recolor rewrites inline colors only. Each write remaps pinned notes.
+ * The hand element writes, each naming the rendered `hash` and recording one
+ * undo step, a batch refused whole. An insert takes a kind, never markup.
  */
 export function editRoutes(
   root: string,

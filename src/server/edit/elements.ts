@@ -28,14 +28,8 @@ const PLACE_PROPERTIES: ReadonlySet<string> = new Set([
 ])
 
 /**
- * A frame's elements under `body` in index order, each with its parent and
- * name, read from the same parse and the same index `edit` addresses. A
- * frame where the browser builds an element the file does not state is
- * refused, since every index after it would name another element.
- * `layouts` is `elementLayouts`'s read by the same index, and an element it
- * does not reach reads as `block`. `rounds` is `elementRounds`'s read, which
- * marks an element round only while it holds nothing. `facts` is
- * `elementPlaceFacts`'s read, and an element it does not reach reads unplaced.
+ * A frame's elements under `body` by `edit` index, refused where the browser
+ * builds an unstated element, since every later index would name another.
  */
 export function elementTree(
   source: string,
@@ -75,11 +69,8 @@ export function elementTree(
 }
 
 /**
- * Every element's layout by the edit index, read from the static cascade
- * over the token sheets and the frame's own, as `frameStyles` reads colors,
- * so a culled frame with no iframe still answers. Every media query counts
- * as applying, so a frame that flips its direction at a breakpoint reads as
- * whichever rule wins statically.
+ * Every element's layout from the static cascade, so a culled frame answers,
+ * every media query applying.
  */
 export function elementLayouts(source: FrameSource, tokens: Sheet[]): Layout[] {
   const cascade = buildCascade(source, tokens, {
@@ -104,10 +95,8 @@ export function elementRounds(source: FrameSource, tokens: Sheet[]): boolean[] {
 }
 
 /**
- * Each element's `position` and whether a rule sizes its width and height,
- * read from the same static cascade by the edit index, which a placement
- * reads to choose the tags it writes. A sheet a load cannot read is missed,
- * so a parent it positions reads as static.
+ * Each element's `position` and rule sizing, for a placement, missing a sheet
+ * a load cannot read, so a parent it positions reads static.
  */
 export function elementPlaceFacts(
   source: FrameSource,
@@ -154,10 +143,8 @@ function words(value: string | undefined): string[] {
 }
 
 /**
- * What an element is called in the layers rows, the inspector, and the
- * `selection` verb: its `data-name`, else a text-only element's text, else
- * an `img`'s `alt`, else its tag. `id` and `aria-label` already mean
- * something to a frame's CSS, scripts, and readers, so neither names it.
+ * An element's name, never its `id` or `aria-label`, which already mean
+ * something to the frame's CSS, scripts, and readers.
  */
 export function elementName(element: Element): string {
   const named = attribute(element, 'data-name')?.trim()

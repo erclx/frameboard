@@ -31,12 +31,8 @@ const bodySchema = z.object({
 })
 
 /**
- * `POST /api/checks` with `{ refs }`, behind `requireWriter`, which `check`
- * calls for the browser findings a static run cannot reach. It rescans the
- * board, waits until no recheck of those frames is pending, then answers the
- * change and browser findings the server holds for them. A warm browser that
- * does not launch answers `browser.ran: false` with `browser-not-found` and
- * the change findings alone.
+ * `POST /api/checks`, which `check` calls for the browser findings a static run
+ * cannot reach, answering once no recheck of the frames is pending.
  */
 export function checkRoutes(access: Access, checks: BrowserChecks): Hono {
   const app = new Hono()

@@ -45,10 +45,8 @@ export function renderedOnly(live: readonly LiveElement[]): InspectedElement[] {
 }
 
 /**
- * Loads a frame the way `capture` does and reports each rendered element with
- * its `edit` index, box, and computed color and type. The file is read before
- * and after the load, and a hash that moved refuses `stale-address`. A live
- * order that differs from the file's refuses `address-mismatch`.
+ * Reports each rendered element under its `edit` index, refusing
+ * `stale-address` when the file moved during the load.
  */
 export async function inspectFrame(
   browser: Browser,

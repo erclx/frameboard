@@ -22,10 +22,8 @@ export interface WriterHeaders {
 }
 
 /**
- * True for the address token as a bearer, or for the board's cookie carrying
- * the key when `Origin` names the board itself. Cookies and SameSite both
- * ignore the port, so the cookie alone would let a page on another local port
- * write, and a request with no `Origin` is refused rather than trusted.
+ * True for the token as a bearer, or for the key cookie with the board's own
+ * `Origin`, since cookies ignore the port and another local port would write.
  */
 export function isWriter(headers: WriterHeaders, access: Access): boolean {
   const bearer = /^Bearer (.+)$/.exec(headers.authorization ?? '')?.[1]

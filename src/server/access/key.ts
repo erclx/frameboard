@@ -25,8 +25,7 @@ export async function loadBoardKey(root: string): Promise<string> {
   const existing = await readKey(path)
   if (existing) return existing
 
-  // Written whole under a private name, then linked into place, so a racing
-  // start never reads a half-written file and the first link wins.
+  // Linked into place whole, so a racing start never reads half a file and the first wins.
   const draft = `${path}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`
   const key = randomBytes(32).toString('hex')
   await writeFile(draft, JSON.stringify({ version: 1, key }), {

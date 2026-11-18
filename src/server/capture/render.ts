@@ -60,15 +60,9 @@ export interface OpenFrame {
 }
 
 /**
- * Loads a frame in its own browser context at its layout size, in the theme
- * asked for, and resolves once it has loaded, its faces have settled, and its
- * images have decoded, all inside one load budget. Under `fonts: 'require'`,
- * the default, a missing face refuses `font-missing`, an image that failed or
- * outran the budget refuses `image-missing`, and either closes the context.
- * Each video is then held on its poster or first frame, and one with no
- * picture by the end of the budget is returned rather than refused.
- * It then waits, on what is left of the budget, for running animations with
- * a finite end to finish, and never refuses for one, unless `motion` is `hold`.
+ * Loads a frame within one budget for faces, images, and videos, then settles
+ * finite animations. A missing face or image refuses, while an unloaded video
+ * is returned rather than refused.
  */
 export async function openFrame(
   browser: Browser,
@@ -98,8 +92,7 @@ export async function openFrame(
       timeout: timeoutMs,
       waitUntil: 'domcontentloaded',
     })
-    // An image whose request hangs holds the load event, so the load wait
-    // runs apart from the navigation and a stall can name the image.
+    // Apart from navigation, so a hanging image's stall can name it.
     const stalled = await page
       .waitForLoadState('load', { timeout: deadline - Date.now() })
       .then(
@@ -149,13 +142,8 @@ export function assertScreenshotFits(
 }
 
 /**
- * Renders a frame to PNG bytes in a theme, as the server's PNG route asks,
- * at `scale` device pixels per CSS pixel or the renderer's own default. A
- * `device` draws the frame inside that device's body, the PNG growing by
- * the body on every side, its corners past the body transparent. An
- * `element`, the `edit` index of one element, renders that element alone on
- * a transparent ground at its own box, refusing `invalid-address` for an
- * index naming none or one with no layout box, and draws no device.
+ * Renders a frame to PNG for the server's route, inside its device, or one
+ * `element` alone on a transparent ground with no device.
  */
 export type RenderFrame = (
   frame: {
@@ -176,10 +164,8 @@ export interface WarmBrowser {
 }
 
 /**
- * One browser kept warm for a server and shared by everything rendering on
- * it, so the server holds one Chromium. A launch that fails is not kept, so a
- * browser installed later is found on the next call, and every call after
- * `close` refuses.
+ * One warm browser shared by everything rendering, a failed launch not kept so
+ * a browser installed later is found on the next call.
  */
 export function createWarmBrowser(launch: () => Promise<Browser>): WarmBrowser {
   let browser: Promise<Browser> | null = null

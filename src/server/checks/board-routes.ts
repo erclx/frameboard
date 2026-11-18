@@ -24,10 +24,8 @@ export const BOARD_ROUTE_RULES: RuleDoc[] = [
 const finding = findingFor(BOARD_ROUTE_RULES)
 
 /**
- * A quoted string or template literal opening on `/api/`, bare or after a
- * scheme and host, so a URL in code matches and prose in a comment does not.
- * A path the script builds at runtime, such as `'/ap' + 'i/'`, passes, since
- * the rule catches a mistake rather than a deliberate call.
+ * A quoted `/api/` path, so prose in a comment does not match, while a path
+ * built at runtime passes, since the rule catches mistakes, not deliberate calls.
  */
 const BOARD_ROUTE =
   /(['"`])((?:(?:[a-z][a-z0-9+.-]*:)?\/\/[^/'"`\s]*)?\/api\/[^'"`\n]*)\1/gi

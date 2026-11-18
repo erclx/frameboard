@@ -94,11 +94,8 @@ export type ResolvedAsset =
     }
 
 /**
- * The kind of the file at `path` under a project's `assets/`, when a frame
- * can show it, confined as `listAssets` is: a path naming a dot-named
- * segment, a `..`, or any file whose real path leaves the folder is
- * `asset-missing`, as is one that is not there. A file that is there but is
- * no image, GIF, SVG, video, or audio is `asset-not-placeable`.
+ * A placeable asset's kind, confined as `listAssets` is, so a path leaving the
+ * folder reads `asset-missing` and an unshowable file `asset-not-placeable`.
  */
 export async function resolveAsset(
   projectDir: string,
@@ -145,11 +142,8 @@ function isScratch(name: string): boolean {
 }
 
 /**
- * Writes each upload to the top level of `assets/` under the first free name,
- * creating the folder on a first drop. A file whose extension is not accepted
- * is refused by name and the rest still land. The bytes go to a temp file and
- * are hard-linked to the target, so a name an agent took in between is never
- * overwritten and the next name is tried.
+ * Writes each upload under the first free name, hard-linking a temp file so a
+ * name an agent took in between is never overwritten.
  */
 export async function addAssets(
   projectDir: string,
@@ -211,10 +205,8 @@ async function takenStems(
 }
 
 /**
- * The board's name rule applied to a dropped name: runs of other characters
- * become `-`, a leading dot, dash, or underscore is dropped, and a stem that
- * empties out becomes `file`. The extension is lowercased and the whole name
- * kept within the name cap.
+ * The board's name rule for a dropped name, an emptied stem becoming `file`
+ * and the whole name kept within the cap.
  */
 export function splitName(name: string): { stem: string; extension: string } {
   const extension = extensionOf(name)

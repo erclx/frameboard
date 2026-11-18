@@ -113,9 +113,7 @@ describe.skipIf(shell === null)(
 
       await settleAnimations(page, 60_000)
 
-      // Opacity cannot prove this one, so the bound does. It sits far under the
-      // 60 s limit and the 15 s test timeout, with room for a machine stall of
-      // a few seconds that a tighter bound would read as a slow settle.
+      // The bound proves it, far under the limits with room for a machine stall.
       expect(Date.now() - started).toBeLessThan(10_000)
     })
 
@@ -125,11 +123,7 @@ describe.skipIf(shell === null)(
 
       await settleAnimations(page, 200)
 
-      // Opacity on the 60 s animation proves the settle returned before its
-      // end, so this bound only reports a settle that waited, with a figure,
-      // ahead of the test timeout. It allows a machine stall of about 3 s.
-      // Keep the opacity read, since without it a settle awaiting the end
-      // passes until the 15 s test timeout.
+      // Opacity proves the early return, and the bound only reports a wait with a figure.
       expect(Date.now() - started).toBeLessThan(10_000)
       expect(Number(await opacity())).toBeLessThan(1)
     })

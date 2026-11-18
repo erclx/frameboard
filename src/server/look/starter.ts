@@ -19,10 +19,8 @@ interface StarterOptions extends JournalOptions {
 }
 
 /**
- * Writes a starter `tokens.css` into a project that renders with no token
- * sheet at all. Refuses `tokens-exist` when a board, `--tokens`, or project
- * sheet already reaches the project, since a starter sheet over one would
- * override a look somebody chose.
+ * Writes a starter `tokens.css`, refusing `tokens-exist` where any sheet
+ * already reaches the project, since it would override a chosen look.
  */
 export async function writeStarterSheet(
   root: string,

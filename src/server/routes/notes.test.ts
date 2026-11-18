@@ -526,11 +526,7 @@ describe('notesRoutes', () => {
   describe('signing', () => {
     let config: string
 
-    /**
-     * Points the saved name into a temporary folder and shuts out the
-     * machine's git config, so no test reads or writes the developer's own
-     * name.
-     */
+    // Isolated, so no test reads or writes the developer's own name.
     beforeEach(() => {
       config = mkdtempSync(join(tmpdir(), 'frameboard-config-'))
       vi.stubEnv('XDG_CONFIG_HOME', config)

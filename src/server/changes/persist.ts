@@ -47,11 +47,8 @@ export function changesFolder(root: string): string {
 }
 
 /**
- * The log a previous server saved, its newest `cap` changes kept. A missing
- * file, a parse failure, or a shape this build does not know reads as an
- * empty log, since a newer or older build may have written it and a start
- * never refuses over it. A version file that is gone leaves its change in
- * the log with nothing to compare against.
+ * The saved log's newest `cap` changes, any unreadable shape reading as empty,
+ * since another build may have written it and a start never refuses over it.
  */
 export async function loadChanges(
   root: string,

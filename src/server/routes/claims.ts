@@ -10,11 +10,8 @@ import { answerRefusal, parseBody } from './envelope'
 const ReleaseBody = z.object({ frame: z.string().min(1) })
 
 /**
- * `POST /api/claims/release` with `{ frame }`, the canonical ref a claim
- * names, dropping the live reservation on that frame whichever session holds
- * it. It sits behind `requireWriter`, and a frame holding no reservation,
- * including one an agent holds an editing claim on, refuses
- * `frame-not-found` and is left as it was.
+ * `POST /api/claims/release`, dropping a frame's reservation whichever session
+ * holds it, and never an editing claim.
  */
 export function claimsRoutes(root: string, access: Access): Hono {
   const app = new Hono()

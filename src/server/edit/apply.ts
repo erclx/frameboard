@@ -19,10 +19,8 @@ export interface ElementAddress {
 }
 
 /**
- * A change that writes one value, being a declaration, an attribute, or the
- * text, or drops one attribute. Dropping is its own member rather than an
- * empty value, since `muted=""` is a stated boolean attribute that keeps the
- * element muted.
+ * A change writing one value or dropping an attribute, which is its own member,
+ * since `muted=""` is a stated boolean that keeps the element muted.
  */
 export type SingleChange =
   | {
@@ -254,10 +252,8 @@ function isNamed(
 }
 
 /**
- * Whether the output's tree is the input's with only the target changed. The
- * target's edited attribute, or its text, is copied across from the output,
- * so the comparison covers every other node, and the caller's own check
- * covers the value itself.
+ * Whether only the target changed, its edited part copied across so the
+ * comparison covers every other node.
  */
 function changesOnlyTarget(
   before: FrameTree,
@@ -309,8 +305,7 @@ function holdsValue(element: Element, change: EditChange): boolean {
     const declared = declaredValues(style, property)
     const wanted = value.trim()
     if (wanted === '') return declared.length === 0
-    // A paint longhand over its shorthand rewrites the shorthand's part and
-    // states no longhand, so the part holds the value instead.
+    // A longhand over its shorthand rewrites the part, which holds the value instead.
     return declared.length === 0
       ? shorthandValue(style, property) === wanted
       : declared.length === 1 && declared[0] === wanted
@@ -318,11 +313,8 @@ function holdsValue(element: Element, change: EditChange): boolean {
 }
 
 /**
- * Applies one change to the element the address names and leaves every other
- * byte of the source as it was, a `styles` change writing each declaration in
- * turn into the one style attribute. The output is parsed again and refused as
- * `verify-failed` unless its tree is the input's with that one change, so an
- * input the guards never met is refused rather than written corrupted.
+ * Applies one change, keeping every other byte, and re-parses the output,
+ * refusing `verify-failed` rather than write a corrupted file.
  */
 export function applyEdit(
   source: string,

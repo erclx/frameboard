@@ -1,14 +1,9 @@
 import type { Page } from 'playwright-core'
 
 /**
- * Waits, within `timeoutMs`, until every running animation and transition
- * with a finite end has finished, reading again after each round so one that
- * another starts is awaited too. An infinite animation is never awaited, and
- * running out of time returns rather than refusing, since a long or
- * restarting animation is a design and not a failure.
- *
- * It sees only what `document.getAnimations()` lists, so a scene a script
- * steps on a timer stays out of reach.
+ * Waits out every finite animation, returning rather than refusing at the
+ * limit, since a long animation is a design, and seeing only what
+ * `document.getAnimations()` lists.
  */
 export async function settleAnimations(
   page: Page,
@@ -30,8 +25,7 @@ async function waitForAnimations(timeoutMs: number): Promise<void> {
       return typeof endTime === 'number' && Number.isFinite(endTime)
     })
 
-  // A page starting an animation on its first frame after load has not
-  // started it yet, so the first read waits for that frame to pass.
+  // Waits a frame, since an animation starting on the first frame has not yet.
   await nextFrame()
   for (;;) {
     const running = finiteRunning()

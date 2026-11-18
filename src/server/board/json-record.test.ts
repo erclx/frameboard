@@ -215,8 +215,7 @@ describe('json-record', () => {
         await finished
       })
       await held
-      // The first writer releases while the late one handles the lock it
-      // judged, whether that is putting a lock back or waiting on it.
+      // Releases while the late writer handles the lock it judged.
       const release = async () => {
         finish()
         await first
@@ -249,8 +248,7 @@ describe('json-record', () => {
       writeFileSync(`${path}.break.lock`, '')
       const old = new Date(Date.now() - 11_000)
       utimesSync(`${path}.break.lock`, old, old)
-      // Another breaker clears the aged guard and takes its own while this
-      // writer is about to retire the one it judged aged.
+      // Another breaker takes its own guard just before this one retires the aged one.
       race.onGuardRename = async () => {
         race.onGuardRename = undefined
         writeFileSync(`${path}.break.lock`, 'theirs')

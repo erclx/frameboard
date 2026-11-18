@@ -17,14 +17,7 @@ import { readAuthor, writeAuthorName } from './author'
 describe('author', () => {
   let root: string
   let configFile: string
-  /**
-   * Shuts out the machine's global and system git config, so only the
-   * board's repository speaks, and points the config folder into the
-   * temporary root, so no test reads or writes the developer's own name. It
-   * drops every inherited `GIT_` variable too, since a git hook running this
-   * suite exports `GIT_DIR`, which would point `git init` and `git config`
-   * here at the repository running the hook.
-   */
+  // Drops inherited `GIT_` variables, since a hook running this suite exports `GIT_DIR`.
   let env: NodeJS.ProcessEnv
 
   beforeEach(() => {

@@ -41,13 +41,8 @@ export interface ServedFrames {
 }
 
 /**
- * The look routes and the frame routes over `root`, so the board server and
- * the capture host serve a frame the same way. `tokens` is a known
- * `--tokens` sheet, null for none, or absent to read the one a running
- * server recorded in the address file on each request. `version` serves the
- * frame versions an agent write replaced, absent where nothing holds them.
- * `base` prefixes the sheet URLs a served frame imports, for a listener that
- * serves these routes under a path of its own.
+ * The look and frame routes, so the board server and the capture host serve a
+ * frame the same way.
  */
 export function servedFrames(
   root: string,
@@ -76,15 +71,9 @@ export function servedFrames(
 }
 
 /**
- * Serves what every frame imports from outside the board: the faces under
- * `/frameboard/faces/*` and the board sheet at `/frameboard/tokens.css`.
- * The board sheet is never cached, so a changed sheet reaches a frame on its
- * reload. The faces under the running release's segment, as
- * `/frameboard/faces/v0.29.0/geist/index.css`, are cached for good, since
- * only a release changes them, and any other release segment answers 404 so
- * a stale URL never caches today's bytes. The bare faces path stays
- * uncached for anything naming it. A dot-named or escaping path answers 404,
- * as the frame route does.
+ * Serves the faces and board sheet, the sheet never cached and faces cached
+ * for good under the release's segment, another release answering 404 so a
+ * stale URL never caches today's bytes.
  */
 export function lookRoutes({ facesDir, boardSheet }: LookOptions): Hono {
   const app = new Hono()

@@ -55,11 +55,8 @@ interface Written {
 }
 
 /**
- * `dropped-declaration`, one finding per declaration in the frame's own
- * sheets and style attributes that the open page's `CSS.supports` refuses,
- * and one per sheet postcss cannot parse, at the break it stops on, checking
- * the declarations ahead of the break. Theme
- * plays no part, so a caller runs it on one theme's page.
+ * `dropped-declaration`, one finding per declaration `CSS.supports` refuses and
+ * per unparsable sheet, run on one theme's page since theme plays no part.
  */
 export async function checkDeclarations(
   page: Page,

@@ -69,10 +69,8 @@ export function rawAttribute(
 }
 
 /**
- * Sets one attribute to a raw value already escaped for double quotes,
- * splicing only inside its value span. An absent attribute goes in before the
- * tag's `>`, or before its real self-closing `/`, which only the start-tag
- * scan tells apart from a `/` ending an unquoted value.
+ * Sets one attribute inside its value span, a new one going before the real
+ * self-closing `/`, which only the start-tag scan tells from an unquoted value's.
  */
 export function setRawAttribute(
   source: string,

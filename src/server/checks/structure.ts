@@ -237,10 +237,8 @@ export function checkMalformedTags(source: FrameSource): Finding[] {
 }
 
 /**
- * `nesting`, one finding per element the parser rebuilt: one it implied with
- * no start tag, an HTML element whose end tag never matched, and one moved
- * ahead of a sibling the file writes first, which is a table's foster
- * parenting. Foreign elements are left to close themselves.
+ * `nesting`, one finding per element the parser rebuilt, leaving foreign
+ * elements to close themselves.
  */
 export function checkNesting(source: FrameSource): Finding[] {
   const path = boardPath(source.root, source.path)

@@ -4,11 +4,8 @@ import { claimCovers } from '@/shared/records/claims'
 import { readClaims } from './store'
 
 /**
- * Refuses `frame-claimed` when another session holds a frame the hand write
- * would change. Each ref is a frame, page, or project ref, and a page or
- * project ref matches every claim under it. The claims are read without the
- * lock, so a claim landing between this read and the write lets that one
- * write through, where the file hash still guards the agent's own write.
+ * Refuses `frame-claimed` for a frame another session holds, read without the
+ * lock, since the file hash still guards an agent's write that lands between.
  */
 export async function refuseClaimed(
   root: string,

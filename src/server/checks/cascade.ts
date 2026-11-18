@@ -37,10 +37,8 @@ const NOT_STYLING = new Set([
 ])
 
 /**
- * The browser's own `font-family` for elements an author rule has not
- * reached: monospace for code, and the system control font for form
- * controls, which do not inherit the page's font. Null stands for that
- * control font, which no stylesheet names.
+ * The browser's own `font-family` before author rules, null standing for the
+ * form control font, which no stylesheet names.
  */
 const USER_AGENT_FAMILIES: Record<string, string | null> = {
   code: 'monospace',
@@ -119,10 +117,8 @@ export interface Cascade {
    */
   specified: (element: Element, property: string) => Cascaded | null
   /**
-   * `value` with every `var()` replaced by what the custom property holds
-   * on `element`, following chains and fallbacks. Null when a `var()` has
-   * nothing behind it, which makes the declaration invalid at computed time.
-   * A `var()` naming one of `keep` stays as written, ending its chain there.
+   * `value` with each `var()` resolved through chains and fallbacks, null when
+   * one has nothing behind it, and one naming `keep` left as written.
    */
   resolve: (
     value: string,
@@ -137,11 +133,8 @@ export interface CascadeOptions {
 }
 
 /**
- * Builds the cascade for one frame over its token sheets and then its own,
- * so a frame rule wins a tie with a token rule as injection order makes it
- * win in the browser. Weighs `!important`, inline styles, and specificity
- * through `@bramus/specificity`, and takes every rule inside a media query
- * as applying, since a frame renders at one viewport the check cannot see.
+ * Builds a frame's cascade over its token sheets then its own, as injection
+ * order wins ties, every media query applying, since the viewport is unseen.
  */
 export function buildCascade(
   source: FrameSource,
@@ -309,8 +302,7 @@ export function buildCascade(
         if (!found) return null
         if (found.userAgent) return found.value
         const value = resolveVars(found.value, found.element)
-        // A var() with nothing behind it, or a shorthand that does not read,
-        // is invalid at computed time, which makes the property inherit.
+        // Invalid at computed time, so the property inherits.
         const family =
           value === null
             ? 'unset'
@@ -440,8 +432,7 @@ function inlineDeclarations(
       important: node.important,
       inline: true,
       specificity: [0, 0, 0],
-      // `inline` already beats every rule, so the order ranks the attribute's
-      // own declarations, where a later longhand overrides an earlier shorthand.
+      // Ranks the attribute's own declarations, a later longhand beating a shorthand.
       order: declarations.length,
     })
   })
@@ -531,11 +522,8 @@ export interface ShorthandPart {
 }
 
 /**
- * The part of a `border` or `background` shorthand that sets `property`:
- * the last part that reads as a color for a color, since a color comes last
- * in a border, and the first length for a width. Null when none does. An
- * `!important` ends the parts, so a raw attribute value reads as the parsed
- * one does, and `start` lets a writer replace the part in place.
+ * The shorthand part setting `property`, the last color or the first length,
+ * with `start` letting a writer replace it in place.
  */
 export function shorthandPart(
   value: string,

@@ -23,10 +23,8 @@ const OPTIONS: FormatConfig = {
 }
 
 /**
- * What the folder holds of a board frame: its asset links moved to its
- * project's subtree, so two projects never collide, formatted so a reference
- * diffs line by line while the board file stays as the agent wrote it. The
- * write and `--check` both build through it, so they compare the same bytes.
+ * A frame as the reference folder holds it, built by the write and `--check`
+ * alike so they compare the same bytes.
  */
 export async function toReference(
   source: FrameSource,
@@ -41,8 +39,7 @@ export async function toReference(
   )
   const [error] = result.errors
   if (error) {
-    // The message carries a code frame of the whole line, which for a
-    // one-line thumbnail is thousands of characters.
+    // First line alone, since the code frame of a one-line thumbnail is huge.
     const [reason] = error.message.split('\n')
     throw new FrameboardError(
       'format-refused',
@@ -54,10 +51,8 @@ export async function toReference(
 }
 
 /**
- * Rewrites the frame's text only at the spans its loads occupy, so text naming
- * `../assets/` that loads nothing, such as a `<code>` sample, keeps its bytes.
- * The link climbs one folder per folder the reference sits in, to the folder's
- * `assets/`.
+ * Rewrites only the spans loads occupy, so text naming `../assets/` that loads
+ * nothing keeps its bytes.
  */
 function withProjectAssets(source: FrameSource, reference: string): string {
   const up = '../'.repeat(reference.split('/').length - 1)

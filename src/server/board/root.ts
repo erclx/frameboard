@@ -21,10 +21,8 @@ export interface BoardLocation {
 }
 
 /**
- * The board a verb acts on, as an absolute realpath. `--root` names it
- * outright, marker or not. Otherwise the walk up from `cwd` takes the first
- * folder holding `board.json` or `.frameboard/board.json`, and stops after
- * the first folder holding `.git`.
+ * The board a verb acts on, `--root` outright, else the first folder up from
+ * `cwd` holding a board marker, stopping after the first holding `.git`.
  */
 export async function resolveBoard({
   root,
@@ -64,10 +62,8 @@ export function findBoard(cwd: string): string | null {
 }
 
 /**
- * The board `serve` shows, started when none exists: at `--root` when given,
- * else the board the walk finds, else `.frameboard/` in `cwd`. A board folder holding no project gets one
- * project with one empty page, and one missing only `board.json` gets that
- * alone.
+ * The board `serve` shows, started when none exists, else `.frameboard/` in
+ * `cwd`, an empty board folder getting one project with one empty page.
  */
 export async function startBoard(
   { root, cwd }: BoardLocation,

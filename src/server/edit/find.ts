@@ -22,11 +22,8 @@ const SNIPPET_LENGTH = 80
 const NOT_COPY = new Set(['script', 'style'])
 
 /**
- * Every hit for `query` across the shown frames of a project, in page order
- * and then stacking order, matching case-insensitively against each frame's
- * name, each element's name by the layers rule, and each element's own text.
- * An element named by its own text hits as text alone, so it is not listed
- * twice, and a frame `elementTree` refuses hits by its name alone.
+ * Every case-insensitive hit across a project's shown frames, an element named
+ * by its text hitting as text alone so it is listed once.
  */
 export async function findInProject(
   root: string,

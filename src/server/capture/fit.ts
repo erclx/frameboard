@@ -31,14 +31,9 @@ export interface ContentSize {
 }
 
 /**
- * Measures a frame's content the way `frame fit` and the server's hug step
- * both read it, in one page resized between readings. A hugging width takes
- * the content's `fit-content` width up to `HUG_MAX_WIDTH`, and the height is
- * read at that width with a 1 px tall viewport and again at the reference
- * height, never the box's own, so content sized off the window height reads
- * one height however tall the frame already is. Readings that differ, or a
- * fresh page drawing another height, mean the content sizes itself off the
- * viewport and refuse `fit-unbounded`. Finite animations finish first.
+ * Measures content as `frame fit` and the hug step read it, the height at a
+ * 1 px viewport and at the reference height, never the box's own. Readings that
+ * differ mean the content sizes off the viewport and refuse `fit-unbounded`.
  */
 export async function measureContent(
   browser: Browser,
@@ -89,9 +84,7 @@ export async function measureContent(
   } finally {
     await opened.close()
   }
-  // The first page loaded at the reference height, so a page reading
-  // `innerHeight` once laid out there. Only a load at the answer height
-  // shows what the board, opening the frame there, draws.
+  // Only a load at the answer height shows what a page reading `innerHeight` draws.
   if (size.empty || (size.width === box.width && size.height === reference)) {
     return size
   }
@@ -111,10 +104,8 @@ export async function measureContent(
 }
 
 /**
- * Reads a frame's content in a page loaded fresh at `box`, animations
- * finished. It loads under `fonts: 'wait'` whatever the first open took, since
- * that open already refused a missing face or image, and `require` would wait
- * out a long entrance a second time on the load budget.
+ * Reads content in a fresh page at `box` under `fonts: 'wait'`, since the
+ * first open already refused a missing face and `require` would wait twice.
  */
 async function readFreshAt(
   browser: Browser,
@@ -138,10 +129,8 @@ async function readFreshAt(
 }
 
 /**
- * Sets a frame's height to its content's own height at its layout width and
- * turns its height hugging on, measuring each linked width at its own width
- * and writing its height beside the frame's. The width is reported, never
- * changed.
+ * Sets a frame's height to its content's and hugs it, measuring each linked
+ * width too, reporting the width and never changing it.
  */
 export async function fitFrame(
   browser: Browser,
@@ -231,25 +220,16 @@ function readFitWidth(): number {
   return Math.max(1, width)
 }
 
-// Both readings take the furthest bottom edge of any box, flow or out of flow,
-// since `scrollHeight` never reads below the viewport and the root's own box
-// leaves out absolutely positioned content. A box an ancestor inside the body
-// crops is left out, since the frame never shows it. Text spilling below its
-// own block reaches past that block's box, so it counts unless the block
-// crops it, to its line box, since a line height below the font's content area
-// leaves the text rect hanging out of the block on both sides, and a plain
-// inline element's box hangs the same way. The cropping test, `textBottom`,
-// and `ownBottom` are copies of `isCropped`, `textReach`, and `ownBottom` in
-// the layout check's `readLayout`, and the two must agree.
+// The furthest uncropped bottom edge, since `scrollHeight` stops at the viewport,
+// with text counted to its line box. Its helpers copy those in the layout check's
+// `readLayout`, and the two must agree.
 export function readContentSize(): Reading {
   const root = document.documentElement
   const crops = (element: Element) => {
     const style = getComputedStyle(element)
     return style.overflowX !== 'visible' || style.overflowY !== 'visible'
   }
-  // An ancestor crops only what its box contains, so the walk follows the
-  // containing block chain: an absolute element skips every static ancestor
-  // up to the one positioned, and a fixed one anchors to the viewport.
+  // Follows the containing block chain, since an ancestor crops only what it contains.
   const anchors = (element: Element) => {
     const style = getComputedStyle(element)
     return style.position !== 'static' || style.transform !== 'none'

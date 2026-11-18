@@ -251,15 +251,9 @@ function gapOffset(
 }
 
 /**
- * Writes `markup` into the gap and leaves every other byte as it was. The
- * output is parsed again and refused as `verify-failed` unless its tree is
- * the input's with that one element added under the parent, so a tag the
- * parser would move, as a `<div>` closing a `<p>`, is refused rather than
- * written somewhere else.
- *
- * A `lead` lands the element that many bytes ahead of the gap, once they
- * read as given, so an element put back lands where it stood and not past
- * the whitespace that followed it.
+ * Writes `markup` into the gap, refusing `verify-failed` for a tag the parser
+ * would move. A `lead` lands a restored element where it stood, ahead of the
+ * whitespace that followed it.
  */
 export function insertElement(
   source: string,
@@ -438,10 +432,8 @@ export function removeInserted(
 }
 
 /**
- * Takes the element at `index` out with its descendants and answers the span
- * that puts it back, holding the bytes that stood between it and its gap.
- * Answers undefined when the element is not stated, or when putting it back
- * would not give `source` again, since the removal then reached past it.
+ * Takes an element out and answers the span that puts it back, undefined when
+ * putting it back would not give `source` again.
  */
 function takeOut(
   source: string,
@@ -472,14 +464,8 @@ export type Removed =
   | EditRefused
 
 /**
- * Takes out the element at `index`, with everything it holds, and answers
- * the span `restoreInserted` puts it back by, so a delete is an insert run
- * backwards. Only an element under `body` is taken, and the removal is
- * refused as `verify-failed` unless the result parses as the source with
- * that element alone gone, and its bytes go back as that one element.
- * Putting it back lands it
- * before the same sibling, so the whitespace around it may sit on its other
- * side.
+ * Takes an element out, answering the span `restoreInserted` uses, so a delete
+ * is an insert run backwards, refused `verify-failed` unless only it went.
  */
 export function removeElement(source: string, index: number): Removed {
   const tree = parseFrame(source)
@@ -581,12 +567,8 @@ export type Moved =
   | EditRefused
 
 /**
- * Takes the element at `index` out by its bytes and writes them into the gap
- * `placement` names, both read in the frame as it stands, leaving every other
- * byte. A gap in the element or under it is refused as `invalid-container`,
- * since the element would be written inside itself, and the gap it already
- * sits in as `invalid-address`. Each half is checked as `insertElement`
- * checks a placement, so a move the parser would rebuild is refused whole.
+ * Moves an element's bytes into another gap, refusing a gap inside itself, and
+ * checking each half as `insertElement` does, so a rebuilt move is refused whole.
  */
 export function moveElement(
   source: string,
@@ -622,8 +604,7 @@ export function moveElement(
     parent: shift(placement.parent),
     before: placement.before === null ? null : shift(placement.before),
   }
-  // Read on the gaps, not the bytes, since whitespace after the element
-  // would otherwise move ahead of it and read as a change.
+  // Read on the gaps, since trailing whitespace would otherwise read as a change.
   if (
     target.parent === taken.span.placement.parent &&
     target.before === taken.span.placement.before
@@ -644,9 +625,7 @@ export function moveElement(
 }
 
 /**
- * Writes the moved element back to `side` of the move, taking it out of the
- * other gap by its bytes and into this one by its anchors, and answers the
- * span as the frame then stands. Answers undefined when either half is not
+ * Writes the moved element back to `side`, undefined when either half is not
  * found, so a step the frame no longer allows is refused rather than guessed.
  */
 export function relocateMoved(

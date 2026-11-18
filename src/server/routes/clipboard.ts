@@ -37,12 +37,8 @@ const CopyBody = z.object({
 })
 
 /**
- * `POST /api/frames/clipboard` with `{ refs, theme, themes? }`, rendering each
- * frame at twice its layout size in `themes[ref]` where given and `theme`
- * otherwise, and putting the images on the OS clipboard as one file list. A
- * `themes` key naming no ref in `refs` is ignored. It sits behind
- * `requireWriter`, since it replaces whatever the developer held, and a
- * system with no backend refuses before any render.
+ * `POST /api/frames/clipboard`, putting 2x renders on the OS clipboard behind
+ * `requireWriter`, since it replaces whatever the developer held.
  */
 export function clipboardRoutes(
   root: string,
@@ -71,8 +67,7 @@ export function clipboardRoutes(
     const { refs, theme, themes } = await parseBody(c.req.raw, CopyBody)
     if (clipboard === null) throw clipboardUnsupported()
     const files: ClipboardFile[] = []
-    // One render at a time, so a large selection queues on the warm browser
-    // rather than opening a page per frame at once.
+    // One at a time, so a large selection never opens a page per frame at once.
     for (const ref of refs) {
       const frame = await readFrame(root, ref, { cwd: root })
       files.push({

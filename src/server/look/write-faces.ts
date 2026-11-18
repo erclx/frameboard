@@ -30,15 +30,9 @@ export function referencedFiles(sheet: string): string[] {
 }
 
 /**
- * Copies each face every frame imports from its package into `outDir`,
- * replacing what was there. Only the files a package sheet references are
- * copied, and a reference to a file the package lacks throws. The faces fill
- * a sibling folder first and rename into place, so `outDir` holds every file or does not exist, and an
- * interrupted write leaves no half-filled face behind. Each sheet is
- * rewritten to declare the plain family a frame names, such as Geist, rather
- * than the package's own, such as Geist Variable. With `keepComplete`, a
- * complete folder already there, as from a parallel run, stays as it is, so
- * several processes can fill one cold folder at once.
+ * Copies the frame faces into `outDir` through a sibling folder renamed into
+ * place, so an interrupted write leaves no half-filled face, each sheet
+ * declaring the plain family a frame names.
  */
 export function writeFaces(
   outDir: string,
@@ -82,10 +76,8 @@ export function writeFaces(
 const PLACE_ATTEMPTS = 3
 
 /**
- * Renames `staging` into `outDir` unless a complete folder is already there,
- * as when another process filled a cold cache first. Only an incomplete
- * folder is removed before the next attempt, since a reader may hold the path
- * of a complete one.
+ * Renames `staging` in unless a complete folder is there, removing only an
+ * incomplete one, since a reader may hold a complete one's path.
  */
 function placeKeepingComplete(staging: string, outDir: string): void {
   for (let attempt = 0; attempt < PLACE_ATTEMPTS; attempt++) {
