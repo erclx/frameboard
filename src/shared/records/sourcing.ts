@@ -107,6 +107,29 @@ export const imageGenerateSchema = z.object({
 
 export type ImageGenerate = z.infer<typeof imageGenerateSchema>
 
+/** What the board's Generate shows before a run: the provider it would use and its price, never a key's value. */
+export const imageOfferSchema = z.object({
+  version: z.literal(1),
+  /** Whether the board may generate at all, false while generating from a tab is switched off. */
+  enabled: z.boolean(),
+  /** The first provider whose key is set, null when none is. */
+  provider: z
+    .object({
+      name: z.enum(IMAGE_PROVIDERS),
+      model: z.string(),
+      /** The environment variable its key is read from. */
+      key: z.string(),
+      width: z.int(),
+      height: z.int(),
+      priceUsd: z.number(),
+    })
+    .nullable(),
+  /** Every provider's key variable, in the order generation tries them. */
+  keys: z.array(z.string()),
+})
+
+export type ImageOffer = z.infer<typeof imageOfferSchema>
+
 /** What `image doctor` answers, naming each key as set or unset and never its value. */
 export const imageDoctorSchema = z.object({
   version: z.literal(1),

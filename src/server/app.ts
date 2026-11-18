@@ -31,6 +31,7 @@ import { servedFrames } from './routes/look'
 import { notesRoutes } from './routes/notes'
 import { pngRoutes } from './routes/png'
 import { previewRoutes } from './routes/preview'
+import { sourcingRoutes } from './routes/sourcing'
 import { structureRoutes } from './routes/structure'
 import { thumbnailRoutes } from './routes/thumbnails'
 import { tokenRoutes } from './routes/tokens'
@@ -163,6 +164,7 @@ export function createApp({
   app.route('/', historyRoutes(actions.access, history))
   app.route('/', notesRoutes(root, actions.access, delivery, dispatch))
   app.route('/', assetsRoutes(root, actions.access, { usage: assetUsage }))
+  app.route('/', sourcingRoutes(root, actions.access))
   app.route('/', elementsRoutes(root, actions.access, selection, given))
   app.route('/', findRoutes(root))
   app.route('/', claimsRoutes(root, actions.access))
