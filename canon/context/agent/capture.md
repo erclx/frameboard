@@ -25,6 +25,6 @@ Owns the capture browser, the frame host, `fit`, and `inspect`, with flags and r
 
 - Capture refuses `font-missing` when a first family is neither a loaded web face nor installed per `CSS.getPlatformFontsForNode`, and a stack opening with a generic asks for no face
 - Capture uses the pinned headless shell alone, since an installed Chrome rasterizes text differently, and without it refuses `browser-not-found`, downloading nothing
-- `openFrame` spends one 10 s budget on the load, faces, images, and videos, refusing `image-missing` and listing an unloaded video in `videos`, since a video never refuses
+- `openFrame` spends one 10 s budget on the load, faces, images, videos, and models, refusing `image-missing` and listing an unloaded video in `videos` and a model in `models`, since neither refuses
 - A seeked shot holds the clock and shoots with `animations: 'allow'`, since `disabled` fast-forwards, and no capture emulates reduced motion, so a frame shows its motion
 - Eight readers count elements and share no code, from `readTextElements` to the client pick and two browser checks, and `LOOK_MARKER` moves all eight
