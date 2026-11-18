@@ -136,10 +136,8 @@ export function useActionGroup(group: string): Action[] {
 }
 
 /**
- * Which presses `bindKeys` leaves alone. `board` skips a field or a dialog
- * other than a toast. `frame`, for a frame's own window, skips only a press
- * mid-composition or one the page prevented, so Esc leaves from a focused
- * field and a page keeps a key it handled.
+ * `board` skips a field or a dialog but a toast. `frame`, for a frame's window,
+ * skips only a composing or page-prevented press, so Esc leaves from a field.
  */
 export type TypingRule = 'board' | 'frame'
 
