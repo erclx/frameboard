@@ -1,10 +1,9 @@
 import { FrameboardError } from './errors'
 
 /**
- * Where a frame's timeline was found: HyperFrames' `window.__hf`, the
- * `window.__timelines` registry its compositions fill, the page's own CSS
- * and Web Animations through `document.getAnimations()`, or the clip a loaded
- * `<model-viewer>` plays.
+ * Where a frame's timeline was found: HyperFrames' `window.__hf`, its
+ * `window.__timelines` registry, the page's own CSS and Web Animations
+ * through `document.getAnimations()`, or the clip a `<model-viewer>` plays.
  */
 export type MotionSource = 'hf' | 'timelines' | 'css' | 'model'
 

@@ -59,10 +59,7 @@ export function ModelSection({ model, disabled, write }: ModelSectionProps) {
   const putBack = (from: ModelReading, staged: readonly ModelStage[]) =>
     model.stage(staged.map(({ name }) => ({ name, value: from.staged[name] })))
 
-  /**
-   * One number's preview and commit, read off the reading its gesture began
-   * from, with `stages` naming the attributes a value writes.
-   */
+  /** One number's preview and commit, `stages` naming what a value writes. */
   const number = (
     read: (from: ModelReading) => number,
     stages: (from: ModelReading, value: number) => ModelStage[],

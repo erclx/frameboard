@@ -47,11 +47,9 @@ function recordFailedModels(): void {
 }
 
 /**
- * Waits for every `<model-viewer>` to draw its model, then holds each at the
- * start of its animation, so two captures match. A model with no picture is
- * returned rather than refused, as an unloaded video is. Reads the failures
- * `watchModels` recorded on the same page, and hides each viewer's loading
- * bar, which is no part of the frame at rest.
+ * Waits for each `<model-viewer>` to draw, holds it at its clip's start, and
+ * hides its loading bar, so two captures match. A model with no picture is
+ * returned, never refused, read from the failures `watchModels` recorded.
  */
 export async function settleModels(
   page: Page,

@@ -42,11 +42,9 @@ interface TurnSurfaceProps {
 }
 
 /**
- * Turn mode over the selected viewer: a surface taking the drag that turns
- * the model, written on release as its orbit and reach in one undo step, and
- * a chip under the frame. It draws in the notes layer, since a press on the
- * frames' layer moves the element. Escape or a press outside leaves the mode,
- * and Escape mid-drag puts back the angle the file holds.
+ * Turn mode's drag surface and chip, in the notes layer, since a press on the
+ * frames' layer moves the element. A release writes the orbit and its reach
+ * as one undo step, and Escape mid-drag puts back the angle the file holds.
  */
 export function TurnSurface({
   element,

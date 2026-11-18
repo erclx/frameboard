@@ -106,11 +106,9 @@ const MODEL_READ =
   'section[aria-labelledby="inspector-model"] button[aria-label="Animation"]:not(:disabled)'
 
 /**
- * Serves hero with a model under its headline and the viewer script in its
- * head, and puts hero back once the page closes. The model carries a clip it
- * never plays, so the shot holds still. Both files stay in the project's
- * assets, since taking the folder away sends the board's watch a batch that
- * reloads the next case's page, so these cases run last among the writing ones.
+ * Serves hero with a model whose clip never plays, restoring hero on close.
+ * Its files stay in the project's assets, since removing the folder reloads
+ * the next case's page, so these cases run last among the writing ones.
  */
 async function modelOnHero(page: Page): Promise<void> {
   const path = join(SERVED_BOARD, 'webapp/home/hero.html')

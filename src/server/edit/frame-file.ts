@@ -152,9 +152,8 @@ export type FrameFileEdits =
 
 /**
  * Edits several elements as one write, all or none. One element named twice is
- * refused, since one undo could not put both spans back, except a text and a
- * style change or several attributes, which answer one span over the whole
- * element.
+ * refused, since one undo could not put both spans back, except a text beside
+ * a style or several attributes, which answer one span over the element.
  */
 export function editFrameFileAll(
   path: string,
@@ -291,10 +290,9 @@ export type FrameFileInsert =
 export type PlaceInserted = (html: string, index: number) => Placed
 
 /**
- * Writes one new element as `editFrameFile` writes, refusing a moved hash with
- * no search, since the gap's indices name nothing once the file moved, so a
- * retried insert lands at most once. With `viewer`, the same write adds the
- * model viewer's script to a head that loads none, which an undo leaves.
+ * Writes one new element, refusing a moved hash with no search, since the
+ * gap's indices name nothing once the file moved, so a retry lands at most
+ * once. With `viewer`, it adds the viewer's script, which an undo leaves.
  */
 export function insertFrameFile(
   path: string,

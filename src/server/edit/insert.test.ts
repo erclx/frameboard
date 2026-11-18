@@ -167,13 +167,13 @@ describe('ensureViewerScript', () => {
 
   it('should take a line of its own under the last tag of an indented head', () => {
     const result = ensureViewerScript(
-      '<html>\n  <head>\n    <meta charset="utf-8" />\n    <title>Hero</title>\n  </head>\n  <body></body>\n</html>\n',
+      '<html>\n  <head>\n    <title>Hero</title>\n  </head>\n</html>\n',
     )
 
     expect(result).toMatchObject({
       ok: true,
-      html: `<html>\n  <head>\n    <meta charset="utf-8" />\n    <title>Hero</title>\n    ${SCRIPT}\n  </head>\n  <body></body>\n</html>\n`,
-      index: 4,
+      html: `<html>\n  <head>\n    <title>Hero</title>\n    ${SCRIPT}\n  </head>\n</html>\n`,
+      index: 3,
     })
   })
 
