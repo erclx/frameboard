@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.41.0](https://github.com/erclx/frameboard/compare/v0.40.0...v0.41.0) (2026-11-18)
+
+
+### Features
+
+* **board:** tidy video switches, Layers range select, and home loading ([#382](https://github.com/erclx/frameboard/issues/382)) ([fe611cd](https://github.com/erclx/frameboard/commit/fe611cdd0b520809ce9e82314c74dc42b668760e))
+* **device:** add a foldable device that folds one frame ([#383](https://github.com/erclx/frameboard/issues/383)) ([53c767b](https://github.com/erclx/frameboard/commit/53c767b4944cc10e80a793275f1a2efb2744293d))
+* **inspector:** pick slide transitions and step effects from tiles ([#385](https://github.com/erclx/frameboard/issues/385)) ([205211f](https://github.com/erclx/frameboard/commit/205211fbd97358d94436ded5c0dd163889e1103c))
+* **inspector:** tilt an element in its own 3D section ([#384](https://github.com/erclx/frameboard/issues/384)) ([79df2ba](https://github.com/erclx/frameboard/commit/79df2baae9296182c14fefbb9443d372a548b75a))
+* **present:** open a presenter view in a second window ([#386](https://github.com/erclx/frameboard/issues/386)) ([fedf6e8](https://github.com/erclx/frameboard/commit/fedf6e880f526f459695b4f55dd5df418f8c277b))
+
+
+### Bug Fixes
+
+* **present:** fit a device's edge and drop shadow inside the window ([#390](https://github.com/erclx/frameboard/issues/390)) ([c9bfc0a](https://github.com/erclx/frameboard/commit/c9bfc0a55eb6355ca0b0a180d75dc34cf2398128))
+* **test:** find each browser test's frame by its iframe id ([#389](https://github.com/erclx/frameboard/issues/389)) ([d144dd6](https://github.com/erclx/frameboard/commit/d144dd6a4e8158f5cb19ff70b3d297b2857e0ea5))
+
 ## [0.40.0](https://github.com/erclx/frameboard/compare/v0.39.0...v0.40.0) (2026-11-18)
 
 
