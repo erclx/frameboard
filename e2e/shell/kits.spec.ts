@@ -1,5 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { execFile } from 'node:child_process'
+import { resolve } from 'node:path'
+import { promisify } from 'node:util'
 
 import { expect, type Page, test } from '@playwright/test'
 
@@ -9,16 +10,15 @@ import {
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
 
-/** A file of a kit the tool ships, as the source tree holds it. */
-function shippedKit(path: string): string {
-  return join(import.meta.dirname, '../../src/server/kits/shipped', path)
-}
+const CLI = resolve('dist/cli.js')
+const run = promisify(execFile)
 
-test.describe('design kits from home', () => {
+/** The accent the shipped Sketch kit's light tokens set, which the live board's own sheets never name. */
+const SKETCH_ACCENT = '#e8590c'
+
+test.describe('a kit set on one frame', () => {
   let board: FixtureBoard
   let server: BoardServer
-
-  const at = (path: string) => join(board.root, path)
 
   test.beforeEach(async () => {
     board = copyFixtureBoard('live')
@@ -30,51 +30,34 @@ test.describe('design kits from home', () => {
     board.cleanup()
   })
 
-  /** Opens home through a ticket and waits for New project to light, which needs write access. */
-  async function openAsWriter(page: Page): Promise<void> {
-    await page.goto(await server.ticketUrl())
-    await page.goto(`${server.url}/`)
-    await expect(
-      page.getByRole('button', { name: 'New project' }),
-    ).not.toHaveAttribute('aria-disabled')
+  function frameboard(...args: string[]) {
+    return run('node', [CLI, ...args, '--root', board.root, '--json'])
   }
 
-  test('starts a project in Sketch from New project, then saves it as a kit New project offers', async ({
+  /** A frame's root once its heading has drawn, so a read of its tokens sees every sheet it loads. */
+  async function rootOf(page: Page, frame: string) {
+    const content = page.frameLocator(`iframe[title="${frame}"]`)
+    await expect(content.getByRole('heading')).toBeVisible()
+    return content.locator('html')
+  }
+
+  test('restyles the frame naming the kit, leaves its neighbor plain, and comes off with none', async ({
     page,
   }) => {
-    await openAsWriter(page)
+    await frameboard('kit', 'add', 'studio', 'sketch')
+    await frameboard('frame', 'kit', 'studio/home/hero', 'sketch')
 
-    await page.getByRole('button', { name: 'New project' }).click()
-    const dialog = page.getByRole('dialog', { name: 'New project' })
-    const sketch = dialog.getByRole('radio', { name: 'Sketch' })
-    await sketch.locator('xpath=..').click()
-    await expect(sketch).toBeChecked()
-    await expect(
-      dialog.frameLocator('iframe[title="Sketch sample"]').getByText('Idea'),
-    ).toBeVisible()
-    await dialog.getByRole('button', { name: 'Create project' }).click()
+    await page.goto(`${server.url}/p/studio/home`)
 
-    await expect(
-      page.getByRole('textbox', { name: 'Rename project untitled' }),
-    ).toBeFocused()
-    expect(readFileSync(at('untitled/tokens.css'), 'utf8')).toBe(
-      readFileSync(shippedKit('sketch/tokens.css'), 'utf8'),
+    await expect(await rootOf(page, 'hero')).toHaveCSS(
+      '--accent',
+      SKETCH_ACCENT,
     )
-    expect(existsSync(at('untitled/kit/sample.html'))).toBe(true)
-    await page.keyboard.press('Enter')
+    await expect(await rootOf(page, 'mobile')).toHaveCSS('--accent', '')
 
-    await page
-      .getByRole('link', { name: /^untitled/ })
-      .click({ button: 'right' })
-    await page.getByRole('menuitem', { name: 'Save as kit' }).click()
-    await expect(page.getByText('Saved untitled as a kit')).toBeVisible()
-    expect(existsSync(at('.kits/untitled/kit.json'))).toBe(true)
+    await frameboard('frame', 'kit', 'studio/home/hero', 'none')
+    await page.reload()
 
-    await page.getByRole('button', { name: 'New project' }).click()
-    await expect(
-      page
-        .getByRole('dialog', { name: 'New project' })
-        .getByRole('radio', { name: 'untitled' }),
-    ).toBeVisible()
+    await expect(await rootOf(page, 'hero')).toHaveCSS('--accent', '')
   })
 })

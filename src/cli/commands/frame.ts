@@ -14,6 +14,7 @@ import {
   type ScrollOptions,
   setFrameDevice,
   setFrameFlag,
+  setFrameKit,
   setFrameSpeakerNotes,
   setFrameTransition,
   type SizeOptions,
@@ -24,6 +25,7 @@ import { withFrameHost } from '@/server/capture/host'
 import { FrameboardError } from '@/shared/errors'
 import { type Pose, POSES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
+import { NO_KIT_WORD } from '@/shared/kits'
 import { SAME_AS_PAGE_WORD, transitionLabel } from '@/shared/present-transition'
 import { SPEAKER_NOTES_MAX } from '@/shared/records/board'
 import type { FrameRecord } from '@/shared/records/list'
@@ -371,6 +373,26 @@ export function registerFrame(
         record.transition
           ? `Set ${transitionLabel(record.transition.name)} on`
           : 'Cleared the transition on',
+      )
+    },
+  )
+
+  act<CommonOptions>(
+    verb(
+      'kit',
+      `Set the project kit this frame draws with, one \`kit add\` copied into the project, or clear it with ${NO_KIT_WORD} so it draws with the project's sheets alone, writing only layout.json. Refuses kit-not-found for a kit the project holds none under`,
+    ).argument('<kit>', `a kit the project holds, or ${NO_KIT_WORD}`),
+    context,
+    async ([ref = '', name = ''], options) => {
+      const record = await setFrameKit(
+        await boardOf(options, io),
+        ref,
+        name === NO_KIT_WORD ? null : name,
+        { ...options, cwd: io.cwd },
+      )
+      return done(
+        record,
+        record.kit ? `Set the kit ${record.kit} on` : 'Cleared the kit on',
       )
     },
   )

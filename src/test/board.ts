@@ -56,6 +56,7 @@ export function boardOf(...pages: PageRecord[]): ListResult {
         projectFileError: null,
         transitions: [],
         checksOff: [],
+        kits: [],
         pages,
       },
     ],

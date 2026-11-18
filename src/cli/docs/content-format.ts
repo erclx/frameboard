@@ -38,6 +38,8 @@ import {
   KIT_PAGE,
   KIT_SHEET,
   KITS_FOLDER,
+  NO_KIT_WORD,
+  PROJECT_KITS,
   SHIPPED_KITS,
 } from '@/shared/kits'
 import {
@@ -115,8 +117,10 @@ export function contentFormat() {
     ],
     kits: [
       `A kit is a folder of plain files: ${KIT_FILE} naming it, ${TOKEN_FILE} with a light and a dark block, ${KIT_SHEET} of component styles, ${KIT_NOTE} saying what to reach for, and a ${KIT_PAGE} page of sample frames. The tool ships ${SHIPPED_KITS.join(', ')}, and a board keeps the kits saved from its projects in ${KITS_FOLDER}/.`,
-      `kit add copies the kit's ${TOKEN_FILE} as the project's, its ${KIT_PAGE} page as the project's ${KIT_PAGE} page, and every other file into ${ASSETS_FOLDER}/${KIT_ASSETS}/. It refuses tokens-exist where a board, --tokens, or project sheet already reaches the project, and name-taken where the project holds a ${KIT_PAGE} page or ${ASSETS_FOLDER}/${KIT_ASSETS}/, unless --replace is given. kit save refuses name-taken for a name a shipped or saved kit holds, and tokens-not-found for a project no sheet reaches.`,
-      `The server imports ${ASSETS_FOLDER}/${KIT_ASSETS}/${KIT_SHEET} into each frame after the project sheet, and check reads it with the token sheets. Read ${ASSETS_FOLDER}/${KIT_ASSETS}/${KIT_NOTE} and the ${KIT_PAGE} page before drawing in a project that holds one.`,
+      `kit add copies the kit's folder into the project's ${ASSETS_FOLDER}/${PROJECT_KITS}/<kit>/ and writes no token sheet and no page, so a project holds several kits beside its own look. It refuses name-taken where the project already holds a kit by that name, and accepts --replace without acting on it. kit remove deletes that folder and clears the kit from every frame naming it, refusing kit-not-found for a kit the project lacks. kit save refuses name-taken for a name a shipped or saved kit holds, and tokens-not-found for a project no sheet reaches.`,
+      `A frame draws with a kit only where its ${LAYOUT_FILE} entry names one under kit. frame kit <frame-ref> <kit> sets it and frame kit <frame-ref> ${NO_KIT_WORD} clears it, each writing ${LAYOUT_FILE} alone, and it refuses kit-not-found for a kit the project lacks. The frame file never names the kit, so rewriting the frame keeps it. list --json answers kit on each frame naming one and kits on each project, with every kit's name, title, and frameCount.`,
+      `The server imports ${ASSETS_FOLDER}/${PROJECT_KITS}/<kit>/${TOKEN_FILE} then ${KIT_SHEET} into a frame naming that kit, after the project sheet, and check reads the same sheets. A plain frame beside it loads neither, and a frame naming a kit whose folder is gone loads none and keeps the name. Read ${ASSETS_FOLDER}/${PROJECT_KITS}/<kit>/${KIT_NOTE} and the sample frames under its ${KIT_PAGE}/ folder before drawing a frame that names it.`,
+      `A project holding ${ASSETS_FOLDER}/${KIT_ASSETS}/${KIT_FILE} took its kit before a frame could name one, and every frame in it still loads ${ASSETS_FOLDER}/${KIT_ASSETS}/${KIT_SHEET} after the project sheet. An ${ASSETS_FOLDER}/${KIT_ASSETS}/ holding no ${KIT_FILE} is loaded into no frame, so a frame using it links it itself.`,
     ],
     images: [
       `image find searches Openverse under ${DEFAULT_LICENSES.join(', ')} alone, and --credited widens it to ${CREDITED_LICENSES.join(', ')}. It lists up to ${PAGE_SIZE} results numbered from 1 and writes nothing. --save <number> runs the search again and saves that result, and --save <id> saves the Openverse image with that id with no search, refusing result-not-found for an id under a license the flags do not allow. Openverse allows an address 200 anonymous requests a day, so save by id.`,
@@ -128,7 +132,7 @@ export function contentFormat() {
     assets: `A frame links files in its own page folder or in its project's ${ASSETS_FOLDER}/ folder. frame duplicate and frame move carry the ${FRAME_EXTENSION} file alone, so keep files shared between frames or pages in ${ASSETS_FOLDER}/.`,
     look: [
       `The board's ${TOKEN_FILE} holds the design tokens every project shares, and a project's own ${TOKEN_FILE} overrides it. serve --tokens <path> stands in for the board's sheet, resolved against the working folder and recorded as tokens in ${RUN_FOLDER}/${ADDRESS_FILE} while that server runs.`,
-      `The server puts one <style ${LOOK_MARKER}> first in each frame's head, importing the faces, then the board sheet, then the project sheet, then an installed kit's stylesheet, so a frame's own sheets win. The file on disk never changes, and a count of a live frame's elements skips elements carrying ${LOOK_MARKER}.`,
+      `The server puts one <style ${LOOK_MARKER}> first in each frame's head, importing the faces, then the board sheet, then the project sheet, then the sheets of the kit the frame names, so a frame's own sheets win. The file on disk never changes, and a count of a live frame's elements skips elements carrying ${LOOK_MARKER}.`,
       `Every frame can use the families ${FACES.map((face) => face.family).join(', ')} with no link of its own. A project adds other faces in its ${ASSETS_FOLDER}/ folder.`,
       "The board sets data-theme and color-scheme to light or dark on each frame's root, with the class dark or light, so define both themes through [data-theme], .dark, prefers-color-scheme, or light-dark(), or take every color from token variables. Never paste a token sheet into a frame.",
       `A change to a token sheet reloads every frame it reaches.`,

@@ -143,6 +143,49 @@ describe('checkFrame', () => {
   })
 })
 
+describe('a project whose frames name kits', () => {
+  let board: TempBoard | undefined
+
+  afterEach(() => {
+    board?.cleanup()
+    board = undefined
+  })
+
+  const FRAME =
+    '<!doctype html><html lang="en"><head><meta charset="utf-8" /><title>x</title>' +
+    '<style>body { font-family: var(--font-text) } p { color: var(--ink-rough) }</style>' +
+    '</head><body><p>x</p></body></html>\n'
+
+  const entry = (kit?: string) => ({
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    order: 0,
+    kit,
+  })
+
+  it('checks each frame against its own kit, so a kit token is known only where the frame names it', async () => {
+    board = writeBoard({
+      'tokens.css': ':root { --font-text: Geist, sans-serif }',
+      'site/project.json': '{ "version": 1, "pages": ["home"] }',
+      'site/assets/kits/sketch/tokens.css': ':root { --ink-rough: navy }',
+      'site/home/drawn.html': FRAME,
+      'site/home/plain.html': FRAME,
+      'site/home/layout.json': JSON.stringify({
+        version: 1,
+        frames: { drawn: entry('sketch'), plain: entry() },
+      }),
+    })
+
+    const { findings } = await checkProject(board.root, 'site')
+
+    expect(findings.map(({ rule, frame }) => ({ rule, frame }))).toEqual([
+      { rule: 'unknown-token', frame: 'site/home/plain' },
+    ])
+  })
+})
+
 describe('readProjectContext', () => {
   let root: string
 

@@ -79,8 +79,6 @@ interface ProjectState {
   pendingRename: { from: string; to: string } | null
   /** The project whose card takes focus once home draws it, after a write moved it out of a closed panel. */
   focusTarget: string | null
-  /** Whether home shows New project's dialog, which picks the kit the project starts from. */
-  creating: boolean
 }
 
 export const projectStore = createStore<ProjectState>()(() => ({
@@ -91,7 +89,6 @@ export const projectStore = createStore<ProjectState>()(() => ({
   openFolder: null,
   pendingRename: null,
   focusTarget: null,
-  creating: false,
 }))
 
 export function useRenamingProject(project: string): Renaming | null {
@@ -526,10 +523,14 @@ export function useHomeAction(goHome: () => void): void {
 }
 
 /**
- * Registers `project.new`, the board going home before the dialog opens,
- * since leaving clears the project state and would close it.
+ * Registers `project.new`, which adds a project and opens its name for
+ * renaming on the home view. The board passes `leave`, which goes home before
+ * the add, since leaving clears the project state and would close the rename.
  */
-export function useNewProjectAction(leave?: () => void): void {
+export function useNewProjectAction(
+  calls: Structure = structure,
+  leave?: () => void,
+): void {
   useEffect(() => {
     const writable = () => liveStore.getState().canWrite
     const unregister = registerActions([
@@ -541,7 +542,10 @@ export function useNewProjectAction(leave?: () => void): void {
         enabled: writable,
         run: () => {
           leave?.()
-          projectStore.setState({ creating: true })
+          calls.addProject().then((added) => {
+            focusProject(added.name)
+            startProjectRename(added.name)
+          }, reportRefusal("Couldn't add a project"))
         },
       },
     ])
@@ -552,38 +556,13 @@ export function useNewProjectAction(leave?: () => void): void {
       unsubscribe()
       unregister()
     }
-  }, [leave])
-}
-
-/**
- * Adds a project with `kit` installed by `replace`, since a board sheet would
- * otherwise refuse it, answering false on a refused add so the dialog stays open.
- */
-export async function createProject(
-  kit: string | null,
-  calls: Structure = structure,
-): Promise<boolean> {
-  let added: ProjectRecord
-  try {
-    added = await calls.addProject()
-  } catch (error) {
-    reportRefusal("Couldn't add a project")(error)
-    return false
-  }
-  if (kit !== null) {
-    await calls
-      .installKit(added.name, kit, true)
-      .catch(reportRefusal(`Couldn't install the kit into ${added.name}`))
-  }
-  focusProject(added.name)
-  startProjectRename(added.name)
-  return true
+  }, [calls, leave])
 }
 
 /**
  * Saves the project's look as a kit named after its folder, the next free
- * name where a kit already holds it, and says where New project now lists
- * it, or why the save was refused.
+ * name where a kit already holds it, and says the name it was saved under,
+ * or why the save was refused.
  */
 export async function saveAsKit(
   project: ProjectRecord,
@@ -599,7 +578,7 @@ export async function saveAsKit(
     () =>
       toast.add({
         title: `Saved ${projectLabel(project)} as a kit`,
-        description: `New project lists it as ${name}.`,
+        description: `Saved on this board as ${name}.`,
         type: 'success',
       }),
     reportRefusal(`Couldn't save ${projectLabel(project)} as a kit`),

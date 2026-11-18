@@ -1,5 +1,6 @@
 import {
   existsSync,
+  mkdirSync,
   readFileSync,
   statSync,
   utimesSync,
@@ -28,6 +29,7 @@ import {
   setBoxes,
   setFrameDevice,
   setFrameFlag,
+  setFrameKit,
   setFrameSpeakerNotes,
   setFrameTransition,
   setHeightModes,
@@ -1292,6 +1294,124 @@ describe('frames', () => {
         })
 
         expect(copy.speakerNotes).toBe('Open on the price.')
+      })
+    })
+
+    describe('a kit on the layout entry', () => {
+      it('reports the kit a frame names and keeps it when another writer changes the entry', async () => {
+        const root = open()
+        hugHero(root, { kit: 'sketch' })
+
+        const moved = await moveFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          x: 40,
+        })
+
+        expect(moved.kit).toBe('sketch')
+        expect(layout('webapp/home').frames.hero.kit).toBe('sketch')
+      })
+
+      it.each([
+        ['a value of another type', ['sketch']],
+        ['a name climbing out of the folder', '../sketch'],
+        ['a name holding a slash', 'kits/sketch'],
+      ])('reads %s as no kit and leaves it as written', async (_label, kit) => {
+        const root = open()
+        hugHero(root, { kit })
+
+        const moved = await moveFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          x: 40,
+        })
+
+        expect(moved).not.toHaveProperty('kit')
+        expect(layout('webapp/home').frames.hero.kit).toEqual(kit)
+      })
+
+      it('sets a kit the project holds and leaves the frame file alone', async () => {
+        const root = open()
+        mkdirSync(join(root, 'webapp/assets/kits/sketch'), { recursive: true })
+        const bytes = file('webapp/home/hero.html')
+
+        const set = await setFrameKit(root, 'webapp/home/hero', 'sketch', {
+          cwd: root,
+        })
+
+        expect(set.kit).toBe('sketch')
+        expect(layout('webapp/home').frames.hero.kit).toBe('sketch')
+        expect(file('webapp/home/hero.html')).toBe(bytes)
+      })
+
+      it('stores the folder’s own spelling for a name differing in case', async () => {
+        const root = open()
+        mkdirSync(join(root, 'webapp/assets/kits/sketch'), { recursive: true })
+
+        const set = await setFrameKit(root, 'webapp/home/hero', 'Sketch', {
+          cwd: root,
+        })
+
+        expect(set.kit).toBe('sketch')
+      })
+
+      it('clears the kit on null, leaving no key', async () => {
+        const root = open()
+        hugHero(root, { kit: 'sketch' })
+
+        const cleared = await setFrameKit(root, 'webapp/home/hero', null, {
+          cwd: root,
+        })
+
+        expect(cleared).not.toHaveProperty('kit')
+        expect(layout('webapp/home').frames.hero).not.toHaveProperty('kit')
+      })
+
+      it.each([
+        ['the project lacks', 'wireframe'],
+        ['another project holds', 'brand'],
+        [
+          'climbing out of the kits folder',
+          '../../../marketing/assets/kits/brand',
+        ],
+      ])('refuses a kit %s and writes nothing', async (_label, kit) => {
+        const root = open()
+        mkdirSync(join(root, 'webapp/assets/kits/sketch'), { recursive: true })
+        mkdirSync(join(root, 'marketing/assets/kits/brand'), {
+          recursive: true,
+        })
+        const before = layout('webapp/home')
+
+        await expect(
+          setFrameKit(root, 'webapp/home/hero', kit, { cwd: root }),
+        ).rejects.toMatchObject({
+          code: 'kit-not-found',
+          details: { kit, project: 'webapp', known: ['sketch'] },
+        })
+        expect(layout('webapp/home')).toEqual(before)
+      })
+
+      it('carries the kit onto a duplicate', async () => {
+        const root = open()
+        hugHero(root, { kit: 'sketch' })
+
+        const copy = await duplicateFrame(root, 'webapp/home/hero', {
+          cwd: root,
+        })
+
+        expect(copy.kit).toBe('sketch')
+        expect(layout('webapp/home').frames[copy.name].kit).toBe('sketch')
+      })
+
+      it('carries the kit when the frame moves to another page', async () => {
+        const root = open()
+        hugHero(root, { kit: 'sketch' })
+
+        const moved = await moveFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          to: 'webapp/settings',
+        })
+
+        expect(moved.kit).toBe('sketch')
+        expect(layout('webapp/settings').frames.hero.kit).toBe('sketch')
       })
     })
 

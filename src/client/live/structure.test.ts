@@ -74,4 +74,16 @@ describe('createStructure on a frame another session holds', () => {
 
     expect(paths).toEqual(['/api/frame/duplicate'])
   })
+
+  it('sends a kit change at once, since it writes the layout and never the claimed frame', async () => {
+    await createStructure(send).setFrameKit(['studio/home/hero'], 'sketch')
+
+    expect(paths).toEqual(['/api/frame/kit'])
+  })
+
+  it('sends a kit removal at once, since it clears layout entries and never a frame file', async () => {
+    await createStructure(send).removeKit('studio', 'sketch')
+
+    expect(paths).toEqual(['/api/kits/remove'])
+  })
 })

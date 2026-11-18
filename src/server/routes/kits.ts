@@ -7,13 +7,9 @@ import { z } from 'zod'
 
 import { contentHash } from '@/server/edit/address'
 import type { History } from '@/server/history/stack'
-import { installKit, takeOutLook } from '@/server/kits/install'
-import {
-  findKit,
-  listKits,
-  readKitFile,
-  shippedKitsDir,
-} from '@/server/kits/list'
+import { installKit } from '@/server/kits/install'
+import { findKit, listKits, shippedKitsDir } from '@/server/kits/list'
+import { removeKit } from '@/server/kits/remove'
 import { saveKit } from '@/server/kits/save'
 import { frameHead, injectHead, THEME_SCRIPT } from '@/server/look/inject'
 import { FRAME_EXTENSION, TOKEN_FILE } from '@/shared/board-files'
@@ -35,9 +31,11 @@ const PREVIEW_POLICY = `script-src 'sha256-${createHash('sha256').update(THEME_S
 const installSchema = z.object({
   project: name,
   kit: name,
-  /** Installs over a look already there, which an undo brings back. */
-  replace: z.boolean().default(false),
+  /** Accepted and ignored, since a caller written for the install that replaced a look may still send it. */
+  replace: z.boolean().optional(),
 })
+
+const removeSchema = z.object({ project: name, kit: name })
 
 const saveSchema = z.object({ project: name, name })
 
@@ -53,7 +51,7 @@ const CONTENT_TYPES: Record<string, string> = {
 }
 
 export interface KitRouteOptions {
-  /** The `--tokens` sheet the server was given, which no install goes under. */
+  /** The `--tokens` sheet the server was given, which a save reads as the board's. */
   tokens: string | null
   /** The folder the shipped kits are read from, the package's own when absent. */
   shipped?: string
@@ -71,9 +69,10 @@ export function kitRoutes(
 ): Hono {
   const app = new Hono()
 
-  /** Runs one write with a fresh journal and records it as a step that moves no page. */
+  /** Runs one write with a fresh journal and records it as a step that moves no page, touching the frames `touched` reads off it. */
   const recorded = async <T>(
     write: (journal: ReturnType<History['journal']>) => Promise<T>,
+    touched: (result: T) => string[] = () => [],
   ): Promise<T> => {
     const journal = history.journal()
     const result = await write(journal)
@@ -81,7 +80,7 @@ export function kitRoutes(
       id: journal.id,
       changes: journal.changes,
       page: null,
-      frames: [],
+      frames: touched(result),
     })
     return result
   }
@@ -93,18 +92,20 @@ export function kitRoutes(
   app.post('/api/kits/install', requireWriter(access), async (c) => {
     const body = await parseBody(c.req.raw, installSchema)
     const kit = findKit(root, body.kit, shipped)
-    if (body.replace) {
-      await readKitFile(kit)
-      await recorded((journal) => takeOutLook(root, body.project, { journal }))
-    }
     const installed = await recorded((journal) =>
-      installKit(root, body.project, kit, {
-        tokens,
-        journal,
-        replace: body.replace,
-      }),
+      installKit(root, body.project, kit, { journal }),
     )
     return c.json({ ok: true, data: installed })
+  })
+
+  /** Takes a kit out of a project and off every frame naming it, as one step an undo brings back whole. */
+  app.post('/api/kits/remove', requireWriter(access), async (c) => {
+    const body = await parseBody(c.req.raw, removeSchema)
+    const removed = await recorded(
+      (journal) => removeKit(root, body.project, body.kit, { journal }),
+      (record) => record.frames,
+    )
+    return c.json({ ok: true, data: removed })
   })
 
   app.post('/api/kits/save', requireWriter(access), async (c) => {

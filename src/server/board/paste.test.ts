@@ -42,6 +42,25 @@ describe('paste', () => {
     expect(file('webapp/home/hero-2.html')).toBe(file('webapp/home/hero.html'))
   })
 
+  it('carries the kit the source names onto the pasted frame', async () => {
+    const page = JSON.parse(file('webapp/home/layout.json'))
+    page.frames.hero.kit = 'sketch'
+    writeFileSync(
+      join(board.root, 'webapp/home/layout.json'),
+      JSON.stringify(page),
+    )
+    const held = await holdFrames(board.root, ['webapp/home/hero'], {
+      cwd: board.root,
+    })
+
+    const [pasted] = await pasteFrames(board.root, 'webapp/settings', held, {
+      cwd: board.root,
+    })
+
+    expect(pasted?.kit).toBe('sketch')
+    expect(layout('webapp/settings')[pasted?.name ?? ''].kit).toBe('sketch')
+  })
+
   it('pastes onto its own page past the linked widths the source draws, carrying them', async () => {
     const page = JSON.parse(file('webapp/home/layout.json'))
     page.frames.hero.widths = [{ width: 390, height: 844 }]

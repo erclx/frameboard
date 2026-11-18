@@ -37,6 +37,7 @@ function project(name: string, group: string | null = null): ProjectRecord {
     projectFileError: null,
     transitions: [],
     checksOff: [],
+    kits: [],
     pages: [],
   }
 }

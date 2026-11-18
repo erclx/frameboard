@@ -9,7 +9,7 @@ The home view lists the board's projects and files them in folders.
 
 ## Home view
 
-- On the home view, New project adds a project from a design kit you pick, or blank
+- On the home view, New project adds a blank project at once, with its name ready to type over
   - A card's right-click menu opens, renames, duplicates, saves as a kit, pins, or deletes its project
   - Sort orders projects by last edited, created, or name, in either direction
 - A delete happens at once and leaves a toast with Undo, and pinned projects sit under a Pinned label above the rest

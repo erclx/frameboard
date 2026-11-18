@@ -23,12 +23,8 @@ export interface GuideState {
   /** The project the guide answers for, which its rename moves. */
   project: string | null
   at: number
-  /** Whether the kit step runs, fixed at the first answer so the count holds when a sheet reaches the project mid-guide. */
-  withLook: boolean | null
   name: string | null
   size: FrameSizePreset
-  /** The kit Finish installs, by the name the kit list answers. */
-  kit: string
   drawer: Drawer
   refusal: string | null
   busy: boolean
@@ -46,10 +42,8 @@ const START: GuideState = {
   phase: 'idle',
   project: null,
   at: 0,
-  withLook: null,
   name: null,
   size: 'phone',
-  kit: 'clean',
   drawer: 'agent',
   refusal: null,
   busy: false,

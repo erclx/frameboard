@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
-import { tokenSheetPaths, tokenSheets } from './tokens'
+import { frameKit, tokenSheetPaths, tokenSheets } from './tokens'
 
 describe('tokenSheetPaths', () => {
   let board: TempBoard
@@ -110,9 +110,10 @@ describe('tokenSheets', () => {
     ])
   })
 
-  it("reads an installed kit's stylesheet after the project sheet, as a frame imports it", () => {
+  it("reads a project-wide kit's stylesheet after the project sheet where its folder holds kit.json", () => {
     board = writeBoard({
       'site/tokens.css': ':root { --fg: navy }',
+      'site/assets/kit/kit.json': '{ "version": 1 }',
       'site/assets/kit/kit.css': 'body { font-family: var(--font-text) }',
     })
 
@@ -122,5 +123,105 @@ describe('tokenSheets', () => {
       ':root { --fg: navy }',
       'body { font-family: var(--font-text) }',
     ])
+  })
+
+  it('leaves out a hand-built assets/kit/kit.css whose folder holds no kit.json', () => {
+    board = writeBoard({
+      'site/tokens.css': ':root { --fg: navy }',
+      'site/assets/kit/kit.css': 'body { font-family: var(--font-text) }',
+    })
+
+    const sheets = tokenSheets(board.root, 'site')
+
+    expect(sheets.map((sheet) => sheet.css)).toEqual([':root { --fg: navy }'])
+  })
+
+  it("reads the frame's kit tokens then its stylesheet, after the project sheet and a project-wide kit", () => {
+    board = writeBoard({
+      'site/tokens.css': ':root { --fg: navy }',
+      'site/assets/kit/kit.json': '{ "version": 1 }',
+      'site/assets/kit/kit.css': '.kit-card { border: 0 }',
+      'site/assets/kits/sketch/tokens.css': ':root { --fg: teal }',
+      'site/assets/kits/sketch/kit.css': '.kit-card { border: 2px solid }',
+    })
+
+    const sheets = tokenSheets(board.root, 'site', undefined, 'sketch')
+
+    expect(sheets.map((sheet) => sheet.css)).toEqual([
+      ':root { --fg: navy }',
+      '.kit-card { border: 0 }',
+      ':root { --fg: teal }',
+      '.kit-card { border: 2px solid }',
+    ])
+  })
+
+  it('reads no kit sheet for a frame naming none in a project that holds kits', () => {
+    board = writeBoard({
+      'site/tokens.css': ':root { --fg: navy }',
+      'site/assets/kits/sketch/tokens.css': ':root { --fg: teal }',
+      'site/assets/kits/sketch/kit.css': '.kit-card { border: 2px solid }',
+    })
+
+    const sheets = tokenSheets(board.root, 'site')
+
+    expect(sheets.map((sheet) => sheet.css)).toEqual([':root { --fg: navy }'])
+  })
+
+  it('reads only the sheets a kit holds, and none for a kit the project lacks', () => {
+    board = writeBoard({
+      'site/assets/kits/brand/kit.css': '.kit-card { border: 2px solid }',
+    })
+
+    const held = tokenSheets(board.root, 'site', undefined, 'brand')
+    const missing = tokenSheets(board.root, 'site', undefined, 'sketch')
+
+    expect([
+      held.map((sheet) => sheet.css),
+      missing.map((sheet) => sheet.css),
+    ]).toEqual([['.kit-card { border: 2px solid }'], []])
+  })
+})
+
+describe('frameKit', () => {
+  let board: TempBoard
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  const HERO = { project: 'site', page: 'home', name: 'hero' }
+
+  function layout(kit: unknown): string {
+    return JSON.stringify({
+      version: 1,
+      frames: { hero: { x: 0, y: 0, width: 10, height: 10, order: 0, kit } },
+    })
+  }
+
+  it("reads the kit a frame's layout entry names", () => {
+    board = writeBoard({ 'site/home/layout.json': layout('sketch') })
+
+    expect(frameKit({ root: board.root, ...HERO })).toBe('sketch')
+  })
+
+  it.each([
+    ['an entry naming none', layout(undefined)],
+    ['a name climbing out of the kits folder', layout('../../other/kit')],
+    ['a layout that does not parse', '{ nope'],
+    [
+      'a layout holding no entry for the frame',
+      '{ "version": 1, "frames": {} }',
+    ],
+    ['a layout whose frames is not an object', '{ "frames": "hero" }'],
+  ])('reads %s as no kit', (_label, file) => {
+    board = writeBoard({ 'site/home/layout.json': file })
+
+    expect(frameKit({ root: board.root, ...HERO })).toBeNull()
+  })
+
+  it('reads a page with no layout file as no kit', () => {
+    board = writeBoard({ 'site/home/hero.html': '<p>x</p>' })
+
+    expect(frameKit({ root: board.root, ...HERO })).toBeNull()
   })
 })

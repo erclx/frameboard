@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -130,6 +130,35 @@ describe('elementsRoutes', () => {
         ['div', 'column'],
         ['p', 'block'],
       ])
+    })
+
+    it("reads each element's layout from the kit the frame names, and not from a kit it does not", async () => {
+      const frame =
+        '<!doctype html><html><head></head><body><div class="kit-stack"><p>a</p></div></body></html>'
+      writeFileSync(join(board.root, 'studio/home/hero.html'), frame)
+      writeFileSync(join(board.root, 'studio/home/mobile.html'), frame)
+      mkdirSync(join(board.root, 'studio/assets/kits/sketch'), {
+        recursive: true,
+      })
+      writeFileSync(
+        join(board.root, 'studio/assets/kits/sketch/kit.css'),
+        '.kit-stack { display: flex; flex-direction: column }',
+      )
+      const layoutPath = join(board.root, 'studio/home/layout.json')
+      const layout = JSON.parse(readFileSync(layoutPath, 'utf8'))
+      layout.frames.hero.kit = 'sketch'
+      writeFileSync(layoutPath, JSON.stringify(layout))
+
+      const [hero, mobile] = await Promise.all(
+        [HERO, 'studio/home/mobile'].map(async (ref) => {
+          const response = await routes.request(
+            `/api/frames/elements?ref=${encodeURIComponent(ref)}`,
+          )
+          return (await response.json()).data.elements[0].layout
+        }),
+      )
+
+      expect([hero, mobile]).toEqual(['column', 'block'])
     })
 
     it('refuses a frame the board does not hold', async () => {

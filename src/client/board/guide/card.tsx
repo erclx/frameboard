@@ -4,12 +4,9 @@ import { useStore } from 'zustand'
 
 import { reportRefusal } from '@/client/board/left-panel/page-actions'
 import { choosePreset, placeFrame } from '@/client/board/structure/tool'
-import { useTokenTable } from '@/client/board/tokens'
 import { canvasView } from '@/client/board/view'
 import { toast } from '@/client/components/ui/toast'
 import { movePin } from '@/client/home/pins'
-import { KitCards } from '@/client/kits/kit-cards'
-import { useKits } from '@/client/kits/kits'
 import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
@@ -17,10 +14,8 @@ import { BoardWriteError } from '@/client/live/write'
 import { projectLabel } from '@/client/projects/actions'
 import { boardUrl } from '@/shared/board-urls'
 import { FRAME_SIZES, type FrameSizePreset } from '@/shared/frame-sizes'
-import type { KitRecord } from '@/shared/kits'
 import { folderName } from '@/shared/names'
 import type { PageRecord } from '@/shared/records/list'
-import type { TokenTable } from '@/shared/records/tokens'
 
 import {
   agentFolder,
@@ -30,7 +25,9 @@ import {
   guideStore,
 } from './state'
 
-type Step = 'name' | 'size' | 'kit' | 'agent'
+type Step = 'name' | 'size' | 'agent'
+
+const STEPS: Step[] = ['name', 'size', 'agent']
 
 const SIZE_LABELS: Record<FrameSizePreset, string> = {
   phone: 'Phone',
@@ -52,19 +49,11 @@ const SIZE_SHAPES: Record<FrameSizePreset, string> = {
 export function GuideCard({
   page,
   calls = structure,
-  loadTokens,
-  loadKits,
 }: {
   page: PageRecord
   calls?: Structure
-  /** Reads the project's token table, the server's when absent. */
-  loadTokens?: (project: string) => Promise<TokenTable | null>
-  /** Reads the kits the board can install, the server's when absent. */
-  loadKits?: () => Promise<KitRecord[] | null>
 }) {
   const state = useStore(guideStore)
-  const table = useTokenTable(page.project, loadTokens)
-  const kits = useKits(loadKits)
   const root = useLive((live) => live.board?.root ?? '')
   const record = useLive((live) =>
     live.board?.projects.find(
@@ -75,14 +64,8 @@ export function GuideCard({
   const heading = useRef<HTMLHeadingElement>(null)
 
   const project = state.project ?? page.project
-  const withLook =
-    state.withLook ??
-    (table === undefined || table === null || table.sheets.length === 0)
-  const steps: Step[] = withLook
-    ? ['name', 'size', 'kit', 'agent']
-    : ['name', 'size', 'agent']
-  const at = Math.min(state.at, steps.length - 1)
-  const step = steps[at] ?? 'name'
+  const at = Math.min(state.at, STEPS.length - 1)
+  const step = STEPS[at] ?? 'name'
   const label = record ? projectLabel(record) : project
   const name = state.name ?? label
   const folder = folderName(name)
@@ -94,7 +77,7 @@ export function GuideCard({
   }, [state.moved])
 
   const set = (patch: Partial<GuideState>) => guideStore.setState(patch)
-  const open = () => set({ phase: 'open', project, withLook, refusal: null })
+  const open = () => set({ phase: 'open', project, refusal: null })
   const advance = () =>
     set({ at: at + 1, refusal: null, busy: false, moved: true })
 
@@ -108,22 +91,6 @@ export function GuideCard({
   }
 
   const finish = async () => {
-    if (withLook) {
-      try {
-        await calls.installKit(project, state.kit)
-      } catch (error) {
-        // A sheet that reached the project meanwhile already gives it a look.
-        if (
-          !(error instanceof BoardWriteError && error.code === 'tokens-exist')
-        ) {
-          // The last step draws no refusal line, so the toast carries it.
-          set({ busy: false })
-          return reportRefusal(`Couldn't install the kit into ${project}`)(
-            error,
-          )
-        }
-      }
-    }
     if (state.drawer === 'self') {
       choosePreset(state.size)
       const added = await placeFrame(
@@ -181,11 +148,11 @@ export function GuideCard({
           Set up your board
         </h2>
         <span className="ml-auto text-muted-foreground tabular-nums">
-          {at + 1} of {steps.length}
+          {at + 1} of {STEPS.length}
         </span>
       </div>
       <div aria-hidden className="flex gap-1 px-4 pt-2.5">
-        {steps.map((each, index) => (
+        {STEPS.map((each, index) => (
           <i
             key={each}
             className={cn(
@@ -224,18 +191,10 @@ export function GuideCard({
               page={page.name}
               onChange={(size) => set({ size })}
             />
-          ) : step === 'kit' ? (
-            <KitStep
-              kits={kits}
-              kit={state.kit}
-              project={project}
-              onChange={(kit) => set({ kit })}
-            />
           ) : (
             <AgentStep
               drawer={state.drawer}
               folder={agentFolder(root)}
-              sheet={withLook ? `${project}/tokens.css` : null}
               prompt={agentPrompt(state.size, project)}
               size={state.size}
               page={page.name}
@@ -279,7 +238,6 @@ export function GuideCard({
 const HEADINGS: Record<Step, string> = {
   name: 'What are you designing?',
   size: 'Which screen first?',
-  kit: 'Pick a kit',
   agent: 'Who draws the first frame?',
 }
 
@@ -463,45 +421,9 @@ function SizeStep({
   )
 }
 
-function KitStep({
-  kits,
-  kit,
-  project,
-  onChange,
-}: {
-  kits: KitRecord[] | null | undefined
-  kit: string
-  project: string
-  onChange: (kit: string) => void
-}) {
-  return (
-    <>
-      <Lead>
-        A kit sets the tokens, styles, and sample frames every frame in this
-        project draws with, in light and dark.
-      </Lead>
-      <KitCards
-        kits={kits}
-        value={kit}
-        onChange={(picked) => {
-          if (picked !== null) onChange(picked)
-        }}
-        group="guide-kit"
-        labelledBy="guide-step"
-        className="mt-3 grid-cols-3"
-      />
-      <Writes>
-        Finish writes <Path>{project}/tokens.css</Path> and a <Path>kit</Path>{' '}
-        page
-      </Writes>
-    </>
-  )
-}
-
 function AgentStep({
   drawer,
   folder,
-  sheet,
   prompt,
   size,
   page,
@@ -510,8 +432,6 @@ function AgentStep({
   drawer: Drawer
   /** Where Claude Code opens to find this board. */
   folder: string
-  /** The token sheet Finish writes first, null where the kit step dropped out. */
-  sheet: string | null
   prompt: string
   size: FrameSizePreset
   page: string
@@ -593,21 +513,9 @@ function AgentStep({
         </Choice>
       </div>
       <Writes>
-        {sheet === null ? (
-          drawer === 'agent' ? (
-            'Writes nothing until your agent draws'
-          ) : (
-            'Writes one frame file'
-          )
-        ) : drawer === 'agent' ? (
-          <>
-            Finish writes only <Path>{sheet}</Path>
-          </>
-        ) : (
-          <>
-            Finish writes <Path>{sheet}</Path> and one frame file
-          </>
-        )}
+        {drawer === 'agent'
+          ? 'Writes nothing until your agent draws'
+          : 'Writes one frame file'}
       </Writes>
     </>
   )

@@ -7,6 +7,7 @@ import {
   ASSETS_FOLDER,
   BOARD_FILE,
   FRAME_EXTENSION,
+  LAYOUT_FILE,
   PROJECT_FILE,
 } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
@@ -24,6 +25,7 @@ import {
   widthsOf,
   xPast,
 } from '@/shared/frame-widths'
+import { kitOf } from '@/shared/kits'
 import {
   storedTransitionOf,
   type Transition,
@@ -47,11 +49,11 @@ import type {
 } from '@/shared/records/list'
 import { membersOf } from '@/shared/sections'
 
+import { projectKits } from '../kits/project'
 import { isCode, readRecord, type RecordSpec } from './json-record'
 import { listTransitionNames } from './transitions'
 
-export const LAYOUT_FILE = 'layout.json'
-export { ASSETS_FOLDER, BOARD_FILE, FRAME_EXTENSION, PROJECT_FILE }
+export { ASSETS_FOLDER, BOARD_FILE, FRAME_EXTENSION, LAYOUT_FILE, PROJECT_FILE }
 
 export const layoutSpec: RecordSpec<LayoutFile> = {
   schema: layoutFileSchema,
@@ -89,6 +91,8 @@ export interface Placement {
   transition?: Transition
   /** Absent for a frame with no note or one holding a value of another type. */
   speakerNotes?: string
+  /** Absent for a frame naming no kit, and present for a named kit the project lacks. */
+  kit?: string
   placed: boolean
 }
 
@@ -237,6 +241,7 @@ export function placeFrames(
     const device = shown ? named : null
     const transition = readTransition(entry.transition)
     const speakerNotes = speakerNotesOf(entry.speakerNotes)
+    const kit = kitOf(entry.kit)
     placements.set(name, {
       box,
       order: entry.order,
@@ -252,6 +257,7 @@ export function placeFrames(
       ...(foldable && kept.length > 0 ? { keptWidths: kept } : {}),
       ...(transition ? { transition } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
+      ...(kit ? { kit } : {}),
       placed: true,
     })
   }
@@ -359,6 +365,7 @@ export async function scanProject(
     projectFileError: error,
     transitions,
     checksOff,
+    kits: await projectKits(path, pages),
     pages,
   }
 }

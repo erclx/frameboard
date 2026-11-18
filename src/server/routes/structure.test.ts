@@ -953,6 +953,65 @@ describe('structureRoutes', () => {
       expect(layout().hero).not.toHaveProperty('transition')
     })
 
+    it('sets a kit on several frames as one step and undoes it, leaving each file alone', async () => {
+      mkdirSync(join(board.root, 'studio/assets/kits/sketch'), {
+        recursive: true,
+      })
+      const bytes = readFileSync(frameFile('hero'))
+
+      const response = await post('/api/frame/kit', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+        kit: 'sketch',
+      })
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: [
+          { ref: 'studio/home/hero', kit: 'sketch' },
+          { ref: 'studio/home/mobile', kit: 'sketch' },
+        ],
+      })
+      expect(layout()).toMatchObject({
+        hero: { kit: 'sketch' },
+        mobile: { kit: 'sketch' },
+      })
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(layout().hero).not.toHaveProperty('kit')
+      expect(layout().mobile).not.toHaveProperty('kit')
+      expect(readFileSync(frameFile('hero'))).toEqual(bytes)
+    })
+
+    it('clears the kit on null', async () => {
+      mkdirSync(join(board.root, 'studio/assets/kits/sketch'), {
+        recursive: true,
+      })
+      await post('/api/frame/kit', {
+        refs: ['studio/home/hero'],
+        kit: 'sketch',
+      })
+
+      await post('/api/frame/kit', { refs: ['studio/home/hero'], kit: null })
+
+      expect(layout().hero).not.toHaveProperty('kit')
+    })
+
+    it('refuses a kit the project lacks with kit-not-found, writing no frame and no step', async () => {
+      mkdirSync(join(board.root, 'studio/assets/kits/sketch'), {
+        recursive: true,
+      })
+
+      const response = await post('/api/frame/kit', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+        kit: 'wireframe',
+      })
+
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('kit-not-found')
+      expect(layout().hero).not.toHaveProperty('kit')
+      expect(history.counts().undo).toBe(0)
+    })
+
     it('sets a speaker note as one step and undoes it, leaving the file alone', async () => {
       const bytes = readFileSync(frameFile('hero'))
 

@@ -5,7 +5,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status'
 
 import { resolveFrameRef } from '@/server/board/refs'
 import { readFrame } from '@/server/checks/frame-source'
-import { tokenSheets } from '@/server/checks/tokens'
+import { frameKit, tokenSheets } from '@/server/checks/tokens'
 import { contentHash } from '@/server/edit/address'
 import {
   elementLayouts,
@@ -52,7 +52,7 @@ export function elementsRoutes(
     const frame = await resolveFrameRef(root, ref, { cwd: root })
     const bytes = await readFile(frame.path)
     const source = readFrame(frame)
-    const sheets = tokenSheets(root, frame.project, tokens)
+    const sheets = tokenSheets(root, frame.project, tokens, frameKit(frame))
     const elements = elementTree(
       bytes.toString('utf8'),
       elementLayouts(source, sheets),
@@ -105,7 +105,11 @@ export function elementsRoutes(
     const data: FrameStyles = {
       ref: source.ref,
       hash: contentHash(source.html),
-      ...frameStyles(source, tokenSheets(root, frame.project, tokens), index),
+      ...frameStyles(
+        source,
+        tokenSheets(root, frame.project, tokens, frameKit(frame)),
+        index,
+      ),
     }
     return c.json({ ok: true, data })
   })

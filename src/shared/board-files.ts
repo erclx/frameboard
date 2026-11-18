@@ -4,6 +4,7 @@
  */
 export const BOARD_FILE = 'board.json'
 export const PROJECT_FILE = 'project.json'
+export const LAYOUT_FILE = 'layout.json'
 export const ASSETS_FOLDER = 'assets'
 export const FRAME_EXTENSION = '.html'
 export const TOKEN_FILE = 'tokens.css'

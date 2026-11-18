@@ -50,6 +50,8 @@ export const frameRecordSchema = z.object({
   transition: transitionRecordSchema.optional(),
   /** What the presenter means to say over the slide, plain text with its line breaks, absent when it holds none. */
   speakerNotes: z.string().optional(),
+  /** The project kit the frame names, absent when it names none, and still given where the project holds no such kit. */
+  kit: z.string().optional(),
   placed: z.boolean(),
   modifiedAt: z.string(),
 })
@@ -87,6 +89,18 @@ export const pageRecordSchema = z.object({
 
 export type PageRecord = z.infer<typeof pageRecordSchema>
 
+/** One kit a project added, a folder under its `assets/kits/`. */
+export const projectKitRecordSchema = z.object({
+  /** The kit's folder, which a frame's `kit` and `frame kit` name it by. */
+  name: z.string(),
+  /** The name a person reads, the folder's where its `kit.json` gives none. */
+  title: z.string(),
+  /** How many of the project's frames name the kit. */
+  frameCount: z.number(),
+})
+
+export type ProjectKitRecord = z.infer<typeof projectKitRecordSchema>
+
 export const projectRecordSchema = z.object({
   /** The folder, which every ref, URL, and CLI argument names the project by. */
   name: z.string(),
@@ -105,6 +119,8 @@ export const projectRecordSchema = z.object({
   transitions: z.array(z.string()),
   /** The rule ids `checks.off` in `project.json` turns off, in the file's order and each once, empty when it holds none. */
   checksOff: z.array(z.string()),
+  /** The kits the project added, by name, empty when it holds none. */
+  kits: z.array(projectKitRecordSchema),
   pages: z.array(pageRecordSchema),
 })
 

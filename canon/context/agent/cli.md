@@ -43,7 +43,7 @@ Owns handing a tab write access, beside `show.ts`, `selection.ts`, and `preview.
 
 ### `src/cli/commands/frame.ts`
 
-Owns the frame verbs, `page.ts` reshaping pages the same way, both adding, duplicating, renaming, moving, and deleting, with the size, scroll, widths, device, and transition flags `frameboard docs` lists. `move --x --y` writes `layout.json` alone, so a move never collides with an agent rewriting the file.
+Owns the frame verbs, `page.ts` reshaping pages the same way, both adding, duplicating, renaming, moving, and deleting, with the size, scroll, widths, device, and transition flags `frameboard docs` lists. `move --x --y` and `frame kit` write `layout.json` alone, so neither collides with an agent rewriting the file.
 
 - `frame fit` sets height only, reading at the layout width and that width's preset height or 900, never the frame's own, and ignores what a cropping ancestor hides
 - `frame fit` refuses `fit-unbounded` for content sized off the viewport, like `100vh`, a block reset on `resize`, or one set once from `innerHeight`
@@ -63,10 +63,11 @@ Owns the project verbs, being add, rename, title, delete, the two filing verbs, 
 
 ### `src/cli/commands/kit.ts`
 
-Owns `kit list`, `kit add`, and `kit save`, over the same `src/server/kits/` the board's routes call, writing with no journal the way the other verbs do.
+Owns `kit list`, `kit add`, `kit remove`, and `kit save`, over the same `src/server/kits/` the board's routes call, writing with no journal the way the other verbs do.
 
 - `kit add <project> <kit>` takes a name `kit list` answers, and `--from <folder>` a kit folder resolved against the working folder in its place, refusing `usage` for both or neither
-- `--replace` installs over the project's own sheet, kit page, and kit files, or over a board sheet, and without it the verb exits 4 with `tokens-exist` or `name-taken`
+- `kit add` exits 4 with `name-taken` where the project holds a kit by that name, and takes a hidden `--replace` it never acts on, since a script may still pass it
+- `kit remove <project> <kit>` answers the frames it cleared, and exits 3 with `kit-not-found` for a kit the project lacks
 
 ### `src/cli/commands/references.ts`
 

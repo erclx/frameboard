@@ -24,6 +24,7 @@ import {
   widthsOf,
   xPast,
 } from '@/shared/frame-widths'
+import { kitOf } from '@/shared/kits'
 import { nextFreeName } from '@/shared/names'
 import {
   storedTransitionOf,
@@ -39,6 +40,7 @@ import {
 import type { FrameRecord } from '@/shared/records/list'
 
 import { reservedBox } from '../claims/store'
+import { heldKit } from '../kits/project'
 import type { Journal, JournalOptions } from './journal'
 import { readRecord, withLocks, writeRecord } from './json-record'
 import {
@@ -995,6 +997,31 @@ export async function setFrameTransition(
 }
 
 /**
+ * Sets the project kit a frame draws with, or clears it with null, writing
+ * only its layout entry. Refuses `kit-not-found` for a name the frame's
+ * project holds no kit under, and stores the folder's own spelling.
+ */
+export async function setFrameKit(
+  root: string,
+  ref: string,
+  kit: string | null,
+  options: RefOptions & JournalOptions,
+): Promise<FrameRecord> {
+  const frame = await resolveFrameRef(root, ref, options)
+  const held =
+    kit === null
+      ? null
+      : await heldKit(
+          { name: frame.project, path: join(root, frame.project) },
+          kit,
+        )
+  return updatePlacement(root, ref, options, (placement) => {
+    const { kit: _held, ...rest } = placement
+    return held ? { ...rest, kit: held } : rest
+  })
+}
+
+/**
  * Sets a frame's speaker note on its layout entry, null or blank clearing it.
  * Refuses `usage` past `SPEAKER_NOTES_MAX` rather than cutting, and
  * `stale-layout` once `expected`, the note the edit began from, is gone.
@@ -1176,6 +1203,7 @@ class PageLayout {
       keptWidths,
       transition,
       speakerNotes,
+      kit,
       hugWidth: hugsWidth,
       hugHeight: hugsHeight,
     }: Placement,
@@ -1212,6 +1240,7 @@ class PageLayout {
         : {}),
       ...(transition ? { transition: { ...transition } } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
+      ...(kit ? { kit } : {}),
     }
     if (listed.length === 0 && widthsOf(held?.widths).length > 0) {
       delete entry.widths
@@ -1228,6 +1257,7 @@ class PageLayout {
     if (!speakerNotes && speakerNotesOf(held?.speakerNotes)) {
       delete entry.speakerNotes
     }
+    if (!kit && kitOf(held?.kit)) delete entry.kit
     this.file.frames[name] = entry
     this.changed = true
   }

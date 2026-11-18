@@ -28,9 +28,10 @@ Frames share one look through a `tokens.css` in the board folder, which a projec
 
 ## Design kits
 
-A kit gives a project a whole look at once, being its tokens, a stylesheet of drawn parts, a note for the agent, and a page of sample frames. Frameboard ships Clean, Sketch, and Wireframe.
+A kit gives chosen frames a whole look at once, being its tokens, a stylesheet of drawn parts, a note for the agent, and sample frames. Frameboard ships Clean, Sketch, and Wireframe, and a project holds several kits beside its own `tokens.css`.
 
-- The first-run guide and home's New project offer the kits as cards, each a live render of its sample frame
-- Installing copies the tokens as the project's `tokens.css`, the samples as a `kit` page, and the rest into `assets/kit/`, whose stylesheet the server adds after the token sheets
-- `frameboard kit add <project> <kit>` installs one from the terminal, `--from <folder>` installs a kit folder on disk, and `--replace` installs over a look the project already has
+- `frameboard kit add <project> <kit>` copies a kit into the project's `assets/kits/<kit>/`, and `--from <folder>` copies a kit folder on disk
+- `frameboard frame kit <frame-ref> <kit>` sets the kit one frame draws with, and `none` in place of the kit takes it off. A frame naming no kit keeps the project's own look.
+- The server adds a kit's tokens and stylesheet after the token sheets, to the frames naming that kit alone
+- `frameboard kit remove <project> <kit>` deletes the kit's folder and takes it off every frame naming it
 - Save as kit on a project's menu, or `frameboard kit save`, keeps its look in the board's `.kits/` folder for the other projects

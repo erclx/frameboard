@@ -133,31 +133,114 @@ describe('frameRoutes', () => {
       ])
     })
 
-    it("imports an installed kit's stylesheet after the project sheet", async () => {
-      writeFileSync(
-        join(board.root, 'studio/tokens.css'),
-        ':root { --fg: navy }',
-      )
-      mkdirSync(join(board.root, 'studio/assets/kit'), { recursive: true })
-      writeFileSync(
-        join(board.root, 'studio/assets/kit/kit.css'),
-        '.kit-card { border: 2px solid }',
-      )
+    describe('with kits', () => {
+      /** Writes board-relative files, making each folder on the way. */
+      function write(files: Record<string, string>): void {
+        for (const [path, contents] of Object.entries(files)) {
+          mkdirSync(join(board.root, path, '..'), { recursive: true })
+          writeFileSync(join(board.root, path), contents)
+        }
+      }
 
-      const served = await (await get('/frames/studio/home/hero.html')).text()
+      /** Names a kit on the hero frame's layout entry, leaving its neighbor plain. */
+      function nameKit(kit: unknown): void {
+        const path = join(board.root, 'studio/home/layout.json')
+        const layout = JSON.parse(readFileSync(path, 'utf8'))
+        layout.frames.hero.kit = kit
+        writeFileSync(path, JSON.stringify(layout))
+      }
 
-      expect(importsOf(served).slice(-2)).toEqual([
-        '/frames/studio/tokens.css',
-        '/frames/studio/assets/kit/kit.css',
-      ])
-    })
+      const SKETCH = {
+        'studio/tokens.css': ':root { --fg: navy }',
+        'studio/assets/kits/sketch/tokens.css': ':root { --fg: teal }',
+        'studio/assets/kits/sketch/kit.css': '.kit-card { border: 2px solid }',
+      }
 
-    it('imports no kit stylesheet into a project with no kit', async () => {
-      const served = await (await get('/frames/studio/home/hero.html')).text()
+      it("imports the frame's kit tokens then its stylesheet after the project sheet", async () => {
+        write(SKETCH)
+        nameKit('sketch')
 
-      expect(importsOf(served)).not.toContain(
-        '/frames/studio/assets/kit/kit.css',
-      )
+        const served = await (await get('/frames/studio/home/hero.html')).text()
+
+        expect(importsOf(served).slice(-3)).toEqual([
+          '/frames/studio/tokens.css',
+          '/frames/studio/assets/kits/sketch/tokens.css',
+          '/frames/studio/assets/kits/sketch/kit.css',
+        ])
+      })
+
+      it('imports no kit sheet into the plain frame beside a kit frame', async () => {
+        write(SKETCH)
+        nameKit('sketch')
+
+        const served = await (
+          await get('/frames/studio/home/mobile.html')
+        ).text()
+
+        expect(importsOf(served).at(-1)).toBe('/frames/studio/tokens.css')
+      })
+
+      it.each([
+        ['a kit the project lacks', 'wireframe'],
+        [
+          'a name climbing out of the kits folder',
+          '../../../studio/assets/kits/sketch',
+        ],
+      ])('serves a frame naming %s with no kit sheet', async (_label, kit) => {
+        write(SKETCH)
+        nameKit(kit)
+
+        const response = await get('/frames/studio/home/hero.html')
+
+        expect(response.status).toBe(200)
+        expect(importsOf(await response.text()).at(-1)).toBe(
+          '/frames/studio/tokens.css',
+        )
+      })
+
+      it('serves the files of a kit the frame imports', async () => {
+        write(SKETCH)
+
+        const response = await get(
+          '/frames/studio/assets/kits/sketch/tokens.css',
+        )
+
+        expect(await response.text()).toBe(':root { --fg: teal }')
+      })
+
+      it('imports a project-wide kit into every frame where its folder holds kit.json, ahead of the frame’s own kit', async () => {
+        write({
+          ...SKETCH,
+          'studio/assets/kit/kit.json': '{ "version": 1 }',
+          'studio/assets/kit/kit.css': '.kit-card { border: 0 }',
+        })
+        nameKit('sketch')
+
+        const hero = await (await get('/frames/studio/home/hero.html')).text()
+        const mobile = await (
+          await get('/frames/studio/home/mobile.html')
+        ).text()
+
+        expect(importsOf(hero).slice(-3)).toEqual([
+          '/frames/studio/assets/kit/kit.css',
+          '/frames/studio/assets/kits/sketch/tokens.css',
+          '/frames/studio/assets/kits/sketch/kit.css',
+        ])
+        expect(importsOf(mobile).at(-1)).toBe(
+          '/frames/studio/assets/kit/kit.css',
+        )
+      })
+
+      it('imports no hand-built assets/kit/kit.css whose folder holds no kit.json', async () => {
+        write({
+          'studio/tokens.css': ':root { --fg: navy }',
+          'studio/assets/kit/kit.css': '.kit-card { border: 0 }',
+        })
+
+        const served = await (await get('/frames/studio/home/hero.html')).text()
+
+        expect(importsOf(served).at(-1)).toBe('/frames/studio/tokens.css')
+      })
     })
 
     it('imports no token sheet that does not exist', async () => {

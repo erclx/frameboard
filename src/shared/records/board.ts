@@ -89,6 +89,10 @@ export const layoutEntrySchema = z.looseObject({
   // the frame's file so an agent rewriting the design never drops it. A value
   // of another type parses as written and reads as no note.
   speakerNotes: z.unknown().optional(),
+  // The project kit the frame draws with, a folder under the project's
+  // `assets/kits/`, kept here so a rewrite of the frame's file never drops
+  // it. A value that names no kit parses as written and reads as none.
+  kit: z.unknown().optional(),
 })
 
 export type LayoutEntry = z.infer<typeof layoutEntrySchema>

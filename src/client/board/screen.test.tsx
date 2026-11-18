@@ -29,6 +29,7 @@ const BOARD: ListResult = {
       projectFileError: null,
       transitions: [],
       checksOff: [],
+      kits: [],
       pages: [
         {
           ref: 'studio/home',

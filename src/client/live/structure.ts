@@ -1,7 +1,11 @@
 import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
 import type { Pose } from '@/shared/frame-device'
 import type { FrameSize } from '@/shared/frame-sizes'
-import type { KitInstallRecord, KitSaveRecord } from '@/shared/kits'
+import type {
+  KitInstallRecord,
+  KitRemoveRecord,
+  KitSaveRecord,
+} from '@/shared/kits'
 import type { Transition } from '@/shared/present-transition'
 import type {
   FrameRecord,
@@ -67,9 +71,12 @@ export function createStructure(send: typeof fetch = fetch) {
     /** Writes a starter `tokens.css`, refused as `tokens-exist` where any sheet reaches the project. */
     projectTokens: (ref: string, look: StarterLook) =>
       post<StarterSheetRecord>('/api/project/tokens', { ref, ...look }),
-    /** Installs a kit into a project, `replace` installing over a look a sheet already gives it. */
-    installKit: (project: string, kit: string, replace = false) =>
-      post<KitInstallRecord>('/api/kits/install', { project, kit, replace }),
+    /** Adds a kit to a project in one undo step, for its frames to name. */
+    installKit: (project: string, kit: string) =>
+      post<KitInstallRecord>('/api/kits/install', { project, kit }),
+    /** Takes a kit out of a project and off every frame naming it, in one undo step. */
+    removeKit: (project: string, kit: string) =>
+      post<KitRemoveRecord>('/api/kits/remove', { project, kit }),
     /** Saves a project's look as the kit `name` on this board. */
     saveKit: (project: string, name: string) =>
       post<KitSaveRecord>('/api/kits/save', { project, name }),
@@ -136,6 +143,9 @@ export function createStructure(send: typeof fetch = fetch) {
       refs: readonly string[],
       transition: Transition | null,
     ) => post<FrameRecord[]>('/api/frame/transition', { refs, transition }),
+    /** Sets the project kit each frame draws with in one undo step, null so it draws with the project's sheets alone. */
+    setFrameKit: (refs: readonly string[], kit: string | null) =>
+      post<FrameRecord[]>('/api/frame/kit', { refs, kit }),
     /** Sets one frame's speaker note in one undo step, refused once it is no longer `expected`. */
     setSpeakerNotes: (ref: string, speakerNotes: string, expected: string) =>
       post<FrameRecord>('/api/frame/speaker-notes', {
