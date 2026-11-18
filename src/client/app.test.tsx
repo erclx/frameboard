@@ -1,7 +1,8 @@
 import './styles.css'
 
 import { act, render, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
@@ -173,7 +174,9 @@ describe('App', () => {
 
       renderAt('/p/studio/home')
 
-      const inspector = screen.getByRole('complementary', { name: 'Inspector' })
+      const inspector = screen.getByRole('complementary', {
+        name: 'Inspector',
+      })
       expect(
         within(inspector).getByRole('tab', { name: 'Export' }),
       ).toHaveAttribute('aria-selected', 'true')
@@ -214,6 +217,47 @@ describe('App', () => {
       expect(
         within(tools).getByRole('button', { name: 'Move' }),
       ).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    it.each([
+      'Account',
+      /^Zoom \d+%$/,
+      'Pointer tools',
+      'Frame tools',
+      'Shapes',
+    ])('holds the %s menu shut, reading disabled', async (name) => {
+      renderAt('/p/studio/home')
+      const trigger = screen.getByRole('button', { name })
+
+      await userEvent.click(trigger)
+
+      expect(trigger).toHaveAttribute('aria-disabled', 'true')
+      expect(trigger).not.toHaveAttribute('aria-expanded', 'true')
+      expect(screen.queryByRole('menu')).toBeNull()
+    })
+
+    it('keeps a shut menu trigger focusable, opening nothing from the keyboard', async () => {
+      renderAt('/p/studio/home')
+      const trigger = screen.getByRole('button', { name: 'Account' })
+
+      act(() => trigger.focus())
+      await userEvent.keyboard('{Enter}{ }{ArrowDown}')
+
+      expect(trigger).toHaveFocus()
+      expect(trigger).not.toHaveAttribute('aria-expanded', 'true')
+      expect(screen.queryByRole('menu')).toBeNull()
+    })
+
+    it('opens the menus once the board arrives', async () => {
+      renderAt('/p/studio/home')
+
+      act(() => receiveBoard(liveStore, BOARD))
+      await screen.findByRole('navigation', { name: 'Pages' })
+      await userEvent.click(screen.getByRole('button', { name: 'Shapes' }))
+
+      const menu = await screen.findByRole('menu')
+      // The popup fades in from opacity 0, which a loaded run can still catch.
+      await vi.waitFor(() => expect(menu).toBeVisible())
     })
 
     it('draws one grey frame on the canvas, hidden from a reader', () => {

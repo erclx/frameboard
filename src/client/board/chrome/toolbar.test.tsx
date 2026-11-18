@@ -757,6 +757,26 @@ describe('the toolbar in a narrow column', () => {
     expect(rowNames(await openMore())).toEqual(names)
   })
 
+  it('holds More shut and reading disabled while its menus are held', async () => {
+    render(
+      <TooltipProvider>
+        <div
+          className="text-body"
+          style={{ position: 'relative', width: 357 + 24, height: 200 }}
+        >
+          <Toolbar menusDisabled />
+        </div>
+      </TooltipProvider>,
+    )
+    const more = screen.getByRole('button', { name: 'More tools' })
+
+    await userEvent.click(more)
+
+    expect(more).toHaveAttribute('aria-disabled', 'true')
+    expect(more).not.toHaveAttribute('aria-expanded', 'true')
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
   it('draws no More while every control fits', () => {
     renderInRoom(601)
 

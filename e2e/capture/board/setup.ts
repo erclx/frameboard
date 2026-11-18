@@ -70,8 +70,8 @@ export function inspectorTab(name: string): (page: Page) => Promise<void> {
 export const PRESS_FRAMES = 600
 
 /**
- * Drawn by the live board in every mode and never by `BoardLoading`, whose live
- * menus close when the board replaces them, so a board-route load script waits.
+ * Drawn by the live board in every mode and never by `BoardLoading`, whose
+ * controls are inert, so a board-route load script waits.
  */
 export const LIVE_BOARD = '[data-layer]'
 

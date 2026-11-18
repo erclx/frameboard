@@ -23,7 +23,7 @@ Owns the board screen and canvas, with `mode.ts` holding Edit, Play, the tool, a
 - The layer carries `data-staging` until its last kept frame is live, and a harness reads the layer whose `checkVisibility()` passes, since two `[data-layer]` stand until the drop
 - A page switch keeps the page left behind under a hidden React `Activity` until the new canvas calls `onLive`, so a quick return reveals its frames loaded
 - `screen.tsx` holds one page at most and appends a new canvas after the held one, since moving an iframe's node reloads it
-- The loading shell and the board both read `panels.ts` and `mode.ts`, since a width or Hide UI read differently jumps the page on arrival
+- The loading shell and the board both read `panels.ts` and `mode.ts`, since a width or Hide UI read differently jumps the page on arrival. Its menus stay shut, since the swap remounts the chrome.
 - A double-click in the label strip opens `LabelRename` in the notes layer, since the hit layer would take the caret's click, and it skips a `[data-label-control]`
 
 ### `src/client/board/widths/`

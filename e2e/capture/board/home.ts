@@ -67,6 +67,28 @@ async function neverConnects(page: Page): Promise<void> {
 }
 
 /**
+ * Clicks the loading view's held Shapes caret, then focuses it, so the capture
+ * shows the inert trigger with its ring and no menu, marking the root once done.
+ */
+async function pressHeldCaret(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const press = () => {
+      const caret = document.querySelector<HTMLElement>(
+        '[aria-label="Shapes"][aria-disabled="true"]',
+      )
+      if (!caret) {
+        requestAnimationFrame(press)
+        return
+      }
+      caret.click()
+      caret.focus()
+      document.documentElement.dataset.heldPressed = ''
+    }
+    document.addEventListener('DOMContentLoaded', press)
+  })
+}
+
+/**
  * Waits for writes, then opens the `webapp` card's menu by a right click on
  * its well, clear of the masked edited time, or its rename with F2.
  */
@@ -677,6 +699,20 @@ export function homeCases(): CaptureCase[] {
           chosenTheme(theme),
           neverConnects,
           readyWhen('main [data-placeholder]'),
+        ),
+      },
+      {
+        section: 'board-loading-held-menu',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        setup: both(
+          chosenTheme(theme),
+          neverConnects,
+          pressHeldCaret,
+          readyWhen('[data-held-pressed]'),
         ),
       },
       {

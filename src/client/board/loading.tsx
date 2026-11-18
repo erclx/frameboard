@@ -47,8 +47,8 @@ const INSPECTOR_LABELS = {
 const PAGES_HEIGHT = 152
 
 /**
- * A board page while the board loads, registering none of the board's
- * actions, so its controls show disabled until `BoardScreen` takes over.
+ * A board page while the board loads, its controls disabled and its menus
+ * held shut until `BoardScreen` takes over, since the swap remounts the chrome.
  */
 export function BoardLoading({ project }: { project: string }) {
   const hideUi = useMode((state) => state.hideUi)
@@ -89,7 +89,7 @@ export function BoardLoading({ project }: { project: string }) {
           >
             Connecting to the board
           </p>
-          <Toolbar />
+          <Toolbar menusDisabled />
         </main>
       </ResizablePanel>
       {hideUi ? null : (
@@ -182,8 +182,8 @@ function InspectorLoading() {
       className="flex h-full min-w-0 flex-col bg-sidebar text-body text-sidebar-foreground"
     >
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
-        <AvatarMenu name={name} source={source} />
-        <ZoomControl />
+        <AvatarMenu name={name} source={source} disabled />
+        <ZoomControl disabled />
       </div>
       <Tabs value={tab} className="gap-0">
         <TabsList className="m-2 h-7 w-auto shrink-0 rounded-[7px] p-0.5">

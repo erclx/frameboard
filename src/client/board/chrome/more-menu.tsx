@@ -17,6 +17,7 @@ import { SHAPES } from '../place/tool'
 import { useBoxTool } from '../sections/actions'
 import { ActionTooltip } from './action-tooltip'
 import { ActionMenuItem, ChromeMenuContent, MENU_ROW, MenuKey } from './menu'
+import { refuseOpen } from './refuse-open'
 import type { ToolbarStage } from './toolbar-stage'
 import {
   BOX_TOOLS,
@@ -208,16 +209,20 @@ function SlotRow({ slot, action }: { slot: Slot; action: Action | undefined }) {
 export function MoreMenu({
   stage,
   actions,
+  disabled = false,
 }: {
   stage: Exclude<ToolbarStage, 'full'>
   actions: Actions
+  /** Holds the menu shut with its trigger reading disabled, as the loading view does. */
+  disabled?: boolean
 }) {
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={disabled ? refuseOpen : undefined}>
       <ActionTooltip label="More tools">
         <DropdownMenuTrigger
           aria-label="More tools"
-          className="grid size-8 shrink-0 place-items-center rounded-[7px] text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:bg-accent"
+          aria-disabled={disabled || undefined}
+          className="grid size-8 shrink-0 place-items-center rounded-[7px] text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent aria-expanded:bg-accent"
         >
           <Ellipsis aria-hidden className="size-4" />
         </DropdownMenuTrigger>
