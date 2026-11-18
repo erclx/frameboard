@@ -211,6 +211,50 @@ describe('a frame naming the foldable', () => {
     expect(layout('webapp/home').frames.hero.widths).toEqual(widths)
   })
 
+  it('draws the widths its entry kept again once un-named', async () => {
+    const root = open()
+    const widths = [{ width: 390, height: 844 }]
+    hugHero(root, { widths })
+    await setFrameDevice(root, HERO, undefined, { cwd: root, foldable: true })
+    await moveFrame(root, HERO, { cwd: root, x: 40 })
+
+    const plain = await setFrameDevice(root, HERO, undefined, {
+      cwd: root,
+      foldable: false,
+    })
+
+    expect(plain.widths).toEqual(widths)
+    expect(layout('webapp/home').frames.hero.widths).toEqual(widths)
+  })
+
+  it('drops a kept width the un-named box now holds itself', async () => {
+    const root = open()
+    hugHero(root, {
+      widths: [
+        { width: 890, height: 626 },
+        { width: 390, height: 844 },
+      ],
+    })
+    await setFrameDevice(root, HERO, undefined, { cwd: root, foldable: true })
+
+    const plain = await setFrameDevice(root, HERO, undefined, {
+      cwd: root,
+      foldable: false,
+    })
+
+    expect(plain.widths).toEqual([{ width: 390, height: 844 }])
+  })
+
+  it('clears the widths a foldable kept on an explicit clear', async () => {
+    const root = open()
+    hugHero(root, { widths: [{ width: 390, height: 844 }] })
+    await setFrameDevice(root, HERO, undefined, { cwd: root, foldable: true })
+
+    await resizeFrame(root, HERO, { cwd: root, widths: false })
+
+    expect(layout('webapp/home').frames.hero).not.toHaveProperty('widths')
+  })
+
   it('refuses a linked width on a foldable', async () => {
     const root = open()
     await setFrameDevice(root, HERO, undefined, {

@@ -21,6 +21,7 @@ import {
   drawnExtent,
   drawnWidths,
   type LinkedWidth,
+  widthsOf,
   xPast,
 } from '@/shared/frame-widths'
 import {
@@ -82,6 +83,8 @@ export interface Placement {
   /** Present while the frame names the foldable, shown or not, with its pose. */
   foldable?: true
   pose?: Pose
+  /** The widths a foldable's entry lists and never draws, which un-naming it draws again. */
+  keptWidths?: LinkedWidth[]
   /** Absent for a frame with no override or one holding a value no reader knows. */
   transition?: Transition
   /** Absent for a frame with no note or one holding a value of another type. */
@@ -229,6 +232,7 @@ export function placeFrames(
     }
     const shown = showsDevice(entry)
     const foldable = entry.foldable === true
+    const kept = widthsOf(entry.widths)
     const named = foldable ? 'foldable' : deviceForWidth(box.width)
     const device = shown ? named : null
     const transition = readTransition(entry.transition)
@@ -245,6 +249,7 @@ export function placeFrames(
       ...(shown ? { showDevice: true as const } : {}),
       ...(device ? { device } : {}),
       ...(foldable ? { foldable, pose: poseOf(entry.pose) } : {}),
+      ...(foldable && kept.length > 0 ? { keptWidths: kept } : {}),
       ...(transition ? { transition } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
       placed: true,
@@ -394,8 +399,11 @@ export async function scanPage(
     names.map(async (frame): Promise<FrameRecord> => {
       const framePath = join(path, `${frame}${FRAME_EXTENSION}`)
       // The record carries the pose alone, which only a named foldable holds.
-      const { foldable: _named, ...placement } =
-        placements.get(frame) ?? placeNext([])
+      const {
+        foldable: _named,
+        keptWidths: _kept,
+        ...placement
+      } = placements.get(frame) ?? placeNext([])
       return {
         ref: `${project}/${name}/${frame}`,
         project,

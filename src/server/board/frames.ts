@@ -470,8 +470,11 @@ function resizedPlacement(
     options.widths ?? placement.widths.map((linked) => linked.width),
     { width, hugWidth, held: placement.widths },
   )
+  const { keptWidths, ...kept } = placement
   return {
-    ...placement,
+    ...kept,
+    // An explicit clear drops the widths a foldable's entry kept undrawn.
+    ...(keptWidths && options.widths !== false ? { keptWidths } : {}),
     box: {
       ...placement.box,
       ...size,
@@ -933,6 +936,7 @@ export async function setFrameDevice(
       device: _device,
       foldable: named,
       pose: stored,
+      keptWidths,
       ...rest
     } = placement
     const foldable = name ?? named === true
@@ -945,11 +949,24 @@ export async function setFrameDevice(
     }
     const shown = show ?? (name === true || held === true)
     const base = { ...rest, ...(shown ? { showDevice: true as const } : {}) }
-    if (!foldable) return base
+    if (!foldable) {
+      // The widths the entry kept draw again, less one the box now holds itself.
+      const widths = (keptWidths ?? rest.widths).filter(
+        (linked) => linked.width !== placement.box.width,
+      )
+      return { ...base, widths }
+    }
+    // Naming a frame keeps the widths it drew in its entry, undrawn.
+    const undrawn = keptWidths ?? rest.widths
+    const kept = {
+      widths: [],
+      ...(undrawn.length > 0 ? { keptWidths: undrawn } : {}),
+    }
     const pose = fold ?? stored ?? nearestPose(placement.box.width)
-    if (!fold && named) return { ...base, foldable, pose }
+    if (!fold && named) return { ...base, ...kept, foldable, pose }
     return {
       ...base,
+      ...kept,
       foldable,
       pose,
       box: { ...placement.box, ...POSE_SIZES[pose] },
@@ -1156,6 +1173,7 @@ class PageLayout {
       showDevice,
       foldable,
       pose,
+      keptWidths,
       transition,
       speakerNotes,
       hugWidth: hugsWidth,
@@ -1165,6 +1183,8 @@ class PageLayout {
     const hugWidth = hugsWidth && !scroll
     const hugHeight = hugsHeight && !scroll
     const held = this.file.frames[name]
+    // A foldable draws none of the widths its entry lists, and keeps them for the day it is un-named.
+    const listed = foldable ? (keptWidths ?? []) : widths
     const entry: LayoutEntry = {
       ...held,
       x: box.x,
@@ -1179,8 +1199,8 @@ class PageLayout {
         ? { hugHeight }
         : {}),
       ...(scroll || held?.scroll !== undefined ? { scroll } : {}),
-      ...(widths.length > 0
-        ? { widths: widths.map(({ width, height }) => ({ width, height })) }
+      ...(listed.length > 0
+        ? { widths: listed.map(({ width, height }) => ({ width, height })) }
         : {}),
       ...(showDevice ? { showDevice } : {}),
       ...(foldable ? { foldable } : {}),
@@ -1193,8 +1213,7 @@ class PageLayout {
       ...(transition ? { transition: { ...transition } } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
     }
-    // A foldable draws none of the widths its entry lists, and keeps them for the day it is un-named.
-    if (!foldable && widths.length === 0 && widthsOf(held?.widths).length > 0) {
+    if (listed.length === 0 && widthsOf(held?.widths).length > 0) {
       delete entry.widths
     }
     if (!foldable && held?.foldable === true) {
