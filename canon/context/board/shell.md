@@ -39,7 +39,7 @@ Owns `linked-box.tsx`, the views of a frame at each width its entry lists, drawn
 
 Owns `bezel.tsx`, the phone, tablet, or laptop body drawn around a frame whose record shows a `device`, in Edit, Play, and present. It takes the geometry from `src/shared/frame-device.ts`, which the PNG route reads too.
 
-- One element over the frame rounds its page to the screen radius and spreads the body as a `box-shadow`, so the body's outer radius is the screen's plus the border
+- The body is a `box-shadow` spread around the screen radius, which misses a square corner, so the page, its placeholder, its loading block, and the PNG's shot round to `screenCorners`
 - A laptop's lid is that spread, and its chin and wider base are positioned boxes from `laptopParts`, since one spread holds one width on every side
 - The body and the island scale with the canvas, its hairline edge stays one screen pixel at any zoom, and it takes no pointer events
 - The label, the open-alone link, and the rail stand past the border, a laptop's lid, and the In frame tag below the body, a laptop's base, and a linked width draws no device
