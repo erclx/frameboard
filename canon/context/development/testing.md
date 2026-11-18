@@ -25,6 +25,8 @@ The limit bounds a run that hangs, so a stuck run no longer holds a slot for goo
 - At the limit the wrapper prints `killing '<command>' after the <n> s limit`, sends TERM to the command and every process it started, KILL to any left after 3 seconds, and exits 124
 - The kill remembers each descendant it saw once a second by its start, read from `/proc` on Linux since a clock step moves `ps` lstart
 
+`scripts/lib/tester-frame.ts` gives the browser project's provider a `frame()` that finds the running file's frame by its iframe id, since the provider's own can return the file before under load. `vitest.config.ts` wraps the provider in it until a Vitest upgrade fixes `frame()`.
+
 ### `e2e/`
 
 Owns the Playwright specs by role in `cli/`, `agent-work/`, `hand-edits/`, and `shell/`, none at the root, the helpers in `e2e/support/`, the harness `e2e/screenshot.ts`, its cases in `e2e/capture/board/`, and the baseline in `e2e/evidence/`. A board-route load helper waits for `[data-layer]`, since the loading view's controls are inert.
