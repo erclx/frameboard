@@ -103,6 +103,62 @@ describe('GET /api/thumbnails', () => {
     ])
   })
 
+  it('asks for the visible frames of a named page alone', async () => {
+    board = writeBoard({
+      'studio/about/hero.html': '<p>Hero</p>',
+      'studio/deck/one.html': '<p>One</p>',
+      'studio/deck/two.html': '<p>Two</p>',
+      'studio/deck/draft.html': '<p>Draft</p>',
+      'studio/deck/layout.json': layout({
+        one: { x: 0, y: 0, width: 1280, height: 720, order: 0 },
+        two: { x: 1300, y: 0, width: 1280, height: 720, order: 1 },
+        draft: {
+          x: 2600,
+          y: 0,
+          width: 1280,
+          height: 720,
+          order: 2,
+          hidden: true,
+        },
+      }),
+    })
+    const { store, asked } = fakeStore()
+
+    const response = await thumbnailRoutes(board.root, store).request(
+      '/api/thumbnails?theme=dark&page=studio/deck',
+    )
+
+    expect(await response.json()).toEqual({
+      ok: true,
+      data: { stamps: { 'studio/deck/one': 's1', 'studio/deck/two': 's1' } },
+    })
+    expect(asked).toEqual([
+      {
+        theme: 'dark',
+        frames: [
+          { ref: 'studio/deck/one', box: { width: 1280, height: 720 } },
+          { ref: 'studio/deck/two', box: { width: 1280, height: 720 } },
+        ],
+      },
+    ])
+  })
+
+  it('answers 404 for a page the board does not hold', async () => {
+    board = writeBoard({ 'studio/home/hero.html': '<p>Hero</p>' })
+    const { store, asked } = fakeStore()
+
+    const response = await thumbnailRoutes(board.root, store).request(
+      '/api/thumbnails?theme=light&page=studio/gone',
+    )
+
+    expect(response.status).toBe(404)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: { code: 'page-not-found' },
+    })
+    expect(asked).toEqual([])
+  })
+
   it('answers 400 for a theme other than light or dark', async () => {
     board = writeBoard({})
     const { store, asked } = fakeStore()
