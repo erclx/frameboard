@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { bezelBox, deviceForWidth, laptopParts } from './frame-device'
+import {
+  bezelBox,
+  deviceForWidth,
+  laptopParts,
+  screenCorners,
+} from './frame-device'
 import { drawnExtent } from './frame-widths'
 
 const frame = { x: 100, y: 40, width: 390, height: 844 }
@@ -83,5 +88,15 @@ describe('drawnExtent with a device', () => {
       width: 390 + 80 + 834 + 44,
       height: 1194 + 44,
     })
+  })
+})
+
+describe('screenCorners', () => {
+  it.each([
+    ['phone', '62px'],
+    ['tablet', '18px'],
+    ['laptop', '10px 10px 0 0'],
+  ] as const)('rounds a %s screen to %s', (device, corners) => {
+    expect(screenCorners(device)).toBe(corners)
   })
 })

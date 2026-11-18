@@ -1,12 +1,12 @@
 import {
   BEZEL_COLORS,
-  BEZELS,
   bezelShadow,
   type Device,
   HOME_BAR,
   LAPTOP_BASE,
   laptopParts,
   PHONE_ISLAND,
+  screenCorners,
 } from '@/shared/frame-device'
 
 /** One screen pixel at any zoom, the width of the body's edge. */
@@ -26,7 +26,6 @@ export function Bezel({
   width: number
   height: number
 }) {
-  const { screenRadius } = BEZELS[device]
   const laptop = device === 'laptop'
   return (
     <div
@@ -34,10 +33,7 @@ export function Bezel({
       data-bezel={device}
       className="pointer-events-none absolute inset-0"
       style={{
-        // A laptop's screen meets its chin, so only its top corners round.
-        borderRadius: laptop
-          ? `${screenRadius}px ${screenRadius}px 0 0`
-          : screenRadius,
+        borderRadius: screenCorners(device),
         boxShadow: bezelShadow(device),
       }}
     >
