@@ -64,7 +64,7 @@ Each feature past the core loop keeps its judgment in its own file. Read the one
 - When copying a live site's page onto the board, read `${CLAUDE_SKILL_DIR}/references/lift.md`
 - When the task is presenting a page, such as a deck, a slide transition, or an element a press reveals, read `${CLAUDE_SKILL_DIR}/references/slides.md`
 - When drawing sliders or other controls that tune an element the developer keeps values for, read `${CLAUDE_SKILL_DIR}/references/controls.md`
-- When the project holds `assets/kit/`, or the developer asks for a look such as a sketch or a wireframe, read `${CLAUDE_SKILL_DIR}/references/kits.md`
+- When a frame's `list --json` record carries `kit`, the project holds `assets/kits/` or `assets/kit/`, or the developer asks for a look or a new kit, read `${CLAUDE_SKILL_DIR}/references/kits.md`
 - When a frame needs a photo or a picture you would otherwise fetch or generate yourself, read `${CLAUDE_SKILL_DIR}/references/images.md`
 
 ## Keep frames in their sections
