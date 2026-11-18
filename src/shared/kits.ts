@@ -22,6 +22,9 @@ export const KITS_FOLDER = '.kits'
  */
 export const KITS_URL = '/frameboard/kits'
 
+/** The word `frame kit` takes in place of a kit to clear the frame's, so a project kit by this name is set over the route alone. */
+export const NO_KIT_WORD = 'none'
+
 /** The kits the tool ships, in the order a picker shows them. */
 export const SHIPPED_KITS = ['clean', 'sketch', 'wireframe'] as const
 

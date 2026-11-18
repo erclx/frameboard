@@ -329,6 +329,55 @@ describe('frame', () => {
     })
   })
 
+  describe('kit', () => {
+    function withKit(name: string): void {
+      mkdirSync(join(board.root, `webapp/assets/kits/${name}`), {
+        recursive: true,
+      })
+    }
+
+    it('answers the frame with the kit it set, leaving the frame file alone', async () => {
+      const run = on('basic')
+      withKit('sketch')
+      const bytes = readFileSync(join(board.root, 'webapp/home/about.html'))
+
+      const result = await run('frame', 'kit', 'webapp/home/about', 'sketch')
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).toMatchObject({
+        ref: 'webapp/home/about',
+        kit: 'sketch',
+      })
+      expect(readFileSync(join(board.root, 'webapp/home/about.html'))).toEqual(
+        bytes,
+      )
+    })
+
+    it('answers the frame with no kit after none', async () => {
+      const run = on('basic')
+      withKit('sketch')
+      await run('frame', 'kit', 'webapp/home/about', 'sketch')
+
+      const result = await run('frame', 'kit', 'webapp/home/about', 'none')
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).not.toHaveProperty('kit')
+    })
+
+    it('refuses a kit the project lacks with kit-not-found, exit 3, naming the kits it holds', async () => {
+      const run = on('basic')
+      withKit('sketch')
+
+      const result = await run('frame', 'kit', 'webapp/home/about', 'clean')
+
+      expect(result.exitCode).toBe(3)
+      expect(result.json().error).toMatchObject({
+        code: 'kit-not-found',
+        details: { known: ['sketch'] },
+      })
+    })
+  })
+
   describe('speaker-notes', () => {
     it('sets a note with its line breaks and answers the frame holding it', async () => {
       const run = on('basic')
