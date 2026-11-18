@@ -9,6 +9,7 @@ import {
 
 import { FilesView } from './files'
 import { FindView } from './find/view'
+import { GenerateView } from './generate/view'
 
 const TAB =
   'h-6 rounded-[5px] border-0 text-xs font-medium text-muted-foreground data-active:bg-card data-active:text-foreground data-active:shadow-none data-active:ring-1 data-active:ring-border dark:data-active:bg-card'
@@ -16,10 +17,12 @@ const TAB =
 interface AssetsTabProps extends ComponentProps<typeof FilesView> {
   /** Find's calls, the board's routes in the app. */
   find?: Omit<ComponentProps<typeof FindView>, 'project'>
+  /** Generate's calls, the board's routes in the app. */
+  generate?: Omit<ComponentProps<typeof GenerateView>, 'project'>
 }
 
-/** The left panel's Assets tab, the project's Files beside Find, which brings a found image in. */
-export function AssetsTab({ find, ...files }: AssetsTabProps) {
+/** The left panel's Assets tab, the project's Files beside Find and Generate, which bring an image in. */
+export function AssetsTab({ find, generate, ...files }: AssetsTabProps) {
   const { project } = files
   const [view, setView] = useState('files')
   return (
@@ -38,12 +41,18 @@ export function AssetsTab({ find, ...files }: AssetsTabProps) {
         <TabsTrigger value="find" className={TAB}>
           Find
         </TabsTrigger>
+        <TabsTrigger value="generate" className={TAB}>
+          Generate
+        </TabsTrigger>
       </TabsList>
       <TabsContent value="files" className="min-h-0 flex-1">
         <FilesView {...files} />
       </TabsContent>
       <TabsContent value="find" className="min-h-0 flex-1">
         <FindView project={project} {...find} />
+      </TabsContent>
+      <TabsContent value="generate" className="min-h-0 flex-1">
+        <GenerateView project={project} {...generate} />
       </TabsContent>
     </Tabs>
   )
