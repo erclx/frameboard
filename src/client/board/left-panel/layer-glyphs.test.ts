@@ -1,4 +1,4 @@
-import { Circle, Image, Minus, Type } from 'lucide-react'
+import { Box, Circle, Image, Minus, Type } from 'lucide-react'
 import { describe, expect, it } from 'vitest'
 
 import type { TreeElement } from '@/shared/records/elements'
@@ -36,6 +36,12 @@ describe('elementGlyph', () => {
     ],
     ['an img', element({ tag: 'img' }), Image],
     ['a video', element({ tag: 'video' }), Image],
+    ['a model', element({ tag: 'model-viewer' }), Box],
+    [
+      'a model placed free still as a model',
+      element({ tag: 'model-viewer', placed: true }),
+      Box,
+    ],
     ['a row flex', element({ layout: 'row' }), LayoutRowGlyph],
     ['a column flex', element({ layout: 'column' }), LayoutColumnGlyph],
     ['a grid', element({ layout: 'grid' }), GridGlyph],

@@ -1,4 +1,5 @@
 import {
+  Box,
   Circle,
   createLucideIcon,
   Image,
@@ -7,6 +8,7 @@ import {
   Type,
 } from 'lucide-react'
 
+import { VIEWER_TAG } from '@/shared/model-viewer'
 import type { TreeElement } from '@/shared/records/elements'
 
 /** Figma's auto-layout bars, as `glyphs-a` on `proposals/left-panel-glyphs` draws them. */
@@ -55,6 +57,7 @@ const LAYOUT_GLYPHS: Record<TreeElement['layout'], LucideIcon> = {
 export function elementGlyph(element: TreeElement): LucideIcon {
   if (element.textOnly) return Type
   if (element.tag === 'img' || element.tag === 'video') return Image
+  if (element.tag === VIEWER_TAG) return Box
   if (element.placed) return PlacedGlyph
   if (element.tag === 'hr') return Minus
   if (element.round) return Circle

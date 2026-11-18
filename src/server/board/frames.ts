@@ -93,6 +93,8 @@ export interface BodyOptions {
    * bytes are kept and the markup would be dropped.
    */
   body?: string
+  /** Markup the new file's head holds after its title, such as the script its body's element needs. */
+  head?: string
 }
 
 export interface DeviceOptions {
@@ -196,9 +198,13 @@ export async function addFrame(
         held: [],
       })
       if (!exists) {
-        await writeFile(frame.path, skeleton(frame.name, options.body), {
-          flag: 'wx',
-        })
+        await writeFile(
+          frame.path,
+          skeleton(frame.name, options.body, options.head),
+          {
+            flag: 'wx',
+          },
+        )
         await journal?.created(frame.path)
       }
       layout.names = names
@@ -1131,7 +1137,7 @@ export function sizeOf({ size, width, height }: SizeOptions): {
  * The skeleton states `head` with `body`, so the browser builds neither and
  * every address holds, and a body column has no margin, so media fits exactly.
  */
-export function skeleton(name: string, body?: string): string {
+export function skeleton(name: string, body?: string, head?: string): string {
   const content =
     body === undefined
       ? '<body></body>'
@@ -1141,7 +1147,7 @@ export function skeleton(name: string, body?: string): string {
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>${name}</title>
+    <title>${name}</title>${head === undefined ? '' : `\n    ${head}`}
   </head>
   ${content}
 </html>

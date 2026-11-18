@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest'
 import { assetKind, isPlaceableKind } from './asset-kinds'
 
 describe('isPlaceableKind', () => {
-  it('takes an image, a GIF, an SVG, a video, and audio', () => {
+  it('takes an image, a GIF, an SVG, a video, audio, and a model', () => {
     expect(
-      ['image', 'gif', 'svg', 'video', 'audio'].map(isPlaceableKind),
-    ).toEqual([true, true, true, true, true])
+      ['image', 'gif', 'svg', 'video', 'audio', 'model'].map(isPlaceableKind),
+    ).toEqual([true, true, true, true, true, true])
   })
 
   it('refuses a font, a stylesheet, a script, and an unknown file', () => {

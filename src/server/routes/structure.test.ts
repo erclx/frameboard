@@ -551,6 +551,28 @@ describe('structureRoutes', () => {
         })
       })
 
+      it('writes a model with the script its viewer needs in the head', async () => {
+        writeAsset('phone.glb')
+
+        await post('/api/frame/add', {
+          ref: 'studio/home/phone',
+          asset: 'phone.glb',
+          width: 240,
+          height: 135,
+        })
+
+        const written = readFileSync(frameFile('phone'), 'utf8')
+        expect(written).toContain(
+          '<title>phone</title>\n    <script type="module" src="../assets/model-viewer.min.js"></script>\n  </head>',
+        )
+        expect(written).toContain(
+          '<model-viewer data-name="phone.glb" src="../assets/phone.glb" alt="" style="width: 240px; height: 135px"></model-viewer>',
+        )
+        expect(
+          existsSync(join(board.root, 'studio/assets/model-viewer.min.js')),
+        ).toBe(true)
+      })
+
       it('undoes the frame and its media as one step', async () => {
         writeAsset('hero.png')
         await post('/api/frame/add', {

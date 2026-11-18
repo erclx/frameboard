@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -956,6 +956,63 @@ describe('editRoutes', () => {
         })
         expect(read()).toBe(original)
         expect(history.counts().undo).toBe(0)
+      })
+
+      describe('a model', () => {
+        const SCRIPT =
+          '<script type="module" src="../assets/model-viewer.min.js"></script>'
+        const MODEL =
+          '<model-viewer data-name="phone.glb" src="../assets/phone.glb" alt="" style="width: 320px; height: 180px"></model-viewer>'
+
+        it("writes one viewer, its script in the head, and the script's file into assets", async () => {
+          putAsset('phone.glb')
+          const original = read()
+
+          const response = await insert(asset('phone.glb'))
+
+          expect(await response.json()).toEqual({
+            ok: true,
+            data: { ref: HERO, index: CAPTION + 1, hash: hash() },
+          })
+          expect(read()).toBe(
+            original
+              .replace('\n  </head>', `\n    ${SCRIPT}\n  </head>`)
+              .replace(
+                '<p data-name="Caption">',
+                `${MODEL}<p data-name="Caption">`,
+              ),
+          )
+          expect(
+            statSync(join(assets(), 'model-viewer.min.js')).size,
+          ).toBeGreaterThan(500_000)
+        })
+
+        it('writes no second script for a second model', async () => {
+          putAsset('phone.glb')
+          await insert(asset('phone.glb'))
+
+          await insert({
+            ...asset('phone.glb'),
+            parent: BODY + 1,
+            before: null,
+          })
+
+          expect(read().split(SCRIPT)).toHaveLength(2)
+          expect(read().split(MODEL)).toHaveLength(3)
+        })
+
+        it('takes the model out on undo and leaves the script, as one step', async () => {
+          putAsset('phone.glb')
+          const original = read()
+          await insert(asset('phone.glb'))
+
+          await history.undo()
+
+          expect(read()).toBe(
+            original.replace('\n  </head>', `\n    ${SCRIPT}\n  </head>`),
+          )
+          expect(history.counts().undo).toBe(0)
+        })
       })
 
       it('refuses an asset with no size as usage', async () => {

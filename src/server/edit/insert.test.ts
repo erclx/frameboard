@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest'
 import type { TokenRow } from '@/shared/records/tokens'
 
 import {
+  assetTag,
   elementMarkup,
+  ensureViewerScript,
   insertElement,
   moveElement,
   relocateMoved,
@@ -77,8 +79,10 @@ describe('elementMarkup', () => {
 })
 
 describe('elementMarkup for an asset', () => {
-  const asset = (path: string, tag: 'img' | 'video' | 'audio' = 'img') =>
-    ({ kind: 'asset', path, tag, width: 320, height: 180 }) as const
+  const asset = (
+    path: string,
+    tag: 'img' | 'video' | 'audio' | 'model-viewer' = 'img',
+  ) => ({ kind: 'asset', path, tag, width: 320, height: 180 }) as const
 
   it('should write an image at its size, cropped to the box', () => {
     expect(elementMarkup(asset('hero.png'), PAINT, FONT)).toBe(
@@ -108,6 +112,122 @@ describe('elementMarkup for an asset', () => {
     expect(elementMarkup(asset('a"b&c<d.png'), PAINT, FONT)).toBe(
       '<img data-name="a&quot;b&amp;c&lt;d.png" src="../assets/a%22b%26c%3Cd.png" alt="" style="width: 320px; height: 180px; object-fit: cover">',
     )
+  })
+})
+
+describe('elementMarkup for a model', () => {
+  it('should write one viewer at its size, with no control a hand edit did not set', () => {
+    expect(
+      elementMarkup(
+        {
+          kind: 'asset',
+          path: 'models/phone.glb',
+          tag: 'model-viewer',
+          width: 240,
+          height: 135,
+        },
+        PAINT,
+        FONT,
+      ),
+    ).toBe(
+      '<model-viewer data-name="phone.glb" src="../assets/models/phone.glb" alt="" style="width: 240px; height: 135px"></model-viewer>',
+    )
+  })
+})
+
+describe('assetTag', () => {
+  it.each([
+    ['image', 'img'],
+    ['gif', 'img'],
+    ['svg', 'img'],
+    ['video', 'video'],
+    ['audio', 'audio'],
+    ['model', 'model-viewer'],
+  ] as const)('should show a %s through a <%s>', (kind, tag) => {
+    expect(assetTag(kind)).toBe(tag)
+  })
+})
+
+describe('ensureViewerScript', () => {
+  const SCRIPT =
+    '<script type="module" src="../assets/model-viewer.min.js"></script>'
+
+  it("should write the script once at the end of the frame's head", () => {
+    const source =
+      '<!doctype html><html><head><title>Hero</title></head><body><main></main></body></html>'
+
+    const result = ensureViewerScript(source)
+
+    expect(result).toEqual({
+      ok: true,
+      html: `<!doctype html><html><head><title>Hero</title>${SCRIPT}</head><body><main></main></body></html>`,
+      index: 3,
+    })
+  })
+
+  it('should take a line of its own under the last tag of an indented head', () => {
+    const result = ensureViewerScript(
+      '<html>\n  <head>\n    <meta charset="utf-8" />\n    <title>Hero</title>\n  </head>\n  <body></body>\n</html>\n',
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      html: `<html>\n  <head>\n    <meta charset="utf-8" />\n    <title>Hero</title>\n    ${SCRIPT}\n  </head>\n  <body></body>\n</html>\n`,
+      index: 4,
+    })
+  })
+
+  it('should add no second script to a frame that already holds one', () => {
+    const source = `<html><head>${SCRIPT}</head><body><model-viewer src="../assets/a.glb"></model-viewer></body></html>`
+
+    expect(ensureViewerScript(source)).toEqual({
+      ok: true,
+      html: source,
+      index: null,
+    })
+  })
+
+  it("should leave a frame loading its agent's own copy of the viewer as it is", () => {
+    const source =
+      '<html><head></head><body><script src="vendor/model-viewer.min.js?v=4"></script></body></html>'
+
+    expect(ensureViewerScript(source)).toEqual({
+      ok: true,
+      html: source,
+      index: null,
+    })
+  })
+
+  it('should land in the head the browser builds for a frame stating none', () => {
+    const result = ensureViewerScript('<main><p>Hi</p></main>')
+
+    expect(result).toEqual({
+      ok: true,
+      html: `${SCRIPT}<main><p>Hi</p></main>`,
+      index: 2,
+    })
+  })
+
+  it('should land after the doctype and the html tag of a frame stating no head', () => {
+    const result = ensureViewerScript(
+      '<!doctype html>\n<html lang="en"><body><main></main></body></html>',
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      html: `<!doctype html>\n<html lang="en">${SCRIPT}<body><main></main></body></html>`,
+    })
+  })
+
+  it('should land after the last child of a head with no end tag', () => {
+    const result = ensureViewerScript(
+      '<html><head><title>Hero</title><body><main></main></body></html>',
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      html: `<html><head><title>Hero</title>${SCRIPT}<body><main></main></body></html>`,
+    })
   })
 })
 
@@ -256,6 +376,16 @@ describe('insertElement', () => {
       `<div>${img}</div>`,
       { parent: FIRST + 1, before: null },
       img,
+    )
+
+    expect(result).toMatchObject({ ok: false, reason: 'invalid-container' })
+  })
+
+  it('should refuse a model as the parent of a placed element', () => {
+    const result = insertElement(
+      '<model-viewer src="../assets/a.glb"></model-viewer>',
+      { parent: FIRST, before: null },
+      TEXT,
     )
 
     expect(result).toMatchObject({ ok: false, reason: 'invalid-container' })

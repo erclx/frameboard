@@ -13,13 +13,14 @@ export const ASSET_KINDS = [
 
 export type AssetKind = (typeof ASSET_KINDS)[number]
 
-/** The kinds a frame shows as an `<img>`, a `<video>`, or an `<audio>`, which the board places by hand. */
+/** The kinds a frame shows as an `<img>`, a `<video>`, an `<audio>`, or a `<model-viewer>`, which the board places by hand. */
 export const PLACEABLE_KINDS = [
   'image',
   'gif',
   'svg',
   'video',
   'audio',
+  'model',
 ] as const satisfies readonly AssetKind[]
 
 export type PlaceableKind = (typeof PLACEABLE_KINDS)[number]

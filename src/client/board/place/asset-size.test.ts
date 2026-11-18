@@ -72,6 +72,13 @@ describe('naturalSize', () => {
     ).toBe(300)
   })
 
+  it('answers null for a model, which lands at the fallback box, without loading it', async () => {
+    expect(
+      await naturalSize('data:model/gltf-binary,not-a-model', 'model'),
+    ).toBeNull()
+    expect(placedSize(null, 0)).toEqual({ width: 240, height: 135 })
+  })
+
   it('reads the size an SVG states', async () => {
     expect(await naturalSize(svg('width="64" height="32"'), 'svg')).toEqual({
       width: 64,

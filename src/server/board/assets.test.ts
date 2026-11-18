@@ -170,6 +170,20 @@ describe('assets', () => {
       })
     })
 
+    it('answers model for a .glb and a .gltf', async () => {
+      put('phone.glb')
+      put('scene.gltf')
+
+      expect(await resolveAsset(project, 'phone.glb')).toEqual({
+        ok: true,
+        kind: 'model',
+      })
+      expect(await resolveAsset(project, 'scene.gltf')).toEqual({
+        ok: true,
+        kind: 'model',
+      })
+    })
+
     it('refuses a font as not placeable', async () => {
       put('Inter.woff2')
 

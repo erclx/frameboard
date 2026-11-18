@@ -19,6 +19,7 @@ import {
   moveFrameFile,
   removeFrameFile,
 } from './frame-file'
+import { removeInserted } from './insert'
 
 // Lets a test land a write on the frame while the editor holds its temporary
 // file, which is the window the reread before the rename guards.
@@ -342,6 +343,87 @@ describe('insertFrameFile', () => {
       ok: true,
       index: 4,
       hash: contentHash(`<main>${TEXT}</main>`),
+    })
+  })
+
+  describe('with a model', () => {
+    const MODEL =
+      '<model-viewer data-name="a.glb" src="../assets/a.glb"></model-viewer>'
+    const SCRIPT =
+      '<script type="module" src="../assets/model-viewer.min.js"></script>'
+    const BARE =
+      '<html><head><title>Hero</title></head><body><main><p>Hi</p></main></body></html>'
+
+    it("should write the viewer's script into the head and the model into the gap the sent bytes named", () => {
+      writeFileSync(frame, BARE)
+
+      const result = insertFrameFile(
+        frame,
+        contentHash(BARE),
+        { parent: 4, before: 5 },
+        MODEL,
+        undefined,
+        true,
+      )
+
+      expect(readFileSync(frame, 'utf8')).toBe(
+        `<html><head><title>Hero</title>${SCRIPT}</head><body><main>${MODEL}<p>Hi</p></main></body></html>`,
+      )
+      expect(result).toMatchObject({ ok: true, index: 6 })
+    })
+
+    it('should carry a selection past both the script and the model', () => {
+      writeFileSync(frame, BARE)
+
+      const result = insertFrameFile(
+        frame,
+        contentHash(BARE),
+        { parent: 4, before: 5 },
+        MODEL,
+        undefined,
+        true,
+      )
+
+      const remap = result.ok ? result.remap : () => null
+      expect([2, 4, 5].map(remap)).toEqual([2, 5, 7])
+    })
+
+    it('should add no second script for a second model', () => {
+      const first = `<html><head>${SCRIPT}</head><body><main>${MODEL}</main></body></html>`
+      writeFileSync(frame, first)
+
+      insertFrameFile(
+        frame,
+        contentHash(first),
+        { parent: 4, before: null },
+        MODEL,
+        undefined,
+        true,
+      )
+
+      expect(readFileSync(frame, 'utf8')).toBe(
+        `<html><head>${SCRIPT}</head><body><main>${MODEL}${MODEL}</main></body></html>`,
+      )
+    })
+
+    it('should answer a span whose undo takes the model out and leaves the script', () => {
+      writeFileSync(frame, BARE)
+      const result = insertFrameFile(
+        frame,
+        contentHash(BARE),
+        { parent: 4, before: 5 },
+        MODEL,
+        undefined,
+        true,
+      )
+
+      const undone = result.ok
+        ? removeInserted(readFileSync(frame, 'utf8'), result.span)
+        : undefined
+
+      expect(undone?.html).toBe(
+        `<html><head><title>Hero</title>${SCRIPT}</head><body><main><p>Hi</p></main></body></html>`,
+      )
     })
   })
 

@@ -24,6 +24,9 @@ import { readLayout } from './live-element'
 /** The document's own wrappers, which a corner drag never sizes. */
 const ROOTS = new Set(['html', 'body'])
 
+/** The tags a corner drag sizes as one picture, a model among them, since its viewer fills its box. */
+const MEDIA = new Set(['img', 'video', 'model-viewer'])
+
 /**
  * The corner resize an element's markup takes, null for a divider or a wrapper.
  * Text holds words whose every element child lays out inline, so a `<p>`
@@ -31,9 +34,7 @@ const ROOTS = new Set(['html', 'body'])
  */
 export function resizeKindOf(element: Element | null): ResizeKind | null {
   if (!element || ROOTS.has(element.localName)) return null
-  if (element.localName === 'img' || element.localName === 'video') {
-    return 'media'
-  }
+  if (MEDIA.has(element.localName)) return 'media'
   const words = (element.textContent ?? '').trim() !== ''
   if (element.childElementCount > 0) {
     return words && [...element.children].every(laysOutInline)

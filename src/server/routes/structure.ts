@@ -52,10 +52,11 @@ import {
 } from '@/server/board/sections'
 import { RULES } from '@/server/checks/run'
 import { refuseClaimed } from '@/server/claims/gate'
-import { elementMarkup } from '@/server/edit/insert'
+import { assetTag, elementMarkup, VIEWER_SCRIPT } from '@/server/edit/insert'
 import type { History, Step } from '@/server/history/stack'
 import type { MeasureFrame } from '@/server/live/hug'
 import { writeStarterSheet } from '@/server/look/starter'
+import { ensureViewer } from '@/server/models/viewer'
 import type { PlaceableKind } from '@/shared/asset-kinds'
 import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
@@ -244,7 +245,7 @@ function mediaMarkup(
   kind: PlaceableKind,
   { width, height }: { width?: number; height?: number },
 ): string {
-  const tag = kind === 'video' || kind === 'audio' ? kind : 'img'
+  const tag = assetTag(kind)
   if (width === undefined || (tag !== 'audio' && height === undefined)) {
     throw new FrameboardError(
       'usage',
@@ -449,6 +450,7 @@ export function structureRoutes(
     await refuseHeld([targetRef])
     const { asset: path, ...placing } = body
     let media: string | undefined
+    let head: string | undefined
     if (path !== undefined) {
       const asset = await resolveAsset(join(root, target.project), path)
       if (!asset.ok) {
@@ -465,10 +467,20 @@ export function structureRoutes(
         )
       }
       media = mediaMarkup(targetRef, path, asset.kind, body)
+      if (asset.kind === 'model') {
+        await ensureViewer(join(root, target.project))
+        head = VIEWER_SCRIPT
+      }
     }
     const frame = await recorded(
       (journal) =>
-        addFrame(root, body.ref, { ...placing, body: media, cwd, journal }),
+        addFrame(root, body.ref, {
+          ...placing,
+          body: media,
+          head,
+          cwd,
+          journal,
+        }),
       (added) => onFrames([added.ref]),
     )
     return c.json({ ok: true, data: frame })

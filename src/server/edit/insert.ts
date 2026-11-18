@@ -5,6 +5,8 @@ import {
   serialize,
 } from 'parse5'
 
+import type { PlaceableKind } from '@/shared/asset-kinds'
+import { VIEWER_FILE, VIEWER_TAG } from '@/shared/model-viewer'
 import type { TokenRow } from '@/shared/records/tokens'
 import type { ShapePaint } from '@/shared/shape-paint'
 import { STARTER_FONTS } from '@/shared/starter-tokens'
@@ -30,9 +32,15 @@ export type InsertKind =
 export interface PlacedAsset {
   /** Relative to the project's `assets/`, with `/` between segments. */
   readonly path: string
-  readonly tag: 'img' | 'video' | 'audio'
+  readonly tag: 'img' | 'video' | 'audio' | typeof VIEWER_TAG
   readonly width: number
   readonly height: number
+}
+
+/** The tag a frame shows an asset of `kind` through. */
+export function assetTag(kind: PlaceableKind): PlacedAsset['tag'] {
+  if (kind === 'video' || kind === 'audio') return kind
+  return kind === 'model' ? VIEWER_TAG : 'img'
 }
 
 /** A shape's size in CSS pixels as a drag drew it, each side 100 when left out. */
@@ -113,6 +121,8 @@ const CLOSED = new Set([
   'title',
   'noscript',
   'iframe',
+  // A viewer draws its model over anything placed inside it.
+  VIEWER_TAG,
   // Outside the page's flow.
   'html',
   'head',
@@ -165,6 +175,10 @@ export function elementMarkup(
         }
         return `<audio data-name="${name}" src="${src}" controls style="width: ${element.width}px"></audio>`
       }
+      // Every staging control is an attribute a hand edit adds, so none is written here.
+      if (element.tag === VIEWER_TAG) {
+        return `<model-viewer data-name="${name}" src="${src}" alt="" style="${size(element)}"></model-viewer>`
+      }
       // A crop rather than a squash once a corner drag changes the ratio.
       const style = `${size(element)}; object-fit: cover`
       return element.tag === 'video'
@@ -188,6 +202,94 @@ function attribute(text: string): string {
     .replaceAll('&', '&amp;')
     .replaceAll('"', '&quot;')
     .replaceAll('<', '&lt;')
+}
+
+/** The tag a frame loads the viewer by, from its project's `assets/`. */
+export const VIEWER_SCRIPT = `<script type="module" src="${assetLink(VIEWER_FILE)}"></script>`
+
+export type ViewerScript =
+  | {
+      readonly ok: true
+      readonly html: string
+      /** The script's index as written, or null for a frame that already loads a viewer. */
+      readonly index: number | null
+    }
+  | EditRefused
+
+/**
+ * Writes the viewer's script at the end of the frame's head unless a script
+ * there already loads one, an agent's own copy included. A frame stating no
+ * head takes it ahead of its content, where the browser builds the head.
+ */
+export function ensureViewerScript(source: string): ViewerScript {
+  const before = parseFrame(source)
+  if (before.elements.some(loadsViewer)) {
+    return { ok: true, html: source, index: null }
+  }
+  const { offset, lead } = headEnd(source, before)
+  const written =
+    source.slice(0, offset) + lead + VIEWER_SCRIPT + source.slice(offset)
+
+  const after = parseFrame(written)
+  const index = after.elements.findIndex(
+    (element) =>
+      element.sourceCodeLocation?.startOffset === offset + lead.length,
+  )
+  const added = after.elements[index]
+  const parent = added?.parentNode
+  if (
+    !added ||
+    !parent ||
+    !hasTag(parent) ||
+    parent.tagName !== 'head' ||
+    after.elements.length !== before.elements.length + 1 ||
+    !addsOnly(before, after, added, lead)
+  ) {
+    return refuse(
+      'verify-failed',
+      "the viewer's script would change more than the frame's head, so nothing was written",
+    )
+  }
+  return { ok: true, html: written, index }
+}
+
+/** Whether an element is a script loading a model viewer build, by its file name. */
+function loadsViewer(element: Element): boolean {
+  if (element.tagName !== 'script') return false
+  const src = element.attrs.find((attr) => attr.name === 'src')?.value ?? ''
+  const file = src.split(/[?#]/)[0]?.split('/').at(-1) ?? ''
+  return file.includes(VIEWER_TAG)
+}
+
+/**
+ * Where a head's last child ends, with the line break and indent that child
+ * sits on, so the script lands on a line of its own. An unstated head takes
+ * the offset its content would start at.
+ */
+function headEnd(
+  source: string,
+  tree: FrameTree,
+): { offset: number; lead: string } {
+  const head = tree.elements.find((element) => element.tagName === 'head')
+  const at = head?.sourceCodeLocation
+  const last = head?.childNodes.findLast(hasTag)?.sourceCodeLocation
+  if (last) {
+    const indent = /\n[ \t]*$/.exec(source.slice(0, last.startOffset))
+    return { offset: last.endOffset, lead: indent?.[0] ?? '' }
+  }
+  const stated = at?.startTag?.endOffset
+  if (stated !== undefined) return { offset: stated, lead: '' }
+  const html = tree.elements.find((element) => element.tagName === 'html')
+  const doctype = tree.document.childNodes.find(
+    (node) => node.nodeName === '#documentType',
+  )
+  return {
+    offset:
+      html?.sourceCodeLocation?.startTag?.endOffset ??
+      doctype?.sourceCodeLocation?.endOffset ??
+      0,
+    lead: '',
+  }
 }
 
 function startTag(source: string, element: Element): string {
@@ -318,14 +420,27 @@ function descendants(element: Element): number {
   )
 }
 
-/** Whether `after` is `before` with `added` alone added, compared once it is taken out. */
+/**
+ * Whether `after` is `before` with `added` alone added, compared once it is
+ * taken out with the `lead` white space written ahead of it.
+ */
 function addsOnly(
   before: FrameTree,
   after: FrameTree,
   added: Element,
+  lead = '',
 ): boolean {
   const parent = added.parentNode as DefaultTreeAdapterTypes.ParentNode
-  parent.childNodes = parent.childNodes.filter((node) => node !== added)
+  const previous = parent.childNodes[parent.childNodes.indexOf(added) - 1]
+  if (lead !== '') {
+    if (!previous || !('value' in previous) || !previous.value.endsWith(lead)) {
+      return false
+    }
+    previous.value = previous.value.slice(0, -lead.length)
+  }
+  parent.childNodes = parent.childNodes.filter(
+    (node) => node !== added && !('value' in node && node.value === ''),
+  )
   return serialize(before.document) === serialize(after.document)
 }
 

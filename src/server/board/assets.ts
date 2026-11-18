@@ -135,7 +135,7 @@ export async function resolveAsset(
     return {
       ok: false,
       code: 'asset-not-placeable',
-      message: `assets/${path} is not an image, GIF, SVG, video, or audio, so a frame cannot show it`,
+      message: `assets/${path} is not an image, GIF, SVG, video, audio, or 3D model, so a frame cannot show it`,
     }
   }
   return { ok: true, kind }

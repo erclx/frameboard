@@ -12,6 +12,7 @@ import {
 } from './apply'
 import { type ElementSpan, relocate, spanText } from './element-span'
 import {
+  ensureViewerScript,
   type InsertedSpan,
   insertElement,
   type MovedSpan,
@@ -280,7 +281,8 @@ export type PlaceInserted = (html: string, index: number) => Placed
 /**
  * Writes one new element as `editFrameFile` writes, refusing a moved hash with
  * no search, since the gap's indices name nothing once the file moved, so a
- * retried insert lands at most once.
+ * retried insert lands at most once. With `viewer`, the same write adds the
+ * model viewer's script to a head that loads none, which an undo leaves.
  */
 export function insertFrameFile(
   path: string,
@@ -288,11 +290,27 @@ export function insertFrameFile(
   placement: Placement,
   markup: string,
   place?: PlaceInserted,
+  viewer = false,
 ): FrameFileInsert {
   const read = readSource(path)
   if (!read.ok) return read
   if (read.hash !== hash) return stale(path)
-  const inserted = insertElement(read.source, placement, markup)
+  const scripted = viewer
+    ? ensureViewerScript(read.source)
+    : { ok: true as const, html: read.source, index: null }
+  if (!scripted.ok) return scripted
+  // The gap was read against the sent bytes, which the script now sits ahead of.
+  const script = scripted.index
+  const pastScript = (index: number) =>
+    script !== null && index >= script ? index + 1 : index
+  const inserted = insertElement(
+    scripted.html,
+    {
+      parent: pastScript(placement.parent),
+      before: placement.before === null ? null : pastScript(placement.before),
+    },
+    markup,
+  )
   if (!inserted.ok) return inserted
   const placed = place?.(inserted.html, inserted.index)
   if (placed && !placed.ok) return placed
@@ -300,6 +318,10 @@ export function insertFrameFile(
   const element = parseFrame(html).elements[inserted.index]
   if (!element) return stale(path)
   if (!replaceFile(path, hash, html)) return stale(path)
+  const pastElement = shiftedPast(
+    inserted.index,
+    subtreeSize(html, inserted.index),
+  )
   return {
     ok: true,
     hash: contentHash(html),
@@ -307,7 +329,7 @@ export function insertFrameFile(
     span: { ...inserted.span, markup: spanText(html, element, 'element') },
     parent:
       placed && placed.spans.length > 1 ? (placed.spans[0] ?? null) : null,
-    remap: shiftedPast(inserted.index, subtreeSize(html, inserted.index)),
+    remap: (index) => pastElement(pastScript(index)),
   }
 }
 
