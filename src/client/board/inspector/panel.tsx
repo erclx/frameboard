@@ -169,7 +169,10 @@ export function InspectorPanel({
                 <SlideSection frames={frames} />
               ) : null}
               {slidesPage ? (
-                <PageSection page={slidesPage} />
+                <PageSection
+                  page={slidesPage}
+                  selected={frames.map((frame) => frame.ref)}
+                />
               ) : frames.length > 0 ? null : (
                 <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
                   Open a page to set how its slides present.

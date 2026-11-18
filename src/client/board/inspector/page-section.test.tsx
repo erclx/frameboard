@@ -7,8 +7,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import type { Transition } from '@/shared/present-transition'
-import { boardOf, pageOf } from '@/test/board'
+import { boardOf, frameOf, pageOf } from '@/test/board'
 
+import { stopPreview } from '../present/preview'
 import { PageSection } from './page-section'
 
 /** The bodies the section posts, answered as the server would answer a page. */
@@ -42,12 +43,11 @@ function mount(transition?: Transition, own: string[] = []) {
   return posted
 }
 
-const pick = async (menu: string, item: string) => {
-  await userEvent.click(screen.getByRole('button', { name: menu }))
-  await userEvent.click(
-    await screen.findByRole('menuitemradio', { name: item }),
-  )
+const pick = async (item: string) => {
+  await userEvent.click(screen.getByRole('radio', { name: item }))
 }
+
+const tiles = () => screen.getByRole('radiogroup', { name: 'Slide transition' })
 
 beforeEach(() => {
   liveStore.setState({ canWrite: true })
@@ -61,9 +61,7 @@ describe('the Page section', () => {
   it('describes Slide transition with what the board draws', () => {
     mount()
 
-    expect(
-      screen.getByRole('button', { name: 'Slide transition' }),
-    ).toHaveAccessibleDescription(
+    expect(tiles()).toHaveAccessibleDescription(
       'Drawn by the board while presenting. Slide files are unchanged.',
     )
   })
@@ -71,16 +69,16 @@ describe('the Page section', () => {
   it('reads None and offers no duration for a page with no transition', () => {
     mount()
 
-    expect(
-      screen.getByRole('button', { name: 'Slide transition' }),
-    ).toHaveTextContent('None')
+    expect(screen.getByRole('radio', { checked: true })).toHaveAccessibleName(
+      'None',
+    )
     expect(screen.queryByRole('button', { name: 'Duration' })).toBeNull()
   })
 
   it('writes the picked transition for the page', async () => {
     const posted = mount()
 
-    await pick('Slide transition', 'Fade')
+    await pick('Fade')
 
     expect(posted).toEqual([
       {
@@ -93,7 +91,7 @@ describe('the Page section', () => {
   it('keeps the duration when the transition changes', async () => {
     const posted = mount({ name: 'fade', ms: 300 })
 
-    await pick('Slide transition', 'Zoom')
+    await pick('Zoom')
 
     expect(posted[0]?.body).toEqual({
       ref: 'studio/home',
@@ -104,7 +102,7 @@ describe('the Page section', () => {
   it('drops a direction once the transition takes none', async () => {
     const posted = mount({ name: 'push', direction: 'up' })
 
-    await pick('Slide transition', 'Fade')
+    await pick('Fade')
 
     expect(posted[0]?.body).toEqual({
       ref: 'studio/home',
@@ -120,13 +118,10 @@ describe('the Page section', () => {
     )
   })
 
-  it("lists the project's own after the built-ins, each as written", async () => {
+  it("tiles the project's own after the built-ins, each as written", () => {
     mount(undefined, ['curtain', 'wipe-up'])
 
-    await userEvent.click(
-      screen.getByRole('button', { name: 'Slide transition' }),
-    )
-    const items = await screen.findAllByRole('menuitemradio')
+    const items = screen.getAllByRole('radio')
 
     expect(items.map((item) => item.textContent)).toEqual([
       'None',
@@ -146,7 +141,7 @@ describe('the Page section', () => {
       'wipe-up',
     ])
 
-    await pick('Slide transition', 'wipe-up')
+    await pick('wipe-up')
 
     expect(posted[0]?.body).toEqual({
       ref: 'studio/home',
@@ -157,9 +152,9 @@ describe('the Page section', () => {
   it('shows an own transition as the current value, with a duration and no direction', () => {
     mount({ name: 'wipe-up' }, ['wipe-up'])
 
-    expect(
-      screen.getByRole('button', { name: 'Slide transition' }),
-    ).toHaveTextContent('wipe-up')
+    expect(screen.getByRole('radio', { checked: true })).toHaveAccessibleName(
+      'wipe-up',
+    )
     expect(screen.getByRole('button', { name: 'Duration' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Direction' })).toBeNull()
   })
@@ -167,8 +162,61 @@ describe('the Page section', () => {
   it('clears the transition on None', async () => {
     const posted = mount({ name: 'fade' })
 
-    await pick('Slide transition', 'None')
+    await pick('None')
 
     expect(posted[0]?.body).toEqual({ ref: 'studio/home', transition: null })
+  })
+
+  it('writes nothing on hovering a tile', async () => {
+    const posted = mount({ name: 'fade' })
+
+    await userEvent.hover(screen.getByRole('radio', { name: 'Push' }))
+
+    expect(posted).toEqual([])
+  })
+})
+
+describe('a hovered page tile', () => {
+  /** A selected slide's live iframe on the canvas, as the board draws one. */
+  function slideOnCanvas(ref: string): HTMLIFrameElement {
+    const frame = document.createElement('div')
+    frame.dataset.frame = ref
+    const iframe = document.createElement('iframe')
+    frame.append(iframe)
+    document.body.append(frame)
+    return iframe
+  }
+
+  afterEach(() => {
+    stopPreview()
+    document.querySelectorAll('[data-frame]').forEach((frame) => frame.remove())
+  })
+
+  it('plays on the selected slide, and leaving the tile restores it', async () => {
+    const iframe = slideOnCanvas('studio/home/hero')
+    const page = pageOf([frameOf('hero')])
+    liveStore.setState({ board: boardOf(page) })
+    render(<PageSection page={page} selected={['studio/home/hero']} />)
+    const push = screen.getByRole('radio', { name: 'Push' })
+
+    await userEvent.hover(push)
+    const played = iframe.style.animationName
+    await userEvent.unhover(push)
+
+    expect([played, iframe.getAttribute('style')]).toEqual([
+      'fb-present-push-enter, fb-preview-clip',
+      '',
+    ])
+  })
+
+  it('leaves the canvas alone with no slide selected', async () => {
+    const iframe = slideOnCanvas('studio/home/hero')
+    const page = pageOf([frameOf('hero')])
+    liveStore.setState({ board: boardOf(page) })
+    render(<PageSection page={page} />)
+
+    await userEvent.hover(screen.getByRole('radio', { name: 'Push' }))
+
+    expect(iframe.getAttribute('style')).toBeNull()
   })
 })

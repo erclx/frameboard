@@ -5,8 +5,12 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { liveStore } from '@/client/live/store'
+import { boardOf, pageOf } from '@/test/board'
+
 import type { TilePicture } from './effect-tile'
 import { EffectTiles, type TileOption } from './effect-tiles'
+import { PageSection } from './page-section'
 
 const travel = (name: string): TilePicture => ({
   kind: 'transition',
@@ -182,5 +186,50 @@ describe('the effect tiles', () => {
     await userEvent.hover(tile('Zoom'), { pointerEventsCheck: 0 })
 
     expect(previews.filter((value) => value !== 'end')).toEqual([])
+  })
+})
+
+describe("a project's own transition", () => {
+  afterEach(() => {
+    liveStore.setState({ canWrite: false, board: null })
+  })
+
+  it('shows as a tile after the built-ins, playing its own renamed keyframes', async () => {
+    const page = { ...pageOf([]), transition: { name: 'rise' } }
+    const board = boardOf(page)
+    liveStore.setState({
+      canWrite: true,
+      board: {
+        ...board,
+        projects: board.projects.map((project) => ({
+          ...project,
+          transitions: ['rise'],
+        })),
+      },
+    })
+    render(<PageSection page={page} />)
+
+    await userEvent.hover(tile('rise'))
+
+    expect({
+      order: screen.getAllByRole('radio').map((radio) => radio.textContent),
+      checked: tile('rise').getAttribute('aria-checked'),
+      animation: tile('rise').querySelector<HTMLElement>(
+        '[data-tile-layer="enter"]',
+      )?.style.animationName,
+    }).toEqual({
+      order: [
+        'None',
+        'Fade',
+        'Slide',
+        'Push',
+        'Zoom',
+        'Flip',
+        'Dissolve',
+        'rise',
+      ],
+      checked: 'true',
+      animation: 'fb-own-studio--rise-enter',
+    })
   })
 })
