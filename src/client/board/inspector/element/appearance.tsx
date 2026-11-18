@@ -60,10 +60,9 @@ interface AppearanceSectionProps {
 }
 
 /**
- * The Appearance section of `inspector/text`: the opacity as a percent and
- * the corner radius in px, each captioned, stepping, and scrubbing, over the
- * Rotation row, with the 3D section under it. The layer name is renamed in
- * Layers rather than here.
+ * The Appearance section of `inspector/text`, its opacity and corner radius
+ * over the Rotation row, with the 3D section under it. The layer name is
+ * renamed in Layers rather than here.
  */
 export function AppearanceSection({
   opacity,

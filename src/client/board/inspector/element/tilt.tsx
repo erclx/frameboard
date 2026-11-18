@@ -50,10 +50,9 @@ interface TiltSectionProps {
 }
 
 /**
- * The 3D section, writing Rotate X, Y, and Z, Depth, and Perspective into the
- * element's own `transform`, never its parent. A first tilt of an element its
- * own `rotate` turns moves that angle into Rotate Z and drops `rotate` in the
- * same write, so the picture holds and one undo restores both.
+ * The 3D section, writing the element's own `transform` and never its parent.
+ * A first tilt moves an own `rotate` into Rotate Z and drops it in the same
+ * write, so the picture holds and one undo restores both.
  */
 export function TiltSection({
   rotation,
