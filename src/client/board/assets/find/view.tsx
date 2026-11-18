@@ -272,6 +272,8 @@ function Body({
                 key={result.id}
                 project={project}
                 result={result}
+                query={query}
+                credited={credited}
                 onSave={() => onSave(result, query)}
               />
             ))}

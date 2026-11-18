@@ -1,13 +1,19 @@
-import { useState } from 'react'
+import { draggable } from '@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 
 import { useLive } from '@/client/live/store'
+import { folderName } from '@/shared/names'
 
+import { resultDragData } from '../drag'
 import { type ImageResult, saveKey, saveStore } from '../sourcing'
 
 interface ResultTileProps {
   project: string
   result: ImageResult
+  /** The search that found it, which names the saved file. */
+  query: string
+  credited: boolean
   /** Saves the result into `assets/`, sharing one save with a drag of the same result. */
   onSave: () => void
 }
@@ -16,8 +22,29 @@ interface ResultTileProps {
  * One found image, its license on the thumbnail. Save shows under hover or
  * focus and stays as Saved once the file lands, so the grid never jumps.
  */
-export function ResultTile({ project, result, onSave }: ResultTileProps) {
+export function ResultTile({
+  project,
+  result,
+  query,
+  credited,
+  onSave,
+}: ResultTileProps) {
   const canWrite = useLive((state) => state.canWrite)
+  const tile = useRef<HTMLLIElement>(null)
+  const { id, width, height } = result
+  useEffect(() => {
+    const element = tile.current
+    if (!element || !canWrite) return
+    return draggable({
+      element,
+      getInitialData: () =>
+        resultDragData({
+          request: { project, result: { id }, query, credited },
+          name: folderName(query) || 'image',
+          natural: width === null || height === null ? null : { width, height },
+        }),
+    })
+  }, [project, id, width, height, query, credited, canWrite])
   const save = useStore(
     saveStore,
     (state) => state[saveKey(project, result.id)],
@@ -29,7 +56,10 @@ export function ResultTile({ project, result, onSave }: ResultTileProps) {
   const shown = save !== undefined && save.state !== 'failed'
 
   return (
-    <li className="group relative overflow-hidden rounded-lg bg-muted hover:ring-[1.5px] hover:ring-primary has-focus-visible:ring-[1.5px] has-focus-visible:ring-primary">
+    <li
+      ref={tile}
+      className="group relative overflow-hidden rounded-lg bg-muted hover:ring-[1.5px] hover:ring-primary has-focus-visible:ring-[1.5px] has-focus-visible:ring-primary"
+    >
       <Thumbnail url={thumbnailOf(result)} />
       <span className="absolute top-[54px] left-[5px] rounded-[3px] bg-black/65 px-1 font-mono text-[9px] leading-[14px] font-medium text-white">
         {result.license}

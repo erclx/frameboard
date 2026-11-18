@@ -6,9 +6,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { liveStore } from '@/client/live/store'
 import type { AssetFile } from '@/shared/records/assets'
 import type { FrameRecord } from '@/shared/records/list'
+import type { ImageResult } from '@/shared/records/sourcing'
 import { frameOf } from '@/test/board'
 
-import type { PlaceableFile } from '../assets/drag'
+import type { DraggedResult, PlaceableFile } from '../assets/drag'
+import { ResultTile } from '../assets/find/result-tile'
 import { Tile } from '../assets/tile'
 import type { BoardPoint } from '../notes/pick'
 import { tileDragStore, useAssetDrop } from './asset-drop'
@@ -30,10 +32,13 @@ function HitLayer({
   placed,
   framed = [],
   frames = FRAMES,
+  found = [],
 }: {
   placed: Placed[]
   framed?: Placed[]
   frames?: FrameRecord[]
+  /** Each found result dropped, which lands as `house.jpg` once saved. */
+  found?: DraggedResult[]
 }) {
   const hit = useRef<HTMLDivElement>(null)
   const [container] = useState(() => document.createElement('div'))
@@ -50,6 +55,10 @@ function HitLayer({
     placeFrame: async (_page, _frames, at, file) => {
       framed.push({ at, file })
       return null
+    },
+    placeFound: async (result, land) => {
+      found.push(result)
+      await land({ project: 'studio', path: 'house.jpg', kind: 'image' })
     },
     measure: async () => ({ width: 64, height: 36 }),
   })
@@ -303,5 +312,148 @@ describe('useAssetDrop', () => {
     expect(over.defaultPrevented).toBe(true)
     expect(drop.defaultPrevented).toBe(true)
     expect(placed).toEqual([])
+  })
+})
+
+describe('useAssetDrop with a found result', () => {
+  const HOUSE: ImageResult = {
+    number: 1,
+    id: 'a1',
+    title: 'Glass house',
+    creator: null,
+    creatorUrl: null,
+    license: 'cc0',
+    licenseVersion: null,
+    licenseUrl: null,
+    attribution: null,
+    landingUrl: null,
+    url: 'https://images.example.org/a1.jpg',
+    thumbnail: null,
+    width: 64,
+    height: 48,
+  }
+
+  function renderFinds(
+    placed: Placed[],
+    framed: Placed[],
+    found: DraggedResult[],
+  ) {
+    return render(
+      <div>
+        <HitLayer placed={placed} framed={framed} found={found} />
+        <ul style={{ position: 'fixed', left: 300, top: 0, width: 200 }}>
+          <ResultTile
+            project="studio"
+            result={HOUSE}
+            query="Glass House"
+            credited={false}
+            onSave={() => {}}
+          />
+        </ul>
+      </div>,
+    )
+  }
+
+  it('saves a result dropped on a frame, then places the saved file there', async () => {
+    const placed: Placed[] = []
+    const found: DraggedResult[] = []
+    renderFinds(placed, [], found)
+
+    await dragTo(screen.getByRole('listitem'), screen.getByTestId('hit'), {
+      clientX: 80,
+      clientY: 60,
+    })
+
+    expect(found).toEqual([
+      {
+        request: {
+          project: 'studio',
+          result: { id: 'a1' },
+          query: 'Glass House',
+          credited: false,
+        },
+        name: 'glass-house',
+        natural: { width: 64, height: 48 },
+      },
+    ])
+    expect(placed).toEqual([
+      {
+        at: { x: 80, y: 60 },
+        file: { project: 'studio', path: 'house.jpg', kind: 'image' },
+      },
+    ])
+  })
+
+  it('makes a frame for a result dropped on bare canvas', async () => {
+    const placed: Placed[] = []
+    const framed: Placed[] = []
+    renderFinds(placed, framed, [])
+
+    await dragTo(screen.getByRole('listitem'), screen.getByTestId('hit'), {
+      clientX: 150,
+      clientY: 60,
+    })
+
+    expect(framed).toEqual([
+      {
+        at: { x: 150, y: 60 },
+        file: { project: 'studio', path: 'house.jpg', kind: 'image' },
+      },
+    ])
+    expect(placed).toEqual([])
+  })
+
+  it('draws the ghost at the size the source reports before anything is saved', async () => {
+    const found: DraggedResult[] = []
+    renderFinds([], [], found)
+    const ghosts: unknown[] = []
+    const stop = tileDragStore.subscribe(({ ghost }) => ghosts.push(ghost))
+
+    await dragTo(screen.getByRole('listitem'), screen.getByTestId('hit'), {
+      clientX: 150,
+      clientY: 60,
+    })
+    stop()
+
+    expect(ghosts).toContainEqual({
+      box: { x: 118, y: 36, width: 64, height: 48 },
+      name: 'glass-house',
+      hugsHeight: false,
+    })
+  })
+
+  it('saves nothing for a result let go away from the canvas', async () => {
+    const found: DraggedResult[] = []
+    renderFinds([], [], found)
+    const tile = screen.getByRole('listitem')
+    const from = tile.getBoundingClientRect()
+
+    tile.dispatchEvent(
+      new DragEvent('dragstart', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: new DataTransfer(),
+        clientX: from.left + 4,
+        clientY: from.top + 4,
+      }),
+    )
+    await nextFrame()
+    tile.dispatchEvent(new DragEvent('dragend', { bubbles: true }))
+    await nextFrame()
+
+    expect(found).toEqual([])
+  })
+
+  it('drags no result on a read-only tab', async () => {
+    act(() => liveStore.setState({ canWrite: false }))
+    const found: DraggedResult[] = []
+    renderFinds([], [], found)
+
+    await dragTo(screen.getByRole('listitem'), screen.getByTestId('hit'), {
+      clientX: 80,
+      clientY: 60,
+    })
+
+    expect(found).toEqual([])
   })
 })
