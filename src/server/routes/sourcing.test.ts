@@ -58,14 +58,14 @@ function fakeSource({
   images = [rawImage('a1'), rawImage('b2'), rawImage('c3', { license: 'by' })],
 }: {
   search?: { status: number; body: unknown }
-  fal?: () => Response | Promise<Response>
+  fal?: (init?: RequestInit) => Response | Promise<Response>
   images?: ReturnType<typeof rawImage>[]
 } = {}): FakeSource {
   const asked: URL[] = []
-  const send = (async (input: string | URL | Request) => {
+  const send = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : input)
     asked.push(url)
-    if (url.host === 'fal.run') return fal()
+    if (url.host === 'fal.run') return fal(init)
     if (url.host === 'images.example.org') {
       return new Response(PNG, { headers: { 'content-type': 'image/png' } })
     }
@@ -413,8 +413,11 @@ describe('sourcingRoutes', () => {
     it('still saves the image when the tab that asked goes away mid-run', async () => {
       const tab = new AbortController()
       const { send } = fakeSource({
-        fal: () => {
+        // A request carrying the tab's signal fails here, as a real one would once the tab goes.
+        fal: (init) => {
           tab.abort()
+          if (init?.signal?.aborted)
+            throw new DOMException('gone', 'AbortError')
           return Response.json({
             images: [
               { url: `data:image/png;base64,${PNG.toString('base64')}` },

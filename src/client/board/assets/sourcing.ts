@@ -9,6 +9,8 @@ import type {
   SavedImage,
 } from '@/shared/records/sourcing'
 
+import { assetUrl } from './describe'
+
 export type { ImageFind, ImageGenerate, ImageOffer, ImageResult, SavedImage }
 
 function base(project: string): string {
@@ -100,37 +102,55 @@ export interface SaveRequest {
 const pending = new Map<string, Promise<SavedImage>>()
 const landed = new Map<string, SavedImage>()
 
+/** Whether the board still serves a file under the project's `assets/`. */
+export async function assetExists(
+  project: string,
+  path: string,
+): Promise<boolean> {
+  try {
+    return (await fetch(assetUrl(project, path), { method: 'HEAD' })).ok
+  } catch {
+    return false
+  }
+}
+
 /**
  * Saves a found result into the project's `assets/` once: a second call while
- * the first runs, or after it landed, answers the same file rather than
- * writing another.
+ * the first runs, or after it landed while its file is still there, answers
+ * the same file rather than writing another.
  */
 export function saveResult(
   { project, result, query, credited }: SaveRequest,
   send: typeof writeBoard<SavedImage> = writeBoard,
+  exists: typeof assetExists = assetExists,
 ): Promise<SavedImage> {
   const key = saveKey(project, result.id)
-  const done = landed.get(key)
-  if (done) return Promise.resolve(done)
   const running = pending.get(key)
   if (running) return running
   const set = (state: SaveState) =>
     saveStore.setState((current) => ({ ...current, [key]: state }))
-  set({ state: 'saving' })
-  const save = send(`${base(project)}/save`, { id: result.id, query, credited })
-    .then((saved) => {
+  const save = (async () => {
+    const done = landed.get(key)
+    if (done && (await exists(project, done.path))) return done
+    landed.delete(key)
+    set({ state: 'saving' })
+    try {
+      const saved = await send(`${base(project)}/save`, {
+        id: result.id,
+        query,
+        credited,
+      })
       landed.set(key, saved)
       set({ state: 'saved', path: saved.path })
       return saved
-    })
-    .catch((error: unknown) => {
+    } catch (error) {
       set({
         state: 'failed',
         message: error instanceof Error ? error.message : String(error),
       })
       throw error
-    })
-    .finally(() => pending.delete(key))
+    }
+  })().finally(() => pending.delete(key))
   pending.set(key, save)
   return save
 }

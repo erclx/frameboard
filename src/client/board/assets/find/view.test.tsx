@@ -180,6 +180,31 @@ describe('FindView', () => {
     expect(find).toHaveBeenCalledTimes(2)
   })
 
+  it('paints the failure line in the destructive color, with the source line under it', async () => {
+    render(
+      <FindView
+        project="webapp"
+        find={() =>
+          Promise.reject(
+            new BoardWriteError('source-failed', 'down', { status: null }),
+          )
+        }
+      />,
+    )
+    const destructive = document.createElement('span')
+    destructive.className = 'text-destructive'
+    document.body.append(destructive)
+
+    await searchFor('house')
+
+    const alert = await screen.findByRole('alert')
+    expect(getComputedStyle(alert).color).toBe(
+      getComputedStyle(destructive).color,
+    )
+    expect(screen.getByText('Images from Openverse')).toBeInTheDocument()
+    destructive.remove()
+  })
+
   it('names the status Openverse refused with', async () => {
     render(
       <FindView
@@ -259,7 +284,7 @@ describe('FindView', () => {
       <FindView
         project="webapp"
         find={async (_, query) => answer(query, [result('a1')])}
-        save={(request) => saveResult(request, send)}
+        save={(request) => saveResult(request, send, async () => true)}
       />,
     )
     const user = await searchFor('house')
@@ -268,16 +293,39 @@ describe('FindView', () => {
     await user.click(save)
     await user.click(save)
     act(() => land(saved('house.jpg')))
-
-    expect(
+    await user.click(
       await screen.findByRole('button', { name: 'Saved Photo a1' }),
-    ).toBeDisabled()
+    )
+
+    expect(screen.getByRole('button', { name: 'Saved Photo a1' })).toBeVisible()
     expect(send).toHaveBeenCalledTimes(1)
     expect(send).toHaveBeenCalledWith('/api/projects/webapp/sourcing/save', {
       id: 'a1',
       query: 'house',
       credited: false,
     })
+  })
+
+  it('saves again once the saved file is gone from assets', async () => {
+    const send = vi.fn(async () => saved('house.jpg'))
+    let present = true
+    render(
+      <FindView
+        project="webapp"
+        find={async (_, query) => answer(query, [result('a1')])}
+        save={(request) => saveResult(request, send, async () => present)}
+      />,
+    )
+    const user = await searchFor('house')
+    await user.click(
+      await screen.findByRole('button', { name: 'Save Photo a1' }),
+    )
+    const marked = await screen.findByRole('button', { name: 'Saved Photo a1' })
+
+    present = false
+    await user.click(marked)
+
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(2))
   })
 
   it('names a failed save under the grid and lets it be saved again', async () => {

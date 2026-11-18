@@ -179,6 +179,29 @@ describe('GenerateView', () => {
     expect(screen.getByRole('button', { name: 'Generate' })).toBeEnabled()
   })
 
+  it('paints the failure line in the destructive color', async () => {
+    render(
+      <GenerateView
+        project="webapp"
+        load={async () => offer()}
+        generate={() =>
+          Promise.reject(new BoardWriteError('provider-failed', 'refused'))
+        }
+      />,
+    )
+    const destructive = document.createElement('span')
+    destructive.className = 'text-destructive'
+    document.body.append(destructive)
+    const user = await describeImage('a house')
+
+    await user.click(screen.getByRole('button', { name: 'Generate' }))
+
+    expect(getComputedStyle(await screen.findByRole('alert')).color).toBe(
+      getComputedStyle(destructive).color,
+    )
+    destructive.remove()
+  })
+
   it('keeps Generate off in a read-only tab', async () => {
     act(() => liveStore.setState({ canWrite: false }))
     render(

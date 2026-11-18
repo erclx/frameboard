@@ -14,8 +14,9 @@ import {
 } from '../sourcing'
 
 const CODE = 'font-mono text-label font-normal text-foreground'
-const LINE =
-  'mx-3 my-1.5 text-label font-normal leading-[1.45] text-muted-foreground'
+const LINE_BOX = 'mx-3 my-1.5 text-label font-normal leading-[1.45]'
+const LINE = `${LINE_BOX} text-muted-foreground`
+const ALERT = `${LINE_BOX} text-destructive`
 const FOOT =
   'mx-3 mt-1.5 mb-0.5 text-[10px] leading-[1.4] text-muted-foreground'
 
@@ -170,7 +171,7 @@ function Below({
       )
     case 'failed':
       return (
-        <p role="alert" className={`${LINE} text-destructive`}>
+        <p role="alert" className={ALERT}>
           {run.message} Check the account behind{' '}
           <code className={CODE}>{provider.key}</code>, then generate again.
         </p>

@@ -37,7 +37,7 @@ Owns Find, an Openverse search run on Enter, with a switch adding credited licen
 
 - A result's thumbnail loads straight from the source in the board's chrome, over http or https alone, and falls back to its grey block
 - Save keeps its Saved mark once the file lands, so the grid never jumps, and a read-only tab lists results with Save off and says why
-- A result's drag carries a `DraggedResult` and saves only on a drop over the canvas, through `placeResult` in `canon/context/board/placing.md`
+- A result's drag carries a `DraggedResult` and saves only on a drop over the canvas, through `placeResult` in `src/client/board/place/write.ts`, then lands as a tile's drop does
 
 ### `src/client/board/assets/generate/`
 

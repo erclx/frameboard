@@ -68,7 +68,7 @@ export function ResultTile({
         <button
           type="button"
           aria-label={`${PILL[save?.state ?? 'idle']} ${title}`}
-          disabled={save?.state === 'saving' || save?.state === 'saved'}
+          disabled={save?.state === 'saving'}
           onClick={onSave}
           className={`absolute top-[5px] right-[5px] rounded-[5px] bg-card px-1.5 py-0.5 text-[10px] text-foreground shadow-[0_1px_3px_rgba(0,0,0,.3)] outline-none group-hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-3 focus-visible:ring-ring/50 ${shown ? '' : 'opacity-0'}`}
         >
