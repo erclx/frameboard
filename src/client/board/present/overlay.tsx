@@ -175,11 +175,9 @@ function useBarWake(): { shown: boolean; wake: () => void } {
 }
 
 /**
- * Leaves presenting when the browser leaves full screen, which spends Esc
- * on itself and fires `fullscreenchange` in its place. It waits until full
- * screen was on, so a refused request never ends what it started, and stays
- * while the presenter window is open, since opening one takes this tab out of
- * full screen in every engine. Answers whether full screen is on.
+ * Leaves presenting when the browser leaves a full screen that was on, since Esc
+ * goes to the browser, unless the presenter window is open, whose opening takes
+ * this tab out of full screen in every engine. Answers whether full screen is on.
  */
 function useLeaveWithFullscreen(): boolean {
   const [full, setFull] = useState(() => document.fullscreenElement !== null)

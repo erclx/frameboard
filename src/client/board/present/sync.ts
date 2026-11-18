@@ -4,10 +4,9 @@ import { boardUrl } from '@/shared/board-urls'
 import { THEMES } from '@/shared/theme'
 
 /**
- * The presenting tab and its presenter window over one BroadcastChannel named
- * for the presentation, so two pages presented in two tabs never cross. Only
- * the audience holds the state: it sends `state` on every change and `ended`
- * on leaving, and the presenter window sends `hello`, `step`, and `leave`.
+ * One BroadcastChannel per presentation, so two decks in two tabs never cross.
+ * The audience alone holds the state and sends `state` and `ended`, and the
+ * presenter window sends `hello`, `step`, and `leave`.
  */
 
 const presentationIdSchema = z.string().regex(/^[a-z0-9-]{1,64}$/)

@@ -159,10 +159,9 @@ export function pageOf(ref: string | null): PageRecord | undefined {
 }
 
 /**
- * Presents `page`, called inside the press that asked, since the browser grants
- * full screen or a window only under that activation. One press cannot do both,
- * so `presenter` opens the presenter window in place of full screen. A refused
- * full screen covers the window instead.
+ * Presents `page` inside the press that asked, since only that activation grants
+ * full screen or a window. One press cannot do both, so `presenter` opens the
+ * presenter window in place of full screen, and a refused full screen covers the window.
  */
 export function startPresenting(
   page: PageRecord,
