@@ -3,6 +3,7 @@ import { join } from 'node:path'
 
 import { type Page } from '@playwright/test'
 
+import { type Pose, POSE_SIZES, POSES } from '@/shared/frame-device'
 import type { ServerMessage } from '@/shared/live-messages'
 import type { Finding } from '@/shared/records/check'
 
@@ -110,6 +111,28 @@ async function devicesShown(page: Page): Promise<void> {
   page.once('close', () => {
     writeFileSync(layoutPath, originalLayout)
   })
+}
+
+/**
+ * Names the about frame a foldable in `pose`, at that pose's screen size,
+ * putting the layout back when the page closes.
+ */
+function foldableShown(pose: Pose): (page: Page) => Promise<void> {
+  return async (page) => {
+    const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+    const originalLayout = readFileSync(layoutPath, 'utf8')
+    const layout = JSON.parse(originalLayout)
+    Object.assign(layout.frames.about, {
+      ...POSE_SIZES[pose],
+      showDevice: true,
+      foldable: true,
+      pose,
+    })
+    writeFileSync(layoutPath, JSON.stringify(layout))
+    page.once('close', () => {
+      writeFileSync(layoutPath, originalLayout)
+    })
+  }
 }
 
 /**
@@ -545,6 +568,23 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
         ),
       ),
     },
+    // A selected foldable in each pose, with its buttons under the body.
+    ...POSES.map((pose) => ({
+      section: `device-foldable-${pose}`,
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          foldableShown(pose),
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          readyWhen('body:has([data-bezel="foldable"]):has([data-poses])'),
+        ),
+      ),
+    })),
     {
       section: 'inspector-widths',
       theme,
