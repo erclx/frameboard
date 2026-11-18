@@ -1,7 +1,7 @@
 [domains]
 cli = ["src/cli/"]
 server = ["src/server/"]
-client = ["src/client/"]
+client = ["src/client/", "src/frame-bridge/"]
 shared = ["src/shared/"]
 web = ["web/"]
 plugin = [
