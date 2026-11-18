@@ -388,13 +388,17 @@ describe('editTextInPlace on a run beside a child element', () => {
     return { first, code, last }
   }
 
-  function inputs(target: HTMLElement, data: string) {
+  function inputs(
+    target: HTMLElement,
+    data: string,
+    { inputType = 'insertText', cancelable = true } = {},
+  ) {
     target.dispatchEvent(
       new InputEvent('beforeinput', {
-        inputType: 'insertText',
+        inputType,
         data,
         bubbles: true,
-        cancelable: true,
+        cancelable,
       }),
     )
   }
@@ -453,6 +457,25 @@ describe('editTextInPlace on a run beside a child element', () => {
     await expect
       .poll(() => changes)
       .toEqual([[{ kind: 'text', value: ' two!', run: 1 }]])
+  })
+
+  it('leaves a composition the browser will not cancel to the browser, splicing none of it', async () => {
+    const { container, shown, heading } = await mount(MIXED)
+    const { last } = runs(heading)
+    await editTextInPlace(
+      container,
+      KEY,
+      recorder().write,
+      middleOf(shown, last),
+    ).opened
+
+    caretIn(shown, last, last.length)
+    inputs(heading, 'か', {
+      inputType: 'insertCompositionText',
+      cancelable: false,
+    })
+
+    expect(last.data).toBe(' two')
   })
 
   it('inserts nothing when the caret has left the run for the child', async () => {

@@ -255,6 +255,8 @@ function openRunEdit(
     splice(selected(), typed(event.clipboardData?.getData('text/plain') ?? ''))
   }
   function beforeinput(event: InputEvent) {
+    // A composition the browser will not let go of edits the run natively, so splicing it too would type it twice.
+    if (!event.cancelable) return
     event.preventDefault()
     const [range = selected()] = event.getTargetRanges()
     if (event.inputType.startsWith('delete')) splice(range, '')
