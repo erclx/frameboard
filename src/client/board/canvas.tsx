@@ -91,6 +91,7 @@ import {
   selectElement,
   selectionStore,
 } from './selection'
+import { SpeakerNotesStrip } from './speaker-notes/strip'
 import { startFrameRename } from './structure/actions'
 import { DRAWN_FRAME_MIN, placeFrame } from './structure/tool'
 import {
@@ -989,6 +990,7 @@ export function Canvas({
         {playing ? <KeepBar page={page.ref} frames={frames} /> : null}
         {/* Here rather than on the label, since the hit layer covers the frames' layer. */}
         <LabelRename frames={frames} />
+        <SpeakerNotesStrip frames={frames} claims={claims} calls={calls} />
       </div>
       <WaitingDock frames={frames} />
       {page.layoutError ? (

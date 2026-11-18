@@ -8,6 +8,7 @@ import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
 import { stepOrder } from '../frame-order'
 import { useSelection } from '../selection'
+import { useStripRoom } from '../speaker-notes/room'
 import { boundsOf, type Box } from './box'
 import { OUTLINE, place, screen } from './draw'
 import type { Corner } from './resize'
@@ -98,7 +99,12 @@ function Selection({
       return body.y + body.height - (bounds.y + bounds.height)
     }),
   )
-  const chipAt = below ? { top: `calc(100% + ${below}px)` } : undefined
+  // A shown speaker notes strip sits between the frame and its chips, at screen size.
+  const strip = useStripRoom(only && !several ? only.ref : null)
+  const chipAt =
+    below || strip
+      ? { top: `calc(100% + ${below}px + ${strip}px / var(--zoom, 1))` }
+      : undefined
   return (
     <div
       data-selection

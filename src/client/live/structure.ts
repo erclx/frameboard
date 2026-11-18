@@ -129,6 +129,9 @@ export function createStructure(send: typeof fetch = fetch) {
       refs: readonly string[],
       transition: Transition | null,
     ) => post<FrameRecord[]>('/api/frame/transition', { refs, transition }),
+    /** Sets one frame's speaker note in one undo step, blank text clearing it. */
+    setSpeakerNotes: (ref: string, speakerNotes: string) =>
+      post<FrameRecord>('/api/frame/speaker-notes', { ref, speakerNotes }),
     flagFrames: (refs: readonly string[], flag: FrameFlag, on: boolean) =>
       post<FrameRecord[]>('/api/frame/flag', { refs, flag, on }),
     deleteFrames: (refs: readonly string[]) =>
