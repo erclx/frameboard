@@ -55,6 +55,14 @@ export interface KitInstallRecord {
   written: string[]
 }
 
+/** What removing a kit from a project answers, on the route and the verb alike. */
+export interface KitRemoveRecord {
+  project: string
+  kit: string
+  /** The ref of every frame that named the kit and now names none, in page then frame order. */
+  frames: string[]
+}
+
 /** What saving a project as a kit answers. */
 export interface KitSaveRecord {
   project: string
