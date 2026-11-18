@@ -232,10 +232,8 @@ function Setting({ title, children }: { title: string; children: ReactNode }) {
 const SAME_AS_PAGE = SAME_AS_PAGE_WORD
 
 /**
- * The transition each selected frame arrives with while presenting, Same as
- * page or a named one over its page's, marking no tile where the frames
- * differ. A pick writes every frame's `layout.json` entry in one undo step,
- * and hovering a tile plays it on each selected slide.
+ * Each selected frame's own transition, marking no tile where they differ.
+ * A pick writes every frame's `layout.json` entry in one undo step.
  */
 export function SlideSection({
   frames,

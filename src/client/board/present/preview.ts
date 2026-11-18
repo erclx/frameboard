@@ -22,10 +22,8 @@ export function stopPreview(): void {
 }
 
 /**
- * The clip pairing a slide or push arrival, cutting the picture where it
- * passes its own box, so a frame on the canvas never slides over its
- * neighbors. It runs on the same curve and length as the travel, so the two
- * cancel at every moment.
+ * Cuts a slide or push arrival at its own box, so a canvas frame never slides
+ * over its neighbors. Same curve and length as the travel, so the two cancel.
  */
 const CLIP_KEYFRAMES_ID = 'fb-preview-clip'
 const CLIP_KEYFRAMES = `@keyframes ${CLIP_KEYFRAMES_ID} {
@@ -60,10 +58,8 @@ const WRITTEN = [
 ] as const
 
 /**
- * Plays `travel`'s arrival on a frame shown in Edit, as presenting would
- * bring that slide in, and takes every property it wrote back off once it
- * ends. The returned call ends it early. Present mode never starts, and the
- * frame's file is never written.
+ * Plays `travel`'s arrival on a frame in Edit and takes back every property
+ * it wrote. The returned call ends it early. The file is never written.
  */
 export function previewTransition(
   target: HTMLElement,

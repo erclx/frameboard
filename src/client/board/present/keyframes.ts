@@ -78,10 +78,8 @@ const KEYFRAMES_ID = 'fb-present-keyframes'
 let holders = 0
 
 /**
- * Mounts every built-in transition's and step effect's keyframes in the
- * board's head, once however many places hold them, so presenting from an
- * open Slides tab defines each name a single time. The returned call lets
- * go, and the last to let go takes the style out.
+ * Mounts the built-in keyframes in the board's head once however many hold
+ * them. The returned call lets go, and the last to let go removes them.
  */
 export function holdKeyframes(): () => void {
   holders += 1

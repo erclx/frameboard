@@ -24,16 +24,7 @@ const SHOWN = 'data-frameboard-step'
 const DELAY = '--frameboard-step-delay'
 const STYLE_ID = 'frameboard-present-steps'
 
-/**
- * The style hiding a step not yet revealed and playing each effect as one
- * is. It keeps the hidden step's room, so revealing one moves nothing else,
- * and under reduced motion every step appears with no movement.
- */
-/**
- * Each effect's keyframes, named `frameboard-step-<effect>`. The inspector's
- * tiles mount them in the board's own document too, so a tile plays the
- * motion a presented step does.
- */
+/** Each effect's keyframes, which the inspector's tiles also mount in the board's document. */
 export const STEP_KEYFRAMES = `
 @keyframes frameboard-step-appear { from { visibility: hidden } to { visibility: visible } }
 @keyframes frameboard-step-fade { from { opacity: 0 } to { opacity: 1 } }
@@ -42,6 +33,10 @@ export const STEP_KEYFRAMES = `
 @keyframes frameboard-step-zoom { from { opacity: 0; scale: 0.6 } to { opacity: 1; scale: 1 } }
 `
 
+/**
+ * The style hiding a step not yet revealed and playing each effect as one
+ * is, keeping its room. Under reduced motion every step appears unmoved.
+ */
 // canon-allow-embedded: interpolates the step attribute, length, and delay names, and is injected into the presented document as text
 const STEP_STYLE = `
 [${SHOWN}='hidden'] { visibility: hidden !important }
@@ -179,19 +174,12 @@ function holdStepStyle(doc: Document): void {
   doc.head?.append(style)
 }
 
-/**
- * How long an Appear preview holds the element hidden. Appear's own entrance
- * runs 1 ms, which would show nothing, so the preview blinks it instead.
- */
+/** Appear's own entrance runs 1 ms and would show nothing, so its preview blinks the element. */
 const APPEAR_PREVIEW_MS = STEP_MS / 2
 
 /**
- * Plays `effect` once on one element of a frame shown in Edit, as a press
- * would reveal it, and takes every mark back off once it ends. The returned
- * call ends it early, leaving the element as the file shows it. Under
- * reduced motion the step style plays no entrance, so nothing moves. It
- * writes no delay, which the style reads as none, so no `style` attribute
- * is left behind on an element that held none.
+ * Plays `effect` once on an element in Edit and takes its marks back off,
+ * writing no delay so no empty `style` is left. The returned call ends it.
  */
 export function previewStep(element: Element, effect: StepEffect): () => void {
   const doc = element.ownerDocument

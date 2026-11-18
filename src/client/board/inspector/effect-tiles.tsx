@@ -37,10 +37,8 @@ const ARROW_STEPS: Readonly<Record<string, number>> = {
 }
 
 /**
- * A grid of tiles picked like a radio group, each playing its own motion on
- * hover or focus while `onPreview` plays it on the slide or the element.
- * Arrows move the pick, and Escape puts back the value held when focus came
- * in. Past two rows the grid scrolls inside its own height.
+ * Tiles picked like a radio group, each playing its motion on hover or focus.
+ * Escape puts back the value held when focus came in.
  */
 export function EffectTiles({
   labelledBy,
