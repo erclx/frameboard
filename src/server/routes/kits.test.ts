@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -111,6 +111,98 @@ describe('kitRoutes', () => {
       ':root { --a: 1 }\n',
     )
     expect(history.counts().undo).toBe(1)
+  })
+
+  describe('remove', () => {
+    /** Gives acme the sketch kit and a `hero` frame naming it. */
+    function withKitFrame(): void {
+      mkdirSync(join(board.root, 'acme/assets/kits/sketch'), {
+        recursive: true,
+      })
+      writeFileSync(join(board.root, 'acme/assets/kits/sketch/kit.css'), '')
+      mkdirSync(join(board.root, 'acme/home'))
+      writeFileSync(join(board.root, 'acme/home/hero.html'), '<p>Hero</p>\n')
+      writeFileSync(
+        join(board.root, 'acme/home/layout.json'),
+        `${JSON.stringify({
+          version: 1,
+          frames: {
+            hero: {
+              x: 0,
+              y: 0,
+              width: 400,
+              height: 300,
+              order: 0,
+              kit: 'sketch',
+            },
+          },
+        })}\n`,
+      )
+    }
+
+    function heroEntry(): Record<string, unknown> {
+      return JSON.parse(
+        readFileSync(join(board.root, 'acme/home/layout.json'), 'utf8'),
+      ).frames.hero
+    }
+
+    it('removes a kit and answers the frames it cleared', async () => {
+      withKitFrame()
+
+      const response = await post('/api/kits/remove', {
+        project: 'acme',
+        kit: 'sketch',
+      })
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { project: 'acme', kit: 'sketch', frames: ['acme/home/hero'] },
+      })
+      expect(existsSync(join(board.root, 'acme/assets/kits/sketch'))).toBe(
+        false,
+      )
+      expect(heroEntry()).not.toHaveProperty('kit')
+    })
+
+    it('records one step, and its undo restores the folder and the frame naming it', async () => {
+      withKitFrame()
+      await post('/api/kits/remove', { project: 'acme', kit: 'sketch' })
+      expect(history.counts().undo).toBe(1)
+
+      const undone = await history.undo()
+
+      expect(
+        existsSync(join(board.root, 'acme/assets/kits/sketch/kit.css')),
+      ).toBe(true)
+      expect(heroEntry().kit).toBe('sketch')
+      expect(undone.frames).toEqual(['acme/home/hero'])
+    })
+
+    it('answers 401 to a remove from a tab without the board key', async () => {
+      withKitFrame()
+
+      const response = await post(
+        '/api/kits/remove',
+        { project: 'acme', kit: 'sketch' },
+        {},
+      )
+
+      expect(response.status).toBe(401)
+      expect(existsSync(join(board.root, 'acme/assets/kits/sketch'))).toBe(true)
+    })
+
+    it('answers kit-not-found for a kit the project lacks and records no step', async () => {
+      withKitFrame()
+
+      const response = await post('/api/kits/remove', {
+        project: 'acme',
+        kit: 'wireframe',
+      })
+
+      const body = (await response.json()) as { error: { code: string } }
+      expect(body.error.code).toBe('kit-not-found')
+      expect(history.counts().undo).toBe(0)
+    })
   })
 
   it("saves a project's look as a kit the list then answers", async () => {
