@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>presenter-view-720</title>
+    <style>
+      :root {
+        --canvas: #ececec;
+        --panel: #fff;
+        --raised: #f2f2f2;
+        --border: #e4e4e4;
+        --text: #1a1a1a;
+        --muted: #6e6e6e;
+        --faint: #a5a5a5;
+        --accent: #2f7bf0;
+        --slide: #fbfaf7;
+        --ink: #17181b;
+      }
+      :root[data-theme='dark'] {
+        --canvas: #1f1f1f;
+        --panel: #2a2a2a;
+        --raised: #363636;
+        --border: #353535;
+        --text: #e6e6e6;
+        --muted: #a0a0a0;
+        --faint: #6b6b6b;
+        --accent: #4e92f6;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        font-family: Geist, 'DejaVu Sans', sans-serif;
+        font-size: 11px;
+        color: var(--text);
+        background: var(--canvas);
+      }
+      .stage {
+        width: 720px;
+        padding: 14px 16px 20px;
+      }
+      .cap {
+        color: var(--muted);
+        line-height: 1.45;
+        margin-bottom: 12px;
+        max-width: 680px;
+      }
+      .cap b,
+      .note b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .cols {
+        display: flex;
+        gap: 10px;
+        align-items: stretch;
+      }
+      .view {
+        flex: 1;
+        min-width: 0;
+        border-radius: 10px;
+        box-shadow: 0 0 0 1px var(--border);
+        background: var(--canvas);
+        padding: 16px 10px 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .sl {
+        border-radius: 5px;
+        background: var(--slide);
+        color: var(--ink);
+        box-shadow: 0 0 0 1px var(--border);
+        padding: 9% 8%;
+        position: relative;
+        aspect-ratio: 16/9;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 6%;
+      }
+      .sl.sel {
+        outline: 1.5px solid var(--accent);
+        outline-offset: 2px;
+      }
+      .sl h5 {
+        font-size: 1.5em;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        line-height: 1.05;
+      }
+      .sl i {
+        display: block;
+        height: 0.42em;
+        border-radius: 3px;
+        background: #dcd9d2;
+      }
+      .sl .nm {
+        position: absolute;
+        left: 0;
+        top: -14px;
+        font-size: 9px;
+        color: var(--muted);
+      }
+      .box {
+        background: var(--panel);
+        box-shadow: 0 0 0 1px var(--border);
+        border-radius: 10px;
+        padding: 10px;
+        width: 216px;
+        flex: none;
+        align-self: flex-start;
+      }
+      .tabs {
+        display: flex;
+        gap: 2px;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 6px;
+        margin-bottom: 10px;
+      }
+      .tabs span {
+        flex: 1;
+        text-align: center;
+        line-height: 20px;
+        border-radius: 4px;
+        color: var(--muted);
+      }
+      .tabs span.on {
+        background: var(--panel);
+        color: var(--text);
+        font-weight: 600;
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      h4 {
+        font-size: 11px;
+        font-weight: 600;
+        margin: 0 0 6px;
+        display: flex;
+        justify-content: space-between;
+      }
+      h4 span {
+        font-weight: 400;
+        color: var(--faint);
+      }
+      .f {
+        height: 26px;
+        border-radius: 6px;
+        background: var(--raised);
+        padding: 0 8px;
+        line-height: 26px;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .f em {
+        font-style: normal;
+        color: var(--faint);
+      }
+      .ta {
+        border-radius: 6px;
+        background: var(--raised);
+        padding: 7px 8px;
+        line-height: 1.5;
+        min-height: 84px;
+      }
+      .ta.hl {
+        box-shadow: 0 0 0 1.5px var(--accent);
+      }
+      .sec {
+        border-top: 1px solid var(--border);
+        padding-top: 8px;
+        margin-top: 8px;
+      }
+      .strip {
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: 0 0 0 1px var(--border);
+        padding: 8px 10px;
+      }
+      .strip.hl {
+        box-shadow: 0 0 0 1.5px var(--accent);
+      }
+      .strip p {
+        line-height: 1.5;
+      }
+      .hint {
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .note {
+        margin-top: 10px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .pres {
+        border-radius: 10px;
+        background: #0c0c0d;
+        color: #f1f1ee;
+        padding: 12px;
+        display: grid;
+        grid-template-columns: 1.55fr 1fr;
+        gap: 12px;
+      }
+      .pres .top {
+        grid-column: 1/-1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #a4a6ab;
+        font-size: 10px;
+      }
+      .pres .top b {
+        font:
+          600 18px 'Geist Mono',
+          monospace;
+        color: #f1f1ee;
+        letter-spacing: -0.01em;
+      }
+      .pres .lb {
+        font-size: 9px;
+        color: #8c8f95;
+        margin-bottom: 5px;
+        text-transform: none;
+      }
+      .pres .sl {
+        box-shadow: none;
+      }
+      .pres .nt {
+        border-radius: 8px;
+        background: #19191b;
+        padding: 10px;
+        line-height: 1.55;
+        font-size: 12px;
+        color: #e6e6e2;
+        margin-top: 10px;
+      }
+      .dots {
+        display: flex;
+        gap: 4px;
+        margin-top: 8px;
+      }
+      .dots u {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #3a3b3f;
+      }
+      .dots u.on {
+        background: #f1f1ee;
+      }
+      .ov {
+        border-radius: 10px;
+        background: #0c0c0d;
+        padding: 14px;
+        color: #a4a6ab;
+      }
+      .ov .hd {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 10px;
+      }
+      .ov .hd b {
+        color: #f1f1ee;
+        font-weight: 600;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+      }
+      .grid .sl {
+        font-size: 5px;
+        box-shadow: none;
+      }
+      .grid .cell {
+        position: relative;
+      }
+      .grid .cell span {
+        display: block;
+        text-align: center;
+        font-size: 9px;
+        margin-top: 4px;
+      }
+      .grid .cell.on .sl {
+        outline: 2px solid #4e92f6;
+        outline-offset: 2px;
+      }
+      .grid .cell.on span {
+        color: #f1f1ee;
+      }
+      .kbd {
+        display: inline-block;
+        padding: 0 5px;
+        border-radius: 4px;
+        background: #232326;
+        color: #d6d6d2;
+        font:
+          500 9px 'Geist Mono',
+          monospace;
+        line-height: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <p class="cap">
+        <b>presenter-view-720.</b> Presenter view. A second window for you,
+        while the audience's window shows the slide alone.
+      </p>
+      <div class="pres">
+        <div class="top">
+          <span>Slide 3 of 12 · step 2 of 4</span><b>04:12</b><span>10:41</span>
+        </div>
+        <div>
+          <div class="lb">Now</div>
+          <div class="sl" style="font-size: 13px">
+            <h5>One frame that folds</h5>
+            <i style="width: 86%"></i><i style="width: 72%"></i
+            ><i style="width: 58%"></i>
+          </div>
+          <div class="dots">
+            <u class="on"></u><u class="on"></u><u></u><u></u>
+          </div>
+        </div>
+        <div>
+          <div class="lb">Next</div>
+          <div class="sl" style="font-size: 7px">
+            <h5>Three poses</h5>
+            <i style="width: 80%"></i><i style="width: 64%"></i>
+          </div>
+          <div class="nt">
+            Start with the problem: two frames for one phone. Then fold it live.
+            Pause on Half open.
+          </div>
+        </div>
+      </div>
+      <p class="note">
+        <b>What you need while talking:</b> the slide now with its steps, the
+        next slide, your notes, a timer, and the clock. It opens from the
+        Present button, and the arrow keys drive both windows.
+      </p>
+    </div>
+  </body>
+</html>

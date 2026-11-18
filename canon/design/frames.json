@@ -124,8 +124,9 @@
     "canvas/controls-play": "groundwork-40/concept/controls-play-720",
     "canvas/speaker-notes": "drive-47/12-slide-features/speaker-notes-strip-720",
     "toolbar/present": "drive-30/04-present-enter/present-enter-button-900",
-    "present/bar": "drive-30/05-present-step/present-step-hover-bar-960",
+    "present/bar": "drive-47/12-slide-features/present-bar-presenter-960",
     "present/steps": "drive-32/28-present-steps/present-steps-marked-720",
-    "present/overview": "drive-47/12-slide-features/slide-overview-720"
+    "present/overview": "drive-47/12-slide-features/slide-overview-720",
+    "present/presenter/view": "drive-47/12-slide-features/presenter-view-720"
   }
 }

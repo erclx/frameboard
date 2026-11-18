@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>present-step-hover-bar-960</title>
+    <title>present-bar-presenter-960</title>
     <style>
       :root {
         --canvas: #ececec;
@@ -266,6 +266,7 @@
       }
       .hud .n {
         padding: 0 8px;
+        white-space: nowrap;
         font-variant-numeric: tabular-nums;
         color: #ddd;
       }
@@ -376,6 +377,32 @@
             stroke-linejoin="round"
           >
             <path d="M9 18l6-6-6-6" /></svg></span
+        ><span class="b"
+          ><svg
+            class="ic"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect width="7" height="7" x="3" y="3" rx="1" />
+            <rect width="7" height="7" x="14" y="3" rx="1" />
+            <rect width="7" height="7" x="14" y="14" rx="1" />
+            <rect width="7" height="7" x="3" y="14" rx="1" /></svg></span
+        ><span
+          style="
+            display: flex;
+            width: 57px;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            padding: 0 6px;
+          "
+        ></span
         ><span
           class="sep"
           style="width: 1px; height: 18px; margin: 0 4px"
@@ -397,13 +424,46 @@
             stroke-linecap="round"
             stroke-linejoin="round"
           >
+            <path d="M5.5 20H8" />
+            <path d="M17 9h.01" />
+            <rect width="10" height="16" x="12" y="4" rx="2" />
+            <path d="M8 6H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h4" />
+            <circle cx="17" cy="15" r="1" /></svg></span
+        ><span class="b"
+          ><svg
+            class="ic"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+            <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+            <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+            <path d="M16 21h3a2 2 0 0 0 2-2v-3" /></svg></span
+        ><span class="b"
+          ><svg
+            class="ic"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M18 6L6 18M6 6l12 12" /></svg
         ></span>
       </div>
       <div class="cursor" style="left: 520px; top: 490px"></div>
       <div class="cap" style="top: auto; bottom: auto; top: 6px; color: #999">
-        <b>Hover bar.</b> Moving the pointer fades in a bar with back, count,
-        the frame's name, next, and leave. It fades out after two seconds still.
+        <b>Hover bar with the presenter view.</b> Presenter view opens a second
+        window, and Full screen takes this one full screen.
       </div>
     </div>
   </body>
