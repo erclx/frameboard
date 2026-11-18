@@ -22,10 +22,8 @@ interface OverviewProps {
 }
 
 /**
- * Every slide of the presented page as a grid over the stage, per
- * `canon/design/present/overview`, its colors its own since it sits over
- * black in either theme. The arrows move, Enter or a click jumps, a typed
- * number then Enter jumps to that slide, and Esc or G returns.
+ * Every slide of the presented page over the stage, per
+ * `canon/design/present/overview`, its colors its own over black in either theme.
  */
 export function Overview({
   page,

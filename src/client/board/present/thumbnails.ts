@@ -6,10 +6,8 @@ import type { FrameRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
 
 /**
- * The stamp of each slide's thumbnail in the board's theme, asked for the
- * presented page while the overview shows and again when a slide changes.
- * A slide still rendering reads undefined, and its landing arrives over the
- * socket.
+ * Each slide's thumbnail stamp in the board's theme, asked again when a slide
+ * changes. A slide still rendering reads undefined until the socket lands it.
  */
 export function usePageThumbnails(
   page: string,
