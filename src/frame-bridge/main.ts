@@ -14,6 +14,7 @@ import { addressed, type Handler, type Handlers, onceParsed } from './handler'
 import { liveElementHandlers } from './live-element'
 import { measureHandlers } from './measure'
 import { mediaHandlers } from './media'
+import { modelHandlers } from './model'
 import { previewHandlers } from './preview'
 import { openTextEdit } from './text-edit'
 
@@ -39,6 +40,7 @@ const handlers: Handlers = {
   ...liveElementHandlers,
   ...measureHandlers,
   ...mediaHandlers,
+  ...modelHandlers,
   'element-box': (address) => {
     const element = addressed(address)
     if (!element) return null
