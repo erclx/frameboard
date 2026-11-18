@@ -160,3 +160,75 @@ test.describe("a slide's speaker notes", () => {
     )
   })
 })
+
+test.describe("a slide's effects picked from tiles", () => {
+  const WEBAPP_HERO = 'webapp/home/hero'
+
+  let board: FixtureBoard
+  let server: BoardServer
+
+  const heroFile = () =>
+    readFileSync(join(board.root, `${WEBAPP_HERO}.html`), 'utf8')
+  const present = () =>
+    JSON.parse(
+      readFileSync(join(board.root, 'webapp/home/layout.json'), 'utf8'),
+    ).present
+
+  /** Cmd-clicks the hero's headline and opens the Slides tab on it. */
+  async function selectHeadline(page: Page): Promise<void> {
+    const headline = page
+      .frameLocator(`[data-frame="${WEBAPP_HERO}"] iframe`)
+      .locator('h1')
+    await expect(headline).toBeVisible()
+    // Retried, since the canvas refits once frames load and moves the headline.
+    await expect(async () => {
+      const box = await headline.boundingBox()
+      if (!box) throw new Error('the headline has no box on screen')
+      await page.keyboard.down('Meta')
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+      await page.keyboard.up('Meta')
+      await expect(
+        page.getByRole('heading', { name: 'Appearance' }),
+      ).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 10_000 })
+    await page.getByRole('tab', { name: 'Slides' }).click()
+  }
+
+  test.beforeEach(async ({ page }) => {
+    board = copyFixtureBoard('basic')
+    server = await serveBoard(board.root)
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('keeps a step effect and a page transition picked from tiles across a reload', async ({
+    page,
+  }) => {
+    await selectHeadline(page)
+    const step = page.getByRole('textbox', { name: 'Appears on step' })
+    await step.fill('1')
+    await step.press('Enter')
+    await expect.poll(heroFile).toContain('data-step="1"')
+
+    const effects = page.getByRole('radiogroup', { name: 'Effect' })
+    await effects.getByRole('radio', { name: 'Fly' }).click()
+    await expect.poll(heroFile).toContain('data-step-effect="fly"')
+
+    const transitions = page.getByRole('radiogroup', {
+      name: 'Slide transition',
+    })
+    await transitions.getByRole('radio', { name: 'Push' }).click()
+    await expect.poll(() => present()?.transition?.name).toBe('push')
+
+    await page.reload()
+    await selectHeadline(page)
+
+    await expect(effects.getByRole('radio', { name: 'Fly' })).toBeChecked()
+    await expect(transitions.getByRole('radio', { name: 'Push' })).toBeChecked()
+  })
+})

@@ -996,28 +996,26 @@ describe('InspectorPanel', () => {
       })
       return { sent, calls }
     }
-    const slide = () => screen.getByRole('button', { name: 'This slide' })
     const pick = async (item: string) => {
-      await userEvent.click(slide())
-      await userEvent.click(
-        await screen.findByRole('menuitemradio', { name: item }),
-      )
+      await userEvent.click(screen.getByRole('radio', { name: item }))
     }
 
-    it('reads Same as page on a frame holding no transition', () => {
+    it('marks Same as page on a frame holding no transition', () => {
       render(<SlideSection frames={[SWATCHES]} />)
 
-      expect(slide()).toHaveTextContent('Same as page')
+      expect(screen.getByRole('radio', { checked: true })).toHaveAccessibleName(
+        'Same as page',
+      )
     })
 
-    it('reads Mixed where the frames differ', () => {
+    it('marks no tile where the frames differ', () => {
       render(
         <SlideSection
           frames={[{ ...SWATCHES, transition: { name: 'zoom' } }, SUNSET]}
         />,
       )
 
-      expect(slide()).toHaveTextContent('Mixed')
+      expect(screen.queryAllByRole('radio', { checked: true })).toEqual([])
     })
 
     it('sets a named transition on every frame in one write', async () => {
@@ -1031,7 +1029,7 @@ describe('InspectorPanel', () => {
       ])
     })
 
-    it("lists the project's own after the built-ins and sets one by its name", async () => {
+    it("tiles the project's own after the built-ins and sets one by its name", async () => {
       const board = boardOf(pageOf([SWATCHES, SUNSET]))
       act(() =>
         receiveBoard(liveStore, {
@@ -1045,11 +1043,8 @@ describe('InspectorPanel', () => {
       const { sent, calls } = transitionCalls()
       render(<SlideSection frames={[SWATCHES]} calls={calls} />)
 
-      await userEvent.click(slide())
-      const items = await screen.findAllByRole('menuitemradio')
-      await userEvent.click(
-        screen.getByRole('menuitemradio', { name: 'wipe-up' }),
-      )
+      const items = screen.getAllByRole('radio')
+      await pick('wipe-up')
 
       expect(items.at(-1)).toHaveTextContent('wipe-up')
       expect(sent).toEqual([

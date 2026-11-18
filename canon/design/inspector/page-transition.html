@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>present-transition-list-720</title>
+    <title>present-transition-tiles-720</title>
     <style>
       :root {
         --canvas: #ececec;
@@ -793,14 +793,176 @@
       .insp .itabs {
         margin: -4px -4px 10px;
       }
+      .gal {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .gal.five {
+        grid-template-columns: repeat(5, 1fr);
+      }
+      .t {
+        border-radius: 7px;
+        padding: 5px 4px 4px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .t.on {
+        box-shadow: 0 0 0 1.5px var(--accent);
+        color: var(--text);
+        font-weight: 600;
+      }
+      .t.hv {
+        background: var(--raised);
+        color: var(--text);
+      }
+      .ic {
+        position: relative;
+        height: 30px;
+        margin-bottom: 4px;
+        border-radius: 4px;
+        background: var(--raised);
+        overflow: hidden;
+      }
+      .t.on .ic {
+        background: var(--panel);
+      }
+      .ic b,
+      .ic u {
+        position: absolute;
+        inset: 6px 10px;
+        border-radius: 2px;
+      }
+      .ic b {
+        background: var(--text);
+        opacity: 0.8;
+      }
+      .ic u {
+        background: var(--faint);
+      }
+      .ic.fade b {
+        opacity: 0.32;
+      }
+      .ic.slide b {
+        transform: translateX(40%);
+      }
+      .ic.push u {
+        transform: translateX(-60%);
+      }
+      .ic.push b {
+        transform: translateX(40%);
+      }
+      .ic.zoom b {
+        transform: scale(0.76);
+        opacity: 0.45;
+      }
+      .ic.zoom u {
+        transform: scale(1.06);
+        opacity: 0.5;
+      }
+      .ic.flip u {
+        transform: perspective(120px) rotateY(72deg);
+      }
+      .ic.flip b {
+        opacity: 0;
+      }
+      .ic.dis b {
+        filter: blur(3px);
+        opacity: 0.4;
+      }
+      .ic.own b {
+        opacity: 0.5;
+        transform: translateY(25%);
+      }
+      .ic.page b {
+        opacity: 0.8;
+      }
+      .ic.step i {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        top: 6px;
+        height: 4px;
+        border-radius: 2px;
+        background: var(--faint);
+      }
+      .ic.step b {
+        top: 14px;
+        bottom: 6px;
+      }
+      .ic.sfade b {
+        opacity: 0.4;
+      }
+      .ic.sfly b {
+        opacity: 0.6;
+        transform: translateY(5px);
+      }
+      .ic.swipe b {
+        clip-path: inset(0 60% 0 0);
+      }
+      .ic.szoom b {
+        transform: scale(0.76);
+        opacity: 0.5;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+      .row label {
+        width: 58px;
+        flex: none;
+        color: var(--muted);
+      }
+      .row .sel3 {
+        flex: 1;
+        margin: 0;
+      }
+      .fld2 {
+        flex: 1;
+        height: 26px;
+        border-radius: 6px;
+        background: var(--raised);
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+      }
+      .seg3 {
+        display: flex;
+        gap: 2px;
+        height: 26px;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 6px;
+      }
+      .seg3 span {
+        flex: 1;
+        display: grid;
+        place-items: center;
+        border-radius: 5px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .seg3 .on {
+        background: var(--panel);
+        color: var(--text);
+        font-weight: 600;
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .stage {
+        height: 480px;
+      }
     </style>
   </head>
   <body>
     <div class="stage">
       <div class="cap">
-        <b>present-transition-list-720</b> · a list of transitions like a slide
-        tool's, set for the page with a per-slide override and a duration, by
-        hand or by the agent's command
+        <b>present-transition-tiles-720</b> · the transitions as tiles that each
+        play their own motion, set for the page with a per-slide override, and
+        hovering one plays it on the selected slide
       </div>
       <div class="full" style="right: 226px"></div>
       <div
@@ -829,32 +991,89 @@
         <div class="r"><b>Layout</b><span>Flow, gap, padding.</span></div>
         <div class="r"><b>Media</b><span>Image, video, audio.</span></div>
       </div>
-      <div class="menu2" style="right: 196px; top: 176px">
-        <div>None</div>
-        <div class="on">Fade</div>
-        <div>Slide left</div>
-        <div>Push</div>
-        <div>Zoom</div>
-        <div>Flip</div>
-        <div>Dissolve</div>
-      </div>
       <div class="insp" style="width: 226px">
         <div class="itabs">
           <span>Design</span><span class="on">Slides</span><span>Export</span>
         </div>
         <h4>This slide<span class="q">?</span></h4>
-        <div class="sel3">Same as page</div>
-        <h4 style="margin-top: 6px">Page<span class="q">?</span></h4>
+        <div class="gal">
+          <div class="t on">
+            <div class="ic page"><b></b></div>
+            Page
+          </div>
+          <div class="t">
+            <div class="ic none"><b></b></div>
+            None
+          </div>
+          <div class="t">
+            <div class="ic fade"><u></u><b></b></div>
+            Fade
+          </div>
+          <div class="t">
+            <div class="ic slide"><u></u><b></b></div>
+            Slide
+          </div>
+          <div class="t">
+            <div class="ic push"><u></u><b></b></div>
+            Push
+          </div>
+          <div class="t">
+            <div class="ic zoom"><u></u><b></b></div>
+            Zoom
+          </div>
+          <div class="t">
+            <div class="ic flip"><u></u><b></b></div>
+            Flip
+          </div>
+          <div class="t">
+            <div class="ic dis"><u></u><b></b></div>
+            Dissolve
+          </div>
+        </div>
+        <h4 style="margin-top: 2px">Page<span class="q">?</span></h4>
         <div class="fl">Slide transition</div>
-        <div class="sel3">Fade</div>
-        <div class="fl">Duration</div>
-        <div class="sel3">300 ms</div>
-      </div>
-      <div class="term">
-        <b>$</b> frameboard page transition deck fade --ms 300 --json<br /><b
-          >$</b
-        >
-        frameboard frame transition deck/04-agent zoom --json
+        <div class="gal">
+          <div class="t">
+            <div class="ic none"><b></b></div>
+            None
+          </div>
+          <div class="t">
+            <div class="ic fade"><u></u><b></b></div>
+            Fade
+          </div>
+          <div class="t">
+            <div class="ic slide"><u></u><b></b></div>
+            Slide
+          </div>
+          <div class="t on">
+            <div class="ic push"><u></u><b></b></div>
+            Push
+          </div>
+          <div class="t hv">
+            <div class="ic zoom"><u></u><b></b></div>
+            Zoom
+          </div>
+          <div class="t">
+            <div class="ic flip"><u></u><b></b></div>
+            Flip
+          </div>
+          <div class="t">
+            <div class="ic dis"><u></u><b></b></div>
+            Dissolve
+          </div>
+          <div class="t">
+            <div class="ic own"><u></u><b></b></div>
+            rise
+          </div>
+        </div>
+        <div class="row">
+          <label>Duration</label>
+          <div class="sel3">500 ms</div>
+        </div>
+        <div class="row">
+          <label>Direction</label>
+          <div class="sel3">Left</div>
+        </div>
       </div>
     </div>
   </body>

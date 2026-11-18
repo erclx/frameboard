@@ -1,7 +1,7 @@
 import '../styles.css'
 
 import { render } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
@@ -15,6 +15,11 @@ function renderLoading() {
   )
   return container.querySelectorAll<HTMLElement>('[data-placeholder]')
 }
+
+// A home rendered by an earlier file on this browser worker leaves its count behind.
+beforeEach(() => {
+  localStorage.clear()
+})
 
 afterEach(() => {
   localStorage.clear()

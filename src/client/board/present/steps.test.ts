@@ -1,6 +1,15 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { clearSteps, readSteps, showSteps, touchesSteps } from './steps'
+import { frameElements } from '@/shared/frame-bridge/elements'
+
+import {
+  clearSteps,
+  previewStep,
+  readSteps,
+  showSteps,
+  STEP_MS,
+  touchesSteps,
+} from './steps'
 
 /** A document holding `body`, standing in for a presented frame. */
 function slide(body: string): Document {
@@ -180,5 +189,89 @@ describe('showSteps', () => {
       c: 'unmarked',
     })
     expect(doc.getElementById('a')?.getAttribute('style')).toBe('')
+  })
+})
+
+describe('previewStep', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  /** The element's marks and whether the step style is in, as one record. */
+  const marksOf = (doc: Document, id: string) => {
+    const element = doc.getElementById(id)
+    return {
+      state: element?.getAttribute('data-frameboard-step') ?? null,
+      effect: element?.getAttribute('data-frameboard-step-effect') ?? null,
+      style: doc.getElementById('frameboard-present-steps') !== null,
+    }
+  }
+
+  it('plays the effect on the element alone', () => {
+    vi.useFakeTimers()
+    const doc = slide('<p id="a" data-step="1"></p><p id="b"></p>')
+    const element = doc.getElementById('a')
+    if (!element) throw new Error('No step element')
+
+    previewStep(element, 'fly')
+
+    expect([marksOf(doc, 'a'), marksOf(doc, 'b').state]).toEqual([
+      { state: 'enter', effect: 'fly', style: true },
+      null,
+    ])
+  })
+
+  it('leaves the document as the file shows it once the effect ends', () => {
+    vi.useFakeTimers()
+    const doc = slide('<p id="a" data-step="1"></p>')
+    const element = doc.getElementById('a')
+    if (!element) throw new Error('No step element')
+    const before = doc.documentElement.outerHTML
+
+    previewStep(element, 'wipe')
+    vi.advanceTimersByTime(STEP_MS)
+
+    expect(doc.documentElement.outerHTML).toBe(before)
+  })
+
+  it('takes its marks back at once when ended early', () => {
+    vi.useFakeTimers()
+    const doc = slide('<p id="a" data-step="1"></p>')
+    const element = doc.getElementById('a')
+    if (!element) throw new Error('No step element')
+
+    const end = previewStep(element, 'zoom')
+    end()
+
+    expect(marksOf(doc, 'a')).toEqual({
+      state: null,
+      effect: null,
+      style: false,
+    })
+  })
+
+  it('leaves every element index in place while it plays', () => {
+    vi.useFakeTimers()
+    const doc = slide('<p id="a" data-step="1"></p><p id="b"></p>')
+    const element = doc.getElementById('a')
+    if (!element) throw new Error('No step element')
+    const before = frameElements(doc)
+
+    previewStep(element, 'fade')
+
+    expect(frameElements(doc)).toEqual(before)
+  })
+
+  it('blinks an Appear by hiding the element for a beat', () => {
+    vi.useFakeTimers()
+    const doc = slide('<p id="a" data-step="1"></p>')
+    const element = doc.getElementById('a')
+    if (!element) throw new Error('No step element')
+
+    previewStep(element, 'appear')
+    const held = marksOf(doc, 'a').state
+    vi.advanceTimersByTime(STEP_MS)
+
+    expect([held, marksOf(doc, 'a').state]).toEqual(['hidden', null])
   })
 })

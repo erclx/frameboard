@@ -18,6 +18,7 @@ import { type TreeEntry, useElementTree } from '../element/tree'
 import { usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
 import { placeFree } from '../place/write'
+import { previewStepOn, stopPreview } from '../present/preview'
 import { type ElementKey, useSelection } from '../selection'
 import { choosePreset, usePreset } from '../structure/tool'
 import { useTokenTable } from '../tokens'
@@ -169,7 +170,10 @@ export function InspectorPanel({
                 <SlideSection frames={frames} />
               ) : null}
               {slidesPage ? (
-                <PageSection page={slidesPage} />
+                <PageSection
+                  page={slidesPage}
+                  selected={frames.map((frame) => frame.ref)}
+                />
               ) : frames.length > 0 ? null : (
                 <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
                   Open a page to set how its slides present.
@@ -247,6 +251,8 @@ function ElementSlides({ page, element }: ElementProps) {
       step={live.step}
       disabled={!canWrite}
       write={(change) => writeElement(page, element, change)}
+      onPreview={(effect) => previewStepOn(element, effect)}
+      onPreviewEnd={stopPreview}
     />
   )
 }
