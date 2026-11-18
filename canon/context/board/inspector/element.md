@@ -28,5 +28,5 @@ Owns an element's sections, from Layout, Size, and Position through type, rotati
 - A hand edit reloads its frame unless it was `previewed`, as a drop, a corner resize, Keep values, or a Video file switch is, and the selection follows the hash the write answers
 - A field committing on blur drops a browser undo reaching it unfocused, through `stray-history.ts`, since a press falling through the board undoes the last field edited
 - A place reads the parent's position from the static cascade, which misses a sheet a load cannot read, so a miss writes `relative` anyway and one undo restores it
-- An element its `rotate` turns or its transform tilts in 3D takes no corner resize and draws no marks, and the 3D section stays off over any transform but the fixed order it writes
+- An element its `rotate` turns or its transform tilts in 3D takes no corner resize and draws no marks, and a rotation or tilt preview lags the outline until the write reloads the frame
 - Hug under a block parent writes `width: fit-content`, and Fill as `flex: 1 1 0` can shrink a child below its content width under `overflow: hidden`
