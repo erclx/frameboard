@@ -10,7 +10,7 @@ import {
 } from '@/shared/frame-bridge/messages'
 
 import { gapHandlers } from './gap'
-import { addressed, type Handler, type Handlers } from './handler'
+import { addressed, type Handler, type Handlers, onceParsed } from './handler'
 import { liveElementHandlers } from './live-element'
 import { measureHandlers } from './measure'
 import { mediaHandlers } from './media'
@@ -99,7 +99,8 @@ function answer<O extends BridgeOp>(op: O, args: unknown, id: string): unknown {
 
 // A frame shown on its own, as capture and the phone link show one, has no board.
 if (board !== window) {
-  announce()
+  // Every reader the first word wakes reads the body, so it waits for the body to parse.
+  onceParsed(document, () => announce())
   window.addEventListener('pagehide', () => announce(null))
   window.addEventListener('message', (event) => {
     if (event.source !== board) return

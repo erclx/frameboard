@@ -22,6 +22,19 @@ export type Handler<O extends BridgeOp> = (
 
 export type Handlers = { [O in BridgeOp]?: Handler<O> }
 
+/**
+ * Runs `run` once `doc` has parsed its body, at once when it already has.
+ * The bridge runs from the head, where a parser-blocking script or sheet
+ * leaves the body unparsed when its first word would otherwise go out.
+ */
+export function onceParsed(doc: Document, run: () => void): void {
+  if (doc.readyState === 'loading') {
+    doc.addEventListener('DOMContentLoaded', run, { once: true })
+  } else {
+    run()
+  }
+}
+
 /** The live element an address names, or null when the frame shows other bytes or nothing there. */
 export function addressed(address: {
   index: number
