@@ -12,7 +12,7 @@ This record holds at most 650 words.
 - The files are the design, with no private copy
 - Frames render as real web pages, so animation, video, and interaction work
 - A board folder lives anywhere, with or without git, and an empty one starts with one command
-- A new board's first page asks for a name, first screen size, and look
+- A new board's first page asks for a name and first screen size
 
 ### Projects and navigation
 
@@ -39,7 +39,7 @@ This record holds at most 650 words.
 ### Themes and tokens
 
 - Every frame works in light and dark, switched board-wide or flipped alone
-- Frames share one look through design tokens, a board-wide default with per-project overrides, edited by hand, and a project can start from a kit the board previews
+- Frames share one look through design tokens, a board-wide default with per-project overrides, edited by hand, and a project adds kits the board previews and sets one per frame
 
 ## Richer frames
 
