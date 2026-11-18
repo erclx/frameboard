@@ -258,6 +258,41 @@ async function aboutStepped(page: Page): Promise<void> {
   page.once('close', () => writeFileSync(path, original))
 }
 
+/** Gives `hero` a speaker note, so the presenter view has notes to draw. */
+async function heroNoted(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const original = readFileSync(path, 'utf8')
+  const layout = JSON.parse(original)
+  layout.frames.hero.speakerNotes =
+    'Start with the problem: two frames for one phone. Then fold it live.'
+  writeFileSync(path, JSON.stringify(layout))
+  page.once('close', () => writeFileSync(path, original))
+}
+
+/** The presentation the presenter view case joins, which its own page answers. */
+const PRESENTER_ID = 'capture'
+
+/**
+ * Answers the presenter window's hello from inside its own page, as a tab
+ * presenting `hero` four minutes in would, since a capture drives one page.
+ */
+async function presenterFedOnLoad(page: Page): Promise<void> {
+  await page.addInitScript((id) => {
+    const channel = new BroadcastChannel(`frameboard.present.${id}`)
+    const state = {
+      type: 'state',
+      page: 'webapp/home',
+      frame: 'webapp/home/hero',
+      step: 0,
+      startedAt: Date.now() - 252_000,
+      themes: {},
+    }
+    channel.addEventListener('message', (event) => {
+      if (event.data?.type === 'hello') channel.postMessage(state)
+    })
+  }, PRESENTER_ID)
+}
+
 /**
  * Shrinks `about` to a 390 by 264 card, under half the window each way, so
  * presenting it shows the scale stopping at twice the frame's size.
@@ -694,6 +729,27 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           onCanvas({ select: ['webapp/home/about'] }),
           presentOnLoad,
           readyWhen('[data-presenting] [aria-label="Step 0 of 3"]'),
+        ),
+      ),
+    },
+    {
+      section: 'presenter-view',
+      theme,
+      route: `/p/webapp/home/presenter?id=${PRESENTER_ID}`,
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      // The timer and the clock read the time of the run.
+      mask: ['[data-presenter] header button', '[data-presenter] time'],
+      setup: themed(
+        both(
+          aboutStepped,
+          heroNoted,
+          noAgentChanges,
+          presenterFedOnLoad,
+          readyWhen(
+            '[data-presenter] iframe[title="about"]',
+            '[data-presenter] iframe.invisible',
+          ),
         ),
       ),
     },

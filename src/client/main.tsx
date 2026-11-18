@@ -11,6 +11,7 @@ import {
   startBusyWatch,
 } from './board/changes/show'
 import { armGuideLanding } from './board/guide/state'
+import { isPresenterPath } from './board/present/sync'
 import { markPointerFocus } from './focus/pointer-mark'
 import { registerHistoryActions } from './history/actions'
 import { connectLive } from './live/socket'
@@ -25,10 +26,13 @@ if (!root) throw new Error('Missing #root element')
 armGuideLanding(window.location.pathname)
 startBusyWatch()
 markPointerFocus(window)
-connectLive(liveStore, {
-  onShow: receiveShow,
-  onDisconnect: cancelPendingShow,
-})
+// The presenter window shows no board, so an agent's show would navigate it away from the slides.
+connectLive(
+  liveStore,
+  isPresenterPath(window.location.pathname)
+    ? {}
+    : { onShow: receiveShow, onDisconnect: cancelPendingShow },
+)
 connectTheme(themeStore, windowThemeHost(window))
 // Both the home and the board draw the toggle and undo, so the actions live as long as the app.
 registerThemeActions()

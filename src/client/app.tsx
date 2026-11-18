@@ -1,6 +1,6 @@
 import { LucideProvider } from 'lucide-react'
 import { useEffect } from 'react'
-import { Link, Route, Switch } from 'wouter'
+import { Link, Route, Switch, useSearch } from 'wouter'
 
 import { watchExpiredLink } from './access/expired-link'
 import { ViewOnlyNotice } from './access/notice'
@@ -8,6 +8,8 @@ import { SHOW_OFFER } from './board/changes/show'
 import { ShowOfferBody } from './board/changes/show-toast'
 import { CHANGE_TOAST, ChangeToastBody } from './board/changes/toast'
 import { BoardLoading } from './board/loading'
+import { PresenterScreen } from './board/present/presenter/screen'
+import { presentationIdOf } from './board/present/sync'
 import { BoardScreen } from './board/screen'
 import { buttonVariants } from './components/ui/button'
 import { Toaster } from './components/ui/toast'
@@ -56,6 +58,9 @@ function Shell() {
           <Route path="/">
             <Home projects={projects} />
           </Route>
+          <Route path="/p/:project/:page/presenter">
+            <PresenterRoute />
+          </Route>
           <Route path="/p/:project/:page">
             {({ project, page }) => (
               <BoardScreen project={project} page={page} />
@@ -79,6 +84,9 @@ function Shell() {
         <Switch>
           <Route path="/">
             <HomeLoading />
+          </Route>
+          <Route path="/p/:project/:page/presenter">
+            <PresenterRoute />
           </Route>
           <Route path="/p/:project/:page">
             {({ project }) => <BoardLoading project={project} />}
@@ -107,4 +115,10 @@ function Shell() {
       {projects ? <ViewOnlyNotice /> : null}
     </div>
   )
+}
+
+/** The presenter window, following the presentation its query names. */
+function PresenterRoute() {
+  const search = useSearch()
+  return <PresenterScreen id={presentationIdOf(search)} />
 }

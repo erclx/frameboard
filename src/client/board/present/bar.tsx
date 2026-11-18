@@ -3,6 +3,8 @@ import {
   ChevronRight,
   LayoutGrid,
   type LucideIcon,
+  Maximize,
+  MonitorSpeaker,
   X,
 } from 'lucide-react'
 interface PresentBarProps {
@@ -16,9 +18,13 @@ interface PresentBarProps {
   step: number
   steps: number
   name: string
+  /** Whether this window is full screen, which the Full screen button shows pressed. */
+  fullscreen: boolean
   onPrevious: () => void
   onNext: () => void
   onOverview: () => void
+  onPresenter: () => void
+  onFullscreen: () => void
   onLeave: () => void
 }
 
@@ -34,9 +40,12 @@ export function PresentBar({
   step,
   steps,
   name,
+  fullscreen,
   onPrevious,
   onNext,
   onOverview,
+  onPresenter,
+  onFullscreen,
   onLeave,
 }: PresentBarProps) {
   return (
@@ -75,6 +84,17 @@ export function PresentBar({
       <Separator />
       <span className="w-[150px] truncate px-2 text-[#aaa]">{name}</span>
       <Separator />
+      <BarButton
+        label="Presenter view"
+        icon={MonitorSpeaker}
+        onClick={onPresenter}
+      />
+      <BarButton
+        label="Full screen"
+        icon={Maximize}
+        pressed={fullscreen}
+        onClick={onFullscreen}
+      />
       <BarButton label="Leave presenting" icon={X} onClick={onLeave} />
     </div>
   )
@@ -84,11 +104,14 @@ function BarButton({
   label,
   icon: Icon,
   disabled = false,
+  pressed,
   onClick,
 }: {
   label: string
   icon: LucideIcon
   disabled?: boolean
+  /** Set on a toggle alone, which then reads as pressed or not. */
+  pressed?: boolean
   onClick: () => void
 }) {
   return (
@@ -96,11 +119,12 @@ function BarButton({
       type="button"
       aria-label={label}
       title={label}
+      aria-pressed={pressed}
       aria-disabled={disabled || undefined}
       onClick={() => {
         if (!disabled) onClick()
       }}
-      className="grid size-[30px] place-items-center rounded-[7px] outline-none hover:bg-white/10 focus-visible:ring-3 focus-visible:ring-[#4e92f6] aria-disabled:cursor-not-allowed aria-disabled:opacity-40 aria-disabled:hover:bg-transparent"
+      className="grid size-[30px] place-items-center rounded-[7px] outline-none hover:bg-white/10 aria-pressed:bg-white/15 focus-visible:ring-3 focus-visible:ring-[#4e92f6] aria-disabled:cursor-not-allowed aria-disabled:opacity-40 aria-disabled:hover:bg-transparent"
     >
       <Icon aria-hidden className="size-4" strokeWidth={1.6} />
     </button>

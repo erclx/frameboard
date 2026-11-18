@@ -13,6 +13,7 @@ import {
   bindKeys,
   findAction,
   isEnabled,
+  registerActions,
   useActions,
 } from '@/client/actions/registry'
 import { Toaster } from '@/client/components/ui/toast'
@@ -825,6 +826,31 @@ describe('P', () => {
 
     expect(modeStore.getState().mode).toBe('edit')
     unbind()
+    unmount()
+  })
+})
+
+describe('F', () => {
+  it('reaches a later action on F while nothing presents', async () => {
+    const { unmount } = renderHook(() => useBoardActions())
+    const frameTool = vi.fn()
+    const unregister = registerActions([
+      {
+        id: 'tool.frame',
+        label: 'Frame',
+        group: 'tool',
+        palette: false,
+        keys: ['f'],
+        run: frameTool,
+      },
+    ])
+    const unbind = bindKeys(window)
+
+    await userEvent.keyboard('f')
+
+    expect(frameTool).toHaveBeenCalledTimes(1)
+    unbind()
+    unregister()
     unmount()
   })
 })
