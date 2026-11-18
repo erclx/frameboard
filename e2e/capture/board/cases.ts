@@ -62,6 +62,9 @@ const WRITING_SECTIONS = [
   'controls-edit',
   'controls-play',
   'controls-play-left',
+  // Last, since their model and its viewer stay in the served project's assets.
+  'model-section',
+  'model-turning',
 ]
 
 const CHANGE_LOG = join(SERVED_BOARD, '.run/changes/log.json')

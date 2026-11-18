@@ -110,6 +110,7 @@ const REFERENCE_ASSETS = [
   { path: 'logo.svg', kind: 'svg', size: 2_000 },
   { path: 'Inter.woff2', kind: 'font', size: 98_000 },
   { path: 'demo.mp4', kind: 'video', size: 4_100_000 },
+  { path: 'phone.glb', kind: 'model', size: 5_576 },
   { path: 'shared.css', kind: 'stylesheet', size: 3_000 },
 ]
 
