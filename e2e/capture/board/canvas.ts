@@ -183,6 +183,20 @@ async function homePushes(page: Page): Promise<void> {
 }
 
 /**
+ * Gives hero a two-line speaker note, so a selected hero shows its strip,
+ * taking the layout back when the page closes.
+ */
+async function heroHoldsNote(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.frames.hero.speakerNotes =
+    'Open on the price, then the plan picker.\nPause before the demo.'
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => writeFileSync(layoutPath, originalLayout))
+}
+
+/**
  * Gives webapp a `wipe` transition of its own and sets it on the home page,
  * so the Page section's list shows a project's name after the built-ins,
  * taking the file and the layout back when the page closes.
@@ -699,6 +713,24 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           inspectorTab('Slides'),
           transitionMenuOnLoad,
           readyWhen('[data-slot="dropdown-menu-content"]'),
+        ),
+      ),
+    },
+    {
+      section: 'speaker-notes',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          heroHoldsNote,
+          noAgentChanges,
+          asWriter,
+          onCanvas({ select: ['webapp/home/hero'] }),
+          inspectorTab('Slides'),
+          readyWhen('[data-speaker-notes] textarea'),
         ),
       ),
     },
