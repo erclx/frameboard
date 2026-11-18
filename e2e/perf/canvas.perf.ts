@@ -71,6 +71,7 @@ function frameHtml(index: number): string {
   <body>
     <h1>Frame ${index}</h1>
     <p>${'A paragraph of body copy that wraps across the frame. '.repeat(12)}</p>
+    ${index === 0 ? '<div data-name="Box" style="width: 120px; height: 80px; background: #ccc"></div>' : ''}
     <svg width="160" height="160" viewBox="0 0 160 160" ${animated ? 'class="spin"' : ''}>
       <rect x="20" y="20" width="120" height="120" rx="16" fill="hsl(${index * 7} 70% 50%)" />
       <circle cx="80" cy="80" r="32" fill="white" />
@@ -241,6 +242,66 @@ test.describe('fifty live frames', () => {
     expect(dragged.p95).toBeLessThanOrEqual(P95_MAX_MS)
     expect(dragged.slowShare).toBeLessThanOrEqual(SLOW_SHARE_MAX)
     expect(dragged.longestLongFrame).toBeLessThanOrEqual(LONG_FRAME_MAX_MS)
+  })
+
+  test('an element resize within the smoothness bar', async ({
+    page,
+  }, testInfo) => {
+    // A writer's tab, since a tab that may not write never starts a resize.
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/perf/grid`)
+    await waitForLiveFrames(page)
+
+    const element = page
+      .frameLocator('[data-frame="perf/grid/frame-00"] iframe')
+      .locator('[data-name="Box"]')
+    const shown = await element.boundingBox()
+    if (!shown) throw new Error('no box in frame-00')
+    await page.keyboard.down('Meta')
+    await page.mouse.click(
+      shown.x + shown.width / 2,
+      shown.y + shown.height / 2,
+    )
+    await page.keyboard.up('Meta')
+    const outline = page.locator('[data-element-selection]')
+    await expect(outline.locator('[data-element-corner]')).toHaveCount(4)
+    const box = await outline.boundingBox()
+    if (!box) throw new Error('the box draws no outline')
+    const corner = { x: box.x + box.width, y: box.y + box.height }
+    const widthOf = () =>
+      element.evaluate((el) => (el as HTMLElement).style.width)
+    await page.mouse.move(corner.x, corner.y)
+    await page.mouse.down()
+    await startRecording(page)
+
+    // Every move previews through the bridge into the frame's page.
+    await takeSample(page)
+    let previewed = ''
+    for (
+      let start = Date.now(), step = 0;
+      Date.now() - start < GESTURE_MS;
+      step += 1
+    ) {
+      const swing = (step % 120) - 60
+      await page.mouse.move(corner.x + 40 + swing, corner.y + swing / 2)
+      await nextFrame(page)
+      if (step === 30) previewed = await widthOf()
+    }
+    const resized = summarize('element resize', await takeSample(page))
+    // Cancelled, so the run writes nothing into the board.
+    await page.keyboard.press('Escape')
+    await page.mouse.up()
+
+    // The drag previewed a width, so the numbers measure a real resize.
+    expect(previewed).not.toBe('')
+    await testInfo.attach('canvas-resize-perf.json', {
+      body: JSON.stringify(resized, null, 2),
+      contentType: 'application/json',
+    })
+    expect(resized.frames).toBeGreaterThan(0)
+    expect(resized.p95).toBeLessThanOrEqual(P95_MAX_MS)
+    expect(resized.slowShare).toBeLessThanOrEqual(SLOW_SHARE_MAX)
+    expect(resized.longestLongFrame).toBeLessThanOrEqual(LONG_FRAME_MAX_MS)
   })
 
   test('pan and zoom within the smoothness bar', async ({ page }, testInfo) => {

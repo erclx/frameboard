@@ -4,7 +4,9 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
-import { type LiveStep, StepSection } from './step'
+import type { LiveStep } from '@/shared/frame-bridge/live-element'
+
+import { StepSection } from './step'
 import type { ElementChange } from './write'
 
 const NO_STEP: LiveStep = { step: null, effect: null, start: null }

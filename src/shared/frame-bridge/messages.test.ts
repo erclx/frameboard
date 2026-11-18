@@ -6,8 +6,11 @@ import {
   isElementBox,
   isTextEditArgs,
   isTextEditEnd,
+  pushValue,
   readBridgeMessage,
-} from './frame-bridge'
+  REFUSED,
+  replyValue,
+} from './messages'
 
 const ORIGIN = 'http://127.0.0.1:4000'
 
@@ -85,6 +88,18 @@ describe('readBridgeMessage', () => {
     })
   })
 
+  it.each([
+    ['a hash', 'c'.repeat(64)],
+    ['a page going', null],
+  ])('reads %s announced with no id', (_case, hash) => {
+    expect(from({ tag: BRIDGE_TAG, kind: 'shown', page: 'p1', hash })).toEqual({
+      tag: BRIDGE_TAG,
+      kind: 'shown',
+      page: 'p1',
+      hash,
+    })
+  })
+
   it('refuses a message from another origin', () => {
     expect(
       from(
@@ -113,6 +128,11 @@ describe('readBridgeMessage', () => {
       'an error reply with no message',
       { tag: BRIDGE_TAG, kind: 'reply', id: 'r1', ok: false },
     ],
+    [
+      'a shown hash that is not text',
+      { tag: BRIDGE_TAG, kind: 'shown', hash: 7 },
+    ],
+    ['a shown message with no hash', { tag: BRIDGE_TAG, kind: 'shown' }],
   ])('refuses %s', (_case, data) => {
     expect(from(data)).toBeNull()
   })
@@ -194,5 +214,41 @@ describe('isTextEditArgs', () => {
     ['a bad address', { index: -1, hash: 'a', at: { x: 0, y: 0 } }],
   ])('refuses %s', (_case, value) => {
     expect(isTextEditArgs(value)).toBe(false)
+  })
+})
+
+describe('replyValue', () => {
+  it('reads a value its op replies with', () => {
+    const box = { left: 0, top: 1, right: 2, bottom: 3 }
+
+    expect(replyValue('element-box', box)).toEqual(box)
+  })
+
+  it('reads the null an op may reply with', () => {
+    expect(replyValue('element-box', null)).toBeNull()
+  })
+
+  it.each([
+    ['a box missing an edge', 'element-box', { left: 0, top: 1, right: 2 }],
+    ['a count where a flag goes', 'restamp', 1],
+    ['a value where none goes', 'text-written', true],
+  ] as const)('refuses %s', (_case, op, value) => {
+    expect(replyValue(op, value)).toBe(REFUSED)
+  })
+})
+
+describe('pushValue', () => {
+  it('reads what its op pushes', () => {
+    expect(pushValue('text-edit', { kind: 'closed' })).toEqual({
+      kind: 'closed',
+    })
+  })
+
+  it('refuses a push its schema does not take', () => {
+    expect(pushValue('text-edit', { kind: 'open' })).toBe(REFUSED)
+  })
+
+  it('refuses any push for an op that pushes nothing', () => {
+    expect(pushValue('element-box', null)).toBe(REFUSED)
   })
 })

@@ -1,9 +1,9 @@
 import { act } from '@testing-library/react'
 
+import type { Rotation } from '@/shared/frame-bridge/live-element'
 import type { StyleValue } from '@/shared/records/elements'
 import type { TokenRow } from '@/shared/records/tokens'
 
-import { type Rotation } from './styles'
 import { type ElementChange } from './write'
 
 export function tokenOf(name: string, light: string, dark = light): TokenRow {

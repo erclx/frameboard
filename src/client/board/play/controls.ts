@@ -10,8 +10,9 @@ import {
   parseBinds,
   UNIT_ATTRIBUTE,
 } from '@/shared/bindings'
+import { elementIndex, renderedHash } from '@/shared/frame-bridge/elements'
 
-import { elementIndex, liveIframe, renderedHash } from '../frame-dom'
+import { liveIframe } from '../frame-dom'
 import { writeElements } from '../inspector/element/write'
 import { enteredStore } from './entered'
 

@@ -87,7 +87,7 @@ export async function placeElement(
     corner,
   }: PlaceDeps = {},
 ): Promise<ElementKey | null> {
-  const under = gapUnder(container, frames, at)
+  const under = await gapUnder(container, frames, at)
   if (!under || (kind === 'asset' && !asset)) return null
   const { gap } = under
   const spot =
@@ -297,7 +297,7 @@ export async function moveElement(
     notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
   }: Omit<PlaceDeps, 'mode' | 'size'> = {},
 ): Promise<ElementKey | null> {
-  const under = moveGapUnder(container, frames, at, key)
+  const under = await moveGapUnder(container, frames, at, key)
   if (!under) return null
   return writeAtGap(
     under,

@@ -1,16 +1,17 @@
 import { act, render } from '@testing-library/react'
 import { Profiler } from 'react'
 
-import type { FrameRecord, SectionRecord } from '@/shared/records/list'
-import { frameOf } from '@/test/board'
-
-import type { GroupMember, MemberEdit } from '../element/group'
 import type {
   ElementSize,
-  PlacedOffsets,
   ResizeKind,
   ResizeRead,
-} from '../element/resize'
+} from '@/shared/frame-bridge/live-element'
+import type { FrameRecord, SectionRecord } from '@/shared/records/list'
+import { frameOf } from '@/test/board'
+import { BRIDGE } from '@/test/frame-bridge'
+
+import type { GroupMember, MemberEdit } from '../element/group'
+import type { PlacedOffsets } from '../element/resize'
 import { createModeStore } from '../mode'
 import { SectionBoxes } from '../sections/box'
 import { type ElementKey, selectionStore } from '../selection'
@@ -185,7 +186,7 @@ export function setup(
                 <iframe
                   title={frame.ref}
                   className="size-full border-0"
-                  srcDoc={`<!doctype html><html><head></head><body style="margin:0">${live}</body></html>`}
+                  srcDoc={`<!doctype html><html><head>${BRIDGE}</head><body style="margin:0">${live}</body></html>`}
                 />
               ) : null}
             </div>
@@ -345,8 +346,10 @@ export function setup(
         return null
       },
       pickElement: async (_layer, _frames, at) => pick(at),
-      onBareFrame: (_layer, _frames, at) => bare(at),
-      elementsIn: () => inner,
+      // False at once as the store answers where it can tell, else the frame's word.
+      onBareFrame: (_layer, _frames, at) =>
+        bare(at) ? Promise.resolve(true) : false,
+      elementsIn: async () => () => inner,
       resizeOf: () => (shape === undefined ? null : resizeRead),
       placedOffsets: () => placed ?? null,
       groupOf: () => group?.members ?? null,

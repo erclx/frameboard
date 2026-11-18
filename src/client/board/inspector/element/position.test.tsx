@@ -5,10 +5,10 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
 import { TooltipProvider } from '@/client/components/ui/tooltip'
+import type { Placement } from '@/shared/frame-bridge/live-element'
 
 import type { FreeSpot } from '../../place/write'
 import { PositionSection } from './position'
-import type { Placement } from './styles'
 import type { ElementChange } from './write'
 
 /** An element in the flow at 24, 16 in its parent, 120 by 40. */

@@ -9,7 +9,7 @@ import { setCharacterKeys } from '@/client/actions/character-keys'
 import { registerActions } from '@/client/actions/registry'
 import { liveStore, receiveClaims } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
-import { EDITING } from '@/shared/frame-bridge'
+import { EDITING } from '@/shared/frame-bridge/messages'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 

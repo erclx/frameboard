@@ -10,6 +10,7 @@ import { liveStore, receiveBoard, receiveFindings } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 import { contrastOnPage } from '@/test/contrast'
+import { BRIDGE } from '@/test/frame-bridge'
 
 import { trees } from '../element/tree'
 import type { Box } from '../geometry/box'
@@ -1069,7 +1070,7 @@ describe('InspectorPanel', () => {
         const loaded = new Promise((resolve) =>
           iframe.addEventListener('load', resolve, { once: true }),
         )
-        iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body><h1>Swatches</h1><p>Six colors</p></body></html>`
+        iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style>${BRIDGE}</head><body><h1>Swatches</h1><p>Six colors</p></body></html>`
         frame.append(iframe)
         layer.append(frame)
         document.body.append(layer)
@@ -1235,7 +1236,7 @@ describe('InspectorPanel', () => {
       const loaded = new Promise((resolve) =>
         iframe.addEventListener('load', resolve, { once: true }),
       )
-      iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body><h1>Swatches</h1></body></html>`
+      iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style>${BRIDGE}</head><body><h1>Swatches</h1></body></html>`
       frame.append(iframe)
       layer.append(frame)
       document.body.append(layer)
@@ -1384,7 +1385,7 @@ describe('InspectorPanel', () => {
       const loaded = new Promise((resolve) =>
         iframe.addEventListener('load', resolve, { once: true }),
       )
-      iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body><h1>Swatches<b>x</b></h1></body></html>`
+      iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style>${BRIDGE}</head><body><h1>Swatches<b>x</b></h1></body></html>`
       frame.append(iframe)
       layer.append(frame)
       document.body.append(layer)
@@ -1418,7 +1419,7 @@ describe('InspectorPanel', () => {
       const loaded = new Promise((resolve) =>
         iframe.addEventListener('load', resolve, { once: true }),
       )
-      iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body><h1>Swatches</h1></body></html>`
+      iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style>${BRIDGE}</head><body><h1>Swatches</h1></body></html>`
       frame.append(iframe)
       layer.append(frame)
       document.body.append(layer)

@@ -3,10 +3,12 @@ import '../../styles.css'
 import { act, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { elementIndex } from '@/shared/frame-bridge/elements'
 import { frameOf } from '@/test/board'
+import { BRIDGE } from '@/test/frame-bridge'
 
 import CLIP from '../../../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
-import { elementIndex } from '../frame-dom'
+import { request } from '../bridge/channel'
 import { modeStore } from '../mode'
 import {
   clear,
@@ -23,7 +25,7 @@ const HERO = frameOf('hero', {
   box: { x: 100, y: 50, width: 400, height: 300 },
 })
 
-// Indices past the skipped injected style: html 0, head 1, body 2, h1 3.
+// Indices past the skipped injected style and bridge: html 0, head 1, body 2, h1 3.
 const SOURCE = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}h1{margin:20px 0 0 30px;width:248px}</style></head><body><h1>Hello, world</h1></body></html>`
 
 let layer: HTMLDivElement | undefined
@@ -45,11 +47,14 @@ async function mountFrame(source = SOURCE): Promise<HTMLDivElement> {
   const loaded = new Promise((resolve) =>
     iframe.addEventListener('load', resolve, { once: true }),
   )
-  iframe.srcdoc = source
+  // Every source loads the bridge, which the overlay reads the page through.
+  iframe.srcdoc = source.replace('</head>', `${BRIDGE}</head>`)
   frame.append(iframe)
   layer.append(frame)
   document.body.append(layer)
   await loaded
+  // Its reply follows the hash the bridge announced as it started.
+  await request(iframe, 'element-box', { index: 0, hash: '' })
   return layer
 }
 
@@ -160,9 +165,11 @@ describe('ElementOverlay', () => {
 
       act(() => selectElement(selectionStore, 'studio/home', members[1]!))
 
-      expect(
-        container.querySelectorAll('[data-element-selection]'),
-      ).toHaveLength(1)
+      await waitFor(() =>
+        expect(
+          container.querySelectorAll('[data-element-selection]'),
+        ).toHaveLength(1),
+      )
       expect(container.querySelector('[data-chip]')).not.toBeNull()
     })
   })
@@ -181,9 +188,8 @@ describe('ElementOverlay', () => {
       <ElementOverlay frames={[HERO]} container={container} />,
     )
 
-    const box = outline(drawn)
-    expect(box?.style.left).toBe('130px')
-    expect(box?.style.top).toBe('70px')
+    await waitFor(() => expect(outline(drawn)?.style.left).toBe('130px'))
+    expect(outline(drawn)?.style.top).toBe('70px')
   })
 
   describe('corner marks and the size chip', () => {
@@ -199,8 +205,12 @@ describe('ElementOverlay', () => {
           hash: HASH,
         }),
       )
-      return render(<ElementOverlay frames={[HERO]} container={container} />)
-        .container
+      const drawn = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      ).container
+      // Drawn once the frame answers with the element's measure.
+      await waitFor(() => expect(outline(drawn)).not.toBeNull())
+      return drawn
     }
     const marks = (drawn: HTMLElement) =>
       drawn.querySelectorAll('[data-element-corner]').length
@@ -562,6 +572,7 @@ describe('ElementOverlay', () => {
         <ElementOverlay frames={[HERO]} container={container} />,
       )
 
+      await waitFor(() => expect(ghosts(drawn)).toHaveLength(1))
       const [ghost] = ghosts(drawn)
       expect([
         ghost?.dataset.ghostIndex,
@@ -581,7 +592,7 @@ describe('ElementOverlay', () => {
       const box = container
         .querySelector('iframe')
         ?.contentDocument?.querySelector<HTMLElement>('body > div')
-      expect(ghosts(drawn)).toHaveLength(1)
+      await waitFor(() => expect(ghosts(drawn)).toHaveLength(1))
 
       act(() => box?.style.setProperty('left', '380px'))
 

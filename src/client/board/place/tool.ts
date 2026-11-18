@@ -12,12 +12,12 @@ import { createStore } from 'zustand/vanilla'
 
 import { refreshActions, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
+import type { Gap } from '@/shared/frame-bridge/gap'
 
 import type { PlaceableFile } from '../assets/drag'
 import { modeStore, type Tool } from '../mode'
 import type { BoardPoint } from '../notes/pick'
 import type { ElementKey } from '../selection'
-import type { Gap } from './gap'
 import type { PlacedKind } from './write'
 
 export type ShapeKind = Exclude<PlacedKind, 'text' | 'asset'>

@@ -1,193 +1,45 @@
 import { toast } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
+import type {
+  ElementSize,
+  Offsets,
+  ResizeRead,
+} from '@/shared/frame-bridge/live-element'
 
-import { elementAt, renderedHash } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { type Corner, resizeBox } from '../geometry/resize'
 import {
   type Axis,
   sizeDeclarations,
 } from '../inspector/element/size-declarations'
-import {
-  degreesOf,
-  type LiveLayout,
-  previewStyle,
-  readLayout,
-} from '../inspector/element/styles'
+import { previewStyle } from '../inspector/element/styles'
 import { writeElement, writeElements } from '../inspector/element/write'
-import type { Margins } from '../place/flow-guess'
 import type { ElementKey } from '../selection'
 import type { GroupMember, MemberEdit } from './group'
-
-/** An element's size in its frame's CSS pixels. */
-export interface ElementSize {
-  width: number
-  height: number
-}
-
-/**
- * What a corner drag writes on an element: width and height on a `box` or
- * `media`, width alone on `text`, whose height follows its words, and on a
- * `container` each side the drag changed, set Fixed as the Size row sets it.
- */
-export type ResizeKind = 'box' | 'text' | 'media' | 'container'
-
-/** The document's own wrappers, which a corner drag never sizes. */
-const ROOTS = new Set(['html', 'body'])
-
-/**
- * The corner resize an element's markup takes, null for a divider or a wrapper.
- * Text holds words whose every element child lays out inline, so a `<p>`
- * holding a `<b>` is text.
- */
-export function resizeKindOf(element: Element | null): ResizeKind | null {
-  if (!element || ROOTS.has(element.localName)) return null
-  if (element.localName === 'img' || element.localName === 'video') {
-    return 'media'
-  }
-  const words = (element.textContent ?? '').trim() !== ''
-  if (element.childElementCount > 0) {
-    return words && [...element.children].every(laysOutInline)
-      ? 'text'
-      : 'container'
-  }
-  if (words) return 'text'
-  return element.localName === 'div' ? 'box' : null
-}
-
-/** Whether `element` flows inside its parent's line, read in its frame's own window. */
-function laysOutInline(element: Element): boolean {
-  const display =
-    element.ownerDocument.defaultView?.getComputedStyle(element).display ?? ''
-  return display === 'inline' || display.startsWith('inline-')
-}
-
-/** What a container's corner drag reads at the press to write Fixed the way the Size row does. */
-export interface ContainerSizing {
-  /** Its flow and its parent's, holding the size it draws at, which a side the drag leaves keeps. */
-  layout: LiveLayout
-  /** Whether it grows along its flex parent's main axis, being Fill there, which Fixed takes off. */
-  fills: boolean
-}
-
-/** What a live element's corner drag acts from. */
-export interface ResizeRead {
-  kind: ResizeKind
-  /** The size media decodes to, null on anything else and until it decodes. */
-  natural: ElementSize | null
-  /** Whether a `text` element states no height, so its height follows its words. */
-  hugsHeight: boolean
-  /**
-   * What the drawn box holds beyond a written size, being the padding and
-   * border of a `content-box` element. The drag sizes the outline, a border
-   * box, so a write takes this off rather than jump by it.
-   */
-  inset: ElementSize
-  /** On a `container`, what its Fixed write reads, null on any other kind. */
-  sizing: ContainerSizing | null
-}
+import { heldGhost, heldMeasures } from './measures'
 
 /** What a corner drag's write reads off the element it resizes. */
 export type ResizeTarget = Pick<ResizeRead, 'kind' | 'inset'> &
   Partial<Pick<ResizeRead, 'sizing'>>
 
-/**
- * How a live element takes a corner resize, null for a rotated one, whose
- * outline corners are not its own, and for inline content a width cannot size.
- */
-export function readResize(element: Element): ResizeRead | null {
-  const kind = resizeKindOf(element)
-  const view = element.ownerDocument.defaultView
-  const style = view?.getComputedStyle(element)
-  if (!kind || !view || !style || degreesOf(style.rotate) !== 0) return null
-  if (
-    (kind === 'text' || kind === 'container') &&
-    (style.display === 'inline' || style.display === 'contents')
-  ) {
-    return null
-  }
-  return {
-    kind,
-    natural: naturalSize(element),
-    hugsHeight: kind === 'text' && !statesHeight(element),
-    inset: contentBoxInset(style),
-    sizing: kind === 'container' ? containerSizing(element, style, view) : null,
-  }
-}
-
-const FLEX_PARENTS = new Set(['vertical', 'horizontal', 'wrap'])
-
-function containerSizing(
-  element: Element,
-  style: CSSStyleDeclaration,
-  view: Window,
-): ContainerSizing {
-  const layout = readLayout(element, style, view)
-  return {
-    layout,
-    fills:
-      FLEX_PARENTS.has(layout.parent) && (parseFloat(style.flexGrow) || 0) > 0,
-  }
-}
-
-function contentBoxInset(style: CSSStyleDeclaration): ElementSize {
-  if (style.boxSizing !== 'content-box') return { width: 0, height: 0 }
-  const sum = (...lengths: string[]) =>
-    lengths.reduce((total, length) => total + (parseFloat(length) || 0), 0)
-  return {
-    width: sum(
-      style.paddingLeft,
-      style.paddingRight,
-      style.borderLeftWidth,
-      style.borderRightWidth,
-    ),
-    height: sum(
-      style.paddingTop,
-      style.paddingBottom,
-      style.borderTopWidth,
-      style.borderBottomWidth,
-    ),
-  }
-}
-
-function naturalSize(element: Element): ElementSize | null {
-  const [width, height] = isImage(element)
-    ? [element.naturalWidth, element.naturalHeight]
-    : isVideo(element)
-      ? [element.videoWidth, element.videoHeight]
-      : [0, 0]
-  return width > 0 && height > 0 ? { width, height } : null
-}
-
-// A node from the frame's realm, where this window's classes do not match it.
-function isImage(element: Element): element is HTMLImageElement {
-  return element.localName === 'img'
-}
-
-function isVideo(element: Element): element is HTMLVideoElement {
-  return element.localName === 'video'
-}
-
-/** A height stated on the element itself, since a rule's height reads as none. */
-function statesHeight(element: Element): boolean {
-  const height = 'style' in element ? (element as HTMLElement).style.height : ''
-  return height !== '' && height !== 'auto'
+/** Whether a canvas layer draws the frame `ref` as a live page. */
+function drawsLive(container: ParentNode, ref: string): boolean {
+  return (
+    container.querySelector(`[data-frame="${CSS.escape(ref)}"] iframe`) !== null
+  )
 }
 
 /**
- * How the element `key` names takes a corner resize, read off a live frame
- * showing the bytes it was read from, or null for one that takes none.
+ * How the element `key` names takes a corner resize, read from what its
+ * frame pushed for the selection at the key's bytes, or null for one that
+ * takes none or is not measured.
  */
 export function shownResize(
   container: ParentNode,
   key: ElementKey,
 ): ResizeRead | null {
-  const shown = container.querySelector<HTMLIFrameElement>(
-    `[data-frame="${CSS.escape(key.frame)}"] iframe`,
-  )?.contentDocument
-  if (!shown || renderedHash(shown) !== key.hash) return null
-  const element = elementAt(shown, key.index)
-  return element ? readResize(element) : null
+  if (!drawsLive(container, key.frame)) return null
+  return heldMeasures([key])?.[0]?.read ?? null
 }
 
 /**
@@ -326,26 +178,20 @@ export function startElementResize(
 }
 
 /** A placed element's `left` and `top` in its frame's CSS pixels. */
-export interface PlacedOffsets {
-  left: number
-  top: number
-}
+export type PlacedOffsets = Offsets
 
 /**
- * The offsets a placed element holds, read off a live frame showing the
- * bytes `key` was read from, or null for one in the flow, whose drag
- * carries it to another gap instead.
+ * The offsets a placed element holds, read from what its frame pushed for
+ * the selection or its ghost at the key's bytes, or null for one in the
+ * flow, whose drag carries it to another gap instead.
  */
 export function placedOffsets(
   container: ParentNode,
   key: ElementKey,
 ): PlacedOffsets | null {
-  const shown = container.querySelector<HTMLIFrameElement>(
-    `[data-frame="${CSS.escape(key.frame)}"] iframe`,
-  )?.contentDocument
-  if (!shown || renderedHash(shown) !== key.hash) return null
-  const element = elementAt(shown, key.index)
-  return element ? placedIn(element, []) : null
+  if (!drawsLive(container, key.frame)) return null
+  const member = heldMeasures([key])?.[0]
+  return member ? member.placed : (heldGhost(key)?.placed ?? null)
 }
 
 /** A drag of one placed element, previewed on its live node and written once on release. */
@@ -402,26 +248,6 @@ export function startPlacedMove(
 }
 
 /**
- * A free element's `left` and `top`, null when another group member holds it,
- * since a group drag would otherwise carry it twice.
- */
-export function placedIn(
-  element: Element,
-  group: readonly Element[],
-): PlacedOffsets | null {
-  if (group.some((other) => other !== element && other.contains(element))) {
-    return null
-  }
-  const style = element.ownerDocument.defaultView?.getComputedStyle(element)
-  if (!style || (style.position !== 'absolute' && style.position !== 'fixed')) {
-    return null
-  }
-  const left = parseFloat(style.left)
-  const top = parseFloat(style.top)
-  return Number.isNaN(left) || Number.isNaN(top) ? null : { left, top }
-}
-
-/**
  * The selected elements `keys` names as a group drag reads them at the press,
  * each box in its frame's own pixels, off a live frame showing the bytes they
  * were read from, or null while it shows other bytes or misses one.
@@ -431,45 +257,16 @@ export function shownGroup(
   keys: readonly ElementKey[],
 ): GroupMember[] | null {
   const [first] = keys
-  const shown = first
-    ? container.querySelector<HTMLIFrameElement>(
-        `[data-frame="${CSS.escape(first.frame)}"] iframe`,
-      )?.contentDocument
-    : undefined
-  if (!first || !shown || renderedHash(shown) !== first.hash) return null
-  const found = keys.flatMap(({ index }) => {
-    const element = elementAt(shown, index)
-    return element ? [{ index, element }] : []
-  })
-  if (found.length !== keys.length) return null
-  const elements = found.map(({ element }) => element)
-  return found.map(({ index, element }) => {
-    const rect = element.getBoundingClientRect()
-    return {
+  if (!first || !drawsLive(container, first.frame)) return null
+  return (
+    heldMeasures(keys)?.map(({ index, box, placed, nested, read, margin }) => ({
       index,
-      box: {
-        x: Math.round(rect.left),
-        y: Math.round(rect.top),
-        width: Math.round(rect.width),
-        height: Math.round(rect.height),
-      },
-      placed: placedIn(element, elements),
-      read: readResize(element),
-      margin: marginsOf(element),
-    }
-  })
-}
-
-/** The margins the frame's own window computed for `element`, 0 where it reads none. */
-function marginsOf(element: Element): Margins {
-  const style = element.ownerDocument.defaultView?.getComputedStyle(element)
-  const px = (value: string | undefined) => Number.parseFloat(value ?? '') || 0
-  return {
-    top: px(style?.marginTop),
-    right: px(style?.marginRight),
-    bottom: px(style?.marginBottom),
-    left: px(style?.marginLeft),
-  }
+      box,
+      placed: nested ? null : placed,
+      read,
+      margin,
+    })) ?? null
+  )
 }
 
 /** A drag of several elements, previewed on their live nodes and written once on release. */

@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { createLiveStore } from '@/client/live/store'
 import type { ElementTree, TreeElement } from '@/shared/records/elements'
 import { frameOf } from '@/test/board'
+import { BRIDGE } from '@/test/frame-bridge'
 
+import { request } from '../bridge/channel'
 import { writeElement } from '../inspector/element/write'
 import { createModeStore } from '../mode'
 import { createSelectionStore, selectElement } from '../selection'
@@ -51,11 +53,13 @@ async function mount(body: string): Promise<HTMLDivElement> {
   const loaded = new Promise((resolve) =>
     iframe.addEventListener('load', resolve, { once: true }),
   )
-  iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}</style></head><body>${body}</body></html>`
+  iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}</style>${BRIDGE}</head><body>${body}</body></html>`
   frame.append(iframe)
   layer.append(frame)
   document.body.append(layer)
   await loaded
+  // Its reply follows the hash the bridge announced as it started.
+  await request(iframe, 'element-box', { index: 0, hash: '' })
   iframe.dataset.renderedAt = HERO.modifiedAt
   return layer
 }

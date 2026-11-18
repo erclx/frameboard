@@ -1,29 +1,5 @@
-import { LOOK_MARKER, RENDERED_HASH } from '@/shared/theme'
-
-/**
- * A live frame's elements in `querySelectorAll('*')` order, skipping the ones
- * the frame route injected, so an index here is the edit address's index
- * into the file on disk.
- */
-export function frameElements(document: Document): Element[] {
-  return [...document.querySelectorAll('*')].filter(
-    (element) => !element.hasAttribute(LOOK_MARKER),
-  )
-}
-
-/** The file index of an element in a live frame, or null for an injected one. */
-export function elementIndex(
-  document: Document,
-  element: Element,
-): number | null {
-  const index = frameElements(document).indexOf(element)
-  return index === -1 ? null : index
-}
-
-/** The element at a file index in a live frame, or null when the frame holds none there. */
-export function elementAt(document: Document, index: number): Element | null {
-  return frameElements(document)[index] ?? null
-}
+import { request } from './bridge/channel'
+import { holdShown, shownHashOf } from './bridge/shown'
 
 /** A frame's own live iframe on the canvas, leaving out its linked widths. */
 export function liveIframe(ref: string): HTMLIFrameElement | null {
@@ -40,17 +16,18 @@ export function liveIframe(ref: string): HTMLIFrameElement | null {
 export const RESTAMPED = 'frameboard:restamped'
 
 /**
- * Stamps a live frame as rendering the file `hash` names, as its reload
- * would have, for a page that already shows those bytes, and dispatches
- * `RESTAMPED` on the iframe. A page with no stamp to move is left alone.
+ * Stamps a live frame as rendering `hash`, held on the board at once so a
+ * read `RESTAMPED` wakes sees it, for a page already showing those bytes.
+ * A page announcing no stamp is left alone.
  */
 export function stampRenderedHash(
   iframe: HTMLIFrameElement,
   hash: string,
 ): void {
-  const stamp = iframe.contentDocument?.querySelector(`style[${LOOK_MARKER}]`)
-  if (!stamp) return
-  stamp.setAttribute(RENDERED_HASH, hash)
+  if (shownHashOf(iframe) === null) return
+  // Posted first, so every request the held hash wakes reaches the frame after its stamp moved.
+  void request(iframe, 'restamp', { hash })
+  holdShown(iframe, hash)
   iframe.dispatchEvent(new Event(RESTAMPED))
 }
 
@@ -63,16 +40,4 @@ export function stampRenderedAt(
   modifiedAt: string,
 ): void {
   iframe.dataset.renderedAt = modifiedAt
-}
-
-/**
- * The content hash of the file a live frame rendered, read off the stamp the
- * frame route put on its injected style, or null for a document with none.
- */
-export function renderedHash(document: Document): string | null {
-  return (
-    document
-      .querySelector(`style[${LOOK_MARKER}]`)
-      ?.getAttribute(RENDERED_HASH) ?? null
-  )
 }

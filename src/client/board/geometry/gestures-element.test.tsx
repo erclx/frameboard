@@ -27,6 +27,11 @@ import {
   setup,
 } from './gestures-harness'
 
+/** Lets the frame's answers settle, since one macrotask drains every promise they resolve through. */
+function answered(): Promise<void> {
+  return new Promise((drained) => setTimeout(drained))
+}
+
 describe('attachGestures', () => {
   let detach = () => {}
 
@@ -155,7 +160,7 @@ describe('attachGestures', () => {
         expect(selectedRefs()).toEqual([LEFT.ref])
       })
 
-      it('selects every element a marquee from the bare body touches', () => {
+      it('selects every element a marquee from the bare body touches', async () => {
         select(selectionStore, PAGE, [LEFT.ref])
         const canvas = setup(undefined, {
           bare: () => true,
@@ -165,13 +170,31 @@ describe('attachGestures', () => {
           ],
         })
 
-        canvas.pointer.drag([130, 130], [280, 280])
+        canvas.pointer.down(130, 130)
+        await answered()
+        canvas.pointer.move(280, 280)
+        canvas.pointer.up(280, 280)
+        await answered()
 
         expect(held()).toEqual([FIRST, SECOND])
         expect(canvas.writes).toEqual([])
       })
 
-      it('hides the rect and keeps the element selection when Esc cancels a marquee', () => {
+      it('starts no marquee from a press released before the frame answers', async () => {
+        select(selectionStore, PAGE, [LEFT.ref])
+        const canvas = setup(undefined, {
+          bare: () => true,
+          inner: [{ key: FIRST, box: OUTLINES[0]?.box as Box }],
+        })
+
+        canvas.pointer.drag([130, 130], [280, 280])
+        await answered()
+
+        expect(held()).toBeUndefined()
+        expect(canvas.writes).toEqual([])
+      })
+
+      it('hides the rect and keeps the element selection when Esc cancels a marquee', async () => {
         selectElement(selectionStore, PAGE, FIRST)
         const canvas = setup(undefined, {
           bare: () => true,
@@ -179,6 +202,7 @@ describe('attachGestures', () => {
         })
 
         canvas.pointer.down(250, 105)
+        await answered()
         canvas.pointer.move(280, 280)
         pressEscape()
         const hidden = canvas.part('[data-marquee]').hidden
@@ -187,7 +211,7 @@ describe('attachGestures', () => {
         expect([hidden, held()]).toEqual([true, [FIRST]])
       })
 
-      it('adds to the held elements on a Shift-marquee', () => {
+      it('adds to the held elements on a Shift-marquee', async () => {
         const third = { frame: LEFT.ref, index: 5, hash: 'a'.repeat(64) }
         selectElements(selectionStore, PAGE, [FIRST, SECOND])
         const canvas = setup(undefined, {
@@ -196,16 +220,24 @@ describe('attachGestures', () => {
           inner: [{ key: third, box: OUTLINES[0]?.box as Box }],
         })
 
-        canvas.pointer.drag([250, 105], [280, 280], { shiftKey: true })
+        canvas.pointer.down(250, 105, { shiftKey: true })
+        await answered()
+        canvas.pointer.move(280, 280, { shiftKey: true })
+        canvas.pointer.up(280, 280, { shiftKey: true })
+        await answered()
 
         expect(held()).toEqual([FIRST, SECOND, third])
       })
 
-      it('selects the frame alone on a marquee touching nothing', () => {
+      it('selects the frame alone on a marquee touching nothing', async () => {
         selectElement(selectionStore, PAGE, FIRST)
         const canvas = setup(undefined, { bare: () => true })
 
-        canvas.pointer.drag([250, 105], [280, 130])
+        canvas.pointer.down(250, 105)
+        await answered()
+        canvas.pointer.move(280, 130)
+        canvas.pointer.up(280, 130)
+        await answered()
 
         expect(selectionStore.getState().element).toBeNull()
         expect(selectedRefs()).toEqual([LEFT.ref])

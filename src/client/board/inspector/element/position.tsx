@@ -1,9 +1,10 @@
 import { cn } from '@/client/lib/cn'
+import type { Placement } from '@/shared/frame-bridge/live-element'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'
 import type { FreeSpot } from '../../place/write'
 import { NumberField } from '../number-field'
-import { freeSpot, type Placement } from './styles'
+import { freeSpot } from './styles'
 import { type PreviewStyle, styleNumber, type WriteElement } from './write'
 
 const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }

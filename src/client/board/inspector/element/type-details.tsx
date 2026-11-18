@@ -24,10 +24,10 @@ import {
   PopoverTrigger,
 } from '@/client/components/ui/popover'
 import { cn } from '@/client/lib/cn'
+import type { LiveElement } from '@/shared/frame-bridge/live-element'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'
 import { ChromeMenuContent, MENU_ROW } from '../../chrome/menu'
-import type { LiveElement } from './styles'
 import type { WriteElement } from './write'
 
 /** What the Type details rows light, as the live element computes it. */

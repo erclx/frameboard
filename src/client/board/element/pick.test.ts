@@ -3,15 +3,18 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { ElementTree } from '@/shared/records/elements'
 import { frameOf } from '@/test/board'
 
+import { request } from '../bridge/channel'
 import { elementsIn, onBareFrame, pickElement, pickElementRead } from './pick'
 
 const HASH = 'c'.repeat(64)
+const BRIDGE =
+  '<script data-frameboard type="module" src="/src/frame-bridge/main.ts"></script>'
 const HERO = frameOf('hero', {
   box: { x: 100, y: 50, width: 400, height: 300 },
 })
 
-// Indices: html 0, head 1, style 2 is injected and skipped, body 2, main 3, h1 4, span 5.
-const SOURCE = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}h1{margin:0;height:40px;font-size:10px}span{display:inline-block;width:60px;height:20px}</style></head><body><main style="padding:20px"><h1>Hi <span>there</span></h1></main></body></html>`
+// Indices past the injected style and script, which are skipped: html 0, head 1, body 2, main 3, h1 4, span 5.
+const SOURCE = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}h1{margin:0;height:40px;font-size:10px}span{display:inline-block;width:60px;height:20px}</style>${BRIDGE}</head><body><main style="padding:20px"><h1>Hi <span>there</span></h1></main></body></html>`
 
 const TREE: ElementTree = {
   ref: HERO.ref,
@@ -74,6 +77,8 @@ async function mount(zoom: number, source = SOURCE): Promise<HTMLDivElement> {
   layer.append(frame)
   document.body.append(layer)
   await loaded
+  // Its reply follows the hash the bridge announced as it started.
+  await request(iframe, 'element-box', { index: 0, hash: '' })
   iframe.dataset.renderedAt = HERO.modifiedAt
   return layer
 }
@@ -85,7 +90,7 @@ describe('pickElement', () => {
       const container = await mount(zoom)
 
       // 20 px of padding, then the span past "Hi ".
-      const key = pickElement(
+      const key = await pickElement(
         container,
         [HERO],
         { x: HERO.box.x + 20 + 30, y: HERO.box.y + 20 + 10 },
@@ -99,7 +104,7 @@ describe('pickElement', () => {
   it("answers null over the frame's body", async () => {
     const container = await mount(1)
 
-    const key = pickElement(
+    const key = await pickElement(
       container,
       [HERO],
       { x: HERO.box.x + 300, y: HERO.box.y + 250 },
@@ -124,7 +129,7 @@ describe('pickElement', () => {
       elements: TREE.elements.slice(0, 2),
     }
 
-    const key = pickElement(
+    const key = await pickElement(
       container,
       [HERO],
       { x: HERO.box.x + 20 + 30, y: HERO.box.y + 20 + 10 },
@@ -137,10 +142,10 @@ describe('pickElement', () => {
   it('answers null for a frame the route never stamped', async () => {
     const container = await mount(
       1,
-      '<!doctype html><body><main style="height:200px">x</main></body>',
+      `<!doctype html><head>${BRIDGE}</head><body><main style="height:200px">x</main></body>`,
     )
 
-    const key = pickElement(
+    const key = await pickElement(
       container,
       [HERO],
       { x: HERO.box.x + 10, y: HERO.box.y + 10 },
@@ -153,7 +158,7 @@ describe('pickElement', () => {
   it("answers null while the frame's tree is not held", async () => {
     const container = await mount(1)
 
-    const key = pickElement(
+    const key = await pickElement(
       container,
       [HERO],
       { x: HERO.box.x + 20 + 30, y: HERO.box.y + 20 + 10 },
@@ -197,7 +202,7 @@ describe('pickElementRead', () => {
 
 describe('elementsIn', () => {
   // Past the skipped style: html 0, head 1, body 2, then two boxes, the first holding a third.
-  const BOXES = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}div{position:absolute;left:0;width:50px;height:50px}</style></head><body><div style="top:0"><span>a</span></div><div style="top:100px"></div></body></html>`
+  const BOXES = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}div{position:absolute;left:0;width:50px;height:50px}</style>${BRIDGE}</head><body><div style="top:0"><span>a</span></div><div style="top:100px"></div></body></html>`
   const row = (index: number, parent: number | null, tag: string) => ({
     index,
     parent,
@@ -213,33 +218,30 @@ describe('elementsIn', () => {
     hash: HASH,
     elements: [row(3, null, 'div'), row(4, 3, 'span'), row(5, null, 'div')],
   }
-  const indexes = (rect: {
+  const indexes = async (rect: {
     x: number
     y: number
     width: number
     height: number
   }) =>
-    elementsIn(layer as HTMLDivElement, HERO, rect, BOXES_TREE).map(
+    (await elementsIn(layer as HTMLDivElement, HERO, BOXES_TREE))(rect).map(
       ({ key }) => key.index,
     )
 
   it('answers each touched element once, leaving what one holds to it', async () => {
     await mount(1, BOXES)
 
-    expect(indexes({ x: 100, y: 50, width: 60, height: 150 })).toEqual([3, 5])
+    expect(await indexes({ x: 100, y: 50, width: 60, height: 150 })).toEqual([
+      3, 5,
+    ])
   })
 
   it('answers only what the rectangle reaches, with its box on the canvas', async () => {
     const container = await mount(1, BOXES)
 
-    expect(
-      elementsIn(
-        container,
-        HERO,
-        { x: 110, y: 160, width: 5, height: 5 },
-        BOXES_TREE,
-      ),
-    ).toEqual([
+    const touching = await elementsIn(container, HERO, BOXES_TREE)
+
+    expect(touching({ x: 110, y: 160, width: 5, height: 5 })).toEqual([
       {
         key: { frame: HERO.ref, index: 5, hash: HASH },
         box: { x: 100, y: 150, width: 50, height: 50 },
@@ -250,37 +252,35 @@ describe('elementsIn', () => {
   it('answers nothing while the frame shows other bytes', async () => {
     const container = await mount(1, BOXES)
 
-    expect(
-      elementsIn(
-        container,
-        HERO,
-        { x: 100, y: 50, width: 60, height: 150 },
-        { ...BOXES_TREE, hash: 'd'.repeat(64) },
-      ),
-    ).toEqual([])
+    const touching = await elementsIn(container, HERO, {
+      ...BOXES_TREE,
+      hash: 'd'.repeat(64),
+    })
+
+    expect(touching({ x: 100, y: 50, width: 60, height: 150 })).toEqual([])
   })
 
   it('reads a point on the body as bare and one on an element as not', async () => {
     const container = await mount(1, BOXES)
 
-    expect(onBareFrame(container, [HERO], { x: 300, y: 200 }, BOXES_TREE)).toBe(
-      true,
-    )
-    expect(onBareFrame(container, [HERO], { x: 110, y: 60 }, BOXES_TREE)).toBe(
-      false,
-    )
+    await expect(
+      onBareFrame(container, [HERO], { x: 300, y: 200 }, BOXES_TREE),
+    ).resolves.toBe(true)
+    await expect(
+      onBareFrame(container, [HERO], { x: 110, y: 60 }, BOXES_TREE),
+    ).resolves.toBe(false)
   })
 
   it('reads a frame with nothing in it as not bare, so a drag still moves it', async () => {
     const container = await mount(1, BOXES)
 
-    expect(
+    await expect(
       onBareFrame(
         container,
         [HERO],
         { x: 300, y: 200 },
         { ...BOXES_TREE, elements: [] },
       ),
-    ).toBe(false)
+    ).resolves.toBe(false)
   })
 })

@@ -6,11 +6,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { registerActions } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
+import type { LiveLayout } from '@/shared/frame-bridge/live-element'
 import type { ElementFlow } from '@/shared/records/elements'
 
 import { WRAP_ACTION } from '../../element/actions'
 import { LayoutSection, WRAP_SIBLINGS_ONLY, WrapButton } from './layout'
-import type { LiveLayout } from './styles'
 import type { ElementChange } from './write'
 
 /** A block container under a block parent, 200 by 100, with nothing set, unless overridden. */

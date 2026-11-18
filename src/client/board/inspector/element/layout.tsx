@@ -14,13 +14,13 @@ import { type KeyboardEvent, type ReactNode, useRef, useState } from 'react'
 
 import { isEnabled, useActions } from '@/client/actions/registry'
 import { cn } from '@/client/lib/cn'
+import type { Flow, LiveLayout } from '@/shared/frame-bridge/live-element'
 import type { ElementFlow } from '@/shared/records/elements'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'
 import { WRAP_ACTION } from '../../element/actions'
 import { NumberField } from '../number-field'
 import { SizeRow } from './size'
-import type { Flow, LiveLayout } from './styles'
 import { Segmented } from './type-details'
 import type { PreviewStyle, WriteElement } from './write'
 

@@ -5,6 +5,7 @@ import type { FrameRecord } from '@/shared/records/list'
 import type { TokenRow } from '@/shared/records/tokens'
 import { RAW_GREY, shapePaint } from '@/shared/shape-paint'
 
+import { request } from '../bridge/channel'
 import type { Box } from '../geometry/box'
 import { OUTLINE, screen, sizeLabel } from '../geometry/draw'
 import { CLICK_DISTANCE } from '../geometry/gestures'
@@ -87,14 +88,23 @@ export function ShapeDraft({
         return
       }
       const from = toBoard(event)
-      press = {
+      const pressed: NonNullable<typeof press> = {
         from,
         x: event.clientX,
         y: event.clientY,
-        fill:
-          shaping && container
-            ? fillUnder(container, frames(), from, tokens.current)
-            : null,
+        fill: null,
+      }
+      press = pressed
+      // The frame answers the fill, and the shape draws from the first move after it.
+      if (shaping && container) {
+        void fillUnder(container, frames(), from, tokens.current).then(
+          (fill) => {
+            pressed.fill = fill
+            if (press === pressed && box && fill) {
+              setDrawn({ kind: 'shape', shape: shaping, fill, box })
+            }
+          },
+        )
       }
     }
     const move = (event: PointerEvent) => {
@@ -233,25 +243,20 @@ function TokenReader({ project, onTokens }: TokenReaderProps) {
  * of the frame under it, in that frame's theme, since the board's own sheet
  * sets tokens of the same names. Null where a release places nothing.
  */
-function fillUnder(
+async function fillUnder(
   container: ParentNode,
   frames: readonly FrameRecord[],
   at: BoardPoint,
   tokens: readonly TokenRow[],
-): string | null {
-  const under = gapUnder(container, frames, at)
+): Promise<string | null> {
+  const under = await gapUnder(container, frames, at)
   if (!under) return null
-  const shown = container.querySelector<HTMLIFrameElement>(
+  const iframe = container.querySelector<HTMLIFrameElement>(
     `[data-frame="${CSS.escape(under.frame.ref)}"] iframe`,
-  )?.contentDocument
-  const view = shown?.defaultView
-  if (!shown?.body || !view) return RAW_GREY
-  // Added and taken out in one task, so the frame never paints it.
-  const probe = shown.createElement('div')
-  probe.style.background = shapePaint(tokens).fill
-  shown.body.append(probe)
-  const color = view.getComputedStyle(probe).backgroundColor
-  probe.remove()
+  )
+  const color = iframe
+    ? await request(iframe, 'paint', { fill: shapePaint(tokens).fill })
+    : null
   return color || RAW_GREY
 }
 

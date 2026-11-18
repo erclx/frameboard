@@ -1,6 +1,7 @@
 import { type RefObject, useEffect, useState } from 'react'
 import { useStore } from 'zustand'
 
+import type { GapLine } from '@/shared/frame-bridge/gap'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { screen } from '../geometry/draw'
@@ -8,7 +9,7 @@ import { OVERLAY_Z } from '../geometry/overlay'
 import { useMode } from '../mode'
 import type { BoardPoint } from '../notes/pick'
 import { tileDragStore } from './asset-drop'
-import { type FrameGap, type GapLine, gapUnder, moveGapUnder } from './gap'
+import { type FrameGap, gapUnder, moveGapUnder, newestOnly } from './gap'
 import { carriedStore, placedKind, placesElement } from './tool'
 
 interface DropLineProps {
@@ -43,27 +44,32 @@ export function DropLine({
   const [tileLine, setTileLine] = useState<GapLine | null>(null)
   useEffect(() => {
     if (!container) return
+    const newest = newestOnly()
     // A native drag fires no `pointermove`, so the tile's point comes from its drop target.
     return tileDragStore.subscribe(({ at }) => {
-      const under = at && gapUnder(container, frames(), at)
-      const next = under ? boardLine(under) : null
-      setTileLine((held) => (sameLine(held, next) ? held : next))
+      newest(at ? gapUnder(container, frames(), at) : null, (under) => {
+        const next = under ? boardLine(under) : null
+        setTileLine((held) => (sameLine(held, next) ? held : next))
+      })
     })
   }, [container, frames])
   useEffect(() => {
     const target = viewport.current
     if (!placing || !target || !container) return
+    const newest = newestOnly()
     const move = (event: PointerEvent) => {
       // A shape drag lands where its press began, so the line holds there.
       if (!carried && event.buttons & 1 && sizesByDrag()) return
       const at = toBoard(event)
-      const under = carried
+      const asked = carried
         ? moveGapUnder(container, frames(), at, carried)
         : gapUnder(container, frames(), at)
-      const next = under && boardLine(under)
-      setLine((held) => (sameLine(held, next) ? held : next))
+      newest(asked, (under) => {
+        const next = under && boardLine(under)
+        setLine((held) => (sameLine(held, next) ? held : next))
+      })
     }
-    const leave = () => setLine(null)
+    const leave = () => newest(null, () => setLine(null))
     target.addEventListener('pointermove', move)
     target.addEventListener('pointerleave', leave)
     return () => {
