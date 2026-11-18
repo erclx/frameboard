@@ -155,9 +155,10 @@ function Cell({
       tabIndex={focusable ? 0 : -1}
       onFocus={onFocus}
       onClick={onClick}
-      className="group block w-full rounded-[7px] text-center outline-none focus-visible:ring-3 focus-visible:ring-[#4e92f6]"
+      className="group block w-full text-center outline-none"
     >
-      <span className="grid aspect-video place-items-center overflow-hidden rounded-[5px] bg-[#19191b] group-aria-current:outline-2 group-aria-current:outline-offset-2 group-aria-current:outline-[#4e92f6]">
+      {/* The cursor's ring sits outside the current slide's outline, so both read on one cell. */}
+      <span className="grid aspect-video place-items-center overflow-hidden rounded-[5px] bg-[#19191b] group-focus-visible:ring-3 group-focus-visible:ring-[#4e92f6] group-focus-visible:ring-offset-6 group-focus-visible:ring-offset-[#0c0c0d] group-aria-current:outline-2 group-aria-current:outline-offset-2 group-aria-current:outline-[#4e92f6]">
         {src ? (
           <img
             src={src}
