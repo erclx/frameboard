@@ -52,7 +52,12 @@ A responsive page is one frame file shown at several widths, so every fix to the
 
 `frame device <frame-ref> on`, or `--device on` on `frame add`, has the board draw the frame inside the device its width names, being a phone from 320 to 479 wide, a tablet from 480 to 1023, and a laptop from 1024 up. The frame file and its size stay as they are, and `off` hides it.
 
-The older `phone` and `tablet` read as `on`, and `none` as `off`.
+The older `phone` and `tablet` read as `on`, and `none` as `off`. A frame can also name a foldable over the device its width picks, through three flags on the same verb.
+
+- `--foldable` names it and shows it, in the pose nearest the frame's width
+- `--pose <closed|half|open>` folds it, setting the box to 466 by 678 closed and 890 by 626 half or open, and writes `layout.json` alone
+- `--no-foldable` hands the pick back to the width, and `--pose` on a frame naming no foldable is refused as `usage`
+- `list --json` reports `device` as `foldable` and adds `pose`
 
 ## Images
 
