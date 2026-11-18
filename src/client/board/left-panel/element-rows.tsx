@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight, type LucideIcon } from 'lucide-react'
-import { useCallback, useRef, useState } from 'react'
+import { type MouseEvent, useCallback, useRef, useState } from 'react'
 
 import { RenameField } from '@/client/components/rename-field'
 import { cn } from '@/client/lib/cn'
@@ -14,12 +14,14 @@ import { moveElementTo } from '../place/write'
 import {
   type ElementKey,
   selectElement,
+  selectElements,
   selectionStore,
   toggleElement,
 } from '../selection'
 import { DropLine } from './drop-line'
 import { elementGlyph } from './layer-glyphs'
 import { useReorderMonitor, useReorderRow } from './reorder'
+import { addsOne, spanTo } from './row-pick'
 
 /** How far each level of nesting moves a row in, past the frame row's own 8 px. */
 const INDENT = 14
@@ -88,6 +90,21 @@ export function ElementRows({
   if (rows.length === 0) return <Notice depth={1}>No elements</Notice>
   const parents = new Set(entry.tree.elements.map((element) => element.parent))
   const places = siblingPlaces(entry.tree.elements)
+  const { hash } = entry.tree
+  const keyOf = (index: number) => ({ frame: frame.ref, index, hash })
+  const pick = (index: number, event: PickEvent) => {
+    const span = event.shiftKey
+      ? spanTo(
+          rows.map(({ element }) => element.index),
+          selected.at(-1),
+          index,
+        )
+      : null
+    if (span) selectElements(selectionStore, page, span.map(keyOf))
+    else if (!event.shiftKey && addsOne(event)) {
+      toggleElement(selectionStore, page, keyOf(index))
+    } else selectElement(selectionStore, page, keyOf(index))
+  }
   return (
     <ul aria-label={`Elements of ${frame.name}`}>
       {rows.map(({ element, depth }) => (
@@ -95,11 +112,8 @@ export function ElementRows({
           key={element.index}
           page={page}
           element={element}
-          elementKey={{
-            frame: frame.ref,
-            index: element.index,
-            hash: entry.tree.hash,
-          }}
+          elementKey={keyOf(element.index)}
+          pick={(event) => pick(element.index, event)}
           depth={depth}
           place={places.get(element.index) ?? 0}
           list={siblingList(frame.ref, element.parent)}
@@ -121,10 +135,14 @@ export function ElementRows({
   )
 }
 
+type PickEvent = Pick<MouseEvent, 'shiftKey' | 'metaKey' | 'ctrlKey'>
+
 interface ElementRowProps {
   page: string
   element: TreeElement
   elementKey: ElementKey
+  /** Selects the row as a click with these keys asks. */
+  pick: (event: PickEvent) => void
   depth: number
   /** Its place among its siblings, which a drop counts in. */
   place: number
@@ -144,6 +162,7 @@ function ElementRow({
   page,
   element,
   elementKey: key,
+  pick,
   depth,
   place,
   list,
@@ -216,11 +235,7 @@ function ElementRow({
             <button
               type="button"
               aria-current={isSelected ? 'true' : undefined}
-              onClick={(event) =>
-                event.shiftKey
-                  ? toggleElement(selectionStore, page, key)
-                  : selectElement(selectionStore, page, key)
-              }
+              onClick={pick}
               onDoubleClick={() => {
                 if (canWrite) setRenaming(true)
               }}

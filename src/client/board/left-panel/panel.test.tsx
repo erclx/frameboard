@@ -1003,6 +1003,56 @@ describe('LeftPanel', () => {
       )
     })
 
+    it('selects every open element row from the anchor on Shift-click', async () => {
+      heroTree()
+      renderPanel(project([page('home', [frame('hero')])]))
+      const user = userEvent.setup()
+      await user.click(
+        screen.getByRole('button', { name: 'Show the elements of hero' }),
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'Show what Card holds' }),
+      )
+
+      await user.click(screen.getByRole('button', { name: 'Card' }))
+      await user.keyboard('{Shift>}')
+      await user.click(screen.getByRole('button', { name: 'footer' }))
+      await user.keyboard('{/Shift}')
+
+      expect(
+        selectionStore
+          .getState()
+          .elements?.map(({ index }) => index)
+          .sort(),
+      ).toEqual([6, 7, 8])
+    })
+
+    it.each(['Control', 'Meta'])(
+      'adds one element row and takes it out again on %s-click',
+      async (key) => {
+        heroTree()
+        renderPanel(project([page('home', [frame('hero')])]))
+        const user = userEvent.setup()
+        await user.click(
+          screen.getByRole('button', { name: 'Show the elements of hero' }),
+        )
+        await user.click(screen.getByRole('button', { name: 'Card' }))
+
+        await user.keyboard(`{${key}>}`)
+        await user.click(screen.getByRole('button', { name: 'footer' }))
+        const added = selectionStore
+          .getState()
+          .elements?.map(({ index }) => index)
+        await user.click(screen.getByRole('button', { name: 'Card' }))
+        await user.keyboard(`{/${key}}`)
+
+        expect(added).toEqual([6, 8])
+        expect(
+          selectionStore.getState().elements?.map(({ index }) => index),
+        ).toEqual([8])
+      },
+    )
+
     it('tints no unselected sibling of a selected element, nor its frame', async () => {
       heroTree()
       renderPanel(project([page('home', [frame('hero')])]))
@@ -1276,7 +1326,7 @@ describe('LeftPanel', () => {
       ).toEqual(['front', 'middle', 'back'])
     })
 
-    it('selects a frame from its row, and Shift-click adds another', async () => {
+    it('selects a frame from its row, and Shift-click spans to another', async () => {
       const user = userEvent.setup()
       renderPanel(STACK())
 
@@ -1285,10 +1335,12 @@ describe('LeftPanel', () => {
       await user.click(screen.getByRole('button', { name: 'Select back' }))
       await user.keyboard('{/Shift}')
 
-      expect(selectionStore.getState()).toMatchObject({
-        page: 'studio/home',
-        frames: ['studio/home/front', 'studio/home/back'],
-      })
+      expect(selectionStore.getState().page).toBe('studio/home')
+      expect([...selectionStore.getState().frames].sort()).toEqual([
+        'studio/home/back',
+        'studio/home/front',
+        'studio/home/middle',
+      ])
     })
 
     describe('revealing the selected frame', () => {
