@@ -72,3 +72,16 @@ export function drawnExtent(
   const bottom = Math.max(...boxes.map(({ y, height }) => y + height))
   return { x: left, y: top, width: right - left, height: bottom - top }
 }
+
+/**
+ * The x a frame of this width takes so its device body, or the frame itself
+ * with none, stands the gap past an edge.
+ */
+export function xPast(
+  edge: number,
+  width: number,
+  device?: Device | null,
+): number {
+  const body = bezelBox({ x: 0, y: 0, width, height: 0 }, device)
+  return edge + FRAME_GAP - body.x
+}
