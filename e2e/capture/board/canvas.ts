@@ -23,6 +23,7 @@ import {
   SERVED_BOARD,
   STATE_ONLY,
   themedFor,
+  webappKits,
 } from './setup'
 
 /**
@@ -140,7 +141,9 @@ function foldableShown(pose: Pose): (page: Page) => Promise<void> {
  * Presses `selector` with a whole pointer sequence once it renders, since a
  * menu trigger opens on the press, which a bare `click()` never sends.
  */
-function pointerPressOnLoad(selector: string): (page: Page) => Promise<void> {
+export function pointerPressOnLoad(
+  selector: string,
+): (page: Page) => Promise<void> {
   return async (page) => {
     await page.addInitScript(
       ({ selector, frames }) => {
@@ -635,6 +638,24 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           onCanvas({ select: ['webapp/home/hero'] }),
           pointerPressOnLoad('button[aria-label="Add a width"]'),
           readyWhen('[role="menu"] [role="menuitem"]'),
+        ),
+      ),
+    },
+    {
+      section: 'inspector-kit',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      // The hero on Sketch, chipped on the canvas and named in the Kit row, beside the plain about.
+      setup: themed(
+        both(
+          asWriter,
+          webappKits,
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/hero'] }),
+          readyWhen('body:has([data-kit-chip]):has(#inspector-kit-value)'),
         ),
       ),
     },

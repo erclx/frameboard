@@ -59,6 +59,7 @@ import {
   type MovedFolder,
   ownReloadRefs,
   placedRefs,
+  rekittedRefs,
   relistedRefs,
   reloadRefs,
   unmovedRefs,
@@ -626,6 +627,7 @@ async function pushBatch(
   let own: string[]
   let placed: string[]
   let relisted: string[] = []
+  let rekitted: string[] = []
   try {
     // Lands reserved frames first, so the board first sees them in their box.
     await landReserved(root, new Date()).catch(() => [])
@@ -639,6 +641,7 @@ async function pushBatch(
       : []
     // New linked widths measure after the push, as `hug.now` queues them.
     relisted = previous ? relistedRefs(previous, board) : []
+    rekitted = previous ? rekittedRefs(previous, board) : []
     // Measured first, so the board never shows a reloaded frame at its old size.
     if (await hug.now(board, [...own, ...placed]).catch(() => false)) {
       const measured = board
@@ -660,7 +663,9 @@ async function pushBatch(
   hub.broadcast({ type: 'board', data: board })
   const last = shown.board
   shown.board = board
-  const refs = reloadRefs(root, paths, board, tokens)
+  const refs = [
+    ...new Set([...reloadRefs(root, paths, board, tokens), ...rekitted]),
+  ]
   // Measured after the push, since a token change reaches every frame.
   hug.later(
     board,

@@ -19,7 +19,7 @@ Owns the loopback server around the folders below. `app.ts` is the Hono app, `st
 
 Owns the board folder's watcher, the socket hub, the decision to open a tab, and the selection `selection.ts` keeps in memory from the last writing tab, forgotten once that tab's socket closes. A reload carries a frame's hash only when its own file was the batch's sole cause, so a tab keeps a page already showing those bytes.
 
-- A frame's own `.html` or a temp file such as `hero.html.swap` reloads that frame, any other page file the page, and `assets/` the whole project, while `layout.json` and `notes.json` reload nothing
+- A frame's `.html` or a temp `hero.html.swap` reloads it, another page file the page, `assets/` the project, `layout.json` only a frame whose `kit` changed, and `notes.json` nothing
 - Writes gather into batches closing 50 ms after the last event or 250 ms after the first, so one agent turn costs one rescan
 - `fs.watch` on macOS drops writes in its first tens of milliseconds, so the watch counts nothing for its first 100 ms and resolves only once warm
 - `hug.ts` measures a hugging frame under the layout lock with no undo step, before the board is sent for a frame its own write reloaded and after it for an asset or sheet reload

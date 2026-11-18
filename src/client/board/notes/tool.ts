@@ -5,6 +5,7 @@ import { createStore } from 'zustand/vanilla'
 
 import { refreshActions, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
+import type { FrameRecord } from '@/shared/records/list'
 
 import { modeStore } from '../mode'
 import type { NotePick } from './pick'
@@ -47,6 +48,29 @@ export function setDraft(key: string, text: string): void {
 
 export function closeNote(): void {
   notesUi.setState({ open: null })
+}
+
+/**
+ * Opens a new note on the whole frame with `text` as its draft, its pin at
+ * the frame's top right corner, so a board action can ask the agent something.
+ */
+export function askOnFrame(
+  frame: Pick<FrameRecord, 'ref' | 'name' | 'box'>,
+  text: string,
+): void {
+  setDraft(newNoteDraft(frame.ref), text)
+  modeStore.setState({ tool: 'note', mode: 'edit' })
+  notesUi.setState({
+    open: {
+      kind: 'new',
+      pick: {
+        frame: { ref: frame.ref, name: frame.name },
+        element: null,
+        renderedAt: null,
+        at: { x: frame.box.x + frame.box.width, y: frame.box.y },
+      },
+    },
+  })
 }
 
 const canWrite = () => liveStore.getState().canWrite

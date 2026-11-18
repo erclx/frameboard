@@ -196,8 +196,10 @@ describe('ThemeTab', () => {
       />,
     )
 
-    const headings = await screen.findAllByRole('heading', { level: 3 })
+    await screen.findByRole('heading', { name: 'Color' })
+    const headings = screen.getAllByRole('heading', { level: 3 })
     expect(headings.map((heading) => heading.textContent)).toEqual([
+      'Kits',
       'Color',
       'Radius',
       'Font',
@@ -436,6 +438,8 @@ describe('ThemeTab', () => {
       )
       await screen.findByText('primary')
 
+      // Add kit takes the first stop, above the tokens.
+      await userEvent.tab()
       await userEvent.tab()
       await userEvent.keyboard('{Enter}')
 

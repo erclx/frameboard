@@ -10,7 +10,7 @@ import {
   within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ReactNode } from 'react'
+import { type ReactNode, StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
@@ -36,6 +36,7 @@ import { clear, selectElement, selectionStore } from '../selection'
 import { stopFrameRename } from '../structure/actions'
 import { attachCanvas, canvasView } from '../view'
 import { LeftPanel } from './panel'
+import { leftTabStore } from './tab-store'
 
 function frame(name: string, extra: Partial<FrameRecord> = {}): FrameRecord {
   return {
@@ -164,6 +165,7 @@ afterEach(() => {
     clear(selectionStore)
     trees.store.setState({ byRef: {} })
     stopFrameRename()
+    leftTabStore.setState({ tab: 'design', project: null })
   })
 })
 
@@ -244,6 +246,46 @@ describe('LeftPanel', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Assets' }))
 
     expect(screen.getByText('the files')).toBeVisible()
+  })
+
+  it('mounts on the tab the palette set, under StrictMode too', () => {
+    leftTabStore.setState({ tab: 'assets' })
+
+    render(
+      <StrictMode>
+        <Router hook={memoryLocation({ path: '/' }).hook}>
+          <TooltipProvider>
+            <LeftPanel
+              project={project([page('home')])}
+              page="home"
+              assets={<p>the files</p>}
+            />
+          </TooltipProvider>
+        </Router>
+      </StrictMode>,
+    )
+
+    expect(screen.getByRole('tab', { name: 'Assets' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  it('opens another project on Design', async () => {
+    renderPanel(project([page('home')]), 'home', <p>the files</p>)
+    await userEvent.click(screen.getByRole('tab', { name: 'Assets' }))
+    cleanup()
+
+    renderPanel(
+      { ...project([page('home')]), name: 'shop' },
+      'home',
+      <p>the files</p>,
+    )
+
+    expect(screen.getByRole('tab', { name: 'Design' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 
   it("lists the page's frames, a hidden one marked so", () => {

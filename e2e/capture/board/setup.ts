@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { type Page } from '@playwright/test'
@@ -921,3 +921,31 @@ export const AVATAR = '[data-avatar]'
 
 /** A state rather than a layout, so it takes the desktop width alone. */
 export const STATE_ONLY = ['320', '768', '1536']
+
+/**
+ * Adds the shipped Sketch and Wireframe kits to `webapp` and sets Sketch on
+ * its hero, as `kit add` and `frame kit` would, taking both back when the
+ * page closes so no later case shows them.
+ */
+export async function webappKits(page: Page): Promise<void> {
+  const kits = join(SERVED_BOARD, 'webapp/assets/kits')
+  for (const kit of ['sketch', 'wireframe']) {
+    cpSync(join('src/server/kits/shipped', kit), join(kits, kit), {
+      recursive: true,
+      // The sample page stays behind, as an install leaves it.
+      filter: (path) => !path.endsWith(`${kit}/kit`),
+    })
+  }
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.frames.hero.kit = 'sketch'
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+    rmSync(join(SERVED_BOARD, 'webapp/assets'), {
+      recursive: true,
+      force: true,
+    })
+  })
+}

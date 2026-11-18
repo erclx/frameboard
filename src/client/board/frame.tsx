@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
 } from '@/client/components/ui/popover'
 import { cn } from '@/client/lib/cn'
+import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
 import {
@@ -272,13 +273,14 @@ export const Frame = memo(function Frame({
         <span
           className={cn(
             'truncate',
-            (preview || claimed || held) && 'shrink-[1000]',
+            (preview || claimed || held || frame.kit) && 'shrink-[1000]',
           )}
         >
           {frame.name}
         </span>
         {preview ? <PreviewChip width={preview.width} /> : null}
         {held ? <HeldChip frameRef={frame.ref} at={held.at} /> : null}
+        {frame.kit ? <KitChip project={frame.project} kit={frame.kit} /> : null}
         {playing ? null : (
           <ThemeMarker frameRef={frame.ref} name={frame.name} theme={theme} />
         )}
@@ -508,6 +510,27 @@ function PreviewChip({ width }: { width: number }) {
     >
       <MoveHorizontal aria-hidden className="size-3 shrink-0" />
       <span className="truncate">Preview {width}</span>
+    </span>
+  )
+}
+
+/** The kit a frame draws with, by its title where the project still holds it. */
+function KitChip({ project, kit }: { project: string; kit: string }) {
+  const title = useLive(
+    (state) =>
+      state.board?.projects
+        .find(({ name }) => name === project)
+        ?.kits.find(({ name }) => name === kit)?.title,
+  )
+  return (
+    <span
+      data-kit-chip
+      className="flex h-[18px] min-w-0 shrink items-center overflow-hidden rounded-[5px] bg-primary-fill px-[5px] font-medium text-primary-foreground"
+    >
+      <span className="truncate">
+        <span className="sr-only">Kit </span>
+        {title ?? kit}
+      </span>
     </span>
   )
 }

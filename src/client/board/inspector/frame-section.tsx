@@ -19,7 +19,7 @@ import {
 } from '@/client/live/structure'
 import { type Device, deviceForWidth, type Pose } from '@/shared/frame-device'
 import type { FrameSizeName } from '@/shared/frame-sizes'
-import type { FrameRecord } from '@/shared/records/list'
+import type { FrameRecord, ProjectKitRecord } from '@/shared/records/list'
 
 import { ActionTooltip } from '../chrome/action-tooltip'
 import { ChromeMenuContent, MENU_ROW } from '../chrome/menu'
@@ -33,6 +33,7 @@ import {
   stopFrameRename,
   useRenamingFrame,
 } from '../structure/actions'
+import { KitRow } from './kit-row'
 import { LabelTip } from './label-tip'
 import { type NumberChange, NumberField } from './number-field'
 import { boxesSizedTo, FRAME_TOOL_GROUPS, matchSize } from './presets'
@@ -47,6 +48,8 @@ const FIELDS = [
 ] as const
 
 type Field = (typeof FIELDS)[number]['key']
+
+const NO_KITS: readonly ProjectKitRecord[] = []
 
 interface FrameSectionProps {
   /** The selected frames as drawn, one or several. */
@@ -71,6 +74,11 @@ export function FrameSection({
 }: FrameSectionProps) {
   const canWrite = useLive((state) => state.canWrite)
   const renaming = useRenamingFrame('inspector')
+  const kits = useLive(
+    (state) =>
+      state.board?.projects.find(({ name }) => name === frames[0]?.project)
+        ?.kits,
+  )
   // The boxes a previewed gesture started from, which its pending boxes now hide.
   const started = useRef<Record<string, Box> | null>(null)
   const [frame] = frames
@@ -183,6 +191,12 @@ export function FrameSection({
           calls={calls ?? structure}
         />
       )}
+      <KitRow
+        frames={frames}
+        kits={kits ?? NO_KITS}
+        disabled={!canWrite || locked}
+        calls={calls ?? structure}
+      />
     </section>
   )
 }

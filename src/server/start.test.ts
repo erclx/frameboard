@@ -655,6 +655,20 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     await expect.poll(() => messages.length, { timeout: 5000 }).toBe(1)
     expect(messages[0]?.type).toBe('board')
   })
+
+  it('reloads only the frame a layout write gives a kit', async () => {
+    const layout = join(board.root, 'studio/home/layout.json')
+    const file = JSON.parse(readFileSync(layout, 'utf8'))
+    file.frames.hero.kit = 'sketch'
+    writeFileSync(layout, JSON.stringify(file))
+
+    const reloads = () =>
+      messages.flatMap((message) =>
+        message.type === 'reload' ? message.refs : [],
+      )
+    await expect.poll(reloads, { timeout: 5000 }).toContain('studio/home/hero')
+    expect(new Set(reloads())).toEqual(new Set(['studio/home/hero']))
+  })
 })
 
 const shell = await launchShellOrNull()
