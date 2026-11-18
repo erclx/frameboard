@@ -25,9 +25,8 @@ export const BRIDGE_URL = `/frameboard/bridge/v${version}/frame-bridge.js`
 
 /**
  * The frame route's injected `head`, one stylesheet carrying `hash` as its one
- * other attribute, since another element would shift every live index. The
- * bridge script at `bridge` removes itself as the theme script does, and a
- * head given none loads no bridge.
+ * other attribute, since another element would shift every live index. Given
+ * no `bridge`, as a kit preview's policy allows none, it loads no bridge.
  */
 export function frameHead(
   sheets: readonly string[],

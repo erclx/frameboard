@@ -1,12 +1,6 @@
-/**
- * The messages the board and a frame's bridge script exchange over
- * `postMessage`, so the board reads and edits a frame without touching its
- * document, whatever origin the frame is served from.
- *
- * The board sends a request carrying an id and an op. The bridge answers it
- * with one reply carrying the same id, and an op that subscribes also pushes
- * results under that id until either side closes it.
- */
+// The board and a frame's bridge talk over `postMessage`, whatever the frame's
+// origin. A request's id comes back on its one reply, and on every push a
+// subscribing op sends until either side closes it.
 
 /** Marks every bridge message, so the board and the bridge pass over a frame's own. */
 export const BRIDGE_TAG = 'frameboard-bridge'

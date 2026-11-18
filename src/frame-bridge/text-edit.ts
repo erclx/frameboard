@@ -22,10 +22,9 @@ function collapsesBreaks(element: HTMLElement): boolean {
 }
 
 /**
- * Opens an element's text for typing in place, answering how to cancel it,
- * or null for an element holding anything but text. A break is a newline in
- * its one text node, never a `<br>`, which would end its text-only state, and
- * a reload ends the edit with nothing to write.
+ * Opens a text-only element for typing, answering its cancel or null. A break
+ * is a newline in its one text node, never a `<br>`, which would end its
+ * text-only state, and a reload ends the edit with nothing to write.
  */
 export function openTextEdit(
   found: Element,
