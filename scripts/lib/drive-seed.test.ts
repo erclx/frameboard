@@ -276,6 +276,15 @@ describe('the deck page', () => {
     })
   })
 
+  it('gives the middle slide a speaker note and no other slide one', async () => {
+    await seedDrive(root, new Date())
+
+    const { frames } = readJson('webapp/deck/layout.json')
+    expect(frames['02-build'].speakerNotes).toEqual(expect.any(String))
+    expect(frames['01-intro']).not.toHaveProperty('speakerNotes')
+    expect(frames['03-closing']).not.toHaveProperty('speakerNotes')
+  })
+
   it("brings the closing slide in with a transition the board lists as webapp's own", async () => {
     const seeded = await seedDrive(root, new Date())
 

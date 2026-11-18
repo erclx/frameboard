@@ -36,8 +36,9 @@ const FEED_PAGE = join(import.meta.dirname, 'drive-feed.html')
 
 /**
  * The page holding three slides in a row under a Push transition, the middle
- * one marking three steps, so present mode has a transition to draw, a slide
- * to walk, and the inspector a page and a step to read.
+ * one marking three steps and holding a speaker note, so present mode has a
+ * transition to draw, a slide to walk, and the inspector a page and a step to
+ * read.
  */
 const DECK = {
   project: 'webapp',
@@ -45,6 +46,9 @@ const DECK = {
   slides: ['01-intro', '02-build', '03-closing'],
   width: 1280,
   height: 720,
+  /** The middle slide's note, two lines, so the strip shows a kept line break. */
+  speakerNotes:
+    'Walk the three steps in order and pause after each.\nEnd on the build finishing, then move on.',
 }
 
 const DECK_PAGES = join(import.meta.dirname, 'drive-deck')
@@ -313,6 +317,7 @@ async function layDeck(root: string): Promise<'laid' | 'kept'> {
         ...(index === DECK.slides.length - 1
           ? { transition: { name: WIPE.name, ms: WIPE.ms } }
           : {}),
+        ...(index === 1 ? { speakerNotes: DECK.speakerNotes } : {}),
       },
     ]),
   )
