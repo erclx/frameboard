@@ -1,6 +1,7 @@
 import type { Command } from 'commander'
 
 import { resolveProject } from '@/server/board/refs'
+import { diagnose, runNvidiaSmi } from '@/server/sourcing/doctor'
 import { generateImage, planGeneration } from '@/server/sourcing/generate'
 import {
   foundLicense,
@@ -182,6 +183,34 @@ export function registerImage(program: Command, context: ProgramContext): void {
       return {
         data: { ...record, saved },
         human: `Generated on ${priced}. ${savedLine(saved)}`,
+      }
+    },
+  )
+
+  act<CommonOptions>(
+    addVerb(
+      image,
+      'doctor',
+      'Report the GPU, a local ComfyUI server, and which provider keys are set, installing nothing',
+    ),
+    context,
+    async () => {
+      const report = await diagnose({
+        env: process.env,
+        send,
+        queryGpu: runNvidiaSmi,
+      })
+      return {
+        data: report,
+        human: [
+          `GPU\t${report.gpu === null ? 'none found' : `${report.gpu.name}, ${report.gpu.memoryMiB} MiB`}`,
+          `Local\t${report.local.url} ${report.local.running ? 'answers' : 'does not answer'}`,
+          ...report.providers.map(
+            (each) =>
+              `${each.provider}\t${each.key} ${each.ready ? 'set' : 'unset'}`,
+          ),
+          `Generate runs on\t${report.provider ?? 'nothing, since no key is set'}`,
+        ].join('\n'),
       }
     },
   )

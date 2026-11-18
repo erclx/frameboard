@@ -275,3 +275,30 @@ describe('image generate', () => {
     expect(existsSync(assets)).toBe(false)
   })
 })
+
+describe('image doctor', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('reports each key as set or unset at exit 0, never its value', async () => {
+    vi.stubEnv('FAL_KEY', 'fal-secret')
+    vi.stubEnv('GEMINI_API_KEY', '')
+    const refusing = (async () => {
+      throw new TypeError('fetch failed')
+    }) as typeof fetch
+
+    const result = await cli(['image', 'doctor', '--json'], {
+      cwd: process.cwd(),
+      fetch: refusing,
+    })
+
+    expect(result.exitCode).toBe(0)
+    expect(result.json().data).toMatchObject({
+      keys: { FAL_KEY: true, GEMINI_API_KEY: false },
+      local: { running: false },
+      provider: 'fal',
+    })
+    expect(result.stdout).not.toContain('fal-secret')
+  })
+})

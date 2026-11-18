@@ -64,6 +64,7 @@ describe('docs', () => {
       'kit save',
       'image find',
       'image generate',
+      'image doctor',
       'page add',
       'page duplicate',
       'page rename',
