@@ -30,6 +30,7 @@ import {
   type ProjectFile,
   projectFileSchema,
   type SectionEntry,
+  speakerNotesOf,
 } from '@/shared/records/board'
 import type {
   FrameRecord,
@@ -75,6 +76,8 @@ export interface Placement {
   device?: Device
   /** Absent for a frame with no override or one holding a value no reader knows. */
   transition?: Transition
+  /** Absent for a frame with no note or one holding a value of another type. */
+  speakerNotes?: string
   placed: boolean
 }
 
@@ -219,6 +222,7 @@ export function placeFrames(
     const shown = showsDevice(entry)
     const device = shown ? deviceForWidth(box.width) : null
     const transition = readTransition(entry.transition)
+    const speakerNotes = speakerNotesOf(entry.speakerNotes)
     placements.set(name, {
       box,
       order: entry.order,
@@ -231,6 +235,7 @@ export function placeFrames(
       ...(shown ? { showDevice: true as const } : {}),
       ...(device ? { device } : {}),
       ...(transition ? { transition } : {}),
+      ...(speakerNotes ? { speakerNotes } : {}),
       placed: true,
     })
   }

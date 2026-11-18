@@ -80,9 +80,21 @@ export const layoutEntrySchema = z.looseObject({
   // The transition the frame arrives with in present mode, over its page's.
   // A value no reader knows parses as written and reads as none.
   transition: z.unknown().optional(),
+  // What the presenter means to say over the slide, kept here rather than in
+  // the frame's file so an agent rewriting the design never drops it. A value
+  // of another type parses as written and reads as no note.
+  speakerNotes: z.unknown().optional(),
 })
 
 export type LayoutEntry = z.infer<typeof layoutEntrySchema>
+
+/** The longest speaker note a write accepts, in characters. */
+export const SPEAKER_NOTES_MAX = 10_000
+
+/** The note a layout entry's `speakerNotes` holds, null for none or a value of another type. */
+export function speakerNotesOf(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() !== '' ? value : null
+}
 
 /** A named box grouping the frames whose center it holds, which it never lists. */
 export const sectionEntrySchema = z.looseObject({

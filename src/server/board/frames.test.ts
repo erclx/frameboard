@@ -28,6 +28,7 @@ import {
   setBoxes,
   setFrameDevice,
   setFrameFlag,
+  setFrameSpeakerNotes,
   setFrameTransition,
   setHeightModes,
   setLinkedWidths,
@@ -1130,6 +1131,125 @@ describe('frames', () => {
         expect(layout('webapp/home').frames.hero.transition).toEqual({
           name: 'cube',
         })
+      })
+    })
+
+    describe('speaker notes', () => {
+      it('sets a note with its line breaks and leaves the frame file alone', async () => {
+        const root = open()
+        const bytes = file('webapp/home/hero.html')
+
+        const set = await setFrameSpeakerNotes(
+          root,
+          'webapp/home/hero',
+          'Open on the price.\n\nThen the demo.',
+          { cwd: root },
+        )
+
+        expect(set.speakerNotes).toBe('Open on the price.\n\nThen the demo.')
+        expect(layout('webapp/home').frames.hero.speakerNotes).toBe(
+          'Open on the price.\n\nThen the demo.',
+        )
+        expect(file('webapp/home/hero.html')).toBe(bytes)
+      })
+
+      it('clears a note on blank text, leaving no key', async () => {
+        const root = open()
+        hugHero(root, { speakerNotes: 'Open on the price.' })
+
+        const cleared = await setFrameSpeakerNotes(
+          root,
+          'webapp/home/hero',
+          '  \n ',
+          { cwd: root },
+        )
+
+        expect(cleared).not.toHaveProperty('speakerNotes')
+        expect(layout('webapp/home').frames.hero).not.toHaveProperty(
+          'speakerNotes',
+        )
+      })
+
+      it('accepts a note at the limit', async () => {
+        const root = open()
+
+        const set = await setFrameSpeakerNotes(
+          root,
+          'webapp/home/hero',
+          'a'.repeat(10_000),
+          { cwd: root },
+        )
+
+        expect(set.speakerNotes).toHaveLength(10_000)
+      })
+
+      it('refuses a note past the limit and writes nothing', async () => {
+        const root = open()
+        const before = layout('webapp/home')
+
+        await expect(
+          setFrameSpeakerNotes(root, 'webapp/home/hero', 'a'.repeat(10_001), {
+            cwd: root,
+          }),
+        ).rejects.toMatchObject({ code: 'usage' })
+        expect(layout('webapp/home')).toEqual(before)
+      })
+
+      it('reads a note of another type as none and leaves it as written', async () => {
+        const root = open()
+        hugHero(root, { speakerNotes: ['a list'] })
+
+        const moved = await moveFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          x: 40,
+        })
+
+        expect(moved).not.toHaveProperty('speakerNotes')
+        expect(layout('webapp/home').frames.hero.speakerNotes).toEqual([
+          'a list',
+        ])
+      })
+
+      it('keeps the note when another writer changes the entry', async () => {
+        const root = open()
+        hugHero(root, { speakerNotes: 'Open on the price.' })
+
+        await setFrameTransition(
+          root,
+          'webapp/home/hero',
+          { name: 'fade' },
+          { cwd: root },
+        )
+
+        expect(layout('webapp/home').frames.hero.speakerNotes).toBe(
+          'Open on the price.',
+        )
+      })
+
+      it('carries the note when the frame moves to another page', async () => {
+        const root = open()
+        hugHero(root, { speakerNotes: 'Open on the price.' })
+
+        const moved = await moveFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          to: 'webapp/settings',
+        })
+
+        expect(moved.speakerNotes).toBe('Open on the price.')
+        expect(layout('webapp/settings').frames.hero.speakerNotes).toBe(
+          'Open on the price.',
+        )
+      })
+
+      it('carries the note onto a duplicate', async () => {
+        const root = open()
+        hugHero(root, { speakerNotes: 'Open on the price.' })
+
+        const copy = await duplicateFrame(root, 'webapp/home/hero', {
+          cwd: root,
+        })
+
+        expect(copy.speakerNotes).toBe('Open on the price.')
       })
     })
 

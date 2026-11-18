@@ -23,10 +23,12 @@ import {
   storedTransitionOf,
   type Transition,
 } from '@/shared/present-transition'
-import type {
-  LayoutEntry,
-  LayoutFile,
-  SectionEntry,
+import {
+  type LayoutEntry,
+  type LayoutFile,
+  type SectionEntry,
+  SPEAKER_NOTES_MAX,
+  speakerNotesOf,
 } from '@/shared/records/board'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -925,6 +927,31 @@ export async function setFrameTransition(
   })
 }
 
+/**
+ * Sets a frame's speaker note on its layout entry, or clears it with null or
+ * blank text, leaving the frame's file alone. Refuses `usage` past
+ * `SPEAKER_NOTES_MAX` rather than cutting the text.
+ */
+export async function setFrameSpeakerNotes(
+  root: string,
+  ref: string,
+  text: string | null,
+  options: RefOptions & JournalOptions,
+): Promise<FrameRecord> {
+  if (text !== null && text.length > SPEAKER_NOTES_MAX) {
+    throw new FrameboardError(
+      'usage',
+      `A speaker note holds at most ${SPEAKER_NOTES_MAX} characters, and this one has ${text.length}.`,
+      { max: SPEAKER_NOTES_MAX, length: text.length },
+    )
+  }
+  const speakerNotes = speakerNotesOf(text)
+  return updatePlacement(root, ref, options, (placement) => {
+    const { speakerNotes: _held, ...rest } = placement
+    return speakerNotes ? { ...rest, speakerNotes } : rest
+  })
+}
+
 export async function deleteFrame(
   root: string,
   ref: string,
@@ -1068,6 +1095,7 @@ class PageLayout {
       widths,
       showDevice,
       transition,
+      speakerNotes,
       hugWidth: hugsWidth,
       hugHeight: hugsHeight,
     }: Placement,
@@ -1094,6 +1122,7 @@ class PageLayout {
         : {}),
       ...(showDevice ? { showDevice } : {}),
       ...(transition ? { transition: { ...transition } } : {}),
+      ...(speakerNotes ? { speakerNotes } : {}),
     }
     if (widths.length === 0 && widthsOf(held?.widths).length > 0) {
       delete entry.widths
@@ -1102,6 +1131,9 @@ class PageLayout {
     if (typeof held?.device === 'string') delete entry.device
     if (!transition && storedTransitionOf(held?.transition)) {
       delete entry.transition
+    }
+    if (!speakerNotes && speakerNotesOf(held?.speakerNotes)) {
+      delete entry.speakerNotes
     }
     this.file.frames[name] = entry
     this.changed = true

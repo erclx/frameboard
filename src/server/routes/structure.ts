@@ -14,6 +14,7 @@ import {
   renameFrame,
   setFrameDevice,
   setFrameFlag,
+  setFrameSpeakerNotes,
   setFrameTransition,
   setHeightModes,
   setLinkedWidths,
@@ -160,6 +161,11 @@ const pageTransitionSchema = z.object({
 const frameTransitionSchema = z.object({
   refs,
   transition: transition.nullable(),
+})
+/** Blank text clears the note, and the setter refuses one past its limit. */
+const frameSpeakerNotesSchema = z.object({
+  ref,
+  speakerNotes: z.string(),
 })
 const frameFlagSchema = z.object({
   refs,
@@ -553,6 +559,22 @@ export function structureRoutes(
       (records) => records.map((record) => record.ref),
     )
     return c.json({ ok: true, data: frames })
+  })
+
+  /** Sets or clears one frame's speaker note in one step, leaving its file alone. */
+  app.post('/api/frame/speaker-notes', async (c) => {
+    const body = await parseBody(c.req.raw, frameSpeakerNotesSchema)
+    await refuseHeldFrames([body.ref])
+    const [frame] = await eachFrame(
+      [body.ref],
+      (target, journal) =>
+        setFrameSpeakerNotes(root, target, body.speakerNotes, {
+          cwd,
+          journal,
+        }),
+      (records) => records.map((record) => record.ref),
+    )
+    return c.json({ ok: true, data: frame })
   })
 
   // One step for every frame's height mode, refused whole on a moved `expected`.

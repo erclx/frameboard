@@ -915,6 +915,38 @@ describe('structureRoutes', () => {
       expect(layout().hero).not.toHaveProperty('transition')
     })
 
+    it('sets a speaker note as one step and undoes it, leaving the file alone', async () => {
+      const bytes = readFileSync(frameFile('hero'))
+
+      const response = await post('/api/frame/speaker-notes', {
+        ref: 'studio/home/hero',
+        speakerNotes: 'Open on the price.\nThen the demo.',
+      })
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: { speakerNotes: 'Open on the price.\nThen the demo.' },
+      })
+      expect(layout().hero.speakerNotes).toBe(
+        'Open on the price.\nThen the demo.',
+      )
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(layout().hero).not.toHaveProperty('speakerNotes')
+      expect(readFileSync(frameFile('hero'))).toEqual(bytes)
+    })
+
+    it('refuses a speaker note with no writer and writes nothing', async () => {
+      const response = await post(
+        '/api/frame/speaker-notes',
+        { ref: 'studio/home/hero', speakerNotes: 'Open on the price.' },
+        {},
+      )
+
+      expect(response.status).toBe(401)
+      expect(layout().hero).not.toHaveProperty('speakerNotes')
+    })
+
     it('sets a page transition as one step and undoes it', async () => {
       await post('/api/page/transition', {
         ref: 'studio/home',
@@ -1541,6 +1573,11 @@ describe('structureRoutes', () => {
         { refs: ['studio/home/mobile', 'studio/home/hero'] },
       ],
       ['a cut', '/api/clipboard/cut', { refs: ['studio/home/hero'] }],
+      [
+        'a speaker note',
+        '/api/frame/speaker-notes',
+        { ref: 'studio/home/hero', speakerNotes: 'Open on the price.' },
+      ],
       [
         'a project rename',
         '/api/project/rename',
