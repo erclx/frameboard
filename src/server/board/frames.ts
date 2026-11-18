@@ -34,6 +34,7 @@ import {
 import type { FrameRecord } from '@/shared/records/list'
 
 import { reservedBox } from '../claims/store'
+import { projectKitNames } from '../kits/project'
 import type { Journal, JournalOptions } from './journal'
 import { readRecord, withLocks, writeRecord } from './json-record'
 import {
@@ -926,6 +927,41 @@ export async function setFrameTransition(
     const { transition: _held, ...rest } = placement
     return transition ? { ...rest, transition } : rest
   })
+}
+
+/**
+ * Sets the project kit a frame draws with, or clears it with null, writing
+ * only its layout entry. Refuses `kit-not-found` for a name the frame's
+ * project holds no kit under, and stores the folder's own spelling.
+ */
+export async function setFrameKit(
+  root: string,
+  ref: string,
+  kit: string | null,
+  options: RefOptions & JournalOptions,
+): Promise<FrameRecord> {
+  const frame = await resolveFrameRef(root, ref, options)
+  const held = kit === null ? null : await heldKit(root, frame.project, kit)
+  return updatePlacement(root, ref, options, (placement) => {
+    const { kit: _held, ...rest } = placement
+    return held ? { ...rest, kit: held } : rest
+  })
+}
+
+/** The project's kit `name` answers to, refusing `kit-not-found` with the kits it holds. */
+async function heldKit(
+  root: string,
+  project: string,
+  name: string,
+): Promise<string> {
+  const known = await projectKitNames(join(root, project))
+  const found = matchName(known, name)
+  if (found) return found
+  throw new FrameboardError(
+    'kit-not-found',
+    `${project} holds no kit named ${name}. Add one with \`frameboard kit add ${project} <kit>\`.`,
+    { kit: name, project, known },
+  )
 }
 
 /**
