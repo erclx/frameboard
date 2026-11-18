@@ -2,7 +2,7 @@ import '../styles.css'
 
 import { act, render } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { bindKeys, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
@@ -1370,5 +1370,111 @@ describe('Frame held at a moment', () => {
     unmount()
 
     expect(motionHoldOf('studio/home/a')).toBeUndefined()
+  })
+})
+
+describe('Frame while its page loads', () => {
+  // Timers alone, so the iframe's own load still arrives from the browser.
+  function fakeTimers() {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  }
+
+  function blockOf(container: HTMLElement): HTMLElement | null {
+    return container.querySelector<HTMLElement>('[data-loading-block]')
+  }
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+    act(() =>
+      themeStore.setState({
+        choice: 'system',
+        system: 'light',
+        flipped: new Set(),
+      }),
+    )
+  })
+
+  it('draws no block in its first second', () => {
+    fakeTimers()
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+
+    act(() => vi.advanceTimersByTime(999))
+
+    expect(blockOf(container)).toBeNull()
+  })
+
+  it('draws the block over a page still loading after a second', () => {
+    fakeTimers()
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+
+    act(() => vi.advanceTimersByTime(1000))
+
+    expect(blockOf(container)).not.toBeNull()
+  })
+
+  it('drops the block once the page loads', async () => {
+    fakeTimers()
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    const load = loaded(iframeOf(container, 'a'))
+    act(() => vi.advanceTimersByTime(1000))
+
+    await act(() => load)
+
+    expect(blockOf(container)).toBeNull()
+  })
+
+  it('draws no block over a painted page reloading', async () => {
+    fakeTimers()
+    const { container, rerender } = render(
+      <Frame frame={frame('a')} live version={0} />,
+    )
+    await act(() => loaded(iframeOf(container, 'a')))
+
+    rerender(<Frame frame={frame('a')} live version={1} />)
+    act(() => vi.advanceTimersByTime(1000))
+
+    expect(blockOf(container)).toBeNull()
+  })
+
+  it('waits a second again for a frame brought back live', async () => {
+    fakeTimers()
+    const { container, rerender } = render(
+      <Frame frame={frame('a')} live version={0} />,
+    )
+    await act(() => loaded(iframeOf(container, 'a')))
+    rerender(<Frame frame={frame('a')} live={false} version={0} />)
+
+    rerender(<Frame frame={frame('a')} live version={0} />)
+    act(() => vi.advanceTimersByTime(1000))
+
+    expect(blockOf(container)).not.toBeNull()
+  })
+
+  it("fills the block from a flipped frame's own theme", () => {
+    fakeTimers()
+    act(() => flipFrame('studio/home/a'))
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+
+    act(() => vi.advanceTimersByTime(1000))
+
+    const block = blockOf(container)
+    expect(block && getComputedStyle(block).backgroundColor).toBe(
+      'rgb(54, 54, 54)',
+    )
+  })
+
+  it('fills the block light for a frame flipped light on a dark board', () => {
+    fakeTimers()
+    act(() => chooseTheme('dark'))
+    act(() => flipFrame('studio/home/a'))
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+
+    act(() => vi.advanceTimersByTime(1000))
+
+    const block = blockOf(container)
+    expect(block && getComputedStyle(block).backgroundColor).toBe(
+      'rgb(242, 242, 242)',
+    )
   })
 })

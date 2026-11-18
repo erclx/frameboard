@@ -9,6 +9,7 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from '@/client/components/ui/popover'
+import { Skeleton } from '@/client/components/ui/skeleton'
 import { cn } from '@/client/lib/cn'
 import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
@@ -54,6 +55,46 @@ import {
 
 /** The keys a frame's own window hands the board in Play, Esc alone, so the frame's page keeps the rest. */
 const PLAY_KEYS = ['Escape']
+
+/** A load sooner than this draws no block, since its flash costs more than the wait. */
+const LOADING_BLOCK_DELAY_MS = 1000
+
+type FirstLoad = 'early' | 'waiting' | 'painted'
+
+/**
+ * Whether a live iframe is still waiting on its first page past the delay.
+ * A reload of a painted frame keeps the old page showing, so only a new
+ * iframe, mounted on going live, waits again.
+ */
+function useWaitingOnFirstLoad(
+  iframe: React.RefObject<HTMLIFrameElement | null>,
+  live: boolean,
+): boolean {
+  const [state, setState] = useState<{ live: boolean; load: FirstLoad }>({
+    live,
+    load: 'early',
+  })
+  if (state.live !== live) setState({ live, load: 'early' })
+  useEffect(() => {
+    const element = iframe.current
+    if (!live || !element) return
+    const timer = setTimeout(() => {
+      setState((current) =>
+        current.load === 'early' ? { live, load: 'waiting' } : current,
+      )
+    }, LOADING_BLOCK_DELAY_MS)
+    const paint = () => {
+      clearTimeout(timer)
+      setState({ live, load: 'painted' })
+    }
+    element.addEventListener('load', paint, { once: true })
+    return () => {
+      clearTimeout(timer)
+      element.removeEventListener('load', paint)
+    }
+  }, [iframe, live])
+  return live && state.load === 'waiting'
+}
 
 interface FrameProps {
   frame: FrameRecord
@@ -176,6 +217,7 @@ export const Frame = memo(function Frame({
     }
   }, [live, previewWidth, hugHeight, frame.ref])
 
+  const waiting = useWaitingOnFirstLoad(iframe, live)
   useHiddenScrollbar(iframe, live, frame.scroll)
   useMotionDriver(iframe, frame.ref, live, playing)
 
@@ -288,6 +330,7 @@ export const Frame = memo(function Frame({
           ref={iframe}
           title={frame.name}
           src={src ?? undefined}
+          aria-busy={waiting || undefined}
           // A flipped frame with no background paints its own theme's color.
           style={{ colorScheme: theme }}
           className="block size-full border-0 bg-[color:Canvas]"
@@ -298,6 +341,16 @@ export const Frame = memo(function Frame({
           className="size-full border border-border bg-card"
         />
       )}
+      {waiting ? (
+        <Skeleton
+          data-loading-block
+          // The theme class scopes the fill to a flipped frame's own tokens.
+          className={cn(
+            theme,
+            'pointer-events-none absolute inset-0 rounded-none motion-safe:animate-frame-loading',
+          )}
+        />
+      ) : null}
       {frame.device ? (
         <Bezel device={frame.device} width={width} height={height} />
       ) : null}
