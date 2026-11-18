@@ -35,6 +35,8 @@ export interface PresentState {
   step: number | 'last'
   /** How many steps the shown frame holds, 0 until its document is read. */
   steps: number
+  /** Whether the grid of every slide shows over the stage. */
+  overview: boolean
 }
 
 export const presentStore = createStore<PresentState>()(() => ({
@@ -43,6 +45,7 @@ export const presentStore = createStore<PresentState>()(() => ({
   leaving: null,
   step: 0,
   steps: 0,
+  overview: false,
 }))
 
 export function usePresent<T>(selector: (state: PresentState) => T): T {
@@ -51,6 +54,48 @@ export function usePresent<T>(selector: (state: PresentState) => T): T {
 
 export function presenting(): boolean {
   return presentStore.getState().page !== null
+}
+
+/** Whether the overview is open, which holds the keys that step and leave. */
+export function overviewOpen(): boolean {
+  return presentStore.getState().overview
+}
+
+/** Presenting with the overview shut, when a step or a leave may run. */
+export function onStage(): boolean {
+  return presenting() && !overviewOpen()
+}
+
+/**
+ * Opens or shuts the overview, a transition still playing cutting to its
+ * slide, so the grid marks where the deck stands.
+ */
+export function toggleOverview(): void {
+  if (!presenting()) return
+  presentStore.setState((state) => ({
+    overview: !state.overview,
+    leaving: null,
+  }))
+}
+
+/**
+ * Shuts the overview on `ref`, cutting there on its first step, since a jump
+ * across several slides has no one direction to travel. The slide already
+ * shown stays as it stands.
+ */
+export function jumpPresenting(ref: string): void {
+  const { frame } = presentStore.getState()
+  if (ref === frame) {
+    presentStore.setState({ overview: false })
+    return
+  }
+  presentStore.setState({
+    frame: ref,
+    leaving: null,
+    step: 0,
+    steps: 0,
+    overview: false,
+  })
 }
 
 /**
@@ -116,6 +161,7 @@ export function startPresenting(page: PageRecord): void {
     leaving: null,
     step: 0,
     steps: 0,
+    overview: false,
   })
   document.documentElement.requestFullscreen?.().catch(() => {})
 }
@@ -218,6 +264,7 @@ export function leavePresenting(): void {
     leaving: null,
     step: 0,
     steps: 0,
+    overview: false,
   })
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
   const shown = pageOf(page)?.frames.find(

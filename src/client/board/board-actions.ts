@@ -50,12 +50,14 @@ import { notesUi } from './notes/tool'
 import { enteredStore, leaveFrame } from './play/entered'
 import {
   leavePresenting,
+  onStage,
   pageOf,
   presenting,
   presentStore,
   startFrame,
   startPresenting,
   stepPresenting,
+  toggleOverview,
 } from './present/store'
 import { select, selectionStore } from './selection'
 import { canvasView, reportHandMove } from './view'
@@ -174,7 +176,7 @@ function presentActions(): Action[] {
       group: 'present',
       palette: false,
       keys: ['ArrowRight', 'ArrowDown', 'Space'],
-      enabled: presenting,
+      enabled: onStage,
       run: step(1),
     },
     {
@@ -183,8 +185,17 @@ function presentActions(): Action[] {
       group: 'present',
       palette: false,
       keys: ['ArrowLeft', 'ArrowUp', 'Shift+Space'],
-      enabled: presenting,
+      enabled: onStage,
       run: step(-1),
+    },
+    {
+      id: 'present.overview',
+      label: 'Slide overview',
+      group: 'present',
+      palette: false,
+      keys: ['KeyG'],
+      enabled: presenting,
+      run: toggleOverview,
     },
     {
       id: 'present.leave',
@@ -192,7 +203,7 @@ function presentActions(): Action[] {
       group: 'present',
       palette: false,
       keys: ['Escape'],
-      enabled: presenting,
+      enabled: onStage,
       run: leavePresenting,
     },
   ]

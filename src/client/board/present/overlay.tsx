@@ -24,6 +24,7 @@ import { useWaitingOnFirstLoad } from '../frame-loading'
 import { LoadingBlock } from '../loading-block'
 import { PresentBar } from './bar'
 import { fitScale } from './fit'
+import { Overview } from './overview'
 import {
   fetchOwnTransitions,
   type LoadTransitions,
@@ -33,11 +34,14 @@ import { readSteps, showSteps, type StepGroup, touchesSteps } from './steps'
 import {
   countSteps,
   endTransition,
+  jumpPresenting,
   leavePresenting,
+  overviewOpen,
   presentOrder,
   presentStore,
   shownStep,
   stepPresenting,
+  toggleOverview,
   usePresent,
 } from './store'
 import { TransitionKeyframes, TransitionLayer } from './transition'
@@ -47,6 +51,7 @@ import { CUT, type Travel } from './travel'
 const PRESENT_KEYS = [
   'present.next',
   'present.previous',
+  'present.overview',
   'present.leave',
 ] as const
 
@@ -70,6 +75,11 @@ function bindingMatches(binding: string, event: KeyboardEvent): boolean {
  */
 function takeKeys(target: Window, frame: boolean): () => void {
   const press = (event: KeyboardEvent) => {
+    // The open grid takes its own keys, and every other place stays deaf to them.
+    if (overviewOpen()) {
+      if (!frame && !inOverview(event.target)) event.stopPropagation()
+      return
+    }
     // Space and Enter press a focused bar button, which a step would cancel.
     if (pressesButton(event)) return
     const action = PRESENT_KEYS.map((id) => findAction(id)).find((candidate) =>
@@ -85,6 +95,10 @@ function takeKeys(target: Window, frame: boolean): () => void {
   }
   target.addEventListener('keydown', press, true)
   return () => target.removeEventListener('keydown', press, true)
+}
+
+function inOverview(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest('[data-overview]') !== null
 }
 
 function pressesButton(event: KeyboardEvent): boolean {
@@ -198,8 +212,11 @@ function useRoom(element: RefObject<HTMLElement | null>) {
  */
 export function PresentOverlay({
   loadTransitions = fetchOwnTransitions,
+  askThumbnails = fetch,
 }: {
   loadTransitions?: LoadTransitions
+  /** The request the overview asks for its thumbnails through. */
+  askThumbnails?: typeof fetch
 }) {
   const pageRef = usePresent((state) => state.page)
   const frameRef = usePresent((state) => state.frame)
@@ -221,17 +238,23 @@ export function PresentOverlay({
   return createPortal(
     <Presenting
       key={pageRef}
+      page={pageRef}
+      order={order}
       frame={frame}
       leaving={left && leaving ? { ...leaving, frame: left } : null}
       at={at + 1}
       count={order.length}
       loadTransitions={loadTransitions}
+      askThumbnails={askThumbnails}
     />,
     document.body,
   )
 }
 
 interface PresentingProps {
+  page: string
+  /** The slides in presenting order, which the overview draws. */
+  order: readonly FrameRecord[]
   /** Undefined once the page or the frame is gone, which leaves. */
   frame: FrameRecord | undefined
   /** The frame a step left, drawn under `frame` while its transition plays. */
@@ -239,14 +262,18 @@ interface PresentingProps {
   at: number
   count: number
   loadTransitions: LoadTransitions
+  askThumbnails: typeof fetch
 }
 
 function Presenting({
+  page,
+  order,
   frame,
   leaving,
   at,
   count,
   loadTransitions,
+  askThumbnails,
 }: PresentingProps) {
   const layer = useRef<HTMLDivElement>(null)
   const project = frame?.project
@@ -261,6 +288,7 @@ function Presenting({
     state.step === 'last' ? state.steps : Math.min(state.step, state.steps),
   )
   const steps = usePresent((state) => state.steps)
+  const overview = usePresent((state) => state.overview)
   const room = useRoom(layer)
   const { shown, wake } = useBarWake()
   useLeaveWithFullscreen()
@@ -320,8 +348,19 @@ function Presenting({
           />
         </TransitionLayer>
       ))}
+      {overview ? (
+        <Overview
+          page={page}
+          slides={order}
+          current={frame.ref}
+          onJump={jumpPresenting}
+          onClose={toggleOverview}
+          send={askThumbnails}
+        />
+      ) : null}
       <PresentBar
         shown={shown}
+        covered={overview}
         at={at}
         count={count}
         step={step}
@@ -329,6 +368,7 @@ function Presenting({
         name={frame.name}
         onPrevious={() => stepPresenting(-1)}
         onNext={() => stepPresenting(1)}
+        onOverview={toggleOverview}
         onLeave={leavePresenting}
       />
     </div>
