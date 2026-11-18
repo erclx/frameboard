@@ -28,8 +28,6 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${port}`,
     contextOptions: { reducedMotion: 'reduce' },
-    // A runner with no GPU gets no WebGL otherwise, so a model viewer never draws.
-    launchOptions: { args: ['--enable-unsafe-swiftshader'] },
     trace: 'on-first-retry',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],

@@ -20,6 +20,13 @@ const PHONE = readFileSync(resolve('test/fixtures/models/phone.glb'))
 const SCRIPT =
   '<script type="module" src="../assets/model-viewer.min.js"></script>'
 
+/**
+ * How long a fresh viewer gets to draw. With no GPU, Chromium draws WebGL in
+ * software, and one core takes about 6 s to light and compile the first model,
+ * holding the frame's thread, and the bridge's replies, until it is done.
+ */
+const DRAW = { timeout: 20_000 }
+
 /** What a viewer answers once its script drew its model. */
 interface Viewer extends HTMLElement {
   loaded?: boolean
@@ -56,6 +63,8 @@ test.describe('a 3D model placed by hand', () => {
   test('journey: a dropped model places as a viewer, turns by drag, keeps its angle through a reload, and one undo puts it back', async ({
     page,
   }) => {
+    // Two fresh draws, at placing and after the reload, near 20 s on one core.
+    test.slow()
     await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/webapp/home`)
     await page.getByRole('tab', { name: 'Assets' }).click()
@@ -100,9 +109,12 @@ test.describe('a 3D model placed by hand', () => {
       existsSync(join(board.root, 'webapp/assets/model-viewer.min.js')),
     ).toBe(true)
     const section = page.getByRole('region', { name: 'Model' })
-    await expect(section.getByText('phone.glb')).toBeVisible()
+    await expect(section.getByText('phone.glb')).toBeVisible(DRAW)
     await expect
-      .poll(() => viewer(page).evaluate((node: Viewer) => node.loaded === true))
+      .poll(
+        () => viewer(page).evaluate((node: Viewer) => node.loaded === true),
+        DRAW,
+      )
       .toBe(true)
     const placed = read()
 
@@ -135,12 +147,14 @@ test.describe('a 3D model placed by hand', () => {
 
     await page.reload()
     await expect
-      .poll(() =>
-        viewer(page).evaluate((node: Viewer) =>
-          node.loaded === true && node.getCameraOrbit
-            ? Math.round((node.getCameraOrbit().theta * 180) / Math.PI)
-            : null,
-        ),
+      .poll(
+        () =>
+          viewer(page).evaluate((node: Viewer) =>
+            node.loaded === true && node.getCameraOrbit
+              ? Math.round((node.getCameraOrbit().theta * 180) / Math.PI)
+              : null,
+          ),
+        DRAW,
       )
       .toBe(angle)
 
