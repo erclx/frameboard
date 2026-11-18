@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.40.0](https://github.com/erclx/frameboard/compare/v0.39.0...v0.40.0) (2026-11-18)
+
+
+### Features
+
+* **assets:** find and save public domain images from the Assets tab ([#380](https://github.com/erclx/frameboard/issues/380)) ([03ec699](https://github.com/erclx/frameboard/commit/03ec6990a01fb5fec98ed4f820568ca52ef13f18))
+* **board:** edit a run of text beside a child element in place ([#375](https://github.com/erclx/frameboard/issues/375)) ([d15be67](https://github.com/erclx/frameboard/commit/d15be677cff0a04f579992b042a4d46f2d12bc02))
+* **board:** hold the loading view's menus shut until the live board ([#372](https://github.com/erclx/frameboard/issues/372)) ([c2aff00](https://github.com/erclx/frameboard/commit/c2aff00cba308d22f9ef0426d7adbfb37932d428))
+* **board:** write a speaker note under each slide ([#379](https://github.com/erclx/frameboard/issues/379)) ([ada75fb](https://github.com/erclx/frameboard/commit/ada75fb79c6bd6dbb5176b8a29aeee85accd7d90))
+* **bridge:** move text in place onto a message bridge inside each frame ([#374](https://github.com/erclx/frameboard/issues/374)) ([297555d](https://github.com/erclx/frameboard/commit/297555d9ae30a432f7cee0c3375aaf39a43cc2a2))
+* **bridge:** read elements and the inspector through the frame bridge ([#381](https://github.com/erclx/frameboard/issues/381)) ([5436c35](https://github.com/erclx/frameboard/commit/5436c3597038175ac781c448cef08b2f58db79e0))
+* **image:** find, generate, and save images with a license file ([#377](https://github.com/erclx/frameboard/issues/377)) ([b82da21](https://github.com/erclx/frameboard/commit/b82da21c237f2178b0a1b84d91252989a0656c80))
+* **present:** open a grid of every slide on G and jump to one ([#376](https://github.com/erclx/frameboard/issues/376)) ([3425c11](https://github.com/erclx/frameboard/commit/3425c1102c5c5b7d02753360aee516287cbd58de))
+
+
+### Bug Fixes
+
+* **board:** round a device frame's screen to its bezel corners ([#371](https://github.com/erclx/frameboard/issues/371)) ([b3be15f](https://github.com/erclx/frameboard/commit/b3be15fb7a83b01799b628f77755f209c70a67c2))
+* **cli:** print the kits block in the human form of docs ([#378](https://github.com/erclx/frameboard/issues/378)) ([0b01d4a](https://github.com/erclx/frameboard/commit/0b01d4a5fcd0cbfc7e7552e6612cfea465ca28ed))
+
 ## [0.39.0](https://github.com/erclx/frameboard/compare/v0.38.0...v0.39.0) (2026-11-18)
 
 
