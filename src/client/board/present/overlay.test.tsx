@@ -880,6 +880,21 @@ describe('a presented frame in a device', () => {
     expect(shown && getComputedStyle(shown).borderBottomLeftRadius).toBe('62px')
   })
 
+  it('presents a foldable in the pose it holds, with no pose buttons', () => {
+    present([
+      frameOf('a', {
+        box: { x: 0, y: 0, width: 890, height: 626 },
+        device: 'foldable',
+        pose: 'half',
+      }),
+    ])
+
+    expect(
+      document.querySelector('[data-bezel="foldable"] [data-bezel-fold]'),
+    ).toHaveAttribute('data-bezel-fold', 'half')
+    expect(document.querySelector('[data-poses]')).toBeNull()
+  })
+
   it('leaves a page with no device square', () => {
     present(framesOf('a'))
 
