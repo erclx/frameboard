@@ -1413,6 +1413,29 @@ describe('Frame while its page loads', () => {
     expect(blockOf(container)).not.toBeNull()
   })
 
+  it('marks the iframe busy while the block shows', () => {
+    fakeTimers()
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+
+    act(() => vi.advanceTimersByTime(1000))
+
+    expect(iframeOf(container, 'a').getAttribute('aria-busy')).toBe('true')
+  })
+
+  it('draws the block under a device bezel', () => {
+    fakeTimers()
+    const { container } = render(
+      <Frame frame={{ ...frame('a'), device: 'phone' }} live version={0} />,
+    )
+
+    act(() => vi.advanceTimersByTime(1000))
+
+    const bezel = container.querySelector('[data-bezel]')
+    expect(bezel && blockOf(container)?.compareDocumentPosition(bezel)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
+
   it('drops the block once the page loads', async () => {
     fakeTimers()
     const { container } = render(<Frame frame={frame('a')} live version={0} />)
