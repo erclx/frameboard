@@ -5,8 +5,6 @@ import { toast } from '@/client/components/ui/toast'
 import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import { useFrameTheme } from '@/client/theme/store'
-import { elementAt } from '@/shared/frame-bridge/elements'
-import type { StepEffect } from '@/shared/present-transition'
 import type { UsedColor } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 import type { TokenRow } from '@/shared/records/tokens'
@@ -17,12 +15,10 @@ import { ZoomControl } from '../chrome/zoom-control'
 import { ClaimAvatars } from '../claims/avatars'
 import { useLiveMedia } from '../element/media'
 import { type TreeEntry, useElementTree } from '../element/tree'
-import { liveIframe } from '../frame-dom'
 import { usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
 import { placeFree } from '../place/write'
-import { playPreview, stopPreview } from '../present/preview'
-import { previewStep } from '../present/steps'
+import { previewStepOn, stopPreview } from '../present/preview'
 import { type ElementKey, useSelection } from '../selection'
 import { choosePreset, usePreset } from '../structure/tool'
 import { useTokenTable } from '../tokens'
@@ -241,18 +237,6 @@ const NOT_ON_SCREEN = (
     The element’s details show once its frame is on screen.
   </p>
 )
-
-/**
- * Plays `effect` once on the selected element in its frame's live page, one
- * preview at a time, and nothing while the page does not show it.
- */
-function previewStepOn(element: ElementKey, effect: StepEffect): void {
-  playPreview(() => {
-    const doc = liveIframe(element.frame)?.contentDocument
-    const target = doc ? elementAt(doc, element.index) : null
-    return target ? previewStep(target, effect) : () => {}
-  })
-}
 
 /**
  * The selected element's Slides sections: which press of its slide reveals

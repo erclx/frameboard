@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { frameElements } from '@/shared/frame-bridge/elements'
 import type { ResolvedTransition } from '@/shared/present-transition'
 
-import { playPreview, previewTransition, stopPreview } from './preview'
+import {
+  playPreview,
+  previewStepOn,
+  previewTransition,
+  stopPreview,
+} from './preview'
 
 /** A frame on the canvas, holding the inline style a live one carries. */
 function frame(): HTMLElement {
@@ -122,5 +128,42 @@ describe('playPreview', () => {
     playPreview(start)
 
     expect(start).not.toHaveBeenCalled()
+  })
+})
+
+describe('previewStepOn', () => {
+  /** A selected slide on the canvas whose live page holds `body`, loaded. */
+  async function liveSlide(ref: string, body: string): Promise<Document> {
+    const frame = document.createElement('div')
+    frame.dataset.frame = ref
+    const iframe = document.createElement('iframe')
+    const loaded = new Promise((resolve) =>
+      iframe.addEventListener('load', resolve, { once: true }),
+    )
+    iframe.srcdoc = `<!doctype html><body>${body}</body>`
+    frame.append(iframe)
+    document.body.append(frame)
+    await loaded
+    const doc = iframe.contentDocument
+    if (!doc) throw new Error('The slide has no document')
+    return doc
+  }
+
+  it('plays on the element the selection indexes in the live page', async () => {
+    vi.useRealTimers()
+    const doc = await liveSlide(
+      'studio/home/hero',
+      '<p id="one">One</p><p id="two" data-step="2">Two</p>',
+    )
+    const two = doc.getElementById('two')
+    if (!two) throw new Error('No step element')
+    const index = frameElements(doc).indexOf(two)
+
+    previewStepOn({ frame: 'studio/home/hero', index, hash: '' }, 'wipe')
+
+    expect([
+      two.getAttribute('data-frameboard-step-effect'),
+      doc.getElementById('one')?.hasAttribute('data-frameboard-step'),
+    ]).toEqual(['wipe', false])
   })
 })

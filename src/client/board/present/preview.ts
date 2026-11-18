@@ -1,4 +1,10 @@
+import { elementAt } from '@/shared/frame-bridge/elements'
+import type { StepEffect } from '@/shared/present-transition'
+
+import { liveIframe } from '../frame-dom'
+import type { ElementKey } from '../selection'
 import { EASING, layerStyle } from './keyframes'
+import { previewStep } from './steps'
 import { prefersReducedMotion, type Travel } from './travel'
 
 let ending: (() => void) | null = null
@@ -103,4 +109,16 @@ export function previewTransition(
   }
   const timer = setTimeout(end, ms)
   return end
+}
+
+/**
+ * Plays `effect` once on the selected element in its frame's live page, one
+ * preview at a time, and nothing while the page does not show it.
+ */
+export function previewStepOn(element: ElementKey, effect: StepEffect): void {
+  playPreview(() => {
+    const doc = liveIframe(element.frame)?.contentDocument
+    const target = doc ? elementAt(doc, element.index) : null
+    return target ? previewStep(target, effect) : () => {}
+  })
 }
