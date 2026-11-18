@@ -36,11 +36,14 @@ import {
   endTransition,
   jumpPresenting,
   leavePresenting,
+  openPresenter,
   overviewOpen,
+  presenterOpen,
   presentOrder,
   presentStore,
   shownStep,
   stepPresenting,
+  toggleFullscreen,
   toggleOverview,
   usePresent,
 } from './store'
@@ -52,6 +55,7 @@ const PRESENT_KEYS = [
   'present.next',
   'present.previous',
   'present.overview',
+  'present.fullscreen',
   'present.leave',
 ] as const
 
@@ -173,18 +177,23 @@ function useBarWake(): { shown: boolean; wake: () => void } {
 /**
  * Leaves presenting when the browser leaves full screen, which spends Esc
  * on itself and fires `fullscreenchange` in its place. It waits until full
- * screen was on, so a refused request never ends what it started.
+ * screen was on, so a refused request never ends what it started, and stays
+ * while the presenter window is open, since opening one takes this tab out of
+ * full screen in every engine. Answers whether full screen is on.
  */
-function useLeaveWithFullscreen(): void {
+function useLeaveWithFullscreen(): boolean {
+  const [full, setFull] = useState(() => document.fullscreenElement !== null)
   useEffect(() => {
     let on = document.fullscreenElement !== null
     const change = () => {
+      setFull(document.fullscreenElement !== null)
       if (document.fullscreenElement) on = true
-      else if (on) leavePresenting()
+      else if (on && !presenterOpen()) leavePresenting()
     }
     document.addEventListener('fullscreenchange', change)
     return () => document.removeEventListener('fullscreenchange', change)
   }, [])
+  return full
 }
 
 /** The overlay's size, read before paint and on every resize. */
@@ -289,9 +298,10 @@ function Presenting({
   )
   const steps = usePresent((state) => state.steps)
   const overview = usePresent((state) => state.overview)
+  const blocked = usePresent((state) => state.blocked)
   const room = useRoom(layer)
   const { shown, wake } = useBarWake()
-  useLeaveWithFullscreen()
+  const fullscreen = useLeaveWithFullscreen()
   useInertBehind(layer)
   useReturnFocus()
 
@@ -361,6 +371,15 @@ function Presenting({
           send={askThumbnails}
         />
       ) : null}
+      {blocked ? (
+        <p
+          role="status"
+          className="absolute top-6 left-1/2 max-w-[calc(100%-32px)] -translate-x-1/2 rounded-[10px] bg-[rgba(30,30,30,.82)] px-3 py-2 text-center text-body text-[#eee] backdrop-blur-[8px]"
+        >
+          The browser blocked the presenter view. Allow pop-ups for this
+          address, then press Presenter view.
+        </p>
+      ) : null}
       <PresentBar
         shown={shown}
         covered={overview}
@@ -369,9 +388,12 @@ function Presenting({
         step={step}
         steps={steps}
         name={frame.name}
+        fullscreen={fullscreen}
         onPrevious={() => stepPresenting(-1)}
         onNext={() => stepPresenting(1)}
         onOverview={toggleOverview}
+        onPresenter={openPresenter}
+        onFullscreen={toggleFullscreen}
         onLeave={leavePresenting}
       />
     </div>

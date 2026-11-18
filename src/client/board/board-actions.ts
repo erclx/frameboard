@@ -4,6 +4,7 @@ import {
   Hand,
   Link,
   Maximize,
+  MonitorSpeaker,
   MousePointer2,
   PanelLeft,
   Pencil,
@@ -57,6 +58,7 @@ import {
   startFrame,
   startPresenting,
   stepPresenting,
+  toggleFullscreen,
   toggleOverview,
 } from './present/store'
 import { select, selectionStore } from './selection'
@@ -171,6 +173,22 @@ function presentActions(): Action[] {
       },
     },
     {
+      id: 'present.presenter',
+      label: 'Present with presenter view',
+      group: 'present',
+      command: {
+        label: 'Present with presenter view',
+        icon: MonitorSpeaker,
+        keywords: ['speaker notes', 'second window', 'timer', 'next slide'],
+      },
+      keys: ['Alt+Shift+KeyP'],
+      enabled: () => !presenting() && presentablePage() !== undefined,
+      run: () => {
+        const page = presentablePage()
+        if (page) startPresenting(page, { presenter: true })
+      },
+    },
+    {
       id: 'present.next',
       label: 'Next frame',
       group: 'present',
@@ -196,6 +214,15 @@ function presentActions(): Action[] {
       keys: ['KeyG'],
       enabled: presenting,
       run: toggleOverview,
+    },
+    {
+      id: 'present.fullscreen',
+      label: 'Full screen',
+      group: 'present',
+      palette: false,
+      keys: ['KeyF'],
+      enabled: onStage,
+      run: toggleFullscreen,
     },
     {
       id: 'present.leave',

@@ -2,6 +2,7 @@ import { useStore } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 
 import { liveStore } from '@/client/live/store'
+import { frameTheme, themeStore } from '@/client/theme/store'
 import {
   resolveTransition,
   transitionNameOf,
@@ -12,6 +13,13 @@ import { select, selectionStore } from '../selection'
 import { canvasView } from '../view'
 import { readingOrder } from './order'
 import { canPlayOwn } from './own-transitions'
+import {
+  type Audience,
+  newPresentationId,
+  type PresentedState,
+  presenterUrl,
+  serveAudience,
+} from './sync'
 import { CUT, prefersReducedMotion, type Travel, travelOf } from './travel'
 
 /**
@@ -37,6 +45,8 @@ export interface PresentState {
   steps: number
   /** Whether the grid of every slide shows over the stage. */
   overview: boolean
+  /** Whether the browser refused the last presenter window asked for, which the overlay says. */
+  blocked: boolean
 }
 
 export const presentStore = createStore<PresentState>()(() => ({
@@ -46,6 +56,7 @@ export const presentStore = createStore<PresentState>()(() => ({
   step: 0,
   steps: 0,
   overview: false,
+  blocked: false,
 }))
 
 export function usePresent<T>(selector: (state: PresentState) => T): T {
@@ -149,9 +160,14 @@ export function pageOf(ref: string | null): PageRecord | undefined {
 
 /**
  * Presents `page`, called inside the press that asked, since the browser grants
- * full screen only under that activation, and a refusal covers the window instead.
+ * full screen or a window only under that activation. One press cannot do both,
+ * so `presenter` opens the presenter window in place of full screen. A refused
+ * full screen covers the window instead.
  */
-export function startPresenting(page: PageRecord): void {
+export function startPresenting(
+  page: PageRecord,
+  { presenter = false }: { presenter?: boolean } = {},
+): void {
   const { page: selectedPage, frames } = selectionStore.getState()
   const first = startFrame(page.frames, selectedPage === page.ref ? frames : [])
   if (!first) return
@@ -162,7 +178,124 @@ export function startPresenting(page: PageRecord): void {
     step: 0,
     steps: 0,
     overview: false,
+    blocked: false,
   })
+  openSession(Date.now())
+  if (presenter) openPresenter()
+  else document.documentElement.requestFullscreen?.().catch(() => {})
+}
+
+/**
+ * One presentation's link to its presenter window, alive from the start of
+ * presenting until the page clears, whichever path clears it.
+ */
+interface Session {
+  id: string
+  startedAt: number
+  window: Window | null
+  close: () => void
+}
+
+let session: Session | null = null
+
+/** What the presenter window draws, null while nothing presents. */
+function presentedState(): PresentedState | null {
+  const { page, frame } = presentStore.getState()
+  if (!session || page === null || frame === null) return null
+  const themes = Object.fromEntries(
+    (pageOf(page)?.frames ?? []).map((shown) => [
+      shown.ref,
+      frameTheme(shown.ref),
+    ]),
+  )
+  return {
+    page,
+    frame,
+    step: shownStep(),
+    startedAt: session.startedAt,
+    themes,
+  }
+}
+
+function openSession(startedAt: number): void {
+  session?.close()
+  const id = newPresentationId()
+  const audience: Audience = serveAudience(id, {
+    current: presentedState,
+    step: (by) => {
+      if (onStage()) stepPresenting(by)
+    },
+    leave: leavePresenting,
+  })
+  let sent = ''
+  const send = () => {
+    const state = presentedState()
+    if (!state) return
+    const json = JSON.stringify(state)
+    if (json === sent) return
+    sent = json
+    audience.send(state)
+  }
+  const unsubscribePresent = presentStore.subscribe((state) => {
+    if (state.page === null) own.close()
+    else send()
+  })
+  const unsubscribeTheme = themeStore.subscribe(send)
+  const unsubscribeBoard = liveStore.subscribe((state, previous) => {
+    if (state.board !== previous.board) send()
+  })
+  // A reload ends presenting, so the presenter window says so rather than hold a stale slide.
+  const end = () => audience.end()
+  window.addEventListener('pagehide', end)
+  const own: Session = {
+    id,
+    startedAt,
+    window: null,
+    close: () => {
+      if (session !== own) return
+      session = null
+      unsubscribePresent()
+      unsubscribeTheme()
+      unsubscribeBoard()
+      window.removeEventListener('pagehide', end)
+      audience.end()
+      own.window?.close()
+    },
+  }
+  session = own
+}
+
+/** Whether a presenter window this presentation opened is still open. */
+export function presenterOpen(): boolean {
+  return session?.window != null && !session.window.closed
+}
+
+/**
+ * Opens the presenter window, or brings an open one forward, called inside a
+ * press. A refusal marks the overlay blocked, and presenting goes on alone.
+ */
+export function openPresenter(): void {
+  const page = pageOf(presentStore.getState().page)
+  if (!session || !page) return
+  if (presenterOpen()) {
+    session.window?.focus()
+    return
+  }
+  const opened = window.open(
+    presenterUrl(page.project, page.name, session.id),
+    `frameboard-presenter-${session.id}`,
+    'popup,width=1200,height=760',
+  )
+  session.window = opened
+  presentStore.setState({ blocked: opened === null })
+}
+
+/** Takes the presenting tab in or out of full screen, called inside a press. */
+export function toggleFullscreen(): void {
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(() => {})
+    return
+  }
   document.documentElement.requestFullscreen?.().catch(() => {})
 }
 
@@ -252,8 +385,8 @@ export function endTransition(id: number): void {
 
 /**
  * Ends presenting and returns to the board with the presented frame
- * selected and in view, leaving full screen when it is still on. Writes
- * nothing to the board and records no undo step.
+ * selected and in view, leaving full screen when it is still on and closing
+ * the presenter window. Writes nothing to the board and records no undo step.
  */
 export function leavePresenting(): void {
   const { page, frame } = presentStore.getState()
@@ -265,6 +398,7 @@ export function leavePresenting(): void {
     step: 0,
     steps: 0,
     overview: false,
+    blocked: false,
   })
   if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
   const shown = pageOf(page)?.frames.find(
