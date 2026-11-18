@@ -1,0 +1,143 @@
+import { createStore } from 'zustand/vanilla'
+
+import { BoardWriteError, writeBoard } from '@/client/live/write'
+import type {
+  ImageFind,
+  ImageGenerate,
+  ImageOffer,
+  ImageResult,
+  SavedImage,
+} from '@/shared/records/sourcing'
+
+export type { ImageFind, ImageGenerate, ImageOffer, ImageResult, SavedImage }
+
+function base(project: string): string {
+  return `/api/projects/${encodeURIComponent(project)}/sourcing`
+}
+
+type Envelope<T> =
+  | { ok: true; data: T }
+  | {
+      ok: false
+      error: {
+        code: string
+        message: string
+        details?: Record<string, unknown>
+      }
+    }
+
+/**
+ * One page of Openverse results through the board's server. A refusal throws
+ * `BoardWriteError` with the code and details the route answered, an abort
+ * throws the signal's own error.
+ */
+export async function findImages(
+  project: string,
+  query: string,
+  credited: boolean,
+  signal?: AbortSignal,
+): Promise<ImageFind> {
+  const params = new URLSearchParams({ q: query })
+  if (credited) params.set('credited', 'true')
+  const response = await fetch(`${base(project)}/find?${params}`, { signal })
+  const body = (await response
+    .json()
+    .catch(() => null)) as Envelope<ImageFind> | null
+  if (body === null) {
+    throw new BoardWriteError(
+      'internal',
+      `The board answered ${response.status}.`,
+    )
+  }
+  if (!body.ok) {
+    throw new BoardWriteError(
+      body.error.code,
+      body.error.message,
+      body.error.details,
+    )
+  }
+  return body.data
+}
+
+/** The provider Generate would run on and its price, null when the read fails. */
+export async function fetchOffer(project: string): Promise<ImageOffer | null> {
+  const response = await fetch(`${base(project)}/provider`)
+  const body = (await response
+    .json()
+    .catch(() => null)) as Envelope<ImageOffer> | null
+  return body?.ok ? body.data : null
+}
+
+/** Generates an image and saves it into the project's `assets/`, the one call that spends. */
+export function generateImage(
+  project: string,
+  prompt: string,
+): Promise<ImageGenerate> {
+  return writeBoard<ImageGenerate>(`${base(project)}/generate`, { prompt })
+}
+
+/** Where one result's save stands, absent until it is first saved. */
+export type SaveState =
+  | { state: 'saving' }
+  | { state: 'saved'; path: string }
+  | { state: 'failed'; message: string }
+
+/** Each result's save by `project` and Openverse id, so a click and a drag share one. */
+export const saveStore = createStore<Record<string, SaveState>>()(() => ({}))
+
+export function saveKey(project: string, id: string): string {
+  return `${project}\0${id}`
+}
+
+export interface SaveRequest {
+  project: string
+  result: Pick<ImageResult, 'id'>
+  /** The search that found it, which names the saved file. */
+  query: string
+  credited: boolean
+}
+
+const pending = new Map<string, Promise<SavedImage>>()
+const landed = new Map<string, SavedImage>()
+
+/**
+ * Saves a found result into the project's `assets/` once: a second call while
+ * the first runs, or after it landed, answers the same file rather than
+ * writing another.
+ */
+export function saveResult(
+  { project, result, query, credited }: SaveRequest,
+  send: typeof writeBoard<SavedImage> = writeBoard,
+): Promise<SavedImage> {
+  const key = saveKey(project, result.id)
+  const done = landed.get(key)
+  if (done) return Promise.resolve(done)
+  const running = pending.get(key)
+  if (running) return running
+  const set = (state: SaveState) =>
+    saveStore.setState((current) => ({ ...current, [key]: state }))
+  set({ state: 'saving' })
+  const save = send(`${base(project)}/save`, { id: result.id, query, credited })
+    .then((saved) => {
+      landed.set(key, saved)
+      set({ state: 'saved', path: saved.path })
+      return saved
+    })
+    .catch((error: unknown) => {
+      set({
+        state: 'failed',
+        message: error instanceof Error ? error.message : String(error),
+      })
+      throw error
+    })
+    .finally(() => pending.delete(key))
+  pending.set(key, save)
+  return save
+}
+
+/** Forgets every save, for a test to start clean. */
+export function resetSaves(): void {
+  pending.clear()
+  landed.clear()
+  saveStore.setState({}, true)
+}
