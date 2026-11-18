@@ -5,7 +5,9 @@ import { useRef, useState } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import type { FrameRecord } from '@/shared/records/list'
+import { BRIDGE } from '@/test/frame-bridge'
 
+import { shownHashOf } from '../bridge/shown'
 import { modeStore } from '../mode'
 import { ShapeDraft } from './shape-draft'
 import { shapeStore } from './tool'
@@ -59,7 +61,7 @@ function Board() {
           <iframe
             title="hero"
             style={{ display: 'block', width: 400, height: 300, border: 0 }}
-            srcDoc={`<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body style="margin:0"><main style="height:300px"></main></body></html>`}
+            srcDoc={`<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style>${BRIDGE}</head><body style="margin:0"><main style="height:300px"></main></body></html>`}
           />
         </div>
         <ShapeDraft
@@ -82,11 +84,13 @@ function Board() {
 
 async function mount() {
   const { container } = render(<Board />)
+  // The fill is asked of the page, so the press waits for its bridge to announce.
   await expect
-    .poll(() =>
-      container.querySelector('iframe')?.contentDocument?.querySelector('main'),
-    )
-    .toBeTruthy()
+    .poll(() => {
+      const iframe = container.querySelector('iframe')
+      return iframe && shownHashOf(iframe)
+    })
+    .toBe(HASH)
   const target = container.querySelector<HTMLElement>('[data-viewport]')
   if (!target) throw new Error('no viewport')
   return { container, target }
@@ -121,8 +125,13 @@ describe('ShapeDraft', () => {
 
     drag(target, { x: 40, y: 40 }, { x: 160, y: 120 })
 
-    const fill = container.querySelector<HTMLElement>('[data-shape-fill]')
-    expect(fill?.style.borderRadius).toBe('50%')
+    await expect
+      .poll(
+        () =>
+          container.querySelector<HTMLElement>('[data-shape-fill]')?.style
+            .borderRadius,
+      )
+      .toBe('50%')
   })
 
   it('names the drawn size under a Rectangle drag', async () => {
@@ -134,7 +143,9 @@ describe('ShapeDraft', () => {
 
     drag(target, { x: 40, y: 40 }, { x: 160.4, y: 120 })
 
-    expect(container.querySelector('[data-chip]')?.textContent).toBe('120 × 80')
+    await expect
+      .poll(() => container.querySelector('[data-chip]')?.textContent)
+      .toBe('120 × 80')
   })
 
   it('fills a shape with the raw grey when the project sets no color token', async () => {
@@ -146,10 +157,12 @@ describe('ShapeDraft', () => {
 
     drag(target, { x: 40, y: 40 }, { x: 160, y: 120 })
 
-    const fill = container.querySelector<HTMLElement>('[data-shape-fill]')
-    expect(fill ? getComputedStyle(fill).backgroundColor : null).toBe(
-      'rgb(217, 217, 217)',
-    )
+    await expect
+      .poll(() => {
+        const fill = container.querySelector<HTMLElement>('[data-shape-fill]')
+        return fill ? getComputedStyle(fill).backgroundColor : null
+      })
+      .toBe('rgb(217, 217, 217)')
   })
 
   it('draws no shape for a press on bare canvas, where a release places nothing', async () => {

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { type ShownGap, shownGapSchema } from './gap'
 import {
   type FrameOverflow,
   frameOverflowSchema,
@@ -112,10 +113,22 @@ export interface BridgeOps {
     value: FrameOverflow | null
     push: FrameOverflow | null
   }
+  /** The color a paint resolves to in the page's own theme, null for a page with no body. */
+  paint: { args: { fill: string }; value: string | null; push: never }
   /** What sits under a frame point, hit-tested as the page draws. */
   'pick-at': { args: { at: FramePoint }; value: PickAt; push: never }
   /** The named elements' pin corners, pushed again on every resize or scroll until closed, leaving out one the page holds none at. */
   pins: { args: { indexes: number[] }; value: PinCorner[]; push: PinCorner[] }
+  /**
+   * The gap a placement lands in under a frame point, with the hash it was
+   * read at, or for a `carried` element the gap it moves to, null where the
+   * move would change nothing.
+   */
+  'gap-at': {
+    args: { at: FramePoint; carried?: number }
+    value: ShownGap | null
+    push: never
+  }
   /** Forgets the frame's previews once a write of what they show landed with no reload. */
   'keep-previews': { args: Record<string, never>; value: null; push: never }
   /** Previews one inline declaration on the element at an index, or puts the one it replaced back on a null value, checking no hash. */
@@ -177,11 +190,13 @@ export type BridgeMessage =
 const OPS: readonly string[] = [
   'element-box',
   'element-boxes',
+  'gap-at',
   'keep-previews',
   'live-body',
   'live-element',
   'measure',
   'overflow',
+  'paint',
   'pick-at',
   'pins',
   'preview-style',
@@ -322,7 +337,12 @@ const SCHEMAS: {
       chain: z.array(z.object({ index: indexSchema, tag: z.string() })),
     }),
   },
+  'gap-at': {
+    args: z.object({ at: pointSchema, carried: indexSchema.optional() }),
+    value: shownGapSchema,
+  },
   'keep-previews': { args: noArgsSchema, value: z.null() },
+  paint: { args: z.object({ fill: z.string() }), value: z.string().nullable() },
   'preview-style': {
     args: z.object({
       index: indexSchema,
