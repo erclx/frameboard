@@ -138,6 +138,24 @@ describe('model-stage', () => {
     asked.close()
   })
 
+  it('rests a playing model at the start of its clip once autoplay goes', async () => {
+    const frame = await frameOf(spinning('autoplay'), SCRIPT)
+    const asked = await ask(frame, 'model', DRAWN)
+    await expect.poll(() => latest(asked)?.loaded).toBe(true)
+    asked.close()
+
+    await ask(frame, 'model-stage', { ...DRAWN, name: 'autoplay', value: null })
+
+    const viewer = frame.contentDocument?.querySelector('model-viewer') as
+      | (Element & { paused: boolean; currentTime: number })
+      | null
+      | undefined
+    expect({ paused: viewer?.paused, time: viewer?.currentTime }).toEqual({
+      paused: true,
+      time: 0,
+    })
+  })
+
   it('answers false for an address holding no viewer', async () => {
     const frame = await frameOf('<p>Words</p>')
 
