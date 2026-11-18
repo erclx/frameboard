@@ -16,6 +16,7 @@ import { useBoxTool } from '../sections/actions'
 import { ActionTooltip } from './action-tooltip'
 import { ChromeMenuContent } from './menu'
 import { ImageRow, MoreMenu, ToolRow } from './more-menu'
+import { refuseOpen } from './refuse-open'
 import { useToolbarStage } from './toolbar-stage'
 import {
   BOX_TOOLS,
@@ -40,6 +41,10 @@ const IDS = [
   ...[...EDIT_AND_VIEW.flat(), ...MODES, PRESENT].map((slot) => slot.id),
   ...SHAPES.map((row) => row.id),
 ]
+
+/** A slot's caret, drawn as the bar's disabled buttons are while its menu is held shut. */
+const CARET =
+  '-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:text-muted-foreground aria-expanded:text-foreground'
 
 /** Every tool in the order the bar and More list them, for finding the one on. */
 const EVERY_TOOL = [
@@ -77,11 +82,17 @@ function usePublishToastLift(bar: RefObject<HTMLElement | null>): void {
   }, [bar])
 }
 
+interface ToolbarProps {
+  project?: string
+  /** Holds every caret and More menu shut, reading disabled, as the loading view does. */
+  menusDisabled?: boolean
+}
+
 /**
  * The floating toolbar, drawing what its column has room for with More holding
  * the rest, an unregistered action's button showing disabled.
  */
-export function Toolbar({ project }: { project?: string }) {
+export function Toolbar({ project, menusDisabled = false }: ToolbarProps) {
   const registered = useActions(IDS)
   const actions = new Map(IDS.map((id, index) => [id, registered[index]]))
   const bar = useRef<HTMLDivElement>(null)
@@ -101,13 +112,25 @@ export function Toolbar({ project }: { project?: string }) {
             <ActiveTool actions={actions} />
           ) : (
             <>
-              <PointerTool actions={actions} carets={carets} />
-              <BoxTool actions={actions} carets={carets} />
+              <PointerTool
+                actions={actions}
+                carets={carets}
+                menuDisabled={menusDisabled}
+              />
+              <BoxTool
+                actions={actions}
+                carets={carets}
+                menuDisabled={menusDisabled}
+              />
               <ToolButton
                 slot={toolSlot(TEXT_TOOL)}
                 action={actions.get(TEXT_TOOL.id)}
               />
-              <ShapeTool actions={actions} carets={carets} />
+              <ShapeTool
+                actions={actions}
+                carets={carets}
+                menuDisabled={menusDisabled}
+              />
               <ToolButton
                 slot={toolSlot(NOTE_TOOL)}
                 action={actions.get(NOTE_TOOL.id)}
@@ -134,7 +157,12 @@ export function Toolbar({ project }: { project?: string }) {
         </>
       ) : (
         <>
-          <MoreMenu key={stage} stage={stage} actions={actions} />
+          <MoreMenu
+            key={stage}
+            stage={stage}
+            actions={actions}
+            disabled={menusDisabled}
+          />
         </>
       )}
       {stage === 'more' ? null : (
@@ -185,6 +213,7 @@ interface ToolProps {
   actions: ToolActions
   /** Draws the slot's caret menu, which the narrower stages leave to More. */
   carets: boolean
+  menuDisabled: boolean
 }
 
 interface ButtonProps {
@@ -230,7 +259,7 @@ function ToolButton({ slot, action, pressed, tip }: ButtonProps) {
  * shape is on, and a caret opening the menu of shapes, the one chosen
  * marked, each naming its key, and below them the Image, video, or audio row.
  */
-function ShapeTool({ actions, carets }: ToolProps) {
+function ShapeTool({ actions, carets, menuDisabled }: ToolProps) {
   const shown = useShape()
   const action = actions.get(shown.id)
   const slot = {
@@ -244,10 +273,11 @@ function ShapeTool({ actions, carets }: ToolProps) {
     <>
       <ToolButton slot={slot} action={action} pressed={on} />
       {carets ? (
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={menuDisabled ? refuseOpen : undefined}>
           <DropdownMenuTrigger
             aria-label="Shapes"
-            className="-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
+            aria-disabled={menuDisabled || undefined}
+            className={CARET}
           >
             <ChevronDown aria-hidden className="size-[9px]" />
           </DropdownMenuTrigger>
@@ -287,7 +317,7 @@ function ShapeTool({ actions, carets }: ToolProps) {
  * last, pressed while either is on, and a caret opening the menu of both,
  * the one chosen marked, each naming its key.
  */
-function BoxTool({ actions, carets }: ToolProps) {
+function BoxTool({ actions, carets, menuDisabled }: ToolProps) {
   const chosen = useBoxTool()
   const shown = BOX_TOOLS.find((row) => row.tool === chosen) ?? BOX_TOOLS[0]
   const slot = {
@@ -301,10 +331,11 @@ function BoxTool({ actions, carets }: ToolProps) {
     <>
       <ToolButton slot={slot} action={actions.get(shown.id)} pressed={on} />
       {carets ? (
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={menuDisabled ? refuseOpen : undefined}>
           <DropdownMenuTrigger
             aria-label="Frame tools"
-            className="-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
+            aria-disabled={menuDisabled || undefined}
+            className={CARET}
           >
             <ChevronDown aria-hidden className="size-[9px]" />
           </DropdownMenuTrigger>
@@ -345,7 +376,7 @@ function BoxTool({ actions, carets }: ToolProps) {
  * while either is, and a caret opening the menu of both, the one on marked,
  * each naming its key, so V and H stay the way in.
  */
-function PointerTool({ actions, carets }: ToolProps) {
+function PointerTool({ actions, carets, menuDisabled }: ToolProps) {
   const handOn = actions.get(HAND_TOOL)?.checked?.() ?? false
   const shown = POINTER_TOOLS[handOn ? 1 : 0]
   const slot = {
@@ -361,10 +392,11 @@ function PointerTool({ actions, carets }: ToolProps) {
     <>
       <ToolButton slot={slot} action={actions.get(shown.id)} pressed={on} />
       {carets ? (
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={menuDisabled ? refuseOpen : undefined}>
           <DropdownMenuTrigger
             aria-label="Pointer tools"
-            className="-ml-0.5 grid h-8 w-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground"
+            aria-disabled={menuDisabled || undefined}
+            className={CARET}
           >
             <ChevronDown aria-hidden className="size-[9px]" />
           </DropdownMenuTrigger>

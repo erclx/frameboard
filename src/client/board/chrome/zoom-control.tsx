@@ -11,6 +11,7 @@ import { cn } from '@/client/lib/cn'
 
 import { canvasView } from '../view'
 import { ActionMenuItem, ChromeMenuContent } from './menu'
+import { refuseOpen } from './refuse-open'
 
 const STEPS = [
   { id: 'view.zoomIn', label: 'Zoom in' },
@@ -29,6 +30,8 @@ const IDS = [...STEPS, ...LEVELS].map((entry) => entry.id)
 interface ZoomControlProps {
   /** Which edge of the trigger the menu lines up with. */
   align?: 'start' | 'end'
+  /** Holds the menu shut with its trigger reading disabled, as the loading view does. */
+  disabled?: boolean
   className?: string
 }
 
@@ -37,7 +40,11 @@ interface ZoomControlProps {
  * written straight into its text node from the view controller, so a pinch
  * updates it with no React render.
  */
-export function ZoomControl({ align = 'end', className }: ZoomControlProps) {
+export function ZoomControl({
+  align = 'end',
+  disabled = false,
+  className,
+}: ZoomControlProps) {
   const level = useRef<HTMLSpanElement>(null)
   const actions = useActions(IDS)
 
@@ -50,10 +57,11 @@ export function ZoomControl({ align = 'end', className }: ZoomControlProps) {
   }, [])
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={disabled ? refuseOpen : undefined}>
       <DropdownMenuTrigger
+        aria-disabled={disabled || undefined}
         className={cn(
-          'flex h-6 items-center gap-1 rounded-md px-1 text-muted-foreground tabular-nums outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-expanded:text-foreground',
+          'flex h-6 items-center gap-1 rounded-md px-1 text-muted-foreground tabular-nums outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:text-muted-foreground aria-expanded:text-foreground',
           className,
         )}
       >

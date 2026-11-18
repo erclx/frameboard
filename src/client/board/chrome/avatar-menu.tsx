@@ -20,6 +20,7 @@ import { useLive } from '@/client/live/store'
 import manifest from '../../../../package.json' with { type: 'json' }
 import { type AuthorSource, initials, setAuthor } from './author'
 import { ActionMenuItem, ChromeMenuContent, MENU_ROW } from './menu'
+import { refuseOpen } from './refuse-open'
 
 interface AvatarMenuProps {
   /** The signing name, null when neither this machine nor git has one, which shows a generic avatar and a `Set your name` row, and undefined while its read is pending, which shows no name row. */
@@ -28,6 +29,8 @@ interface AvatarMenuProps {
   source?: AuthorSource | null
   /** Which edge of the avatar the menu lines up with. */
   align?: 'start' | 'end'
+  /** Holds the menu shut with its trigger reading disabled, as the loading view does. */
+  disabled?: boolean
 }
 
 const CAPTION: Record<AuthorSource, string> = {
@@ -43,6 +46,7 @@ export function AvatarMenu({
   name,
   source = null,
   align = 'start',
+  disabled = false,
 }: AvatarMenuProps) {
   const [shortcuts] = useActions(['help.shortcuts'])
   const themes = useActionGroup('theme')
@@ -50,10 +54,11 @@ export function AvatarMenu({
   const caption = source ? CAPTION[source] : null
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={disabled ? refuseOpen : undefined}>
       <DropdownMenuTrigger
         aria-label={triggerName(name ?? null, caption)}
-        className="rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        aria-disabled={disabled || undefined}
+        className="rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
       >
         <Avatar name={name ?? null} />
       </DropdownMenuTrigger>
