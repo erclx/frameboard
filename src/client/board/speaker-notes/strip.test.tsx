@@ -147,6 +147,26 @@ describe('the speaker notes strip', () => {
     expect(posted).toEqual([])
   })
 
+  it('says a reader tab the slide holds no note', () => {
+    liveStore.setState({ canWrite: false })
+
+    mount([frameOf('slide')])
+
+    expect(notes()).toHaveAttribute(
+      'placeholder',
+      'No speaker notes on this slide',
+    )
+  })
+
+  it('offers a writer an empty field to write in', () => {
+    mount([frameOf('slide')])
+
+    expect(notes()).toHaveAttribute(
+      'placeholder',
+      'What you’ll say over this slide',
+    )
+  })
+
   it('turns off on a held frame and says who holds it', async () => {
     const posted = mount([frameOf('slide', { speakerNotes: 'Stored.' })], {
       claims: {

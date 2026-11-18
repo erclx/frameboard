@@ -165,7 +165,9 @@ function StripAt({
             rows={1}
             readOnly={readOnly}
             placeholder={
-              readOnly ? undefined : 'What you’ll say over this slide'
+              readOnly
+                ? 'No speaker notes on this slide'
+                : 'What you’ll say over this slide'
             }
             aria-describedby={[
               `${id}-hint`,
