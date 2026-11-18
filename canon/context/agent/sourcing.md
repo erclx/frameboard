@@ -13,7 +13,7 @@ Owns where a picture in a frame comes from, being the `image find`, `image gener
 
 ### `src/server/sourcing/`
 
-Owns finding, generating, and saving, apart from `src/cli/` because a board panel will call the same modules. Each module takes `fetch` as an argument rather than reaching for the global, so tests pass a fake and make no real call.
+Owns finding, generating, and saving, apart from `src/cli/` because the board's routes in `src/server/routes/sourcing.ts` call the same modules. Each module takes `fetch` as an argument rather than reaching for the global, so tests pass a fake and make no real call.
 
 - `openverse.ts` searches with no key, under `cc0` and `pdm` alone unless `--credited` adds `by`, and refuses an id under a license the flags do not allow
 - `save.ts` holds a download whole before any write, lands it through `addAssets`, and names the license file after the image, taking the image back out when that write fails
@@ -36,3 +36,5 @@ Owns the three verbs. It resolves the project and the file stem before any reque
 - A key set to an empty string reads as unset, and `providerFailed` scrubs the key from a provider's echoed message
 - `listAssets` skips `*.license.json`, so the Assets tab and the usage counts never draw a license file as a tile
 - A CLI test hands the network in through `cli(argv, { fetch })`, which reaches the verbs as `CliIo.fetch`
+- The board's `POST sourcing/generate` answers 403 `generate-off` until `sourcingRoutes` takes `generate: true`, since a frame's script still passes the writer guard and would spend the key
+- A `serve` child in an e2e spec reaches Openverse through `e2e/support/openverse-stub.mjs`, preloaded with `NODE_OPTIONS=--import`, since the server's `fetch` is out of the spec's reach
