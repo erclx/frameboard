@@ -13,7 +13,7 @@ import { findAction, isEnabled } from '@/client/actions/registry'
 import { useLive } from '@/client/live/store'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import { HIDE_CONTROLS_CSS } from '@/shared/bindings'
-import { bezelBox } from '@/shared/frame-device'
+import { bezelBox, type Device, screenCorners } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, LOOK_MARKER, setFrameTheme } from '@/shared/theme'
 
@@ -502,8 +502,12 @@ function PresentedFrame({
   live,
   held,
   wake,
-}: { frame: { ref: string; name: string } } & LiveProps) {
+}: {
+  frame: { ref: string; name: string; device?: Device | null }
+} & LiveProps) {
   const iframe = useRef<HTMLIFrameElement>(null)
+  // The screen rounds under its bezel, whose body cannot cover a square corner.
+  const corners = frame.device ? screenCorners(frame.device) : undefined
   const loaded = useStepsWhileLive(iframe, live)
   // The iframe stays mounted across slides, so only its first page waits.
   const waiting = useWaitingOnFirstLoad(iframe, true)
@@ -560,11 +564,11 @@ function PresentedFrame({
         title={frame.name}
         src={src}
         aria-busy={waiting || undefined}
-        style={{ colorScheme: theme }}
+        style={{ colorScheme: theme, borderRadius: corners }}
         // Hidden until its steps are hidden, so a stepped slide never flashes whole.
         className={`block size-full border-0 bg-[color:Canvas] ${loaded ? '' : 'invisible'}`}
       />
-      {waiting ? <LoadingBlock theme={theme} /> : null}
+      {waiting ? <LoadingBlock theme={theme} corners={corners} /> : null}
     </>
   )
 }

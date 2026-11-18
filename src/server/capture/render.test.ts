@@ -310,6 +310,27 @@ describe.skipIf(shell === null)(
       expect(corner).toBe(0)
     })
 
+    it('draws none of a phone page past the body at its screen corner', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/hero',
+          box: { width: 200, height: 400 },
+          device: 'phone',
+        },
+        'light',
+      )
+      // Inside the screen's square corner yet past the body's outer arc.
+      const [, , , alpha] = await pixelAt(requireShell(shell), bytes, 17, 17)
+
+      expect(alpha).toBe(0)
+    })
+
     it('grows a PNG by the laptop body, its base past the lid, and leaves its corners clear', async () => {
       const render = createWarmRenderer({
         baseUrl: () => host.url,

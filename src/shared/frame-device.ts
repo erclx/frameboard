@@ -44,6 +44,18 @@ export const BEZELS = {
 } as const satisfies Record<Device, Bezel>
 
 /**
+ * A device's screen corners as a CSS `border-radius`, which the body and every
+ * box drawn on its screen share. A laptop's screen meets its chin, so only
+ * its top corners round.
+ */
+export function screenCorners(device: Device): string {
+  const { screenRadius } = BEZELS[device]
+  return device === 'laptop'
+    ? `${screenRadius}px ${screenRadius}px 0 0`
+    : `${screenRadius}px`
+}
+
+/**
  * The narrowest width each device draws around, widest first, so a frame
  * takes the first one it reaches. Under the phone's width no device fits.
  */

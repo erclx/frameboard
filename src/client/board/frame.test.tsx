@@ -272,6 +272,62 @@ describe('Frame', () => {
 
       expect(container.querySelector('[data-bezel]')).toBeNull()
     })
+
+    it('rounds a phone page to the bezel screen, so no square corner shows past it', () => {
+      const { container } = render(
+        <Frame frame={{ ...frame('a'), device: 'phone' }} live version={0} />,
+      )
+
+      const style = getComputedStyle(iframeOf(container, 'a'))
+
+      expect(style.borderTopLeftRadius).toBe('62px')
+      expect(style.borderBottomRightRadius).toBe('62px')
+    })
+
+    it('rounds a far phone frame placeholder to the bezel screen', () => {
+      const { container } = render(
+        <Frame
+          frame={{ ...frame('far'), device: 'phone' }}
+          live={false}
+          version={0}
+        />,
+      )
+
+      const placeholder = container.querySelector('[data-placeholder]')
+
+      expect(
+        placeholder && getComputedStyle(placeholder).borderTopRightRadius,
+      ).toBe('62px')
+    })
+
+    it('rounds only a laptop page top corners, meeting its chin square', () => {
+      const { container } = render(
+        <Frame
+          frame={{
+            ...frame('a'),
+            device: 'laptop',
+            box: { ...frame('a').box, width: 1440, height: 900 },
+          }}
+          live
+          version={0}
+        />,
+      )
+
+      const style = getComputedStyle(iframeOf(container, 'a'))
+
+      expect(style.borderTopLeftRadius).toBe('10px')
+      expect(style.borderBottomLeftRadius).toBe('0px')
+    })
+
+    it('leaves a page with no device square', () => {
+      const { container } = render(
+        <Frame frame={frame('a')} live version={0} />,
+      )
+
+      expect(
+        getComputedStyle(iframeOf(container, 'a')).borderTopLeftRadius,
+      ).toBe('0px')
+    })
   })
 
   it('loads its frame url with its reload counter', () => {
@@ -1434,6 +1490,28 @@ describe('Frame while its page loads', () => {
     expect(bezel && blockOf(container)?.compareDocumentPosition(bezel)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
+  })
+
+  it('rounds the block to a phone screen, so it stays inside the bezel', () => {
+    fakeTimers()
+    const { container } = render(
+      <Frame frame={{ ...frame('a'), device: 'phone' }} live version={0} />,
+    )
+
+    act(() => vi.advanceTimersByTime(1000))
+
+    const block = blockOf(container)
+    expect(block && getComputedStyle(block).borderBottomLeftRadius).toBe('62px')
+  })
+
+  it('keeps the block square with no device', () => {
+    fakeTimers()
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+
+    act(() => vi.advanceTimersByTime(1000))
+
+    const block = blockOf(container)
+    expect(block && getComputedStyle(block).borderTopLeftRadius).toBe('0px')
   })
 
   it('drops the block once the page loads', async () => {

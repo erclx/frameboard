@@ -6,13 +6,13 @@ import { FrameboardError } from '@/shared/errors'
 import {
   BEZEL_COLORS,
   bezelBox,
-  BEZELS,
   bezelShadow,
   type Device,
   HOME_BAR,
   LAPTOP_BASE,
   laptopParts,
   PHONE_ISLAND,
+  screenCorners,
 } from '@/shared/frame-device'
 import { frameThemeUrl, LOOK_MARKER, type Theme } from '@/shared/theme'
 
@@ -296,7 +296,6 @@ async function drawBezel(
   device: Device,
   scale: number,
 ): Promise<Buffer> {
-  const { screenRadius } = BEZELS[device]
   const outer = bezelBox({ x: 0, y: 0, ...box }, device)
   const laptop = device === 'laptop'
   const context = await browser.newContext({
@@ -312,13 +311,11 @@ async function drawBezel(
         : laptop
           ? laptopMarks(box)
           : ''
-    const radius = laptop
-      ? `${screenRadius}px ${screenRadius}px 0 0`
-      : `${screenRadius}px`
+    const radius = screenCorners(device)
     await page.setContent(
       `<!doctype html><html><body style="margin:0;background:transparent">` +
         `<div style="position:absolute;left:${-outer.x}px;top:${-outer.y}px;width:${box.width}px;height:${box.height}px">` +
-        `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="display:block;width:100%;height:100%">` +
+        `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="display:block;width:100%;height:100%;border-radius:${radius}">` +
         `<div style="position:absolute;inset:0;border-radius:${radius};box-shadow:${bezelShadow(device, { board: false })}">${marks}</div>` +
         `</div></body></html>`,
       { waitUntil: 'load' },
