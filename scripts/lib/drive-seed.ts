@@ -35,10 +35,9 @@ const FEED = { project: 'webapp', page: 'feed', frame: 'feed-scroll' }
 const FEED_PAGE = join(import.meta.dirname, 'drive-feed.html')
 
 /**
- * The page holding three slides in a row under a Push transition, the middle
- * one marking three steps and holding a speaker note, so present mode has a
- * transition to draw, a slide to walk, and the inspector a page and a step to
- * read.
+ * Three slides in a row under a Push transition, the middle one marking three
+ * steps and holding a speaker note, so present mode has a transition and steps
+ * to walk, and the inspector and the strip have a page, step, and note to read.
  */
 const DECK = {
   project: 'webapp',
