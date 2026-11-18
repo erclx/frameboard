@@ -467,30 +467,49 @@ async function listen({
   server.on('upgrade', hub.handleUpgrade)
 
   // Checked once at start, ahead of any hello's findings.
-  void inTurn(async () => {
+  const sweep = inTurn(async () => {
     // A reserved frame written while no server ran lands in its box first.
     await landReserved(root, new Date()).catch(() => [])
-    let board = await scanBoard(root)
-    // Only frames written offline hold the first board, since other sizes already hold.
+    const board = await scanBoard(root)
     const stale = await writtenSinceLayout(board).catch((): string[] => [])
-    if (await hug.now(board, stale).catch(() => false)) {
-      board = await scanBoard(root)
-    }
     scanned.board = board
     await tracker.prime(board)
     findings.update(board, 'all')
-    rendered.queue(board, [])
+    // A stale frame's box moves with its measure, so the checks wait on it.
+    if (stale.length === 0) rendered.queue(board, [])
     hug.later(
       board,
-      board.projects.flatMap((project) =>
-        project.pages.flatMap((page) =>
-          page.frames
-            .map((frame) => frame.ref)
-            .filter((ref) => !stale.includes(ref)),
-        ),
-      ),
+      frameRefs(board).filter((ref) => !stale.includes(ref)),
     )
+    return { board, stale }
   })
+  // Measured outside the turn, so a hello hears the stored sizes meanwhile.
+  const measuredAtStart = sweep
+    .then(async ({ board, stale }) => {
+      if (stale.length === 0) return
+      const trails = await hug.now(board, stale).catch(() => false)
+      await inTurn(async () => {
+        if (closing) return
+        let latest = scanned.board ?? board
+        if (trails) {
+          latest = await scanBoard(root)
+          scanned.board = latest
+          hub.broadcast({ type: 'board', data: latest })
+          shown.board = latest
+          const changed = findings.update(
+            latest,
+            framePaths(latest)
+              .filter(([ref]) => stale.includes(ref))
+              .map(([, path]) => path),
+          )
+          if (Object.keys(changed).length > 0) {
+            hub.broadcast({ type: 'findings', findings: changed })
+          }
+        }
+        rendered.queue(latest, [])
+      })
+    })
+    .catch(() => {})
   // A claims file left by an earlier server arms the expiry from what it holds.
   void claims.push()
   const watcher = await watchBoard(root, tokens ? [tokens] : [])
@@ -549,6 +568,8 @@ async function listen({
           // A tab's keep-alive connection would hold close open indefinitely.
           server.closeAllConnections()
         })
+        // Its last turn is queued only once the measure ends, so the drain waits on it.
+        await measuredAtStart
         // Drains until the tail stops moving, so no turn writes into a removed folder.
         let tail: Promise<unknown>
         do {
@@ -676,6 +697,17 @@ async function pushBatch(
   }
   rendered.queue(board, recheckRefs(root, paths, board, tokens))
   await pushNotes(root, paths, hub, delivery)
+}
+
+function frameRefs(board: ListResult): string[] {
+  return framePaths(board).map(([ref]) => ref)
+}
+
+function framePaths(board: ListResult): [ref: string, path: string][] {
+  return board.projects
+    .flatMap((project) => project.pages)
+    .flatMap((page) => page.frames)
+    .map((frame) => [frame.ref, frame.path])
 }
 
 /**
