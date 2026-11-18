@@ -428,6 +428,30 @@ function findingsOn(frame: string): (page: Page) => Promise<void> {
   }
 }
 
+/**
+ * Keeps the hero frame's load from reaching the board, so it reads the frame
+ * as still waiting and draws the loading block. A held document would stall
+ * the sweep, which waits on the network and on every frame's own load.
+ */
+async function heroNeverLoads(page: Page): Promise<void> {
+  // On the document, since a load event's path stops short of the window.
+  await page.addInitScript(() => {
+    document.addEventListener(
+      'load',
+      (event) => {
+        const target = event.target
+        if (
+          target instanceof HTMLIFrameElement &&
+          target.closest('[data-frame="webapp/home/hero"]')
+        ) {
+          event.stopImmediatePropagation()
+        }
+      },
+      true,
+    )
+  })
+}
+
 export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
   const themed = themedFor(theme)
   return [
@@ -439,6 +463,15 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
       setup: themed(onCanvas({ select: ['webapp/home/hero'] })),
+    },
+    {
+      section: 'frame-loading',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(both(heroNeverLoads, readyWhen('[data-loading-block]'))),
     },
     {
       section: 'scroll-rail',
