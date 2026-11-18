@@ -150,6 +150,41 @@ describe('save', () => {
       ).rejects.toMatchObject({ code: 'source-failed' })
     })
 
+    it('stops reading a body with no declared length once it passes the limit', async () => {
+      let pulled = 0
+      const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          pulled += 1
+          controller.enqueue(new Uint8Array([1, 2, 3]))
+        },
+      })
+      const send = answering(
+        () => new Response(body, { headers: { 'content-type': 'image/jpeg' } }),
+      )
+
+      await expect(
+        downloadImage('https://x.example/a.jpg', send, 8),
+      ).rejects.toMatchObject({ code: 'source-failed', details: { limit: 8 } })
+      expect(pulled).toBeLessThan(10)
+    })
+
+    it('takes a body with no declared length up to the limit whole', async () => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array([1, 2]))
+          controller.enqueue(new Uint8Array([3, 4]))
+          controller.close()
+        },
+      })
+      const send = answering(
+        () => new Response(body, { headers: { 'content-type': 'image/png' } }),
+      )
+
+      const image = await downloadImage('https://x.example/a.png', send, 4)
+
+      expect([...image.bytes]).toEqual([1, 2, 3, 4])
+    })
+
     it('refuses source-failed and writes nothing when the body breaks off', async () => {
       const body = new ReadableStream({
         start(controller) {

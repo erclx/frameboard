@@ -55,11 +55,12 @@ export function imageExtension(
 /**
  * Downloads a whole image into memory before anything is written, so a
  * download failing partway leaves no file. Refuses `source-failed` on a
- * failed request, a body past `DOWNLOAD_LIMIT`, or a file that is no image.
+ * failed request, a body past `limit`, or a file that is no image.
  */
 export async function downloadImage(
   url: string,
   send: typeof fetch,
+  limit = DOWNLOAD_LIMIT,
 ): Promise<ImageBytes> {
   const failed = (message: string, status: number | null) =>
     new FrameboardError('source-failed', message, { url, status })
@@ -83,7 +84,7 @@ export async function downloadImage(
   }
   let bytes: Uint8Array
   try {
-    bytes = await readCapped(response)
+    bytes = await readCapped(response, limit)
   } catch (error) {
     if (error instanceof FrameboardError) throw error
     throw failed(
@@ -94,19 +95,39 @@ export async function downloadImage(
   return { bytes, extension }
 }
 
-async function readCapped(response: Response): Promise<Uint8Array> {
+/** Reads the body chunk by chunk and stops once it passes `limit`, whatever length the host declared. */
+async function readCapped(
+  response: Response,
+  limit: number,
+): Promise<Uint8Array> {
   const declared = Number(response.headers.get('content-length') ?? Number.NaN)
-  if (declared > DOWNLOAD_LIMIT) throw tooLarge()
-  const bytes = new Uint8Array(await response.arrayBuffer())
-  if (bytes.byteLength > DOWNLOAD_LIMIT) throw tooLarge()
+  if (declared > limit) throw tooLarge(limit)
+  const chunks: Uint8Array[] = []
+  let total = 0
+  const reader = response.body?.getReader()
+  for (let chunk = await reader?.read(); chunk && !chunk.done;) {
+    total += chunk.value.byteLength
+    if (total > limit) {
+      await reader?.cancel()
+      throw tooLarge(limit)
+    }
+    chunks.push(chunk.value)
+    chunk = await reader?.read()
+  }
+  const bytes = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
   return bytes
 }
 
-function tooLarge(): FrameboardError {
+function tooLarge(limit: number): FrameboardError {
   return new FrameboardError(
     'source-failed',
-    `The image is past ${DOWNLOAD_LIMIT / 1024 / 1024} MiB.`,
-    { limit: DOWNLOAD_LIMIT },
+    `The image is past ${limit / 1024 / 1024} MiB.`,
+    { limit },
   )
 }
 
