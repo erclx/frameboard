@@ -10,6 +10,7 @@ import type { Rotation } from '@/shared/frame-bridge/live-element'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'
 import { NumberField } from '../number-field'
+import { isTilted, parseTilt } from './tilt-value'
 import type { PreviewStyle, WriteElement } from './write'
 
 const DEGREES: Intl.NumberFormatOptions = {
@@ -67,7 +68,16 @@ function AngleIcon() {
 }
 
 /** Why the row is off for an element the tab may otherwise write, or null when it is on. */
-function lockOf({ degrees, scale, translated }: Rotation): string | null {
+function lockOf({
+  degrees,
+  scale,
+  translated,
+  transform,
+}: Rotation): string | null {
+  const tilt = parseTilt(transform.own)
+  if (tilt && isTilted(tilt)) {
+    return 'Tilted in 3D, so Rotate Z in the 3D section turns it'
+  }
   if (translated) {
     return 'Its transform moves it, so a rotation would swing it away'
   }
@@ -87,7 +97,7 @@ interface RotationRowProps {
 /**
  * The Rotation row, writing `rotate` and flips as `scale`, never `transform`.
  * It is off where the transform translates, since `rotate` composes ahead of
- * it, and for a 3D value.
+ * it, for a 3D value, and on a tilt, whose Rotate Z takes its place.
  */
 export function RotationRow({
   rotation,

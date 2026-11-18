@@ -228,6 +228,46 @@ describe('RotationRow', () => {
     )
   })
 
+  it('locks the row on a tilted element, naming the 3D section', async () => {
+    const { changes, write } = recorder()
+    renderRow(
+      rotationOf({
+        transform: {
+          own: 'perspective(800px) translateZ(10px) rotateX(20deg)',
+          ruled: false,
+          reanchors: false,
+        },
+        translated: true,
+      }),
+      write,
+    )
+    const rotate = screen.getByRole('button', { name: 'Rotate 90°' })
+
+    await userEvent.click(rotate)
+
+    expect(changes).toEqual([])
+    expect(screen.getByRole('textbox', { name: 'Rotation' })).toBeDisabled()
+    expect(rotate).toHaveAccessibleDescription(
+      'Tilted in 3D, so Rotate Z in the 3D section turns it',
+    )
+  })
+
+  it('leaves the row on for a transform that only states a perspective', () => {
+    const { write } = recorder()
+    renderRow(
+      rotationOf({
+        transform: {
+          own: 'perspective(800px)',
+          ruled: false,
+          reanchors: false,
+        },
+      }),
+      write,
+    )
+
+    expect(screen.getByRole('textbox', { name: 'Rotation' })).toBeEnabled()
+  })
+
   it('shows a 3D rotate as unreadable and locks the row', () => {
     const { write } = recorder()
     renderRow(rotationOf({ degrees: null }), write)
