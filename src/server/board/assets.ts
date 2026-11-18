@@ -14,6 +14,7 @@ import {
   assetKind,
   extensionOf,
   isAcceptedUpload,
+  isForeignModel,
   isPlaceableKind,
   type PlaceableKind,
 } from '@/shared/asset-kinds'
@@ -155,11 +156,12 @@ export async function addAssets(
   const folder = join(projectDir, ASSETS_FOLDER)
   const result: AssetAddResult = { added: [], refused: [] }
   for (const upload of uploads) {
-    if (!isAcceptedUpload(upload.name)) {
+    const refusal = uploadRefusal(upload)
+    if (refusal !== null) {
       result.refused.push({
         name: upload.name,
         code: 'asset-type-refused',
-        message: `${upload.name} is not an image, GIF, SVG, video, audio, font, stylesheet, or script.`,
+        message: refusal,
       })
       continue
     }
@@ -168,6 +170,53 @@ export async function addAssets(
     result.added.push({ name: upload.name, path })
   }
   return result
+}
+
+/** Why a drop refuses a file, or null for one it keeps. */
+function uploadRefusal({ name, bytes }: AssetUpload): string | null {
+  if (isForeignModel(name)) {
+    return `${name} is a 3D model a frame cannot show. Open it in Blender, export it through File, Export, glTF 2.0 as a glTF Binary (.glb), and drop that file.`
+  }
+  if (!isAcceptedUpload(name)) {
+    return `${name} is not an image, GIF, SVG, video, audio, 3D model, font, stylesheet, or script.`
+  }
+  return extensionOf(name) === 'gltf' ? gltfRefusal(name, bytes) : null
+}
+
+/**
+ * Why a `.gltf` cannot land alone, or null for one carrying its buffers and
+ * images inside itself. A drop keeps one file per name, so a `.bin` or a
+ * texture the model loads beside it would be left behind.
+ */
+function gltfRefusal(name: string, bytes: Uint8Array): string | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(bytes))
+  } catch {
+    return `${name} is not a glTF file a model reads. Export it again as a glTF Binary (.glb).`
+  }
+  const beside = [
+    ...linkedUris(parsed, 'buffers'),
+    ...linkedUris(parsed, 'images'),
+  ]
+  const [first] = beside
+  return first === undefined
+    ? null
+    : `${name} loads ${first} from beside it, which a drop cannot keep with it. Export it as one glTF Binary (.glb) instead.`
+}
+
+/** The `uri` of each entry under `key` that names a file rather than carrying its bytes. */
+function linkedUris(gltf: unknown, key: 'buffers' | 'images'): string[] {
+  if (typeof gltf !== 'object' || gltf === null) return []
+  const entries: unknown = (gltf as Record<string, unknown>)[key]
+  if (!Array.isArray(entries)) return []
+  return entries.flatMap((entry: unknown) => {
+    const uri =
+      typeof entry === 'object' && entry !== null
+        ? (entry as Record<string, unknown>).uri
+        : undefined
+    return typeof uri === 'string' && !uri.startsWith('data:') ? [uri] : []
+  })
 }
 
 async function writeFree(

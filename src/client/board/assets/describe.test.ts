@@ -18,6 +18,7 @@ describe('describeAsset', () => {
     [{ path: 'logo.svg', kind: 'svg', size: 2_000 }, 'SVG · 2 KB'],
     [{ path: 'Inter.woff2', kind: 'font', size: 98_000 }, 'font · 98 KB'],
     [{ path: 'demo.mp4', kind: 'video', size: 4_100_000 }, 'video · 4.1 MB'],
+    [{ path: 'phone.glb', kind: 'model', size: 5_576 }, 'model · 6 KB'],
     [
       { path: 'shared.css', kind: 'stylesheet', size: 3_000 },
       'stylesheet · 3 KB',

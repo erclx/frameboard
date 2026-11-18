@@ -21,6 +21,17 @@ describe('isPlaceableKind', () => {
 })
 
 describe('assetKind', () => {
+  it('reads a .glb and a .gltf as a model', () => {
+    expect(['phone.GLB', 'scene.gltf'].map(assetKind)).toEqual([
+      'model',
+      'model',
+    ])
+  })
+
+  it('leaves a model file no frame shows as an unknown file', () => {
+    expect(assetKind('chair.fbx')).toBe('other')
+  })
+
   it('reads an .m4v file as a video', () => {
     expect(assetKind('clip.M4V')).toBe('video')
   })

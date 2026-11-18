@@ -365,6 +365,8 @@ describe('frameRoutes', () => {
     ['clip.m4v', 'video/x-m4v'],
     ['voice.ogg', 'audio/ogg'],
     ['voice.m4a', 'audio/mp4'],
+    ['phone.glb', 'model/gltf-binary'],
+    ['scene.gltf', 'model/gltf+json'],
   ])('types the media file %s as %s', async (file, type) => {
     writeFileSync(join(board.root, 'studio/assets', file), 'media')
 

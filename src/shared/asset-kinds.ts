@@ -4,6 +4,7 @@ export const ASSET_KINDS = [
   'svg',
   'video',
   'audio',
+  'model',
   'font',
   'stylesheet',
   'script',
@@ -44,6 +45,8 @@ const ACCEPTED: Record<string, Exclude<AssetKind, 'other'>> = {
   wav: 'audio',
   ogg: 'audio',
   m4a: 'audio',
+  glb: 'model',
+  gltf: 'model',
   woff: 'font',
   woff2: 'font',
   ttf: 'font',
@@ -51,6 +54,13 @@ const ACCEPTED: Record<string, Exclude<AssetKind, 'other'>> = {
   css: 'stylesheet',
   js: 'script',
   mjs: 'script',
+}
+
+/** Model formats no frame shows, which a drop refuses with the way to a GLB rather than as an unknown file. */
+const FOREIGN_MODELS: readonly string[] = ['fbx', 'obj', 'blend', 'usd', 'stl']
+
+export function isForeignModel(name: string): boolean {
+  return FOREIGN_MODELS.includes(extensionOf(name))
 }
 
 /** The lowercase text after the last dot, empty when the name has none. */

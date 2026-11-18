@@ -1,5 +1,5 @@
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter'
-import { Music, Play } from 'lucide-react'
+import { Box, Music, Play } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { useLive } from '@/client/live/store'
@@ -151,6 +151,12 @@ export function Thumbnail({
       return (
         <span className={THUMB}>
           <Music aria-hidden className="size-4" />
+        </span>
+      )
+    case 'model':
+      return (
+        <span className={THUMB}>
+          <Box aria-hidden className="size-[22px]" strokeWidth={1.6} />
         </span>
       )
     case 'font':
