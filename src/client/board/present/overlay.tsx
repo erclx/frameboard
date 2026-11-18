@@ -22,7 +22,7 @@ import { Bezel } from '../device/bezel'
 import { useWaitingOnFirstLoad } from '../frame-loading'
 import { LoadingBlock } from '../loading-block'
 import { PresentBar } from './bar'
-import { fitScale } from './fit'
+import { presentScale } from './fit'
 import { Overview } from './overview'
 import {
   fetchOwnTransitions,
@@ -405,10 +405,10 @@ export function ScaledFrame({
   frame: FrameRecord
   room: { width: number; height: number }
 } & LiveProps) {
-  // Fits by the device body, which a laptop's reaches further below than above.
   const { width, height } = frame.box
   const body = bezelBox({ x: 0, y: 0, width, height }, frame.device)
-  const scale = fitScale(body, room)
+  const scale = presentScale(frame, room)
+  // Centers by the body, which a laptop's reaches further below than above.
   const shiftX = width / 2 - (body.x + body.width / 2)
   const shiftY = height / 2 - (body.y + body.height / 2)
   return (

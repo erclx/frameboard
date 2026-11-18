@@ -689,6 +689,22 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
+      section: 'present-device',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      setup: themed(
+        both(
+          devicesShown,
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          presentOnLoad,
+          readyWhen('[data-presenting] [data-bezel="phone"]'),
+        ),
+      ),
+    },
+    {
       section: 'present-focus',
       theme,
       route: '/p/webapp/home',

@@ -12,7 +12,7 @@ import { emulateReducedMotion } from '@/test/motion'
 
 import { useBoardActions } from '../board-actions'
 import { selectionStore } from '../selection'
-import { fitScale } from './fit'
+import { fitScale, presentScale } from './fit'
 import { PresentOverlay } from './overlay'
 import type { LoadTransitions } from './own-transitions'
 import { presentStore, startPresenting, stepPresenting } from './store'
@@ -106,6 +106,29 @@ describe('the scale a frame presents at', () => {
       fitScale({ width: 390, height: 264 }, { width: 1280, height: 800 }),
     ).toBe(2)
   })
+
+  it('fits a phone by its shadow, two borders above and four below, around a centered body', () => {
+    const phone = { box: { width: 390, height: 844 }, device: 'phone' as const }
+    expect(presentScale(phone, { width: 1280, height: 800 })).toBeCloseTo(
+      800 / 972,
+    )
+  })
+
+  it('fits a laptop by its base aside and its shadow below', () => {
+    const laptop = {
+      box: { width: 1440, height: 900 },
+      device: 'laptop' as const,
+    }
+    expect(presentScale(laptop, { width: 1660, height: 2000 })).toBeCloseTo(1)
+    expect(presentScale(laptop, { width: 4000, height: 1038 })).toBeCloseTo(1)
+  })
+
+  it('fits a frame with no device by its box', () => {
+    const bare = { box: { width: 390, height: 844 }, device: null }
+    expect(presentScale(bare, { width: 1280, height: 800 })).toBeCloseTo(
+      800 / 844,
+    )
+  })
 })
 
 describe('presenting a page', () => {
@@ -136,7 +159,7 @@ describe('presenting a page', () => {
     expect(box?.left).toBeCloseTo((window.innerWidth - 780) / 2)
   })
 
-  it('fits a frame in a device with its body inside the window', () => {
+  it('fits a phone with its edge and drop shadow inside a short window', () => {
     present([
       frameOf('phone', {
         box: { x: 0, y: 0, width: 390, height: 844 },
@@ -144,15 +167,15 @@ describe('presenting a page', () => {
       }),
     ])
 
-    const body = document.querySelector('[data-bezel]')?.getBoundingClientRect()
-    const scale = Math.min(
-      window.innerWidth / (390 + 32),
-      window.innerHeight / (844 + 32),
-    )
-    const top = (body?.top ?? 0) - 16 * scale
-    const bottom = (body?.bottom ?? 0) + 16 * scale
+    const screen = document
+      .querySelector('[data-bezel]')
+      ?.getBoundingClientRect()
+    const scale = (screen?.height ?? 0) / 844
+    // The shadow reaches two borders above the screen and four below.
+    const top = (screen?.top ?? 0) - 32 * scale
+    const bottom = (screen?.bottom ?? 0) + 64 * scale
 
-    expect(body?.height).toBeCloseTo(844 * scale)
+    expect(scale).toBeLessThan(window.innerHeight / (844 + 32))
     expect(top).toBeGreaterThanOrEqual(-0.5)
     expect(bottom).toBeLessThanOrEqual(window.innerHeight + 0.5)
   })

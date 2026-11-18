@@ -233,3 +233,26 @@ export function bezelBox(box: Box, device: Device | null | undefined): Box {
     height: box.height + border + bottom,
   }
 }
+
+/**
+ * The box a device paints around a frame's box on the board, being the body,
+ * its one-unit edge, and the drop shadow `bezelShadow` blurs past both, the
+ * box itself with none. A fit by `bezelBox` alone clips the edge and shadow.
+ */
+export function bezelReach(box: Box, device: Device | null | undefined): Box {
+  if (!device) return { ...box }
+  const body = bezelBox(box, device)
+  const { border } = BEZELS[device]
+  // The shadow drops by the border and blurs three borders past the screen.
+  const left = Math.min(body.x - 1, box.x - 3 * border)
+  const top = Math.min(body.y - 1, box.y - 2 * border)
+  const right = Math.max(
+    body.x + body.width + 1,
+    box.x + box.width + 3 * border,
+  )
+  const bottom = Math.max(
+    body.y + body.height + 1,
+    box.y + box.height + 4 * border,
+  )
+  return { x: left, y: top, width: right - left, height: bottom - top }
+}
