@@ -30,8 +30,8 @@ Add `--credited` only when no public domain image fits, since a CC BY image owes
 
 ## Link the saved file
 
-Both verbs answer a `path` relative to the project's `assets/`, and the license file lands beside it as `<path>.license.json`.
+A saved image's `path` sits relative to the project's `assets/`, at `data.path` from `image find --save` and at `data.saved.path` from `image generate`. Its license file lands beside it as `<path>.license.json`.
 
 - Link the image from a frame as `../assets/<path>`, since a frame sits one folder below the project
-- Leave the license file where it lands, since the board shows the license on the image's own tile
+- Leave the license file where it lands, since it is the one record of where the image came from
 - Never link an image by its web address, since a frame loads nothing over the network
