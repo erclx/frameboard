@@ -19,7 +19,7 @@ import {
   useShownTheme,
 } from '@/client/theme/store'
 import { frameUrl } from '@/shared/board-urls'
-import { BEZELS } from '@/shared/frame-device'
+import { BEZELS, screenCorners } from '@/shared/frame-device'
 import { referenceHeight } from '@/shared/frame-sizes'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
@@ -214,6 +214,8 @@ export const Frame = memo(function Frame({
   const inset = frame.device ? BEZELS[frame.device].border : 0
   // A laptop's chin and base stand below its screen deeper than its lid.
   const below = frame.device ? BEZELS[frame.device].bottom : 0
+  // The screen rounds under its bezel, whose body cannot cover a square corner.
+  const corners = frame.device ? screenCorners(frame.device) : undefined
 
   return (
     <div
@@ -293,16 +295,17 @@ export const Frame = memo(function Frame({
           src={src ?? undefined}
           aria-busy={waiting || undefined}
           // A flipped frame with no background paints its own theme's color.
-          style={{ colorScheme: theme }}
+          style={{ colorScheme: theme, borderRadius: corners }}
           className="block size-full border-0 bg-[color:Canvas]"
         />
       ) : (
         <div
           data-placeholder
           className="size-full border border-border bg-card"
+          style={{ borderRadius: corners }}
         />
       )}
-      {waiting ? <LoadingBlock theme={theme} /> : null}
+      {waiting ? <LoadingBlock theme={theme} corners={corners} /> : null}
       {frame.device ? (
         <Bezel device={frame.device} width={width} height={height} />
       ) : null}
