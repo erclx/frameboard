@@ -23,7 +23,6 @@ import type { ProjectRecord } from '@/shared/records/list'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import {
-  createProject,
   focusedProject,
   focusProject,
   projectStore,
@@ -58,7 +57,7 @@ beforeEach(() => {
 afterEach(() => {
   localStorage.clear()
   liveStore.setState({ canWrite: false, board: null })
-  projectStore.setState({ focused: null, renaming: null, creating: false })
+  projectStore.setState({ focused: null, renaming: null })
 })
 
 describe('useProjectActions', () => {
@@ -120,42 +119,21 @@ describe('useProjectActions', () => {
 })
 
 describe('useNewProjectAction', () => {
-  it("leaves the board, then opens New project's dialog", () => {
+  it('leaves the board before the add, then opens the new name for renaming', async () => {
+    const { sent, calls } = server({ name: 'untitled' })
     const steps: string[] = []
     const leave = () => {
-      steps.push(`left with the dialog ${projectStore.getState().creating}`)
+      steps.push(`left with ${projectStore.getState().renaming?.project}`)
     }
-    renderHook(() => useNewProjectAction(leave))
+    renderHook(() => useNewProjectAction(calls, leave))
 
     findAction('project.new')?.run()
 
-    expect(steps).toEqual(['left with the dialog false'])
-    expect(projectStore.getState().creating).toBe(true)
-  })
-})
-
-describe('createProject', () => {
-  it('adds the project, installs the kit over the board look, and opens its name', async () => {
-    const { sent, calls } = server({ name: 'untitled' })
-
-    await createProject('sketch', calls)
-
-    expect(sent).toEqual([
-      { path: '/api/project/add', body: {} },
-      {
-        path: '/api/kits/install',
-        body: { project: 'untitled', kit: 'sketch', replace: true },
-      },
-    ])
-    expect(projectStore.getState().renaming?.project).toBe('untitled')
-  })
-
-  it('installs nothing for Blank', async () => {
-    const { sent, calls } = server({ name: 'untitled' })
-
-    await createProject(null, calls)
-
-    expect(sent.map((each) => each.path)).toEqual(['/api/project/add'])
+    await expect
+      .poll(() => projectStore.getState().renaming?.project)
+      .toBe('untitled')
+    expect(steps).toEqual(['left with undefined'])
+    expect(sent).toEqual([{ path: '/api/project/add', body: {} }])
   })
 })
 

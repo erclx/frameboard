@@ -17,32 +17,12 @@ import {
   focusOnLoad,
   noAgentChanges,
   openOverlayOnLoad,
-  PRESS_FRAMES,
   readyWhen,
   ROW_FRAMES,
   seededChanges,
   SERVED_BOARD,
   STATE_ONLY,
 } from './setup'
-
-/**
- * Waits for New project to light, which it does once the server grants
- * writes, then presses it once, so home opens New project's dialog.
- */
-async function newProjectOnLoad(page: Page): Promise<void> {
-  await page.addInitScript((frames) => {
-    let left = frames
-    const press = () => {
-      const add = document.querySelector<HTMLButtonElement>(
-        'button[aria-label="New project"]:not([aria-disabled])',
-      )
-      if (add) add.click()
-      else if (--left > 0) requestAnimationFrame(press)
-      else console.error('New project never lit')
-    }
-    document.addEventListener('DOMContentLoaded', press)
-  }, PRESS_FRAMES)
-}
 
 /**
  * Lists the tablet width on the `about` frame, so the board draws one linked
@@ -526,25 +506,6 @@ export function homeCases(): CaptureCase[] {
           readyWhen(
             'input[aria-label="Rename project webapp"]',
             CARD_UNCAPTURED,
-          ),
-        ),
-      },
-      {
-        // New project's dialog over the grid, each kit a live render of its sample frame.
-        section: 'home-new-project-kit',
-        theme,
-        route: '/',
-        evidence: true,
-        excludeViewports: STATE_ONLY,
-        // A mask paints above the dialog, so the edited times behind it are hidden instead.
-        setup: both(
-          chosenTheme(theme),
-          asWriter,
-          hiddenBehind('main [data-edited]'),
-          newProjectOnLoad,
-          readyWhen(
-            'input[name="new-project-kit"]',
-            '[role="dialog"] iframe:not([data-loaded])',
           ),
         ),
       },

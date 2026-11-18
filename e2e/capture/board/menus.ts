@@ -20,8 +20,8 @@ import {
 } from './setup'
 
 /**
- * Presses Next until `heading` draws, read over the radios since the kit step
- * draws them late. No step before Finish writes the board.
+ * Presses Next until `heading` draws, read off the heading since a step
+ * paints after the press. No step before Finish writes the board.
  */
 function guideTo(heading: string): (page: Page) => Promise<void> {
   return async (page) => {
@@ -350,24 +350,6 @@ export function menusCases(theme: 'light' | 'dark'): CaptureCase[] {
           asWriter,
           guideToAgentStep,
           readyWhen('input[name="guide-drawer"]'),
-        ),
-      ),
-    },
-    {
-      // The kit step, each card a live render of its kit's sample frame.
-      section: 'guide-kit',
-      theme,
-      route: '/p/untitled/page-1',
-      evidence: true,
-      excludeViewports: STATE_ONLY,
-      mask: [AVATAR],
-      setup: themed(
-        both(
-          untouchedBoard,
-          noTokens,
-          asWriter,
-          guideTo('Pick a kit'),
-          readyWhen('input[name="guide-kit"]'),
         ),
       ),
     },

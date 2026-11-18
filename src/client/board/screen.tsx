@@ -131,7 +131,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   const goHome = useCallback(() => navigate('/'), [navigate])
   useProjectActions(openProject, { onDeleted: goHome })
   useHomeAction(goHome)
-  useNewProjectAction(goHome)
+  useNewProjectAction(undefined, goHome)
   useBoardActions()
   usePageActions(project, page)
   useStructureActions(current?.ref ?? '', current?.frames ?? NO_FRAMES)
