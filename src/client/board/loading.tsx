@@ -47,10 +47,8 @@ const INSPECTOR_LABELS = {
 const PAGES_HEIGHT = 152
 
 /**
- * A board page while the board loads, registering none of the board's
- * actions, so its controls show disabled until `BoardScreen` takes over. Its
- * menus are held shut too, since the swap remounts the chrome and would close
- * a menu opened here under the person.
+ * A board page while the board loads, its controls disabled and its menus
+ * held shut until `BoardScreen` takes over, since the swap remounts the chrome.
  */
 export function BoardLoading({ project }: { project: string }) {
   const hideUi = useMode((state) => state.hideUi)
