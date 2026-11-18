@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { cli } from '../../../test/support/cli'
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
@@ -166,5 +166,112 @@ describe('image find', () => {
 
     expect(result.exitCode).toBe(2)
     expect(result.json().error?.code).toBe('usage')
+  })
+})
+
+describe('image generate', () => {
+  let board: TempBoard
+  let assets: string
+
+  beforeEach(() => {
+    board = writeBoard({ 'acme/project.json': '{ "version": 1 }\n' })
+    assets = join(board.root, 'acme/assets')
+    vi.stubEnv('FAL_KEY', '')
+    vi.stubEnv('GEMINI_API_KEY', '')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    board.cleanup()
+  })
+
+  /** A fake fal answering one status and body, recording each URL asked. */
+  function fal(status: number, body: unknown) {
+    const asked: string[] = []
+    const send = (async (input: string | URL | Request) => {
+      asked.push(String(input))
+      return Response.json(body, { status })
+    }) as typeof fetch
+    return { send, asked }
+  }
+
+  function run(send: typeof fetch, ...argv: string[]) {
+    return cli(['image', 'generate', ...argv, '--json'], {
+      cwd: board.root,
+      fetch: send,
+    })
+  }
+
+  it('answers the provider and price on a dry run and makes no request', async () => {
+    vi.stubEnv('FAL_KEY', 'fal-secret')
+    const { send, asked } = fal(200, {})
+
+    const result = await run(send, 'a modern house', '--dry-run')
+
+    expect(result.exitCode).toBe(0)
+    expect(result.json().data).toEqual({
+      version: 1,
+      provider: 'fal',
+      model: 'fal-ai/flux/schnell',
+      prompt: 'a modern house',
+      width: 1024,
+      height: 1024,
+      priceUsd: 0.0032,
+      dryRun: true,
+      saved: null,
+    })
+    expect(asked).toEqual([])
+    expect(result.stdout).not.toContain('fal-secret')
+  })
+
+  it('refuses no-provider at exit 3 with no key set', async () => {
+    const { send, asked } = fal(200, {})
+
+    const result = await run(send, 'a modern house')
+
+    expect(result.exitCode).toBe(3)
+    expect(result.json().error?.code).toBe('no-provider')
+    expect(asked).toEqual([])
+  })
+
+  it('saves the generated image and a license file naming the prompt', async () => {
+    vi.stubEnv('FAL_KEY', 'fal-secret')
+    const { send } = fal(200, {
+      images: [{ url: 'data:image/jpeg;base64,AQID' }],
+    })
+
+    const result = await run(send, 'A modern house', '--width', '800')
+
+    expect(result.exitCode).toBe(0)
+    expect(result.json().data).toMatchObject({
+      dryRun: false,
+      saved: { path: 'a-modern-house.jpg' },
+    })
+    expect(
+      JSON.parse(
+        readFileSync(join(assets, 'a-modern-house.jpg.license.json'), 'utf8'),
+      ),
+    ).toMatchObject({
+      origin: 'generated',
+      provider: 'fal',
+      prompt: 'A modern house',
+      width: 800,
+      height: 1024,
+    })
+  })
+
+  it('answers one provider-failed envelope with the status and no key', async () => {
+    vi.stubEnv('FAL_KEY', 'fal-secret')
+    const { send } = fal(403, { detail: 'Balance exhausted for fal-secret' })
+
+    const result = await run(send, 'a modern house')
+
+    expect(result.exitCode).toBe(13)
+    expect(result.json().error).toMatchObject({
+      code: 'provider-failed',
+      details: { provider: 'fal', status: 403 },
+    })
+    expect(result.stdout).not.toContain('fal-secret')
+    expect(existsSync(assets)).toBe(false)
   })
 })
