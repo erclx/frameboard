@@ -928,10 +928,9 @@ export async function setFrameTransition(
 }
 
 /**
- * Sets a frame's speaker note on its layout entry, or clears it with null or
- * blank text, leaving the frame's file alone. Refuses `usage` past
- * `SPEAKER_NOTES_MAX` rather than cutting the text, and `stale-layout` under
- * the lock when `expected`, the note the edit began from, is no longer held.
+ * Sets a frame's speaker note on its layout entry, null or blank clearing it.
+ * Refuses `usage` past `SPEAKER_NOTES_MAX` rather than cutting, and
+ * `stale-layout` once `expected`, the note the edit began from, is gone.
  */
 export async function setFrameSpeakerNotes(
   root: string,
