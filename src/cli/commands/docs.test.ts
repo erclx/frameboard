@@ -171,13 +171,35 @@ describe('docs', () => {
     expect(contentFormat.images[2]).toContain('<file>.license.json')
   })
 
-  it('names the kit files, the shipped kits, and where an installed kit sits', async () => {
+  it('names the kit files, the shipped kits, and where an added kit sits', async () => {
     const { contentFormat } = await docs()
 
     expect(contentFormat.kits[0]).toContain(
       'The tool ships clean, sketch, wireframe',
     )
-    expect(contentFormat.kits[1]).toContain('every other file into assets/kit/')
+    expect(contentFormat.kits[1]).toContain("the project's assets/kits/<kit>/")
+  })
+
+  it('names the verbs that set, clear, and remove a kit, and the key a frame names one by', async () => {
+    const { contentFormat } = await docs()
+    const kits = contentFormat.kits.join('\n')
+
+    expect(kits).toContain('frame kit <frame-ref> <kit>')
+    expect(kits).toContain('frame kit <frame-ref> none')
+    expect(kits).toContain('kit remove')
+    expect(kits).toContain('layout.json entry')
+  })
+
+  it('names the legacy folder as loading only where it holds kit.json', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.kits.join('\n')).toContain('assets/kit/kit.json')
+  })
+
+  it('no longer names tokens-exist as a kit add refusal', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.kits.join('\n')).not.toContain('tokens-exist')
   })
 
   it('prints the exit table and the name rule from their sources', async () => {
