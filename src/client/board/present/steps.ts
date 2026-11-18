@@ -5,6 +5,7 @@ import {
   type StepEffect,
   type StepStart,
 } from '@/shared/present-transition'
+import { LOOK_MARKER } from '@/shared/theme'
 
 /** One element a press reveals, with its entrance and how long after the press it starts. */
 export interface StepItem {
@@ -166,10 +167,12 @@ export function showSteps(
   }
 }
 
+/** Marked as injected and appended last, so an element index and the rendered hash read past it. */
 function holdStepStyle(doc: Document): void {
   if (doc.getElementById(STYLE_ID)) return
   const style = doc.createElement('style')
   style.id = STYLE_ID
+  style.setAttribute(LOOK_MARKER, '')
   style.textContent = STEP_STYLE
   doc.head?.append(style)
 }

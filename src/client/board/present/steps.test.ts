@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { frameElements } from '@/shared/frame-bridge/elements'
+
 import {
   clearSteps,
   previewStep,
@@ -246,6 +248,18 @@ describe('previewStep', () => {
       effect: null,
       style: false,
     })
+  })
+
+  it('leaves every element index in place while it plays', () => {
+    vi.useFakeTimers()
+    const doc = slide('<p id="a" data-step="1"></p><p id="b"></p>')
+    const element = doc.getElementById('a')
+    if (!element) throw new Error('No step element')
+    const before = frameElements(doc)
+
+    previewStep(element, 'fade')
+
+    expect(frameElements(doc)).toEqual(before)
   })
 
   it('blinks an Appear by hiding the element for a beat', () => {
