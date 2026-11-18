@@ -25,10 +25,6 @@ export function usePageThumbnails(
   return { theme, stamps }
 }
 
-export function thumbnailUrl(ref: string, theme: Theme, stamp: string): string {
-  return `/api/thumbnails/png?${new URLSearchParams({ ref, theme, v: stamp })}`
-}
-
 async function askStamps(
   send: typeof fetch,
   page: string,

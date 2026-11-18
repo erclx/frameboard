@@ -6,9 +6,10 @@ import {
   useState,
 } from 'react'
 
+import { thumbnailUrl } from '@/client/live/thumbnail-url'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { thumbnailUrl, usePageThumbnails } from './thumbnails'
+import { usePageThumbnails } from './thumbnails'
 
 interface OverviewProps {
   page: string
