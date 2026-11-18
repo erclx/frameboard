@@ -272,19 +272,22 @@ function openRunEdit(
       ? selection.getRangeAt(0)
       : undefined
   }
+  // A caret beside the run may name it from the element, so that edge counts as the run's.
+  const offsetIn = (container: Node, offset: number): number | undefined => {
+    if (container === node) return offset
+    if (container !== element) return undefined
+    const at = [...element.childNodes].indexOf(node)
+    if (offset === at) return 0
+    return offset === at + 1 ? node.length : undefined
+  }
   // A range reaching past the run, into a child or another run, writes nothing.
   const splice = (range: AbstractRange | undefined, text: string) => {
-    if (
-      !range ||
-      range.startContainer !== node ||
-      range.endContainer !== node
-    ) {
-      return
-    }
-    const { startOffset, endOffset } = range
-    node.replaceData(startOffset, endOffset - startOffset, text)
+    const start = range && offsetIn(range.startContainer, range.startOffset)
+    const end = range && offsetIn(range.endContainer, range.endOffset)
+    if (start === undefined || end === undefined) return
+    node.replaceData(start, end - start, text)
     const caret = document.createRange()
-    caret.setStart(node, startOffset + text.length)
+    caret.setStart(node, start + text.length)
     caret.collapse(true)
     getSelection()?.removeAllRanges()
     getSelection()?.addRange(caret)

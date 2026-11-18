@@ -440,6 +440,21 @@ describe('editTextInPlace on a run beside a child element', () => {
     expect(code.textContent).toBe('x')
   })
 
+  it('types at a caret the element names beside the run', async () => {
+    const { container, shown, heading } = await mount(MIXED)
+    const { last } = runs(heading)
+    const { changes, write } = recorder()
+    await editTextInPlace(container, KEY, write, middleOf(shown, last)).opened
+
+    caretIn(shown, heading, heading.childNodes.length)
+    inputs(heading, '!')
+    press(heading, 'Escape')
+
+    await expect
+      .poll(() => changes)
+      .toEqual([[{ kind: 'text', value: ' two!', run: 1 }]])
+  })
+
   it('inserts nothing when the caret has left the run for the child', async () => {
     const { container, iframe, shown, heading } = await mount(MIXED)
     const { code, last } = runs(heading)
