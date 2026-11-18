@@ -160,7 +160,7 @@ async function imagePickerOnLoad(page: Page): Promise<void> {
 /** The drive seed's photo tuner, a photo beside a column of three sliders bound to it. */
 const TUNER_FRAME = join(
   import.meta.dirname,
-  '../../scripts/lib/drive-tuner.html',
+  '../../../scripts/lib/drive-tuner.html',
 )
 
 /**
