@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { BRIDGE_TAG } from '@/shared/frame-bridge'
 
-import { request } from './channel'
+import { request, subscribe } from './channel'
 
 const HASH = 'c'.repeat(64)
 const BRIDGE =
@@ -107,5 +107,44 @@ describe('request', () => {
     await vi.advanceTimersByTimeAsync(1000)
 
     await expect(answer).resolves.toBeNull()
+  })
+})
+
+describe('subscribe', () => {
+  it('delivers no push once the frame closes the subscription', async () => {
+    const asked = await mount('')
+    const sent = nextRequestId(asked)
+    const pushes: unknown[] = []
+    const subscription = subscribe(
+      asked,
+      'text-edit',
+      { index: 3, hash: HASH },
+      (value) => pushes.push(value),
+    )
+    const id = await sent
+    const drained = new Promise<void>((resolve) => {
+      const done = (event: MessageEvent) => {
+        if (event.data !== 'drained') return
+        window.removeEventListener('message', done)
+        resolve()
+      }
+      window.addEventListener('message', done)
+    })
+
+    postFrom(asked, {
+      tag: BRIDGE_TAG,
+      kind: 'reply',
+      id,
+      ok: true,
+      value: true,
+    })
+    postFrom(asked, { tag: BRIDGE_TAG, kind: 'push', id, value: 'before' })
+    postFrom(asked, { tag: BRIDGE_TAG, kind: 'close', id })
+    postFrom(asked, { tag: BRIDGE_TAG, kind: 'push', id, value: 'after' })
+    postFrom(asked, 'drained')
+    await drained
+
+    await expect(subscription.opened).resolves.toBe(true)
+    expect(pushes).toEqual(['before'])
   })
 })

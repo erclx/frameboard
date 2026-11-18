@@ -121,5 +121,9 @@ function listen(): void {
       held.resolve(message.ok ? message.value : null)
     }
     if (message?.kind === 'push') held.onPush?.(message.value)
+    if (message?.kind === 'close') {
+      open.delete(message.id)
+      held.resolve(null)
+    }
   })
 }
