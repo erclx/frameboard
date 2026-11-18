@@ -18,6 +18,7 @@ Holds the script that runs in each frame's own realm, built to `dist/frame-bridg
 - The script removes its own `<script>` as it starts, so the live element indices the board reads match the file
 - It answers only `window.parent` at the frame's own origin, and a frame with no parent, as capture and the phone link show one, never listens
 - Text in place runs here, owning `contenteditable`, the caret, Enter, paste, Esc, and blur, then pushes the committed text for the board to write
+- Text beside a child element opens only the run at the double-clicked point, each child shut to the caret and every input spliced into that run, and commits the run's index
 - A committed edit keeps its old text until the board says whether the write landed, and a refusal shows the old text again
 
 ### `src/client/board/bridge/`

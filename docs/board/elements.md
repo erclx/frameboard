@@ -11,6 +11,8 @@ How you add an element to a frame and change its size and place.
 
 The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame where you click, sizing a rectangle or ellipse to a drag that previews the shape. Drag an element to move it, press Delete to take it out, or double-click text to retype it, Enter adding a line. Alt+Shift+ArrowUp and ArrowDown step it among its siblings.
 
+- Text beside another element, such as words around a `code`, retypes only the run you double-clicked, and Enter adds a line there only where the element already keeps its breaks
+
 Drag a corner of selected upright text, a shape, an image, a video, or a container to resize it. Text wraps to the new width with its height following, a container sets each side you drag to Fixed, and Shift keeps a shape's or media's ratio. Inline text and a divider draw no corner marks.
 
 ## Where a new element lands
