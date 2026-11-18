@@ -1,10 +1,11 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef } from 'react'
 import {
   type LayoutStorage,
   type PanelImperativeHandle,
   useDefaultLayout,
   usePanelRef,
 } from 'react-resizable-panels'
+import { useStore } from 'zustand'
 
 import {
   ResizableHandle,
@@ -25,6 +26,7 @@ import { FindPanel } from '../find/panel'
 import { LayersList } from './layers-list'
 import { PagesList } from './pages-list'
 import { ProjectHeader } from './project-header'
+import { leftTabStore } from './tab-store'
 
 interface LeftPanelProps {
   project: ProjectRecord
@@ -107,7 +109,14 @@ export function LeftPanel({
   const resetting = useRef(false)
   const pagesHeight = rowsHeight(Math.min(Math.max(project.pages.length, 4), 8))
   // A page add grows a shorter split to its fit, and a list showing every page keeps showing all.
-  const [tab, setTab] = useState('design')
+  const tab = useStore(leftTabStore, (state) => state.tab)
+  const setTab = (next: string) => {
+    if (next === 'design' || next === 'theme' || next === 'assets') {
+      leftTabStore.setState({ tab: next })
+    }
+  }
+  // The panel opens on Design each time it mounts, as it did holding its own tab.
+  useEffect(() => () => leftTabStore.setState({ tab: 'design' }), [])
   const splitShown = !finding && tab === 'design'
   const counted = useRef({ project: project.name, pages: project.pages.length })
   useEffect(() => {
