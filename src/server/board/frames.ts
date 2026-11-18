@@ -162,10 +162,12 @@ export async function addFrame(
         layout.file.frames,
         names.filter((name) => layout.hasEntry(name)),
       )
-      const width = size.width ?? FRAME_SIZES[DEFAULT_FRAME_SIZE].width
       // An entry left by a missing file keeps its box.
+      const stale = placed.get(frame.name)
+      const width =
+        size.width ?? stale?.box.width ?? FRAME_SIZES[DEFAULT_FRAME_SIZE].width
       const computed =
-        placed.get(frame.name) ??
+        stale ??
         placeNext([...placed.values()], {
           width,
           device: options.showDevice ? deviceForWidth(width) : null,

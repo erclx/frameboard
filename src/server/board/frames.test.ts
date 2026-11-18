@@ -680,6 +680,31 @@ describe('frames', () => {
         })
       })
 
+      it('add over an entry left by a missing file takes the reference height of its width', async () => {
+        const root = open()
+        const page = layout('webapp/home')
+        page.frames.card = {
+          x: 4000,
+          y: 0,
+          width: 390,
+          height: 500,
+          order: 2,
+          hidden: false,
+          locked: false,
+        }
+        writeFileSync(
+          join(root, 'webapp/home/layout.json'),
+          JSON.stringify(page),
+        )
+
+        const added = await addFrame(root, 'webapp/home/card', {
+          cwd: root,
+          scroll: true,
+        })
+
+        expect(added.box).toMatchObject({ x: 4000, width: 390, height: 844 })
+      })
+
       it('add with a width alone takes the reference height', async () => {
         const root = open()
 
