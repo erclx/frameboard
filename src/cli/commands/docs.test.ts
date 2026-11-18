@@ -232,6 +232,7 @@ describe('docs', () => {
         'Records',
         'Content format',
         'Check rules',
+        'Kits',
       ]) {
         expect(stdout).toMatch(new RegExp(`^${heading}$`, 'm'))
       }
@@ -244,6 +245,7 @@ describe('docs', () => {
       expect(stdout).toContain('checkResult')
       expect(stdout).toContain('A frame is any *.html file directly in a page')
       expect(stdout).toMatch(/^ {2}outside-link {2}error, exact/m)
+      expect(stdout).toContain('A kit is a folder of plain files')
       expect(stdout).toContain('frameboard open  ')
       expect(stdout).toContain(
         '--theme <theme>  the theme to capture (one of light, dark, both, default "both")',
