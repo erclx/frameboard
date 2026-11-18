@@ -29,6 +29,7 @@ describe('docs', () => {
       contentFormat: {
         controls: string[]
         kits: string[]
+        images: string[]
         names: { pattern: string }
         frameSizes: Record<string, { width: number; height: number }>
       }
@@ -155,6 +156,16 @@ describe('docs', () => {
     expect(contentFormat.controls[0]).toContain(
       'data-binds="<selector> <--property>" and data-unit="<unit>"',
     )
+  })
+
+  it('states the default licenses, the provider order, and the license file', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.images[0]).toContain('under cc0, pdm alone')
+    expect(contentFormat.images[1]).toContain(
+      'fal (fal-ai/flux/schnell, FAL_KEY), google (gemini-nano-banana-2.1, GEMINI_API_KEY)',
+    )
+    expect(contentFormat.images[2]).toContain('<file>.license.json')
   })
 
   it('names the kit files, the shipped kits, and where an installed kit sits', async () => {

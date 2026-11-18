@@ -13,6 +13,13 @@ import {
 } from '@/server/board/scan'
 import { NOTES_FOLDER } from '@/server/notes/images'
 import { NOTES_FILE } from '@/server/notes/store'
+import { PROVIDERS } from '@/server/sourcing/generate'
+import {
+  CREDITED_LICENSES,
+  DEFAULT_LICENSES,
+  PAGE_SIZE,
+} from '@/server/sourcing/openverse'
+import { DOWNLOAD_LIMIT } from '@/server/sourcing/save'
 import { BINDS_ATTRIBUTE, UNIT_ATTRIBUTE } from '@/shared/bindings'
 import { ADDRESS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
 import { FACES } from '@/shared/faces'
@@ -50,6 +57,7 @@ import {
   TRANSITIONS,
   TRANSITIONS_FOLDER,
 } from '@/shared/present-transition'
+import { LICENSE_FILE_SUFFIX } from '@/shared/records/sourcing'
 import { LOOK_MARKER } from '@/shared/theme'
 
 /** The content format `docs` prints, built from the constants the verbs run on. */
@@ -106,6 +114,13 @@ export function contentFormat() {
       `A kit is a folder of plain files: ${KIT_FILE} naming it, ${TOKEN_FILE} with a light and a dark block, ${KIT_SHEET} of component styles, ${KIT_NOTE} saying what to reach for, and a ${KIT_PAGE} page of sample frames. The tool ships ${SHIPPED_KITS.join(', ')}, and a board keeps the kits saved from its projects in ${KITS_FOLDER}/.`,
       `kit add copies the kit's ${TOKEN_FILE} as the project's, its ${KIT_PAGE} page as the project's ${KIT_PAGE} page, and every other file into ${ASSETS_FOLDER}/${KIT_ASSETS}/. It refuses tokens-exist where a board, --tokens, or project sheet already reaches the project, and name-taken where the project holds a ${KIT_PAGE} page or ${ASSETS_FOLDER}/${KIT_ASSETS}/, unless --replace is given. kit save refuses name-taken for a name a shipped or saved kit holds, and tokens-not-found for a project no sheet reaches.`,
       `The server imports ${ASSETS_FOLDER}/${KIT_ASSETS}/${KIT_SHEET} into each frame after the project sheet, and check reads it with the token sheets. Read ${ASSETS_FOLDER}/${KIT_ASSETS}/${KIT_NOTE} and the ${KIT_PAGE} page before drawing in a project that holds one.`,
+    ],
+    images: [
+      `image find searches Openverse under ${DEFAULT_LICENSES.join(', ')} alone, and --credited widens it to ${CREDITED_LICENSES.join(', ')}. It lists up to ${PAGE_SIZE} results numbered from 1 and writes nothing. --save <number> runs the search again and saves that result, and --save <id> saves the Openverse image with that id with no search, refusing result-not-found for an id under a license the flags do not allow. Openverse allows an address 200 anonymous requests a day, so save by id.`,
+      `image generate runs on the provider --provider names, else the first whose key is set, in the order ${PROVIDERS.map((each) => `${each.name} (${each.model}, ${each.keyEnv})`).join(', ')}. A key set to an empty string reads as unset. priceUsd is the estimate before the call, and --dry-run answers it with saved null and makes no request. Without --dry-run the call spends on that key at once, since no verb prompts. No ready provider refuses no-provider with the keys in the details, and a failed call refuses provider-failed with the provider's status and never the key.`,
+      `A saved image lands in the project's ${ASSETS_FOLDER}/ under the --name stem, else the query or prompt as a lowercase dashed name, taking the first free -2, -3, and onward. Its license file lands beside it as <file>${LICENSE_FILE_SUFFIX}, the licenseFile record, saying where it came from. A download is held whole, at most ${DOWNLOAD_LIMIT / 1024 / 1024} MiB, before anything is written, so a failed one leaves no file, and the Assets tab never draws a license file as its own tile.`,
+      'image doctor reports the GPU nvidia-smi names, whether a ComfyUI server answers at FRAMEBOARD_COMFYUI_URL or the default address, and each key as set or unset, never its value. It installs and spends nothing.',
+      `A frame links a saved image as ../${ASSETS_FOLDER}/<path>, never by its web address, since a frame loads nothing over the network.`,
     ],
     assets: `A frame links files in its own page folder or in its project's ${ASSETS_FOLDER}/ folder. frame duplicate and frame move carry the ${FRAME_EXTENSION} file alone, so keep files shared between frames or pages in ${ASSETS_FOLDER}/.`,
     look: [
