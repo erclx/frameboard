@@ -850,4 +850,41 @@ describe('a presented frame still loading', () => {
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
   })
+
+  it('rounds the block to a phone screen, so no grey shows past the bezel', () => {
+    present([
+      frameOf('a', {
+        box: { x: 0, y: 0, width: 390, height: 844 },
+        device: 'phone',
+      }),
+    ])
+
+    act(() => vi.advanceTimersByTime(1000))
+
+    const shown = block()
+    expect(shown && getComputedStyle(shown).borderTopRightRadius).toBe('62px')
+  })
+})
+
+describe('a presented frame in a device', () => {
+  it('rounds a phone page to the bezel screen, so no white shows past it', () => {
+    present([
+      frameOf('a', {
+        box: { x: 0, y: 0, width: 390, height: 844 },
+        device: 'phone',
+      }),
+    ])
+
+    const shown = shownFrame()
+
+    expect(shown && getComputedStyle(shown).borderBottomLeftRadius).toBe('62px')
+  })
+
+  it('leaves a page with no device square', () => {
+    present(framesOf('a'))
+
+    const shown = shownFrame()
+
+    expect(shown && getComputedStyle(shown).borderTopLeftRadius).toBe('0px')
+  })
 })
