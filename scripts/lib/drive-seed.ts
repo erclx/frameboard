@@ -112,6 +112,12 @@ const MIXED_PAGE = join(import.meta.dirname, 'drive-mixed.html')
 /** The folder home opens on in a reel, holding two projects the fixture lacks. */
 const FOLDER = { name: 'Drives', projects: ['drive-app', 'drive-site'] }
 
+/**
+ * A project whose folder name is one run no line break rescues, with its own
+ * token sheet, so the Theme tab's note has a sheet path wider than itself.
+ */
+const LONG_PATH = 'northwindbrandsystemworkspacedesigntokens'
+
 /** The frames reserved beside `webapp/settings/profile`, which ends at x 834. */
 const RESERVED = ['billing', 'security', 'team']
 const SETTINGS_RIGHT = 834
@@ -150,6 +156,8 @@ export interface Seeded {
   mixed: 'laid' | 'kept'
   /** Whether the Drives folder was laid now or was already there and kept. */
   folder: 'laid' | 'kept'
+  /** Whether the long sheet path project was laid now or was already there and kept. */
+  longPath: 'laid' | 'kept'
   /** The frame refs the reservation holds. */
   reserved: string[]
 }
@@ -185,6 +193,7 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     { ...FRAME_SIZES.phone, showDevice: true },
   )
   const folder = await layFolder(root)
+  const longPath = await layLongPath(root)
   const reserved = await reserveSettings(root, now)
   return {
     crowd,
@@ -199,8 +208,30 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     tuner,
     mixed,
     folder,
+    longPath,
     reserved,
   }
+}
+
+/** Lays the long sheet path project, one empty page and a token sheet stating one color. */
+async function layLongPath(root: string): Promise<'laid' | 'kept'> {
+  if (existsSync(join(root, LONG_PATH))) return 'kept'
+  await mkdir(join(root, LONG_PATH, 'home'), { recursive: true })
+  await Promise.all([
+    writeFile(
+      join(root, LONG_PATH, 'home', 'layout.json'),
+      `${JSON.stringify({ version: 1, frames: {} }, null, 2)}\n`,
+    ),
+    writeFile(
+      join(root, LONG_PATH, 'project.json'),
+      `${JSON.stringify({ version: 1, pages: ['home'] }, null, 2)}\n`,
+    ),
+    writeFile(
+      join(root, LONG_PATH, 'tokens.css'),
+      ':root {\n  --brand: #0f766e;\n}\n',
+    ),
+  ])
+  return 'laid'
 }
 
 /**

@@ -490,6 +490,30 @@ describe('the Drives folder', () => {
   })
 })
 
+describe('the long sheet path project', () => {
+  it('lays one page and a token sheet under a folder name with no break in it', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.longPath).toBe('laid')
+    const project = 'northwindbrandsystemworkspacedesigntokens'
+    expect(readJson(`${project}/project.json`)).toEqual({
+      version: 1,
+      pages: ['home'],
+    })
+    expect(readFileSync(join(root, project, 'tokens.css'), 'utf8')).toContain(
+      '--brand',
+    )
+  })
+
+  it('leaves the project alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.longPath).toBe('kept')
+  })
+})
+
 describe('the settings reservation', () => {
   it('holds three boxes on webapp/settings live at the real clock', async () => {
     await seedDrive(root, new Date())
