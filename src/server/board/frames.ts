@@ -18,6 +18,7 @@ import {
   widthsOf,
   xPast,
 } from '@/shared/frame-widths'
+import { kitOf } from '@/shared/kits'
 import { nextFreeName } from '@/shared/names'
 import {
   storedTransitionOf,
@@ -1106,6 +1107,7 @@ class PageLayout {
       showDevice,
       transition,
       speakerNotes,
+      kit,
       hugWidth: hugsWidth,
       hugHeight: hugsHeight,
     }: Placement,
@@ -1133,6 +1135,7 @@ class PageLayout {
       ...(showDevice ? { showDevice } : {}),
       ...(transition ? { transition: { ...transition } } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
+      ...(kit ? { kit } : {}),
     }
     if (widths.length === 0 && widthsOf(held?.widths).length > 0) {
       delete entry.widths
@@ -1145,6 +1148,7 @@ class PageLayout {
     if (!speakerNotes && speakerNotesOf(held?.speakerNotes)) {
       delete entry.speakerNotes
     }
+    if (!kit && kitOf(held?.kit)) delete entry.kit
     this.file.frames[name] = entry
     this.changed = true
   }

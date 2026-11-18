@@ -1,3 +1,5 @@
+import { isValidName } from './names'
+
 /**
  * The names a design kit's folder of plain files is laid out by, installed so
  * the frame route imports `assets/kit/` after the token sheets.
@@ -9,6 +11,8 @@ export const KIT_NOTE = 'kit.md'
 export const KIT_PAGE = 'kit'
 /** The folder under a project's `assets/` an installed kit's files sit in. */
 export const KIT_ASSETS = 'kit'
+/** The folder under a project's `assets/` holding each kit it added, one folder per kit. */
+export const PROJECT_KITS = 'kits'
 /** The dot folder in a board holding the kits saved from its projects, which home never lists as a project. */
 export const KITS_FOLDER = '.kits'
 
@@ -20,6 +24,14 @@ export const KITS_URL = '/frameboard/kits'
 
 /** The kits the tool ships, in the order a picker shows them. */
 export const SHIPPED_KITS = ['clean', 'sketch', 'wireframe'] as const
+
+/**
+ * The project kit a layout entry's `kit` names, null for none, a value of
+ * another type, or a name that could leave the project's kits folder.
+ */
+export function kitOf(value: unknown): string | null {
+  return typeof value === 'string' && isValidName(value) ? value : null
+}
 
 /** Where a listed kit comes from: the tool's own, or one saved into this board's kits folder. */
 export type KitSource = 'shipped' | 'board'

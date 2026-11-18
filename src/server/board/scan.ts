@@ -18,6 +18,7 @@ import {
   widthsOf,
   xPast,
 } from '@/shared/frame-widths'
+import { kitOf } from '@/shared/kits'
 import {
   storedTransitionOf,
   type Transition,
@@ -78,6 +79,8 @@ export interface Placement {
   transition?: Transition
   /** Absent for a frame with no note or one holding a value of another type. */
   speakerNotes?: string
+  /** Absent for a frame naming no kit, and present for a named kit the project lacks. */
+  kit?: string
   placed: boolean
 }
 
@@ -223,6 +226,7 @@ export function placeFrames(
     const device = shown ? deviceForWidth(box.width) : null
     const transition = readTransition(entry.transition)
     const speakerNotes = speakerNotesOf(entry.speakerNotes)
+    const kit = kitOf(entry.kit)
     placements.set(name, {
       box,
       order: entry.order,
@@ -236,6 +240,7 @@ export function placeFrames(
       ...(device ? { device } : {}),
       ...(transition ? { transition } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
+      ...(kit ? { kit } : {}),
       placed: true,
     })
   }

@@ -45,6 +45,8 @@ export const frameRecordSchema = z.object({
   transition: transitionRecordSchema.optional(),
   /** What the presenter means to say over the slide, plain text with its line breaks, absent when it holds none. */
   speakerNotes: z.string().optional(),
+  /** The project kit the frame names, absent when it names none, and still given where the project holds no such kit. */
+  kit: z.string().optional(),
   placed: z.boolean(),
   modifiedAt: z.string(),
 })

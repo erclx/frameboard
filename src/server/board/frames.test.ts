@@ -1295,6 +1295,63 @@ describe('frames', () => {
       })
     })
 
+    describe('a kit on the layout entry', () => {
+      it('reports the kit a frame names and keeps it when another writer changes the entry', async () => {
+        const root = open()
+        hugHero(root, { kit: 'sketch' })
+
+        const moved = await moveFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          x: 40,
+        })
+
+        expect(moved.kit).toBe('sketch')
+        expect(layout('webapp/home').frames.hero.kit).toBe('sketch')
+      })
+
+      it.each([
+        ['a value of another type', ['sketch']],
+        ['a name climbing out of the folder', '../sketch'],
+        ['a name holding a slash', 'kits/sketch'],
+      ])('reads %s as no kit and leaves it as written', async (_label, kit) => {
+        const root = open()
+        hugHero(root, { kit })
+
+        const moved = await moveFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          x: 40,
+        })
+
+        expect(moved).not.toHaveProperty('kit')
+        expect(layout('webapp/home').frames.hero.kit).toEqual(kit)
+      })
+
+      it('carries the kit onto a duplicate', async () => {
+        const root = open()
+        hugHero(root, { kit: 'sketch' })
+
+        const copy = await duplicateFrame(root, 'webapp/home/hero', {
+          cwd: root,
+        })
+
+        expect(copy.kit).toBe('sketch')
+        expect(layout('webapp/home').frames[copy.name].kit).toBe('sketch')
+      })
+
+      it('carries the kit when the frame moves to another page', async () => {
+        const root = open()
+        hugHero(root, { kit: 'sketch' })
+
+        const moved = await moveFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          to: 'webapp/settings',
+        })
+
+        expect(moved.kit).toBe('sketch')
+        expect(layout('webapp/settings').frames.hero.kit).toBe('sketch')
+      })
+    })
+
     it('fitHeight sets the height and turns its hugging back on', async () => {
       const root = open()
 
