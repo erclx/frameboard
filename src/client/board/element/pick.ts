@@ -1,50 +1,43 @@
-import {
-  elementAt,
-  elementIndex,
-  renderedHash,
-} from '@/shared/frame-bridge/elements'
 import type { ElementTree, TreeElement } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { request } from '../bridge/channel'
 import type { Box } from '../geometry/box'
-import { type BoardPoint, pickAt } from '../notes/pick'
+import { type BoardPoint, type FramePick, readPick } from '../notes/pick'
 import type { ElementKey } from '../selection'
+
+/**
+ * The deepest stated element in a pick, a script's element giving way to its
+ * stated ancestor. Null where the tree was read from other bytes than the
+ * frame answered from.
+ */
+function statedIn(
+  pick: FramePick,
+  tree: ElementTree | null,
+): ElementKey | null {
+  const hash = pick.shown?.hash
+  if (!hash || tree?.hash !== hash) return null
+  for (const { index, tag } of pick.shown?.chain ?? []) {
+    const row = tree.elements.find((candidate) => candidate.index === index)
+    if (row?.tag === tag) return { frame: pick.frame.ref, index, hash }
+  }
+  return null
+}
 
 /**
  * The deepest element the file states under a point, found as a note pin finds
  * its element, a script's element giving way to its stated ancestor. Null
  * where no held tree vouches for the index.
  */
-export function pickElement(
+export async function pickElement(
   container: ParentNode,
   frames: readonly FrameRecord[],
   at: BoardPoint,
   treeOf: (ref: string) => ElementTree | null,
-): ElementKey | null {
-  const pick = pickAt(container, frames, at)
+): Promise<ElementKey | null> {
+  const pick = await readPick(container, frames, at)
   if (!pick || pick.element === null) return null
-  const document = container.querySelector<HTMLIFrameElement>(
-    `[data-frame="${CSS.escape(pick.frame.ref)}"] iframe`,
-  )?.contentDocument
-  const hash = document ? renderedHash(document) : null
-  if (!document || !hash) return null
-
-  // A tree read from other bytes than the iframe shows cannot vouch for an index.
-  const tree = treeOf(pick.frame.ref)
-  if (tree?.hash !== hash) return null
-  for (
-    let element = elementAt(document, pick.element);
-    element && element !== document.body;
-    element = element.parentElement
-  ) {
-    const index = elementIndex(document, element)
-    if (index === null) continue
-    const row = tree.elements.find((candidate) => candidate.index === index)
-    if (row?.tag === element.localName) {
-      return { frame: pick.frame.ref, index, hash }
-    }
-  }
-  return null
+  return statedIn(pick, treeOf(pick.frame.ref))
 }
 
 /**
@@ -58,76 +51,81 @@ export async function pickElementRead(
   at: BoardPoint,
   read: (ref: string) => Promise<ElementTree | null>,
 ): Promise<ElementKey | null> {
-  const pick = pickAt(container, frames, at)
+  const pick = await readPick(container, frames, at)
   if (!pick || pick.element === null) return null
-  const tree = await read(pick.frame.ref)
-  return tree ? pickElement(container, frames, at, () => tree) : null
+  return statedIn(pick, await read(pick.frame.ref))
 }
 
-/** The live document of a frame showing `hash`, null while it shows other bytes or no iframe. */
-function shownAt(
-  container: ParentNode,
-  ref: string,
-  hash: string,
-): Document | null {
-  const document = container.querySelector<HTMLIFrameElement>(
-    `[data-frame="${CSS.escape(ref)}"] iframe`,
-  )?.contentDocument
-  return document && renderedHash(document) === hash ? document : null
-}
+/** Which of a frame's elements a rectangle on the board touches. */
+export type Touching = (rect: Box) => { key: ElementKey; box: Box }[]
 
 /**
- * The elements a rectangle touches in one frame, outermost first, empty while
- * the frame shows bytes the tree does not name.
+ * Reads the boxes of a frame's elements once, answering which a rectangle
+ * touches, outermost first, none while the frame shows bytes the tree does
+ * not name.
  */
-export function elementsIn(
+export async function elementsIn(
   container: ParentNode,
   frame: Pick<FrameRecord, 'ref' | 'box'>,
-  rect: Box,
   tree: ElementTree | null,
-): { key: ElementKey; box: Box }[] {
-  const document = tree ? shownAt(container, frame.ref, tree.hash) : null
-  if (!tree || !document) return []
-  const touched = new Map<number, Box>()
-  for (const { index } of tree.elements) {
-    const shape = elementAt(document, index)?.getBoundingClientRect()
-    if (!shape || shape.width === 0 || shape.height === 0) continue
-    const box = {
-      x: frame.box.x + shape.left,
-      y: frame.box.y + shape.top,
-      width: shape.width,
-      height: shape.height,
-    }
-    if (touches(box, rect)) touched.set(index, box)
-  }
+): Promise<Touching> {
+  const iframe = container.querySelector<HTMLIFrameElement>(
+    `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
+  )
+  const boxes =
+    tree && iframe
+      ? await request(iframe, 'element-boxes', {
+          hash: tree.hash,
+          indexes: tree.elements.map(({ index }) => index),
+        })
+      : null
+  if (!tree || !boxes) return () => []
   const byIndex = new Map(tree.elements.map((row) => [row.index, row]))
-  const insideTouched = ({ parent }: TreeElement): boolean =>
-    parent !== null &&
-    (touched.has(parent) ||
-      (byIndex.has(parent) &&
-        insideTouched(byIndex.get(parent) as TreeElement)))
-  return tree.elements.flatMap((row) => {
-    const box = touched.get(row.index)
-    return box && !insideTouched(row)
-      ? [{ key: { frame: frame.ref, index: row.index, hash: tree.hash }, box }]
-      : []
-  })
+  return (rect) => {
+    const touched = new Map<number, Box>()
+    for (const { index, box } of boxes) {
+      const shown = {
+        x: frame.box.x + box.x,
+        y: frame.box.y + box.y,
+        width: box.width,
+        height: box.height,
+      }
+      if (touches(shown, rect)) touched.set(index, shown)
+    }
+    const insideTouched = ({ parent }: TreeElement): boolean =>
+      parent !== null &&
+      (touched.has(parent) ||
+        (byIndex.has(parent) &&
+          insideTouched(byIndex.get(parent) as TreeElement)))
+    return tree.elements.flatMap((row) => {
+      const box = touched.get(row.index)
+      return box && !insideTouched(row)
+        ? [
+            {
+              key: { frame: frame.ref, index: row.index, hash: tree.hash },
+              box,
+            },
+          ]
+        : []
+    })
+  }
 }
 
 /**
  * Whether a point lands on a frame's bare `body`, where a press marquees its
  * elements, false for a frame with no live page or nothing in it.
  */
-export function onBareFrame(
+export async function onBareFrame(
   container: ParentNode,
   frames: readonly FrameRecord[],
   at: BoardPoint,
   tree: ElementTree | null,
-): boolean {
-  const pick = pickAt(container, frames, at)
-  if (!pick || pick.element !== null || !tree) return false
-  if (tree.elements.length === 0) return false
-  return shownAt(container, pick.frame.ref, tree.hash) !== null
+): Promise<boolean> {
+  if (!tree || tree.elements.length === 0) return false
+  const pick = await readPick(container, frames, at)
+  return (
+    pick !== null && pick.element === null && pick.shown?.hash === tree.hash
+  )
 }
 
 function touches(a: Box, b: Box): boolean {

@@ -345,8 +345,10 @@ export function setup(
         return null
       },
       pickElement: async (_layer, _frames, at) => pick(at),
-      onBareFrame: (_layer, _frames, at) => bare(at),
-      elementsIn: () => inner,
+      // False at once as the store answers where it can tell, else the frame's word.
+      onBareFrame: (_layer, _frames, at) =>
+        bare(at) ? Promise.resolve(true) : false,
+      elementsIn: async () => () => inner,
       resizeOf: () => (shape === undefined ? null : resizeRead),
       placedOffsets: () => placed ?? null,
       groupOf: () => group?.members ?? null,

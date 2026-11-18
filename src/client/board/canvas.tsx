@@ -951,9 +951,13 @@ export function Canvas({
                   })
                   return
                 }
-                const pick = pickAt(layer, withDrawn(frames), { x, y })
-                if (pick) notesUi.setState({ open: { kind: 'new', pick } })
-                else closeNote()
+                // The frame answers what is under the click, which a later click overrules.
+                const turn = ++picks.current
+                void pickAt(layer, withDrawn(frames), { x, y }).then((pick) => {
+                  if (turn !== picks.current) return
+                  if (pick) notesUi.setState({ open: { kind: 'new', pick } })
+                  else closeNote()
+                })
               }}
               // The click follows the gestures' pointerup, so it picks inside the frame just selected.
               onClick={(event) => {

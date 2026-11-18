@@ -1,5 +1,7 @@
-import { elementIndex } from '@/shared/frame-bridge/elements'
+import type { PickAt } from '@/shared/frame-bridge/messages'
 import type { FrameRecord } from '@/shared/records/list'
+
+import { request } from '../bridge/channel'
 
 /** A point on the board, in the canvas layer's own pixels. */
 export interface BoardPoint {
@@ -18,42 +20,68 @@ export interface NotePick {
   at: BoardPoint
 }
 
-/** The page's root and wrapper elements, a click on which is a note on the frame. */
-const FRAME_LEVEL = new Set(['HTML', 'BODY'])
+/** The topmost shown frame under a board point, the one a click there lands in. */
+export function frameUnder(
+  frames: readonly FrameRecord[],
+  at: BoardPoint,
+): FrameRecord | null {
+  return (
+    [...frames]
+      .filter((candidate) => !candidate.hidden && contains(candidate.box, at))
+      .sort((a, b) => b.order - a.order)[0] ?? null
+  )
+}
+
+/** A note's pick with what the frame answered under the point, null where no live page answered. */
+export interface FramePick extends NotePick {
+  shown: PickAt | null
+}
 
 /**
- * The frame or element under a point, hit-tested inside a live iframe with no
- * selection, a placeholder frame taking a frame note.
+ * The frame under a point and what its live page hit-tests there, the page
+ * answering over the bridge. A placeholder frame or a page that never
+ * answers takes a frame note.
  */
-export function pickAt(
+export async function readPick(
   container: ParentNode,
   frames: readonly FrameRecord[],
   at: BoardPoint,
-): NotePick | null {
-  const frame = [...frames]
-    .filter((candidate) => !candidate.hidden && contains(candidate.box, at))
-    .sort((a, b) => b.order - a.order)[0]
+): Promise<FramePick | null> {
+  const frame = frameUnder(frames, at)
   if (!frame) return null
   const iframe = container.querySelector<HTMLIFrameElement>(
     `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
   )
-  const document = iframe?.contentDocument
-  const target = document?.elementFromPoint(
-    at.x - frame.box.x,
-    at.y - frame.box.y,
-  )
+  const shown = iframe
+    ? await request(iframe, 'pick-at', {
+        at: { x: at.x - frame.box.x, y: at.y - frame.box.y },
+      })
+    : null
   // An unloaded iframe names no file, so its click makes a frame note.
   const renderedAt = iframe?.dataset.renderedAt ?? null
-  const element =
-    document && target && renderedAt && !FRAME_LEVEL.has(target.tagName)
-      ? elementIndex(document, target)
-      : null
+  const element = renderedAt ? (shown?.chain[0]?.index ?? null) : null
   return {
     frame: { ref: frame.ref, name: frame.name },
     element,
     renderedAt: element === null ? null : renderedAt,
     at,
+    shown,
   }
+}
+
+/**
+ * The frame or element under a point, hit-tested inside a live iframe with no
+ * selection, a placeholder frame taking a frame note.
+ */
+export async function pickAt(
+  container: ParentNode,
+  frames: readonly FrameRecord[],
+  at: BoardPoint,
+): Promise<NotePick | null> {
+  const pick = await readPick(container, frames, at)
+  if (!pick) return null
+  const { shown: _shown, ...note } = pick
+  return note
 }
 
 function contains(box: FrameRecord['box'], { x, y }: BoardPoint): boolean {

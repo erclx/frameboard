@@ -44,10 +44,40 @@ export type TextEditEnd =
   | { kind: 'commit'; text: string; breaks: boolean; run?: number }
   | { kind: 'closed' }
 
+/** A box in a frame's viewport by its top left corner, in CSS pixels. */
+export interface FrameBox {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** An element by its file index and its tag, as a pick walks up from the one under a point. */
+export interface PickedElement {
+  index: number
+  tag: string
+}
+
+/** What sits under a point in a frame. */
+export interface PickAt {
+  /** The hash of the bytes the frame shows, null for a page the route never stamped. */
+  hash: string | null
+  /** The element under the point and each ancestor below `body`, empty over the page's root or wrapper. */
+  chain: PickedElement[]
+}
+
 /** Each op's arguments, its reply value, and what it pushes, `never` for an op that pushes nothing. */
 export interface BridgeOps {
   /** The element's live box, or null when the frame shows other bytes or no element there. */
   'element-box': { args: ElementAddress; value: ElementBox | null; push: never }
+  /** Each named element's box that draws anything, or null when the frame shows other bytes. */
+  'element-boxes': {
+    args: { hash: string; indexes: number[] }
+    value: { index: number; box: FrameBox }[] | null
+    push: never
+  }
+  /** What sits under a frame point, hit-tested as the page draws. */
+  'pick-at': { args: { at: FramePoint }; value: PickAt; push: never }
   /** Moves the frame's stamp to a hash whose bytes it already shows, answering whether it held one to move. */
   restamp: { args: { hash: string }; value: boolean; push: never }
   /** Opens the element's text for typing, answering whether it opened, and pushes how the edit ends. */
@@ -100,6 +130,8 @@ export type BridgeMessage =
 
 const OPS: readonly string[] = [
   'element-box',
+  'element-boxes',
+  'pick-at',
   'restamp',
   'text-edit',
   'text-written',
@@ -160,6 +192,19 @@ export function readBridgeMessage(
   }
 }
 
+const indexSchema = z.number().int().nonnegative()
+
+const addressSchema = z.object({ index: indexSchema, hash: z.string() })
+
+const pointSchema = z.object({ x: z.number().finite(), y: z.number().finite() })
+
+const frameBoxSchema = z.object({
+  x: z.number().finite(),
+  y: z.number().finite(),
+  width: z.number().finite(),
+  height: z.number().finite(),
+})
+
 const elementBoxSchema = z.object({
   left: z.number().finite(),
   top: z.number().finite(),
@@ -177,21 +222,54 @@ const textEditEndSchema = z.union([
   z.object({ kind: z.literal('closed') }),
 ])
 
-/** What each op's reply and pushes must hold, checked where the board takes them in. */
+/**
+ * What each op's arguments, reply, and pushes must hold, the arguments checked
+ * where the frame takes them in and the rest where the board does.
+ */
 const SCHEMAS: {
   [O in BridgeOp]: {
+    args: z.ZodType<BridgeOps[O]['args']>
     value: z.ZodType<BridgeOps[O]['value']>
     push?: z.ZodType<BridgeOps[O]['push']>
   }
 } = {
-  'element-box': { value: elementBoxSchema.nullable() },
-  restamp: { value: z.boolean() },
-  'text-edit': { value: z.boolean(), push: textEditEndSchema },
-  'text-written': { value: z.null() },
+  'element-box': { args: addressSchema, value: elementBoxSchema.nullable() },
+  'element-boxes': {
+    args: z.object({ hash: z.string(), indexes: z.array(indexSchema) }),
+    value: z
+      .array(z.object({ index: indexSchema, box: frameBoxSchema }))
+      .nullable(),
+  },
+  'pick-at': {
+    args: z.object({ at: pointSchema }),
+    value: z.object({
+      hash: z.string().nullable(),
+      chain: z.array(z.object({ index: indexSchema, tag: z.string() })),
+    }),
+  },
+  restamp: { args: z.object({ hash: z.string() }), value: z.boolean() },
+  'text-edit': {
+    args: addressSchema.extend({ at: pointSchema.optional() }),
+    value: z.boolean(),
+    push: textEditEndSchema,
+  },
+  'text-written': {
+    args: z.object({ edit: z.string(), written: z.boolean() }),
+    value: z.null(),
+  },
 }
 
-/** What `replyValue` and `pushValue` answer for a value its schema refuses. */
+/** What `requestArgs`, `replyValue`, and `pushValue` answer for a value its schema refuses. */
 export const REFUSED: unique symbol = Symbol('refused')
+
+/** An op's arguments as its schema reads them, or `refused` for any other shape. */
+export function requestArgs<O extends BridgeOp>(
+  op: O,
+  args: unknown,
+): BridgeOps[O]['args'] | typeof REFUSED {
+  const read = SCHEMAS[op].args.safeParse(args)
+  return read.success ? read.data : REFUSED
+}
 
 /**
  * An op's reply value as its schema reads it, or `refused` for one of any

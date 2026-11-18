@@ -5,7 +5,7 @@ import {
 } from '@/shared/frame-bridge/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { type BoardPoint, pickAt } from '../notes/pick'
+import { type BoardPoint, frameUnder } from '../notes/pick'
 
 /** A point inside a live frame, in its own viewport pixels. */
 export interface FramePoint {
@@ -277,8 +277,7 @@ export function gapUnder(
   frames: readonly FrameRecord[],
   at: BoardPoint,
 ): FrameGap | null {
-  const pick = pickAt(container, frames, at)
-  const frame = frames.find((candidate) => candidate.ref === pick?.frame.ref)
+  const frame = frameUnder(frames, at)
   if (!frame) return null
   const shown = shownDocument(container, frame.ref)
   const hash = shown ? renderedHash(shown) : null

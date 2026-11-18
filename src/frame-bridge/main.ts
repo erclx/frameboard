@@ -1,23 +1,19 @@
-import { elementAt, renderedHash } from '@/shared/frame-bridge/elements'
+import { renderedHash } from '@/shared/frame-bridge/elements'
 import {
   BRIDGE_TAG,
   type BridgeMessage,
   type BridgeOp,
-  type ElementAddress,
-  type ElementBox,
-  isElementAddress,
-  isTextEditArgs,
+  type BridgeOps,
   readBridgeMessage,
+  REFUSED,
+  requestArgs,
 } from '@/shared/frame-bridge/messages'
 import { LOOK_MARKER, RENDERED_HASH } from '@/shared/theme'
 
+import { gapHandlers } from './gap'
+import { addressed, type Handler, type Handlers } from './handler'
+import { measureHandlers } from './measure'
 import { openTextEdit } from './text-edit'
-
-/**
- * Answers one request, returning its reply value. A thrown error replies as
- * a refusal.
- */
-type Handler = (args: unknown, id: string) => unknown
 
 // The frame route injects this as a script, which leaves no element behind,
 // since another would shift every live index the board reads.
@@ -28,75 +24,57 @@ const board = window.parent
 // document's origin, since a srcdoc frame's location names none.
 const boardOrigin = window.origin
 
-/** The live element an address names, or null when the frame shows other bytes. */
-function addressed(address: ElementAddress): Element | null {
-  if (renderedHash(document) !== address.hash) return null
-  return elementAt(document, address.index)
-}
+const page = crypto.randomUUID()
 
-function elementBox(args: unknown): ElementBox | null {
-  if (!isElementAddress(args)) throw new Error('not an element address')
-  const element = addressed(args)
-  if (!element) return null
-  const { left, top, right, bottom } = element.getBoundingClientRect()
-  return { left, top, right, bottom }
-}
-
-/** The open text edits by their request id, each answering how to cancel it. */
-const editing = new Map<string, () => void>()
+/** What runs once the board closes a request, by its id. */
+const closers = new Map<string, () => void>()
 
 /** The committed text edits awaiting the board's write, each answering how to show the old text. */
 const committed = new Map<string, () => void>()
 
-function textEdit(args: unknown, id: string): boolean {
-  if (!isTextEditArgs(args)) throw new Error('not a text edit')
-  const element = addressed(args)
-  const cancel =
-    element &&
-    openTextEdit(
-      element,
-      (end, restore) => {
-        editing.delete(id)
-        if (end.kind === 'commit') committed.set(id, restore)
-        send({ tag: BRIDGE_TAG, kind: 'push', id, value: end })
-      },
-      args.at,
-    )
-  if (!cancel) return false
-  editing.set(id, cancel)
-  return true
-}
-
-function textWritten(args: unknown): null {
-  const { edit, written } = (args ?? {}) as {
-    edit?: unknown
-    written?: unknown
-  }
-  if (typeof edit !== 'string' || typeof written !== 'boolean') {
-    throw new Error('not a written edit')
-  }
-  const restore = committed.get(edit)
-  committed.delete(edit)
-  if (!written) restore?.()
-  return null
-}
-
-/** Moves the frame route's stamp to a hash whose bytes the page already shows, then announces it. */
-function restamp(args: unknown): boolean {
-  const { hash } = (args ?? {}) as { hash?: unknown }
-  if (typeof hash !== 'string') throw new Error('not a hash')
-  const stamp = document.querySelector(`style[${LOOK_MARKER}]`)
-  if (!stamp) return false
-  stamp.setAttribute(RENDERED_HASH, hash)
-  announce()
-  return true
-}
-
-const handlers: Partial<Record<BridgeOp, Handler>> = {
-  'element-box': elementBox,
-  restamp,
-  'text-edit': textEdit,
-  'text-written': textWritten,
+const handlers: Handlers = {
+  ...gapHandlers,
+  ...measureHandlers,
+  'element-box': (address) => {
+    const element = addressed(address)
+    if (!element) return null
+    const { left, top, right, bottom } = element.getBoundingClientRect()
+    return { left, top, right, bottom }
+  },
+  'text-edit': (args, { id, push, onClose }) => {
+    const element = addressed(args)
+    let ended = false
+    const cancel =
+      element &&
+      openTextEdit(
+        element,
+        (end, restore) => {
+          ended = true
+          if (end.kind === 'commit') committed.set(id, restore)
+          push(end)
+        },
+        args.at,
+      )
+    if (!cancel) return false
+    onClose(() => {
+      if (!ended) cancel()
+    })
+    return true
+  },
+  'text-written': ({ edit, written }) => {
+    const restore = committed.get(edit)
+    committed.delete(edit)
+    if (!written) restore?.()
+    return null
+  },
+  // Moves the frame route's stamp to a hash whose bytes the page already shows.
+  restamp: ({ hash }) => {
+    const stamp = document.querySelector(`style[${LOOK_MARKER}]`)
+    if (!stamp) return false
+    stamp.setAttribute(RENDERED_HASH, hash)
+    announce()
+    return true
+  },
 }
 
 function send(message: BridgeMessage): void {
@@ -108,7 +86,19 @@ function announce(hash = renderedHash(document)): void {
   send({ tag: BRIDGE_TAG, kind: 'shown', page, hash })
 }
 
-const page = crypto.randomUUID()
+/** Runs the request's handler on arguments its schema read, answering the value it returns. */
+function answer<O extends BridgeOp>(op: O, args: unknown, id: string): unknown {
+  const handler = handlers[op] as Handler<O> | undefined
+  if (!handler) throw new Error(`no handler for ${op}`)
+  const read = requestArgs(op, args)
+  if (read === REFUSED) throw new Error(`not the arguments ${op} takes`)
+  return handler(read, {
+    id,
+    push: (value: BridgeOps[O]['push']) =>
+      send({ tag: BRIDGE_TAG, kind: 'push', id, value }),
+    onClose: (stop) => closers.set(id, stop),
+  })
+}
 
 // A frame shown on its own, as capture and the phone link show one, has no board.
 if (board !== window) {
@@ -118,15 +108,13 @@ if (board !== window) {
     if (event.source !== board) return
     const message = readBridgeMessage(event, boardOrigin)
     if (message?.kind === 'close') {
-      editing.get(message.id)?.()
-      editing.delete(message.id)
+      closers.get(message.id)?.()
+      closers.delete(message.id)
     }
     if (message?.kind !== 'request') return
     const { id } = message
-    const handler = handlers[message.op]
     try {
-      if (!handler) throw new Error(`no handler for ${message.op}`)
-      const value = handler(message.args, id)
+      const value = answer(message.op, message.args, id)
       send({ tag: BRIDGE_TAG, kind: 'reply', id, ok: true, value })
     } catch (error) {
       const text = error instanceof Error ? error.message : String(error)
