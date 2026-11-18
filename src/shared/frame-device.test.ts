@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   bezelBox,
+  bezelReach,
   deviceForWidth,
+  DEVICES,
   foldBand,
   islandCenter,
   laptopParts,
@@ -70,6 +72,50 @@ describe('bezelBox', () => {
 
   it('keeps the box with no device', () => {
     expect(bezelBox(frame, null)).toEqual(frame)
+  })
+})
+
+describe('bezelReach', () => {
+  it('reaches a phone frame by its drop shadow, past the body on every side', () => {
+    expect(bezelReach(frame, 'phone')).toEqual({
+      x: 52,
+      y: 8,
+      width: 486,
+      height: 940,
+    })
+  })
+
+  it('reaches a laptop frame by its base aside and by its shadow above and below', () => {
+    const desktop = { x: 0, y: 0, width: 1440, height: 900 }
+    expect(bezelReach(desktop, 'laptop')).toEqual({
+      x: -110,
+      y: -40,
+      width: 1660,
+      height: 1020,
+    })
+  })
+
+  it('reaches an open foldable frame by its drop shadow', () => {
+    const open = { x: 0, y: 0, width: 890, height: 626 }
+    expect(bezelReach(open, 'foldable')).toEqual({
+      x: -60,
+      y: -40,
+      width: 1010,
+      height: 746,
+    })
+  })
+
+  it.each(DEVICES)('holds the whole %s body and its edge', (device) => {
+    const body = bezelBox(frame, device)
+    const reach = bezelReach(frame, device)
+    expect(reach.x).toBeLessThan(body.x)
+    expect(reach.y).toBeLessThan(body.y)
+    expect(reach.x + reach.width).toBeGreaterThan(body.x + body.width)
+    expect(reach.y + reach.height).toBeGreaterThan(body.y + body.height)
+  })
+
+  it('keeps the box with no device', () => {
+    expect(bezelReach(frame, null)).toEqual(frame)
   })
 })
 
