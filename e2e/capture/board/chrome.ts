@@ -125,6 +125,144 @@ async function answerAssets(page: Page, files: unknown[]): Promise<void> {
   )
 }
 
+/** Four found images, their thumbnails served as gradients so no remote image loads. */
+const FOUND = [
+  ['old', 'Old & modern house', 'cc0', '#9fc09a', '#4f7d5a'],
+  ['praktica', 'Praktica BX20', 'cc0', '#c9ae8a', '#8a6a44'],
+  ['plattekill', 'House in Plattekill', 'pdm', '#9fb2d0', '#586e96'],
+  ['glass', 'Glass house', 'cc0', '#d6b4a0', '#a5645a'],
+] as const
+
+async function foundThumbnails(page: Page): Promise<void> {
+  await page.route('https://images.example.org/**', (route) => {
+    const found = FOUND.find(([id]) => route.request().url().includes(id))
+    return route.fulfill({
+      contentType: 'image/svg+xml',
+      body: gradient(found?.[3] ?? '#888', found?.[4] ?? '#444'),
+    })
+  })
+}
+
+/** Answers a search with the four found images. */
+async function foundImages(page: Page): Promise<void> {
+  await foundThumbnails(page)
+  await page.route('**/sourcing/find*', (route) =>
+    route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          version: 1,
+          query: 'modern house',
+          licenses: ['cc0', 'pdm'],
+          results: FOUND.map(([id, title, license], index) => ({
+            number: index + 1,
+            id,
+            title,
+            creator: null,
+            creatorUrl: null,
+            license,
+            licenseVersion: null,
+            licenseUrl: null,
+            attribution: null,
+            landingUrl: `https://www.flickr.com/photos/${id}`,
+            url: `https://images.example.org/${id}.jpg`,
+            thumbnail: `https://images.example.org/${id}.svg`,
+            width: 1024,
+            height: 768,
+          })),
+        },
+      },
+    }),
+  )
+}
+
+/**
+ * Holds every search open inside the page, so the grid shows its grey tiles.
+ * A request held at the route would keep the capture's network idle wait
+ * from ever settling.
+ */
+async function searchHeld(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const send = window.fetch.bind(window)
+    window.fetch = (input, init) =>
+      String(input instanceof Request ? input.url : input).includes(
+        '/sourcing/find',
+      )
+        ? new Promise<Response>(() => {})
+        : send(input, init)
+  })
+}
+
+/** Answers every search as Openverse not answering. */
+async function searchFailed(page: Page): Promise<void> {
+  await page.route('**/sourcing/find*', (route) =>
+    route.fulfill({
+      status: 502,
+      json: {
+        ok: false,
+        error: {
+          code: 'source-failed',
+          message: 'Openverse did not answer.',
+          details: { source: 'openverse', status: null },
+        },
+      },
+    }),
+  )
+}
+
+/** Answers Generate's offer with fal ready and generating switched off. */
+async function offerOff(page: Page): Promise<void> {
+  await page.route('**/sourcing/provider', (route) =>
+    route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          version: 1,
+          enabled: false,
+          provider: {
+            name: 'fal',
+            model: 'fal-ai/flux/schnell',
+            key: 'FAL_KEY',
+            width: 1024,
+            height: 1024,
+            priceUsd: 0.0032,
+          },
+          keys: ['FAL_KEY', 'GEMINI_API_KEY'],
+        },
+      },
+    }),
+  )
+}
+
+/** Types `query` into Find's field once it draws and submits it, as Enter would. */
+function searchOnLoad(query: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ text, frames }) => {
+        let left = frames
+        const search = () => {
+          const field = document.querySelector(
+            'input[aria-label="Search free images"]',
+          )
+          if (!(field instanceof HTMLInputElement) || !field.form) {
+            if (--left > 0) requestAnimationFrame(search)
+            else console.error('No Find field to search from')
+            return
+          }
+          Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            'value',
+          )?.set?.call(field, text)
+          field.dispatchEvent(new Event('input', { bubbles: true }))
+          field.form.requestSubmit()
+        }
+        document.addEventListener('DOMContentLoaded', search)
+      },
+      { text: query, frames: TAB_FRAMES * 2 },
+    )
+  }
+}
+
 /**
  * Opens the Shape menu and then the picker from its Image, video, or audio row, once
  * the server grants writes, which enable the row. Waits in an init script as
@@ -513,6 +651,89 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
           countedAssets,
           leftTab('Assets'),
           readyWhen('[data-video-length]'),
+        ),
+      ),
+    },
+    {
+      section: 'assets-find-idle',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          leftTab('Assets'),
+          leftTab('Find'),
+          readyWhen('input[aria-label="Search free images"]'),
+        ),
+      ),
+    },
+    {
+      section: 'assets-find-searching',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          searchHeld,
+          leftTab('Assets'),
+          leftTab('Find'),
+          searchOnLoad('modern house'),
+          readyWhen('[aria-label="Searching"]'),
+        ),
+      ),
+    },
+    {
+      section: 'assets-find-results',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          foundImages,
+          leftTab('Assets'),
+          leftTab('Find'),
+          searchOnLoad('modern house'),
+          readyWhen('[aria-label="Results"] img'),
+        ),
+      ),
+    },
+    {
+      section: 'assets-find-failed',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          searchFailed,
+          leftTab('Assets'),
+          leftTab('Find'),
+          searchOnLoad('modern house'),
+          readyWhen('[role="alert"]'),
+        ),
+      ),
+    },
+    {
+      section: 'assets-generate-off',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          offerOff,
+          leftTab('Assets'),
+          leftTab('Generate'),
+          readyWhen('textarea[aria-label="Describe the image"]'),
         ),
       ),
     },
