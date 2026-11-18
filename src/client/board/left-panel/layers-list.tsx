@@ -135,10 +135,13 @@ export function LayersList({
     .flatMap((group) => group.rows)
     .filter((frame) => !frame.hidden)
     .map((frame) => frame.ref)
-  const spanFrom = (frame: FrameRecord) =>
-    page === pageOf(frame)
-      ? spanTo(shownRefs, selectedFrames.at(-1), frame.ref)
+  // Read at the click, since a click just before may not have rendered yet.
+  const spanFrom = (frame: FrameRecord) => {
+    const { page: current, frames: held } = selectionStore.getState()
+    return current === pageOf(frame)
+      ? spanTo(shownRefs, held.at(-1), frame.ref)
       : null
+  }
 
   const isOpen = (key: string) => expanded.has(key)
   const toggle = (key: string) =>

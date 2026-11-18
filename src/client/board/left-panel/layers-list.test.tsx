@@ -1,6 +1,6 @@
 import '../../styles.css'
 
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -182,6 +182,19 @@ describe('a layers row picked with a modifier key', () => {
     await clickWith('Shift', 'e')
 
     expect(selected()).toEqual(refs('b', 'e'))
+  })
+
+  it('spans from a row clicked just before, ahead of the next render', () => {
+    renderRows()
+
+    act(() => {
+      row('b').click()
+      row('d').dispatchEvent(
+        new MouseEvent('click', { bubbles: true, shiftKey: true }),
+      )
+    })
+
+    expect(selected()).toEqual(refs('b', 'c', 'd'))
   })
 
   it('selects a Shift-clicked row alone with nothing selected', async () => {

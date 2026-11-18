@@ -1027,6 +1027,33 @@ describe('LeftPanel', () => {
       ).toEqual([6, 7, 8])
     })
 
+    it('spans element rows from one clicked just before, ahead of the next render', async () => {
+      heroTree()
+      renderPanel(project([page('home', [frame('hero')])]))
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Show the elements of hero' }),
+      )
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Show what Card holds' }),
+      )
+
+      act(() => {
+        screen.getByRole('button', { name: 'Card' }).click()
+        screen
+          .getByRole('button', { name: 'footer' })
+          .dispatchEvent(
+            new MouseEvent('click', { bubbles: true, shiftKey: true }),
+          )
+      })
+
+      expect(
+        selectionStore
+          .getState()
+          .elements?.map(({ index }) => index)
+          .sort(),
+      ).toEqual([6, 7, 8])
+    })
+
     it.each(['Control', 'Meta'])(
       'adds one element row and takes it out again on %s-click',
       async (key) => {

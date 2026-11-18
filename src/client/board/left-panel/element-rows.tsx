@@ -13,6 +13,7 @@ import { ElementRowMenu } from '../menus/layers'
 import { moveElementTo } from '../place/write'
 import {
   type ElementKey,
+  selectedElements,
   selectElement,
   selectElements,
   selectionStore,
@@ -93,13 +94,17 @@ export function ElementRows({
   const { hash } = entry.tree
   const keyOf = (index: number) => ({ frame: frame.ref, index, hash })
   const pick = (index: number, event: PickEvent) => {
-    const span = event.shiftKey
-      ? spanTo(
-          rows.map(({ element }) => element.index),
-          selected.at(-1),
-          index,
-        )
-      : null
+    // Read at the click, since a click just before may not have rendered yet.
+    const state = selectionStore.getState()
+    const anchor = selectedElements(state).at(-1)
+    const span =
+      event.shiftKey && state.page === page && anchor?.frame === frame.ref
+        ? spanTo(
+            rows.map(({ element }) => element.index),
+            anchor.index,
+            index,
+          )
+        : null
     if (span) selectElements(selectionStore, page, span.map(keyOf))
     else if (!event.shiftKey && addsOne(event)) {
       toggleElement(selectionStore, page, keyOf(index))
