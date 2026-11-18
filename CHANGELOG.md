@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.42.0](https://github.com/erclx/frameboard/compare/v0.41.0...v0.42.0) (2026-11-18)
+
+
+### Features
+
+* **kits:** add kits from the Theme tab and set one per frame ([#395](https://github.com/erclx/frameboard/issues/395)) ([213cd5a](https://github.com/erclx/frameboard/commit/213cd5ac39c8ee018155db405513f017f8ec5956))
+* **kits:** add kits to a project and set one per frame ([#393](https://github.com/erclx/frameboard/issues/393)) ([bff73ab](https://github.com/erclx/frameboard/commit/bff73ab5e688bd142bc6d2fd2674aa27fbed271c))
+* **models:** place a 3D model in a frame and stage it by hand ([#396](https://github.com/erclx/frameboard/issues/396)) ([e9f9ef5](https://github.com/erclx/frameboard/commit/e9f9ef5e3399343d197add8852dba6e5a0177d8b))
+
+
+### Bug Fixes
+
+* **bridge:** wait 5 s for a frame's reply before dropping it ([#391](https://github.com/erclx/frameboard/issues/391)) ([03779c0](https://github.com/erclx/frameboard/commit/03779c08eb2137263d72b3bb53f39bda9c1fc996))
+
 ## [0.41.0](https://github.com/erclx/frameboard/compare/v0.40.0...v0.41.0) (2026-11-18)
 
 
