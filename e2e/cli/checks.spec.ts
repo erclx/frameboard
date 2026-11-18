@@ -23,11 +23,8 @@ import { type TempBoard, writeBoard } from '../../test/support/temp-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
 
 /**
- * Holds the font and theme rules to the browser's own answer: the first
- * family Chromium computes for every text element, and whether a frame's
- * colors change between the light and dark theme. The hand board runs
- * everywhere. A local corpus, which stays private, runs only where
- * FRAMEBOARD_CORPUS names its board folder.
+ * Holds the font and theme rules to the browser's own answer, a private corpus
+ * running only where FRAMEBOARD_CORPUS names its board folder.
  */
 
 /** Stands for the browser's default font and the control font, which no sheet names. */
@@ -40,10 +37,8 @@ interface Rendered {
 }
 
 /**
- * What Chromium renders, with every text element read the way `textElements`
- * picks them. The browser's default and control fonts are probed inside the
- * frame itself, since the default family follows the document's `lang` and a
- * blank page probes another one on Linux.
+ * What Chromium renders, the default fonts probed inside the frame, since the
+ * default family follows the document's `lang`.
  */
 async function rendered(
   page: Page,
@@ -183,8 +178,7 @@ test.describe('the browser rules on a running board', () => {
   test.beforeAll(async () => {
     board = copyFixtureBoard('checks')
     server = await serveBoard(board.root)
-    // check answers once the server's startup sweep has landed every frame,
-    // so no label count changes under an assertion.
+    // Waits out the startup sweep, so no label count changes under an assertion.
     await cli(['check', '--json'], { cwd: board.root })
   })
 
@@ -222,8 +216,7 @@ test.describe('the browser rules on a running board', () => {
     ).toEqual(
       [
         ...BROWSER_PAGES.map((rule) => `rules/${rule}/fail ${rule}`),
-        // The theme rule's fail frame sets a literal text color that sinks
-        // into the dark canvas, which the contrast rule reads too.
+        // Its literal text color sinks into the dark canvas, tripping contrast too.
         'rules/theme/fail min-contrast',
       ].sort(),
     )
@@ -307,8 +300,7 @@ test.describe('a hand value an agent write outranks', () => {
       'site/home/later.html': rowsFrame('8px'),
     })
     server = await serveBoard(board.root)
-    // check runs behind the start scan, so the server holds the hand gap's
-    // bytes before the agent's write replaces them.
+    // Behind the start scan, so the server holds the bytes the agent replaces.
     await cli(['check', '--json'], { cwd: board.root })
   })
 

@@ -1,11 +1,8 @@
 import { type KeyboardEvent, type RefObject, useRef } from 'react'
 
 /**
- * The trigger handlers that open a row's menu from the keyboard, on the menu
- * key or Shift+F10, with focus moving to the menu's first enabled item.
- * Chromium on macOS fires no `contextmenu` for Shift+F10, so the key sends
- * one inside the row, where a right click would land. `content` is the
- * menu's popup and `onOpenChangeComplete` goes on the menu's root.
+ * Opens a row's menu from the keyboard, sending its own `contextmenu`, since
+ * Chromium on macOS fires none for Shift+F10.
  */
 export function useKeyboardOpen(content: RefObject<HTMLDivElement | null>) {
   const openedByKey = useRef(false)

@@ -33,23 +33,15 @@ interface FolderCardProps extends PanelProps {
 const FOLDER_CARD = cn(CARD, 'rounded-tl-none')
 
 /**
- * The folder's tab on the card's top left edge, per `folder-tab-720`, drawn
- * into the grid's row gap above so every card's body stays level. Its
- * hairline sits inside it as the card's border does, and it takes the card's
- * ring on hover, keyboard focus, an open menu, and a project dragged over,
- * covering the ring's run under it so the two read as one shape.
+ * The folder's tab per `folder-tab-720`, drawn into the row gap so every card
+ * body stays level, and covering the ring under it so the two read as one shape.
  */
 const FOLDER_TAB =
   'pointer-events-none absolute -top-[9px] left-0 z-10 h-2.5 w-[74px] rounded-tl-[7px] rounded-tr-[9px] bg-card shadow-[inset_0_1px_0_0_var(--color-border),inset_1px_0_0_0_var(--color-border),inset_-1px_0_0_0_var(--color-border)] group-hover/folder:shadow-[0_-2px_0_0_var(--color-primary),-2px_0_0_0_var(--color-primary),2px_0_0_0_var(--color-primary)] group-has-focus-visible/folder:shadow-[0_-2px_0_0_var(--color-primary),-2px_0_0_0_var(--color-primary),2px_0_0_0_var(--color-primary)] group-has-data-popup-open/folder:shadow-[0_-2px_0_0_var(--color-primary),-2px_0_0_0_var(--color-primary),2px_0_0_0_var(--color-primary)] in-data-drop-over:shadow-[0_-2px_0_0_var(--color-primary),-2px_0_0_0_var(--color-primary),2px_0_0_0_var(--color-primary)]'
 
 /**
- * A folder's card among the projects, per `22-fix.png` with the tab and
- * glyph of `folder-tab-720`: a 2x2 preview of its first four members, its
- * name after a folder glyph, and its count. It opens the folder's panel,
- * which hands focus back to the card when it closes. Whether it is open sits
- * in the project store, so a rename that remounts the card under its new key
- * keeps the panel open. F2 or a double click on its name renames it, and a
- * right click or the ⋯ shown on hover and focus opens the folder menu.
+ * A folder's card per `22-fix.png`, its open state held in the project store,
+ * so a rename that remounts the card under its new key keeps the panel open.
  */
 export function FolderCard({
   folder,

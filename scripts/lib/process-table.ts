@@ -8,12 +8,8 @@ export interface ProcessRow {
 }
 
 /**
- * Every process on the machine, by pid. Empty when the table cannot be read.
- *
- * On Linux the start is the kernel's count of clock ticks since boot, which a
- * wall clock step never moves. `ps` derives `lstart` from the boot time, which
- * it computes from the wall clock, so a step makes one live process read two
- * starts and the kill spares it as a reused pid.
+ * Every process by pid, its Linux start counted from boot, since a clock step
+ * moves `ps` lstart and the kill would spare a live process as a reused pid.
  */
 export function processTable(
   platform: NodeJS.Platform,

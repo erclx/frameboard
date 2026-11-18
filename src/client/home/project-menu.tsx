@@ -49,11 +49,8 @@ interface ProjectMenuProps {
 }
 
 /**
- * The right-click menu of `canon/design/menus/home` on a project's card or
- * row, its items running the `project.*` actions on the project it opened
- * from, Pin reading Unpin on a pinned one. Move to folder lists every other
- * folder and New folder, Remove from folder shows on a filed project, and
- * Archive reads Restore on an archived one. The menu key and Shift+F10 open it too, with focus on its first item.
+ * A project's right-click menu per `canon/design/menus/home`, running the
+ * `project.*` actions on the project it opened from.
  */
 export function ProjectMenu({ project, trigger, calls }: ProjectMenuProps) {
   const content = useRef<HTMLDivElement>(null)

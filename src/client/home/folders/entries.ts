@@ -24,11 +24,8 @@ export function folderKey(group: string): string {
 }
 
 /**
- * The cards home shows for projects already in their shown order. A folder
- * stands where its first member would, so it sorts by its newest, first-made,
- * or first-named member as the order runs, and rises with the pinned when it
- * is pinned itself or holds a pinned member. A folder is one level deep, and
- * one with no members never shows.
+ * Home's cards in shown order, a folder standing where its first member would
+ * and rising with the pinned when it holds one.
  */
 export function homeEntries(
   projects: readonly ProjectRecord[],
@@ -59,8 +56,7 @@ export function homeEntries(
     folders.set(key, made)
     entries.push({ kind: 'folder', folder: made })
   }
-  // The projects came pinned first, so only a pinned folder moves, to the
-  // end of the pinned run, and every other entry keeps its place.
+  // Projects come pinned first, so only a pinned folder moves.
   const pinned = entries.filter((entry) => pinnedEntry(entry, pins))
   return [...pinned, ...entries.filter((entry) => !pinnedEntry(entry, pins))]
 }

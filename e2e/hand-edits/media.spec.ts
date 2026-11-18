@@ -32,8 +32,7 @@ test.describe('video and audio placed by hand', () => {
   test.beforeEach(async () => {
     board = copyFixtureBoard('basic')
     writeFileSync(path(), read().replace('</h1>', `</h1>\n    ${ROW}`))
-    // A one second VP8 clip the browser decodes, and an audio file whose
-    // bytes it need not, since placing audio measures nothing.
+    // A decodable VP8 clip, and audio bytes that need not decode, since audio measures nothing.
     const assets = join(board.root, 'webapp/assets')
     mkdirSync(assets, { recursive: true })
     copyFileSync(
@@ -72,8 +71,7 @@ test.describe('video and audio placed by hand', () => {
         '<video data-name="clip.webm" src="../assets/clip.webm" controls autoplay muted loop playsinline style="width: 160px; height: 90px; object-fit: cover"></video>',
       )
     const bar = page.locator('[data-media-bar]')
-    // At the fit zoom the video is too narrow on screen for the bar to hold
-    // its track, so the view pinches in on it, keeping it under the pointer.
+    // Pinches in, since at fit zoom the video is too narrow for the bar's track.
     const small = await hero(page).locator('video').boundingBox()
     if (!small) throw new Error('The placed video draws no box')
     await page.mouse.move(small.x + small.width / 2, small.y + small.height / 2)

@@ -1,10 +1,8 @@
 import { z } from 'zod'
 
 /**
- * What `preview` returns on a start: the link a phone on the same network
- * opens, landing on one frame, which serves that frame's whole project read
- * only. The link ends when another start replaces it, when `preview --stop`
- * runs, when the board card showing it closes, or when the board stops.
+ * What `preview` returns on a start, a phone link serving the frame's whole
+ * project read only until stopped or replaced.
  */
 export const previewStartSchema = z.object({
   url: z.string(),

@@ -14,8 +14,7 @@ const HERO = 'studio/home/hero'
 const SLIDE = join(import.meta.dirname, '../../test/fixtures/frames/slide.html')
 
 test.describe("scrubbing a frame's motion", () => {
-  // The test plays the frame's animation, which reduced motion would not stop
-  // but the page under test may read, so it runs with motion on.
+  // Motion on, since the page under test may read reduced motion.
   test.use({ contextOptions: { reducedMotion: 'no-preference' } })
 
   let board: FixtureBoard
@@ -94,8 +93,7 @@ test.describe("scrubbing a frame's motion", () => {
 
     expect(download.suggestedFilename()).toBe('hero.filmstrip-5.light@1x.png')
     const bytes = readFileSync(await download.path())
-    // A PNG's IHDR chunk holds its width and height at bytes 16 and 20: five
-    // 1440 by 900 frames in a row, 40 px around and between them.
+    // IHDR width and height: five 1440 by 900 frames, 40 px around and between.
     expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
       7440, 980,
     ])

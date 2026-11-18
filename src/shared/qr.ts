@@ -1,8 +1,6 @@
 /**
- * A QR code encoder for one short text, being the phone link, in byte mode at
- * error correction level M. It follows ISO/IEC 18004 the way Project Nayuki's
- * reference encoder lays it out, and is written here since a dependency for
- * one link is not worth its upkeep.
+ * A QR encoder for the phone link per ISO/IEC 18004, written here since a
+ * dependency for one link is not worth its upkeep.
  */
 
 /** The dark modules of a code, row by row, `true` for dark. */

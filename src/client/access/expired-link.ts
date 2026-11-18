@@ -6,11 +6,8 @@ const FLAG = 'link'
 const EXPIRED = 'expired'
 
 /**
- * Watches for a landing from a used, expired, or unknown redeem link. Once
- * the first access answer arrives the flag is stripped with a replace
- * navigation, and a tab that cannot write gets a toast that stays until
- * dismissed. Stripping waits on that answer, so a watch stopped early leaves
- * the flag for the next one.
+ * Watches for a landing from a dead redeem link, stripping the flag only once
+ * access answers, so a watch stopped early leaves it for the next one.
  */
 export function watchExpiredLink(
   store: LiveStore = liveStore,

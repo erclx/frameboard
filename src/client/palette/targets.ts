@@ -25,11 +25,8 @@ export interface Targets {
 }
 
 /**
- * Every project, and with one open, every project's pages and frames, the
- * open project's first. Each page is hinted with its project and each frame
- * with `project / page`, since two projects can share a page name. A project
- * reads as its title while its ref stays on the folder. A hidden frame is
- * listed and marked, since choosing it shows it first.
+ * The palette's jump targets, each hinted with its project, since two projects
+ * can share a page name.
  */
 export function boardTargets(
   board: ListResult,

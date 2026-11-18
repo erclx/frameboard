@@ -6,11 +6,8 @@ import { useLive } from '@/client/live/store'
 export const SECOND_CLICK_MS = 300
 
 /**
- * A card's or row's click handler for its folder's title. A click landing on
- * the title waits out a second click before `run` opens the folder, since a
- * double click there renames and must not open the folder on its way. It
- * answers whether it took the click, so the caller skips its own open. A tab
- * that cannot write never renames, so its click opens at once.
+ * A folder title's click, waiting out a second click before opening, since a
+ * double click renames, and opening at once in a tab that cannot write.
  */
 export function useTitleClick(run: () => void) {
   const canWrite = useLive((state) => state.canWrite)

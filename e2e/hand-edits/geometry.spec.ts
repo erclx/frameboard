@@ -231,8 +231,7 @@ test.describe('frame geometry by hand', () => {
     await page.mouse.up()
 
     await expect(mobile).toHaveAttribute('data-selected', 'true')
-    // A later write that does land bounds the wait, since a move the locked
-    // drag wrongly sent would have reached the server ahead of this nudge.
+    // A later landing write bounds the wait, since a wrong move would arrive first.
     const hero = await center(page.locator('[data-frame="studio/home/hero"]'))
     await page.mouse.click(hero.x, hero.y)
     await page.keyboard.press('ArrowRight')

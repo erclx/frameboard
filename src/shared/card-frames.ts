@@ -3,10 +3,8 @@ interface CardPage<F> {
 }
 
 /**
- * The frames a project card draws: the visible frames of the first page
- * holding one, so a first page that is empty or all hidden passes to the
- * next. The thumbnail route stamps these, the home view asks for them, and
- * the card's skeleton draws them, so all three read this one pick.
+ * The frames a project card draws, from the first page holding a visible one,
+ * shared so the route, home, and the skeleton read one pick.
  */
 export function cardFrames<F extends { readonly hidden: boolean }>(project: {
   readonly pages: readonly CardPage<F>[]

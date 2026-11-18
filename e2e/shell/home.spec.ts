@@ -256,11 +256,7 @@ test.describe('projects by hand from the home view', () => {
     await moveOver(page, target)
   }
 
-  /**
-   * Carries the held project to `target`, the second hover being the move that
-   * reaches it. Forced, since the library's honey pot sits under the pointer
-   * through a drag and would fail the hover's hit check.
-   */
+  // Forced, since the drag library's honey pot under the pointer fails the hit check.
   async function moveOver(page: Page, target: Locator): Promise<void> {
     await target.hover({ force: true })
     await target.hover({ force: true })

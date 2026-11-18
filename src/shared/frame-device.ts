@@ -29,12 +29,8 @@ const LAPTOP_CHIN = 28
 export const LAPTOP_BASE = { height: 14, reach: 0.06, radius: 10 } as const
 
 /**
- * The phone's border is a current Pro's body less its display, 71.9 mm
- * across holding 1206 pixels at 460 ppi, which is 16 points a side. The
- * tablet's is a 13-inch Pro's, 215.5 mm across holding 2064 pixels at 264
- * ppi, which is 44. The tablet's screen radius is a guess no source backs.
- * The laptop's lid, chin, and base are scaled off the picked mock rather
- * than any maker's, and its screen rounds its top corners alone.
+ * Bezels measured off a current Pro phone and 13-inch tablet, the tablet's
+ * screen radius a guess, and the laptop scaled off the picked mock.
  */
 export const BEZELS = {
   phone: { border: 16, bottom: 16, screenRadius: 62, bodyRadius: 78 },
@@ -122,13 +118,8 @@ function baseReach(width: number): number {
 }
 
 /**
- * The CSS `box-shadow` drawing a device's body: a spread the border wide
- * around a box rounded to the screen radius, which also covers the frame's
- * corners past that radius, so the body's outer radius is the screen's plus
- * the border. On the board a hairline edge one screen pixel wide rings it at
- * any zoom, so a dark body still reads on a dark canvas, under a drop shadow.
- * The export keeps the body to the border, its last pixel the edge, and
- * leaves out the drop shadow, which would fall past the PNG's edge.
+ * The `box-shadow` drawing a device's body, with a hairline on the board so a
+ * dark body reads on a dark canvas, and no drop shadow in an export.
  */
 export function bezelShadow(
   device: Device,

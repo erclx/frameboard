@@ -92,10 +92,8 @@ const CHARACTER_CODES = new Set([
 ])
 
 /**
- * Whether a binding is a character-key shortcut under WCAG 2.1.4, being a
- * key that types a character pressed alone or with Shift, such as `v`,
- * `BracketRight`, `Shift+?`, or `Shift+Digit1`. Esc, an arrow, F2, and any
- * binding carrying another modifier are not.
+ * Whether a binding is a WCAG 2.1.4 character-key shortcut, a character key
+ * alone or with Shift.
  */
 export function isCharacterKey(binding: string): boolean {
   const parts = binding.split('+')

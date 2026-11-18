@@ -20,12 +20,8 @@ interface RenameFieldProps {
 }
 
 /**
- * The inline rename box of `canon/design/layers/edit`, standing in for a
- * row's name. Enter or a blur commits and Esc cancels, and keys typed into it
- * never reach the board's shortcuts, so Cmd+Z undoes the typing.
- *
- * A hugging field takes its width from a hidden copy of the value sharing its
- * grid cell, since `field-sizing: content` is missing in Firefox.
+ * The inline rename box per `canon/design/layers/edit`, sized by a hidden copy,
+ * since `field-sizing: content` is missing in Firefox.
  */
 export function RenameField({
   name,

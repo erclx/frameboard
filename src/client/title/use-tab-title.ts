@@ -18,10 +18,8 @@ export function tabTitle(count: number, project: string | null): string {
 }
 
 /**
- * Keeps `document.title` on the count of every unseen agent change and agent
- * note reply on the board, whichever project is open, since the toast and
- * its Mark all seen span the whole board too. The open project reads as its
- * title, found by the folder the route names.
+ * Keeps the tab title on the board-wide unseen count, since the toast and its
+ * Mark all seen span the whole board too.
  */
 export function useTabTitle(): void {
   const [onProject, params] = useRoute<{ project: string }>(

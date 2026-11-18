@@ -56,10 +56,8 @@ export const ROW =
   'grid h-12 items-center px-4 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset data-popup-open:ring-2 data-popup-open:ring-primary data-popup-open:ring-inset'
 
 /**
- * A project's card in the grid, per `canon/design/home/grid`, its well
- * drawing the first page's frames with their captures in the theme shown.
- * Rename, Pin, and More sit on the well's corner beside the link, shown on
- * hover and keyboard focus, per `card-hover-buttons-720`.
+ * A project's card per `canon/design/home/grid`, with its corner buttons per
+ * `card-hover-buttons-720`.
  */
 export function ProjectCard({
   project,
@@ -120,13 +118,8 @@ interface ProjectCornerProps {
 }
 
 /**
- * Rename, Pin, and More on a card's well, each running the project action on
- * the card's project. Rename hides in a tab that may not write, Pin is lit
- * on a pinned project, and the row stays shown while More's menu is open.
- * Keyboard focus on the card alone reveals it, as on a folder card's ⋯,
- * since a pointer closing the menu hands focus back to More. The buttons sit
- * outside the tab sequence, so one Tab still leaves the cards, and the card's
- * own F2 and menu key reach each action.
+ * A card's corner buttons, outside the tab sequence so one Tab still leaves the
+ * cards, revealed by keyboard focus alone, since closing the menu refocuses More.
  */
 function ProjectCorner({ project, pinned, calls }: ProjectCornerProps) {
   const canWrite = useLive((state) => state.canWrite)
@@ -215,10 +208,8 @@ interface ProjectLinkProps {
 }
 
 /**
- * A card or row opening its project, and the menu on a right click or the
- * menu key. F2 renames the focused project and Delete or Backspace deletes
- * it. While its name is a rename field it stops being a link, so the field's
- * clicks and keys stay in the field.
+ * A card or row opening its project, no longer a link while renaming, so the
+ * field's clicks and keys stay in the field.
  */
 function ProjectLink({
   project,
@@ -447,7 +438,7 @@ function formatAgo(then: number, now: number): string {
   return 'just now'
 }
 
-/** The local day as `2026-09-02`, as `canon/design/home/list` prints it. */
+/** The local day as `YYYY-MM-DD`, as `canon/design/home/list` prints it. */
 function formatDay(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`

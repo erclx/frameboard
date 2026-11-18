@@ -25,10 +25,8 @@ const DIRECTIONS = {
 const ITEM = 'h-7 px-2 py-0 text-xs'
 
 /**
- * The button on the right of the Projects title, per
- * `canon/design/menus/home-sort`, naming the order shown and opening the
- * `home.sort*` choices, then the two directions the chosen key runs in. It
- * waits on the home view registering them.
+ * The sort button per `canon/design/menus/home-sort`, waiting on the home
+ * view registering the `home.sort*` choices.
  */
 export function SortMenu() {
   const sorts = useActions(IDS).filter((action) => action !== undefined)

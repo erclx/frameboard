@@ -27,14 +27,8 @@ export interface StepAnswer {
 }
 
 /**
- * The board's structure writes, one per route, each body mirroring the CLI
- * verb's flags. A project ref is its name, a page ref `<project>/<page>`, and a frame ref
- * `<project>/<page>/<frame>`. `send` stands in for
- * `fetch`, as a test's server does.
- *
- * A rename, delete, or cut of a page or frame another session holds waits
- * until the claim drops. A project rename or delete is refused instead,
- * since the home view has no frame to show a waiting card beside.
+ * The board's structure writes, a held page or frame waiting on its claim,
+ * while a project is refused, since home has no frame to show a waiting card.
  */
 export function createStructure(send: typeof fetch = fetch) {
   const post = <T>(path: string, body: unknown) =>
@@ -91,12 +85,7 @@ export function createStructure(send: typeof fetch = fetch) {
       post<PageRecord>('/api/page/transition', { ref, transition }),
     deletePage: (ref: string) =>
       held<{ deleted: string }>([ref], 'delete', '/api/page/delete', { ref }),
-    /**
-     * Sends a width and height rather than a preset, since a preset hugs its
-     * height and a hand-placed frame keeps its size. An `asset` path under the
-     * project's `assets/` lands the file in the new frame in the same undo
-     * step, an audio taking a width alone.
-     */
+    // Sends a size, never a preset, since a preset hugs and a hand-placed frame keeps its size.
     addFrame: (
       ref: string,
       size: FrameSize | Pick<FrameSize, 'width'>,
@@ -111,11 +100,7 @@ export function createStructure(send: typeof fetch = fetch) {
     ) => post<FrameRecord[]>('/api/frame/duplicate', { refs, offset }),
     renameFrame: (ref: string, name: string) =>
       held<FrameRecord>([ref], 'rename', '/api/frame/rename', { ref, name }),
-    /**
-     * Sets how each frame holds its height in one undo step, `expected`
-     * holding each frame's box as the board drew it, by ref. `heights` gives a
-     * `scroll` write the screen height each named frame takes.
-     */
+    // One undo step, `expected` holding each box as the board drew it.
     setHeightMode: (
       refs: readonly string[],
       mode: HeightMode,
@@ -133,11 +118,7 @@ export function createStructure(send: typeof fetch = fetch) {
     /** Shows or hides the device each frame's width names, in one undo step. */
     setDevice: (refs: readonly string[], show: boolean) =>
       post<FrameRecord[]>('/api/frame/device', { refs, show }),
-    /**
-     * Sets the whole list of widths each frame also shows at, in one undo
-     * step, an empty list clearing it. `expected` holds each frame's list as
-     * the board drew it, by ref, and a list changed since refuses `stale-layout`.
-     */
+    // One undo step, a list changed since its `expected` refusing `stale-layout`.
     setWidths: (
       refs: readonly string[],
       widths: readonly number[],

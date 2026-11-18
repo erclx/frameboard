@@ -38,14 +38,11 @@ test.describe('previewing a frame at another width', () => {
     const box = await hero.boundingBox()
     if (!box) throw new Error('The hero has no box on screen')
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
-    // An enabled field is the server granting this tab writes, so a write
-    // the preview sent would land rather than be refused.
+    // Writes are granted, so a stray preview write would land rather than be refused.
     await expect(
       page.getByRole('textbox', { name: 'X position' }),
     ).toBeEnabled()
-    // Every box write goes through this route, so a preview reaching the
-    // layout would show here as the click that sent it. A read such as the
-    // frame stylesheet fetch can land late, so only a write method counts.
+    // Every box write passes this route, counting write methods alone.
     const writes: string[] = []
     page.on('request', (request) => {
       if (
@@ -71,9 +68,7 @@ test.describe('previewing a frame at another width', () => {
     await page.getByRole('button', { name: 'End preview' }).click()
     await expect(hero).toHaveCSS('width', '1440px')
 
-    // Nothing is awaited here but the absence of a write, and a held box edit
-    // sends only once the keys rest for 300 ms, so the window outlasts that
-    // rest before the assertion reads it.
+    // Outlasts the 300 ms rest a held box edit waits before sending.
     await page.waitForTimeout(1000)
     expect(writes).toEqual([])
     expect(layout()).toBe(before)

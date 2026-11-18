@@ -54,8 +54,7 @@ test.describe('editing a selected element by hand', () => {
       .frameLocator(`[data-frame="${HERO}"] iframe`)
       .locator('h1')
     await expect(headline).toBeVisible()
-    // The canvas fits the page to the window once its frames have loaded, so
-    // a click read off the box before that lands beside the headline.
+    // Retried, since the canvas refits once frames load and moves the headline.
     await expect(async () => {
       const box = await headline.boundingBox()
       if (!box) throw new Error('the headline has no box on screen')
@@ -175,8 +174,7 @@ test.describe('editing a selected element by hand', () => {
     await text.press('Tab')
     await expect.poll(read).toContain('>Welcome home</h1>')
 
-    // Copying raises a toast, which takes focus as a dialog. The board's
-    // undo runs there, so Chromium never undoes the last field edited.
+    // The copy toast takes focus, so the board's undo runs, not Chromium's.
     await page.mouse.move(0, 0)
     await page.keyboard.press('ControlOrMeta+Shift+KeyC')
     const toast = page.getByRole('dialog').filter({ hasText: /copy|Copied/i })
@@ -187,8 +185,7 @@ test.describe('editing a selected element by hand', () => {
     await undo(page)
     await expect.poll(read).toBe(original)
 
-    // A blur commit sends its request in the blur handler itself, so the
-    // requests recorded once the blur returns are all it will ever send.
+    // A blur commit sends in the handler, so the record is complete once it returns.
     const edits: string[] = []
     page.on('request', (request) => {
       if (request.url().endsWith('/api/frames/edit')) edits.push(request.url())
@@ -217,8 +214,7 @@ test.describe('editing a selected element by hand', () => {
     page,
     request,
   }) => {
-    // Hold the frame's reload, so the board still names the bytes it showed
-    // when the agent's write lands, as it does mid-flight.
+    // Holds the reload, so the board still names the bytes it showed.
     await page.route(
       (url) => url.pathname.startsWith('/frames/'),
       () => {},
@@ -335,8 +331,7 @@ test.describe('editing a selected element by hand', () => {
 
       await expect.poll(read).toContain('opacity: 0.5')
       await expect.poll(layout).not.toBe(before)
-      // The drop the guard is for came with the frame's reload, so the
-      // selection is read only once the frame shows the written bytes.
+      // Read once the frame shows the written bytes, since the drop comes with the reload.
       await expect(
         page.frameLocator(`[data-frame="${HERO}"] iframe`).locator('h1'),
       ).toHaveAttribute('style', /opacity: 0\.5/)
@@ -392,8 +387,7 @@ test.describe('filling a selected frame by hand', () => {
       .getByRole('button', { name: 'accent' })
       .click()
 
-    // The body states `background`, so the pick rewrites its color part rather
-    // than stating a `background-color` beside the token it overrides.
+    // Rewrites the shorthand's color part rather than adding a `background-color`.
     await expect.poll(read).toContain('background: var(--accent)')
     const [, body = ''] = /<body([^>]*)>/.exec(read()) ?? []
     expect(body).toContain('background: var(--accent)')

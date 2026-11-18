@@ -51,11 +51,8 @@ const SELECTION_GROUPS: ReadonlySet<string> = new Set([
 ])
 
 /**
- * Cmd+K's palette over the whole board. With nothing typed it opens on the
- * actions last run from it, then the actions fitting the selection, then
- * pages, and a query searches frames, pages, every action, and projects.
- * Running a row closes it first, so a jump or an action meets the board with
- * focus back.
+ * Cmd+K's palette, closing before a row runs, so a jump or an action meets the
+ * board with focus back.
  */
 export function CommandPalette() {
   const open = useOverlay() === 'commands'
@@ -238,11 +235,8 @@ function selectionHeading(state: SelectionState): string | null {
 }
 
 /**
- * Ranks a row by what it shows rather than by its unique value, which holds
- * a ref that would match a project's name on every frame inside it. A run of
- * the query scores above runs that each start a word, as `zofi` finds Zoom
- * to fit. Letters spread through the middle of words match nothing, since
- * `new` finding Preview at phone width reads as noise.
+ * Ranks a row by what it shows, never its ref, which would match a project on
+ * every frame inside it, and never mid-word scatter, which reads as noise.
  */
 function matchScore(
   _value: string,

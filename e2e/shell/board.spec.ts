@@ -17,9 +17,7 @@ test.describe('the board', () => {
 
   test.beforeEach(async () => {
     board = copyFixtureBoard('live')
-    // A frame far from the rest, so fitting the page leaves the others far
-    // offscreen once zoomed in, and near enough that the fit between both
-    // panels stays above the 0.02 zoom floor.
+    // Far enough to leave the rest offscreen when zoomed, near enough to fit above 0.02.
     writeFileSync(
       join(board.root, 'studio/pricing/layout.json'),
       JSON.stringify({
@@ -126,8 +124,7 @@ test.describe('the board', () => {
     )
     await expect(chip).toContainText('plans')
 
-    // The hit layer covers the chip, so a real press at the control's place
-    // has to reach it through the gestures rather than the button itself.
+    // A real press, since the hit layer covers the chip and the gestures relay it.
     const next = await chip
       .getByRole('button', { name: 'Next frame' })
       .boundingBox()

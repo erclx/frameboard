@@ -15,10 +15,8 @@ export interface LinkedWidth {
 }
 
 /**
- * A layout entry's `widths` value as a clean list. Anything but an array of
- * objects each holding a positive integer `width` and `height`, with no width
- * repeated, reads as none, so a value no reader understands never refuses the
- * page's layout.
+ * A layout entry's `widths` as a clean list, anything malformed reading as
+ * none, so it never refuses the page's layout.
  */
 export function widthsOf(value: unknown): LinkedWidth[] {
   if (!Array.isArray(value)) return []
@@ -38,10 +36,8 @@ function isSize(value: unknown): value is number {
 }
 
 /**
- * Where each linked width draws: in a row at the frame's `y`, the first
- * `FRAME_GAP` past the frame's right edge and each next one past the last.
- * A laptop's base reaches past its lid below the screen, where a linked width
- * taller than the frame would meet it, so the row moves out by that reach.
+ * Where each linked width draws, in a row past the frame, moved out by a
+ * laptop base's reach so a taller width never meets it.
  */
 export function linkedBoxes(
   box: Box,

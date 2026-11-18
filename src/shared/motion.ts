@@ -14,13 +14,8 @@ export interface Motion {
 }
 
 /**
- * Finds the timeline a page's motion runs on, taking `__hf` alone when
- * present, else every `__timelines` entry, else the page's animations, and
- * resolves null when none registers within `timeoutMs`.
- *
- * Capture evaluates this in a page by its source text and the board calls it
- * on an iframe's window, so it reads nothing outside its own body and takes
- * its clock, frames, and document from `view`, never the caller's realm.
+ * Finds a page's motion timeline. Capture evaluates it by source text, so it
+ * reads nothing outside its own body and takes everything from `view`.
  */
 export async function readMotionIn(
   view: Window,
@@ -84,8 +79,7 @@ export async function readMotionIn(
     return null
   }
 
-  // A page starting an animation on its first frame after load has not
-  // started it yet, so the first read waits for that frame to pass.
+  // Waits a frame, since an animation starting on the first frame has not yet.
   await nextFrame()
   for (;;) {
     const motion = read()
@@ -95,10 +89,8 @@ export async function readMotionIn(
 }
 
 /**
- * Holds the page at `ms`, clamped to the timeline's end, and resolves with
- * the moment it holds once a frame has painted it. HyperFrames and GSAP take
- * seconds, and the conversion happens here alone. Self-contained for the
- * same reason as `readMotionIn`.
+ * Holds the page at `ms` once painted, converting to the seconds HyperFrames
+ * and GSAP take here alone, self-contained as `readMotionIn` is.
  */
 export async function holdMotionIn(
   view: Window,

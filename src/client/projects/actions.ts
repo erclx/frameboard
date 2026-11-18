@@ -299,13 +299,8 @@ export function projectHref({ name, pages }: ProjectRecord): string {
 }
 
 /**
- * Renames a project by setting the title typed, which may hold any
- * characters, and lets the server move the folder to the name made from it,
- * carrying the pin to wherever the folder landed. The new board guide titles
- * through the structure client and carries the pin itself. A title the verb
- * refuses as invalid keeps the field open with the reason under it, and any
- * other refusal closes the field and raises the error toast. Resolves the
- * folder the project now sits in, or null on a refusal.
+ * Sets a project's title, carrying the pin to wherever the server moved the
+ * folder, and resolving that folder, or null on a refusal.
  */
 export async function renameProject(
   project: string,
@@ -345,14 +340,8 @@ export function focusedProject(): string | null {
 }
 
 /**
- * Registers the filing actions while the home view is mounted:
- * `project.group` filing the focused project in a new folder,
- * `project.ungroup` taking it out of its own, `project.archive` and
- * `project.restore` moving it into the Archived section and back, and
- * `folder.open`, `folder.rename`, `folder.ungroup`, and `folder.pin` acting
- * on the focused folder. Each write is lit while the tab may write and its
- * target exists, and Open and Pin whenever the folder exists, since neither
- * writes the board.
+ * Registers home's filing actions, Open and Pin lit even read-only, since
+ * neither writes the board.
  */
 export function useFolderActions(calls: Structure = structure): void {
   useEffect(() => {
@@ -537,11 +526,8 @@ export function useHomeAction(goHome: () => void): void {
 }
 
 /**
- * Registers `project.new` while the home view or a board is mounted, which
- * opens New project's dialog on the home view, where the add runs and the new
- * project opens its name for renaming. It is lit while the tab may write. The
- * board passes `leave`, which goes home before the dialog opens, since
- * leaving clears the board's project state and would close it.
+ * Registers `project.new`, the board going home before the dialog opens,
+ * since leaving clears the project state and would close it.
  */
 export function useNewProjectAction(leave?: () => void): void {
   useEffect(() => {
@@ -570,12 +556,8 @@ export function useNewProjectAction(leave?: () => void): void {
 }
 
 /**
- * Adds a project and installs `kit` into it, null keeping the board's own
- * look, then focuses its card and opens its name for renaming. The kit goes
- * in with `replace`, since the new project holds no look of its own and a
- * board sheet would otherwise refuse it. A refused install leaves the project
- * added and says why. A refused add says why and answers false, so a dialog
- * waiting on it stays open for another try.
+ * Adds a project with `kit` installed by `replace`, since a board sheet would
+ * otherwise refuse it, answering false on a refused add so the dialog stays open.
  */
 export async function createProject(
   kit: string | null,
@@ -625,15 +607,9 @@ export async function saveAsKit(
 }
 
 /**
- * Registers `project.open`, `project.rename`, `project.duplicate`,
- * `project.saveKit`, `project.pin`, and `project.delete` acting on the
- * project `target` names, the focused card on the home view and the open
- * project on the board. Rename, Duplicate, Save as kit, Pin, and Delete reach
- * the palette only while there is a
- * target, each naming it as the row's hint, since an unnamed Delete is a
- * guess. Each write is lit while the tab may write, and Pin whenever there is
- * a target, since a pin lives in the browser rather than the board. Pass a stable `target` and `onDeleted`, since a new one
- * registers the actions again.
+ * Registers the project actions on `target`, each hinting its project, since an
+ * unnamed Delete is a guess. Pass a stable `target` and `onDeleted`, since a new
+ * one registers the actions again.
  */
 export function useProjectActions(
   target: () => string | null,
@@ -770,15 +746,9 @@ function heldCopy(project: ProjectRecord): string {
 }
 
 /**
- * Follows the undo journal from just before a delete is sent, so its toast,
- * per `project-delete-undo-toast-720`, can offer Undo while the newest step
- * is still the delete. The journal is capped, so its counts cannot tell a
- * later step from the delete's own, and the history messages are counted
- * instead: the first after the send is the delete's, and any later one is
- * a step Undo would take back in its place, which closes the toast. The
- * count starts before the send, since the socket can report the step ahead
- * of the write's own answer or behind it, and an Undo pressed before the
- * delete's step is counted waits for it.
+ * Counts history messages from before a delete is sent, since the capped
+ * journal cannot tell a later step from the delete's, closing its Undo toast
+ * once a newer step lands.
  */
 function watchDeleteSteps(): {
   show: (project: ProjectRecord, pinned: boolean) => void
@@ -804,9 +774,7 @@ function watchDeleteSteps(): {
   const stop = () => {
     if (!waiting) unsubscribe()
   }
-  // A pin lives outside the journal, so the delete's drop is put back by hand,
-  // and only once the undo runs, since a pin on a project still deleted would
-  // pin a later project of that name.
+  // Restores the pin by hand once the undo runs, since a pin lives outside the journal.
   const undoFor = (project: ProjectRecord, pinned: boolean) => () => {
     const action = findAction('edit.undo')
     if (!action || !isEnabled(action)) return

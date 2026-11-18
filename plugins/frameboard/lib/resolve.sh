@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 
-# Sourced by the plugin's hook and monitor, never run. They resolve the
-# installed frameboard rather than ship one, so what they run always matches
-# the frameboard the project runs, and they share this lookup so the two
-# never disagree on where the install lives.
+# Sourced by the plugin's hook and monitor, never run, so the two share one
+# lookup and never disagree on where the install lives.
 
 # Prints the installed frameboard's dist folder, the project's own install
 # first, then the build of a project that is the frameboard checkout itself,

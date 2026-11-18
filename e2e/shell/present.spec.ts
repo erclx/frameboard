@@ -84,8 +84,7 @@ test.describe('presenting a page', () => {
     await expect(
       page.getByRole('button', { name: 'Present page' }),
     ).toBeFocused()
-    // The board's tooltips open with no delay, so one the returned focus
-    // opened would already show once that focus has landed.
+    // Tooltips open with no delay, so one would already show here.
     await expect(page.locator('[data-slot="tooltip-content"]')).toHaveCount(0)
   })
 
@@ -140,11 +139,7 @@ test.describe('presenting a page', () => {
 })
 
 test.describe('a deck with a transition and a stepped slide', () => {
-  /**
-   * The page fades between slides, `about` holds two steps, and a third
-   * frame `closing` sits past it on the row, so the deck reads hero, about,
-   * closing.
-   */
+  // A fading deck reading hero, about with two steps, then closing.
   test.beforeEach(() => {
     const page = join(board.root, 'webapp/home')
     const layout = JSON.parse(readFileSync(join(page, 'layout.json'), 'utf8'))

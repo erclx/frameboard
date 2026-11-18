@@ -14,10 +14,8 @@ import {
 import { openOverlay } from './overlay'
 
 /**
- * Registers `palette.open`, `help.shortcuts`, and `help.characterKeys` at the
- * app level, since the home view opens all three. `?` binds the symbol, which
- * a layout where it is not Shift+Slash still types. Returns the function that
- * removes them.
+ * Registers the palette and help actions app-wide, `?` binding the symbol,
+ * which a layout without Shift+Slash still types.
  */
 export function registerPaletteActions(): () => void {
   const actions: Action[] = [

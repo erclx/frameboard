@@ -1,9 +1,6 @@
 /**
- * Turns the hero's button into a pause for its footage. An animated WebP has no
- * pause of its own, so pausing swaps in a still, and a matching `<source>` beats
- * a changed `img.src`, so every `[data-loop]` element swaps to its own
- * `data-still`. The button ships hidden, so with scripts off no dead control
- * shows.
+ * Pauses the hero by swapping each `[data-loop]` to its `data-still`, since an
+ * animated WebP has no pause, the button shipping hidden so no dead control shows.
  */
 export function wireHeroPause(root: ParentNode = document): void {
   const button = root.querySelector<HTMLButtonElement>('#hero .pause')

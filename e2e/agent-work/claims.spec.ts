@@ -146,8 +146,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
         '--json',
       ])
 
-      // A rename of another page waits on its claimed frame, which this page
-      // does not show. F2 starts it without the click that would open the page.
+      // F2 renames another page without the click that would open it.
       const pricing = page
         .getByRole('navigation', { name: 'Pages' })
         .getByRole('link', { name: 'pricing', exact: true })

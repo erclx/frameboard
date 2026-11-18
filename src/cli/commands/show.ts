@@ -89,10 +89,8 @@ export function registerShow(program: Command, context: ProgramContext): void {
 }
 
 /**
- * Each argument's canonical frame refs in the order given, a page standing
- * for its frames in board order, and a frame named twice kept at its first
- * place. An argument naming no frame and no page refuses the whole show
- * with the frame's error, so nothing is posted.
+ * Each argument's frame refs in order, a page standing for its frames, and any
+ * unresolved argument refusing the whole show, so nothing is posted.
  */
 async function framesOf(
   root: string,

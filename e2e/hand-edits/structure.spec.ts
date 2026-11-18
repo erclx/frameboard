@@ -88,10 +88,7 @@ test.describe('page structure by hand, and its undo', () => {
     expect(pageOrder()).toEqual(['home', 'pricing'])
   })
 
-  /**
-   * Marks the window inside every frame on the canvas, resolving how many it
-   * marked, so a later read tells a kept iframe from one that loaded again.
-   */
+  // Marks each frame's window, so a later read tells a kept iframe from a reloaded one.
   async function markFrames(page: Page): Promise<number> {
     const frames = page.locator('[data-frame] iframe')
     await expect(frames).toHaveCount(2)
@@ -136,10 +133,7 @@ test.describe('page structure by hand, and its undo', () => {
       .evaluateAll((all) => all.map((frame) => frame.getAttribute('src')))
   }
 
-  /**
-   * Records each live message as the page reads it, ahead of the board's own
-   * listener, so a test can wait until the board has handled a whole batch.
-   */
+  // Records live messages ahead of the board, so a test can wait out a whole batch.
   async function recordLive(page: Page): Promise<void> {
     await page.addInitScript(() => {
       const read: string[] = []
@@ -162,12 +156,7 @@ test.describe('page structure by hand, and its undo', () => {
     )
   }
 
-  /**
-   * Waits for the board a rename's batch sends with the frame at its new ref,
-   * read after `from`, then holds while any reload that batch sent would
-   * land. The server sends a batch's reloads straight after its board, so a
-   * frame the rename reloaded shows a new `src` inside the hold.
-   */
+  // Waits for the rename's board, then holds while its reloads, sent straight after, land.
   async function batchHandled(
     page: Page,
     from: number,
@@ -526,8 +515,7 @@ test.describe('page structure by hand, and its undo', () => {
       const zoom = await liveLayer(page).evaluate(
         (layer) => Number(layer.style.getPropertyValue('--zoom')) || 1,
       )
-      // Zoomed out far enough that 30 screen px cover more than 40 board px,
-      // so the short drag below proves the floor reads on screen.
+      // Zoomed out so the short drag proves the floor reads in screen pixels.
       expect(zoom).toBeLessThan(0.75)
       const hit = await page.locator('[data-hit-layer]').boundingBox()
       if (!hit) throw new Error('The canvas draws no hit layer')

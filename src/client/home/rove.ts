@@ -16,10 +16,8 @@ export function runFolderKey(event: KeyboardEvent, key: string): void {
 }
 
 /**
- * Moves focus across the cards by the arrow keys, or h, j, k, and l while
- * single-key shortcuts are on, Up and Down stepping to the nearest card in
- * the grid's next row as it is laid out, and down the list, with Home and End for the ends. Keys
- * typed into a rename field stay in the field.
+ * Moves focus across the cards by the arrows, Up and Down stepping to the
+ * nearest card in the next row as laid out.
  */
 export function roveFocus(
   event: KeyboardEvent<HTMLElement>,

@@ -5,10 +5,8 @@ import { type ErrorCode, EXIT_CODES, FrameboardError } from '@/shared/errors'
 import { type CliIo, createProgram } from './program'
 
 /**
- * Runs one command line and returns its exit code. Under `--json` stdout
- * carries exactly one envelope, whether the command succeeded, failed, or
- * never parsed. Without it, a failure prints `frameboard: <message>` to
- * stderr, apart from commander's own parse errors, which it prints itself.
+ * Runs one command line, under `--json` printing exactly one envelope whether
+ * the command succeeded, failed, or never parsed.
  */
 export async function runCli(
   argv: string[],
@@ -24,8 +22,7 @@ export async function runCli(
     if (error instanceof CommanderError && error.exitCode === 0) return 0
     const failure = toFailure(error, program, argv)
     if (json) {
-      // A verb that fails with a result still answers it at `data`, the path
-      // its passing answer uses.
+      // A failing verb's result still lands at `data`, as a passing one's does.
       const data = error instanceof FrameboardError ? error.data : undefined
       const envelope =
         data === undefined

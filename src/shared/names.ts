@@ -33,11 +33,8 @@ export function nextFreeName(base: string, taken: Iterable<string>): string {
 }
 
 /**
- * The folder a project in `current` lands in once titled `title`: the name
- * made from the title, the next free one when another of `taken` holds it,
- * and `current` itself when the title names no folder or names the one it
- * is in. A taken name near the length limit is cut back until a free one
- * fits, its suffix included, so the folder always stays a valid name.
+ * The folder a retitled project lands in, cut back near the length limit so
+ * the folder always stays a valid name.
  */
 export function titledFolder(
   current: string,

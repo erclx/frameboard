@@ -90,11 +90,8 @@ export function createUnseenStore(storage: SeenStorage | null): UnseenStore {
 }
 
 /**
- * Marks each change's frame, unless this browser already saw the hash it
- * left, or for a shown mark the show itself, and moves its base when the
- * change opens a run. A change opens one
- * when the frame holds no mark, so the base is read off the log's `before`
- * hashes and a replay of the same log lands on the same base.
+ * Marks each unseen change's frame, its base read off the log's `before`, so a
+ * replay of the same log lands on the same base.
  */
 export function receiveChanges(
   store: UnseenStore,
@@ -104,11 +101,9 @@ export function receiveChanges(
   const next = { ...unseen }
   const nextBase = { ...base }
   const nextAbsorbed = { ...absorbed }
-  // Changes arrive oldest first, so a seen one also clears an older one the
-  // same replay marked before it.
+  // Oldest first, so a seen change clears an older mark from the same replay.
   for (const change of changes) {
-    // A show of a frame whose write is still unseen leaves the write's
-    // mark, which names what to glow and keeps the toast saying changed.
+    // Keeps the unseen write's mark, which names what to glow.
     const held = next[change.frame]
     if (change.shown && held && !held.shown) {
       nextAbsorbed[change.frame] = showKey(change)
@@ -399,10 +394,8 @@ function unseenReply(
 }
 
 /**
- * How many agent replies across the given pages' notes no open thread has
- * shown. A reply counts only while its root can still open, being a root not
- * done on a frame the board holds, since a root that draws no marker leaves
- * no thread to open and its reply would count for good.
+ * Unshown agent replies, counting only roots that can still open, since a
+ * root with no marker would count its reply for good.
  */
 export function unseenReplies(
   notes: Readonly<Record<string, readonly Note[]>>,

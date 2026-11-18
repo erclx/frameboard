@@ -20,10 +20,8 @@ const SORT_LABELS: Readonly<Record<HomeSort, string>> = {
 }
 
 /**
- * Home while the board loads: the real header and Projects row, with grey
- * cards or rows in the layout the last visit left. It reads the remembered
- * layout and sort without registering their actions, so the switch, New
- * project, and Sort show disabled until `Home` takes over.
+ * Home while the board loads, reading the remembered layout without
+ * registering its actions, so the controls stay disabled until `Home` takes over.
  */
 export function HomeLoading() {
   const [layout] = useState(readLayout)

@@ -1,10 +1,6 @@
 /**
- * The names a design kit is laid out by. A kit is a folder of plain files:
- * `kit.json` naming it, `tokens.css` with a light and a dark block, `kit.css`
- * of component and stroke styles, `kit.md` telling an agent what to reach
- * for, and a `kit` page of sample frames. Installed in a project, the tokens
- * become its `tokens.css`, the page its `kit` page, and the rest sits under
- * `assets/kit/`, which the frame route imports after the token sheets.
+ * The names a design kit's folder of plain files is laid out by, installed so
+ * the frame route imports `assets/kit/` after the token sheets.
  */
 export const KIT_FILE = 'kit.json'
 export const KIT_SHEET = 'kit.css'
@@ -17,10 +13,8 @@ export const KIT_ASSETS = 'kit'
 export const KITS_FOLDER = '.kits'
 
 /**
- * Where the board serves a kit's files for a preview card, as
- * `/frameboard/kits/<name>/<path>`. It sits under `/frameboard/` beside the
- * faces, since a bare `/kits` would shadow the client's own module folder
- * of that name under the dev server.
+ * Where the board serves a kit's files, under `/frameboard/`, since a bare
+ * `/kits` would shadow the client's module folder under the dev server.
  */
 export const KITS_URL = '/frameboard/kits'
 

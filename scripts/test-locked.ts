@@ -1,13 +1,6 @@
-// Runs one heavy test command under the machine-wide test lock, so a third
-// worktree's Vitest or Playwright run queues rather than starving the first two.
-// Usage: bun scripts/test-locked.ts <command> [args...]. Exits with the
-// command's code, and releases its slot however the command ends. A command
-// still running at the time limit is killed with every process it started, and
-// the wrapper exits 124.
-//
-// FRAMEBOARD_TEST_SLOTS: runs admitted at once across the machine, default 2.
-// FRAMEBOARD_TEST_LIMIT: seconds a command may run, default 900, 0 for none,
-// and off by default when CI is set, since a CI job carries its own timeout.
+// Usage: bun scripts/test-locked.ts <command> [args...], queued under a
+// machine-wide lock of FRAMEBOARD_TEST_SLOTS, killed past FRAMEBOARD_TEST_LIMIT
+// with exit 124, a limit off under CI, which carries its own timeout.
 import { spawn } from 'node:child_process'
 import { constants, homedir } from 'node:os'
 
@@ -104,8 +97,7 @@ child.on('error', (error) => {
 })
 
 child.on('exit', (code, signal) => {
-  // At the limit the kill below owns the exit, since the processes the
-  // command started can outlive it.
+  // The kill owns the exit at the limit, since started processes can outlive it.
   if (killing) return
   release(slot, process.pid)
   process.exit(code ?? 128 + (signal ? constants.signals[signal] : 0))
@@ -136,8 +128,7 @@ async function killRun(seen: Map<number, string>): Promise<void> {
     .filter((pid) => pid !== child.pid)
     .filter((pid) => table.get(pid)?.started === seen.get(pid))
     .reverse()
-  // The command itself is signalled and watched through its handle, so a
-  // table read that fails can never free the slot while the command still runs.
+  // Watched through its handle, so a failed table read never frees a live slot.
   const command = childRuns() && child.pid !== undefined ? [child.pid] : []
   const count = tree.length + command.length
   say(
@@ -172,8 +163,7 @@ function descendants(
   for (const [pid, row] of table) {
     children.set(row.ppid, [...(children.get(row.ppid) ?? []), pid])
   }
-  // Walked from the command rather than this wrapper, whose own `ps` calls
-  // would otherwise count among the targets.
+  // From the command, so this wrapper's own `ps` calls never count as targets.
   const found = new Map<number, string>()
   const order = child.pid === undefined ? [] : [child.pid]
   // A for-of over an array visits what the loop appends to it.

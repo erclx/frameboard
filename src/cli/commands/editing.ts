@@ -198,10 +198,8 @@ function refOf(frame: ResolvedRef): string {
 }
 
 /**
- * The box each named frame will land in, in one row per page in the order
- * named, past every frame and live reservation already on that page unless
- * `--x` or `--y` sets the row. A frame that exists already refuses
- * `name-taken` before anything is reserved.
+ * Each named frame's box, one row per page past every frame and reservation,
+ * refusing `name-taken` before anything is reserved.
  */
 async function reservationsOf(
   root: string,

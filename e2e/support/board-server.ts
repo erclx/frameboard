@@ -14,10 +14,8 @@ export interface BoardServer {
 }
 
 /**
- * Starts the built CLI's `serve` on its own port over `root`, for a spec that
- * writes files and so must not share the committed fixture the default
- * `webServer` serves. Resolves once the one `--json` envelope has printed.
- * `flags` adds to `serve`'s own, such as `--tokens <path>`.
+ * Starts `serve` on its own port for a spec that writes files, so it never
+ * shares the committed fixture the default `webServer` serves.
  */
 export function serveBoard(
   root: string,

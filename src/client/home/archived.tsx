@@ -25,10 +25,8 @@ interface ArchivedProps {
 }
 
 /**
- * The archived projects after every other one, collapsed under a header
- * naming their count, which opens them as cards or rows in the layout shown.
- * Whether it is open is remembered for the next visit. Each card's menu reads
- * Restore in place of Archive. It shows nothing while no project is archived.
+ * The archived projects, collapsed under a count header remembered for the
+ * next visit, and nothing while none is archived.
  */
 export function Archived({
   projects,

@@ -74,10 +74,8 @@ function splitShown(ordered: ProjectRecord[]) {
 }
 
 /**
- * Registers the keys that bring focus to the cards while nothing holds it,
- * so the first press lands rather than doing nothing. An arrow or h, j, k,
- * and l land on the tab stop card, Home on the first, and End on the last.
- * Once a card holds focus they stand down and the cards' own keys move it.
+ * Registers keys bringing focus to the cards while nothing holds it, so the
+ * first press lands, standing down once a card holds focus.
  */
 function useCardKeys(): void {
   const projectLinks = () => [

@@ -5,11 +5,8 @@ import { refreshActions } from '@/client/actions/registry'
 const PINS_KEY = 'frameboard.home.pins'
 
 /**
- * The projects this browser pinned, by name, and the folders, by `folderPin`,
- * read from `localStorage` so a reload and every mounted view agree. A pin
- * is a viewer's favorite rather
- * than design, so it stays out of the board folder and a second browser
- * starts with none. A name no project holds is ignored where it is read.
+ * This browser's pins in `localStorage`, out of the board folder, since a pin
+ * is a viewer's favorite rather than design.
  */
 export function usePins(): ReadonlySet<string> {
   return useSyncExternalStore(subscribe, pinnedProjects, pinnedProjects)

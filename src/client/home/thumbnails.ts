@@ -12,14 +12,9 @@ import type { Theme } from '@/shared/theme'
 const ASK_DELAY_MS = 100
 
 /**
- * Asks the server for the thumbnails of the theme shown while the home view
- * is open: on mount, on a theme flip, after a reconnect, and when a
- * frame a card draws is new, resized, or reloaded since it was last asked
- * about. A reload always comes with the `null` that marks the frame's stamp
- * stale, so its count stands for that `null` even on a frame that never held
- * a stamp. The route queues renders and answers at once, and each landing
- * arrives over the live socket, so a frame still rendering or failed is never
- * asked about again until it changes.
+ * Asks for the shown theme's thumbnails while home is open, each landing over
+ * the socket, so a frame still rendering is never asked about again until it
+ * changes.
  */
 export function useThumbnails(send: typeof fetch = fetch): void {
   const theme = useShownTheme()

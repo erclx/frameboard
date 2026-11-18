@@ -25,10 +25,8 @@ const CHOICES: readonly {
 ]
 
 /**
- * Registers `theme.toggle`, which the toolbar and the home header draw, and
- * the `theme` group the avatar menu lists as radio rows. The toggle carries
- * no `checked`, so the toolbar never draws it pressed. Returns the function
- * that removes them.
+ * Registers the theme actions, the toggle carrying no `checked`, so the
+ * toolbar never draws it pressed.
  */
 export function registerThemeActions(
   store: ThemeStore = themeStore,

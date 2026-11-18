@@ -29,12 +29,8 @@ interface FolderRowProps {
 }
 
 /**
- * A folder's row in the list, per `22-list-fix.png`: a chevron, the folder
- * mark, its name, and its count as a pill, with Edited reading its newest
- * member. It opens and closes on a click, Enter, or Space, Right opening it
- * and Left closing it, and F2 or a double click on its name renames it. A
- * right click opens the folder menu. Open, its members sit indented under a
- * guide line.
+ * A folder's row per `22-list-fix.png`, Edited reading its newest member, and
+ * its members indented under a guide line while open.
  */
 export function FolderRow({
   folder,

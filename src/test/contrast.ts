@@ -71,11 +71,8 @@ function luminance([r, g, b]: Rgb): number {
 }
 
 /**
- * An element's text against its background as WCAG measures it, each
- * translucent background up its ancestors laid over the ones beneath, on
- * white when none is opaque. Element opacity is not read, so measure once
- * any fade has finished. A `pseudo` such as `::placeholder` reads that
- * pseudo-element's text over the element's own background.
+ * An element's WCAG contrast over its composited backgrounds, ignoring element
+ * opacity, so measure once any fade has finished.
  */
 export function contrastOnPage(element: Element, pseudo?: string): number {
   const ground = groundOf(element)

@@ -188,10 +188,8 @@ export function presetAt(width: number): FrameSizePreset | undefined {
 }
 
 /**
- * The viewport height a frame's content is read at, being the height of the
- * preset whose range holds the width, or the desktop height below every
- * range. Reading at the box's own height lets content sized off the viewport
- * grow by that height on every fit.
+ * The viewport height content is read at, never the box's own, which would let
+ * viewport-sized content grow on every fit.
  */
 export function referenceHeight(width: number): number {
   return FRAME_SIZES[presetAt(width) ?? DEFAULT_FRAME_SIZE].height

@@ -30,10 +30,8 @@ type Envelope<T> =
     }
 
 /**
- * The one way the board changes anything on the server: a same-origin JSON
- * request, or a `FormData` upload, that carries the tab's cookie and no token. Resolves the envelope's
- * `data` and throws a `BoardWriteError` on an error one. A 401 also marks the
- * tab read-only, since its cookie no longer opens the server it reached.
+ * The board's one write path, cookie-carrying and token-free, a 401 marking the
+ * tab read-only, since its cookie no longer opens the server.
  */
 export async function writeBoard<T = unknown>(
   path: string,

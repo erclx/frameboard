@@ -139,17 +139,14 @@ export function createProgram(context: ProgramContext): Command {
       'A local design board that coding agents draw on as plain HTML files',
     )
     .exitOverride()
-    // A group with flags of its own, as notes has, keeps them from its verbs
-    // only when every parent stops reading flags at the verb's name.
+    // Lets a group with flags, as notes has, keep them from its verbs.
     .enablePositionalOptions()
     .configureOutput({
       writeOut: io.stdout,
       writeErr: (text) => (json ? undefined : io.stderr(text)),
     })
 
-  // Getters, so only the verbs that read the faces trigger a source run's
-  // cache write, only `serve` checks the client, and the first read settles it
-  // for the rest.
+  // Getters, so only the verbs that read a folder pay to resolve it.
   let facesDir: string | undefined
   let clientDir: string | undefined
   const faced = {
