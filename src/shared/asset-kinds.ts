@@ -58,7 +58,13 @@ const ACCEPTED: Record<string, Exclude<AssetKind, 'other'>> = {
 }
 
 /** Model formats no frame shows, which a drop refuses with the way to a GLB rather than as an unknown file. */
-const FOREIGN_MODELS: readonly string[] = ['fbx', 'obj', 'blend', 'usd', 'stl']
+export const FOREIGN_MODELS: readonly string[] = [
+  'fbx',
+  'obj',
+  'blend',
+  'usd',
+  'stl',
+]
 
 export function isForeignModel(name: string): boolean {
   return FOREIGN_MODELS.includes(extensionOf(name))

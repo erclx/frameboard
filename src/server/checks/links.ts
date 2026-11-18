@@ -45,6 +45,14 @@ export const LINK_RULES: RuleDoc[] = [
 
 const finding = findingFor(LINK_RULES)
 
+/** The attributes a `<model-viewer>` loads a file through, which `docs` states beside the rule. */
+export const MODEL_LOADS = [
+  'src',
+  'poster',
+  'environment-image',
+  'skybox-image',
+] as const
+
 /**
  * The attributes that load a resource, by element. An `a href` navigates
  * rather than loads, so it is left out.
@@ -63,7 +71,7 @@ const RESOURCE_ATTRIBUTES: Record<string, string[]> = {
   input: ['src'],
   image: ['href', 'xlink:href'],
   use: ['href', 'xlink:href'],
-  'model-viewer': ['src', 'poster', 'environment-image', 'skybox-image'],
+  'model-viewer': [...MODEL_LOADS],
 }
 
 /** The lighting a viewer builds itself, which `environment-image` names in place of a file. */
