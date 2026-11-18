@@ -171,9 +171,9 @@ function innerMarqueeHeld(ref: string): (page: Page) => Promise<void> {
             )
           const startX = box.left + box.width * 0.7
           const startY = box.bottom - 12
-          // The store takes the tree a frame after the answer is read.
-          requestAnimationFrame(() => {
-            send(hit, 'mousedown', startX, startY)
+          // The frame answers whether the press is on its bare body, then the marquee's boxes, so the drag moves again each frame until both have.
+          let moves = 60
+          const drag = () => {
             send(window, 'mousemove', startX - 10, startY - 20)
             send(
               window,
@@ -186,9 +186,16 @@ function innerMarqueeHeld(ref: string): (page: Page) => Promise<void> {
               document.querySelector('[data-marquee-hits] > *')
             if (drawn) {
               document.documentElement.setAttribute('data-marquee-held', '')
+            } else if (--moves > 0) {
+              requestAnimationFrame(drag)
             } else {
               console.error(`No marquee drew inside ${owner}`)
             }
+          }
+          // The store takes the tree a frame after the answer is read.
+          requestAnimationFrame(() => {
+            send(hit, 'mousedown', startX, startY)
+            requestAnimationFrame(drag)
           })
         }
         document.addEventListener('DOMContentLoaded', () =>
