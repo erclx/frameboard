@@ -220,7 +220,8 @@ function presentActions(): Action[] {
       label: 'Full screen',
       group: 'present',
       palette: false,
-      keys: ['KeyF'],
+      // The Frame tool's own spelling, since tinykeys stops at the first binding a press matches.
+      keys: ['f'],
       enabled: onStage,
       run: toggleFullscreen,
     },
