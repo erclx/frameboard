@@ -110,8 +110,9 @@ export function EffectTiles({
         }
       }}
       className={cn(
-        'grid max-h-[118px] gap-1.5 overflow-y-auto p-0.5',
-        columns === 4 ? 'grid-cols-4' : 'grid-cols-5',
+        // Two rows of tiles and the gap between them, so a third row scrolls.
+        'grid max-h-[132px] overflow-y-auto p-0.5',
+        columns === 4 ? 'grid-cols-4 gap-1.5' : 'grid-cols-5 gap-1',
       )}
     >
       {options.map((option, index) => {
@@ -138,7 +139,7 @@ export function EffectTiles({
             onFocus={() => start(option.value)}
             onBlur={end}
             className={cn(
-              'group min-w-0 rounded-[7px] px-1 pt-[5px] pb-1 text-center text-caption text-muted-foreground outline-none hover:bg-input hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40',
+              'group min-w-0 rounded-[7px] px-0.5 pt-[5px] pb-1 text-center text-caption text-muted-foreground outline-none hover:bg-input hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40',
               checked &&
                 'font-semibold text-foreground shadow-[0_0_0_1.5px_var(--primary)]',
             )}

@@ -22,9 +22,12 @@ export type TilePicture =
  */
 const REST = 0.4
 
+/** A step rests later, since Fly's element sits below the picture until past half way. */
+const STEP_REST = 0.7
+
 /** An animation shorthand held at the rest pose rather than playing. */
-function resting(animation: string, ms: number): string {
-  return `${animation} ${-Math.round(ms * REST)}ms paused`
+function resting(animation: string, ms: number, at = REST): string {
+  return `${animation} ${-Math.round(ms * at)}ms paused`
 }
 
 function transitionLayer(
@@ -43,7 +46,9 @@ function transitionLayer(
 
 function stepLayer(effect: StepEffect, playing: boolean): CSSProperties {
   const animation = `frameboard-step-${effect} ${STEP_MS}ms ${EASING} both`
-  return { animation: playing ? animation : resting(animation, STEP_MS) }
+  return {
+    animation: playing ? animation : resting(animation, STEP_MS, STEP_REST),
+  }
 }
 
 /**
