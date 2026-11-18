@@ -22,7 +22,7 @@ import {
   playMotion,
   releaseMotion,
 } from './motion/store'
-import { enterFrame, leaveFrame } from './play/entered'
+import { enteredStore, enterFrame, leaveFrame } from './play/entered'
 import { endPreview, setPreview } from './preview/store'
 import { clear, select, selectionStore } from './selection'
 import {
@@ -134,6 +134,44 @@ describe('Frame in Play', () => {
     pressEscapeIn(iframeOf(container, 'a'))
 
     expect(exits).toBe(1)
+  })
+
+  it('leaves an entered frame on Esc pressed in a field inside it', async () => {
+    cleanups.push(
+      registerActions([
+        {
+          id: 'play.leaveFrame',
+          label: 'Leave frame',
+          group: 'mode',
+          palette: false,
+          keys: ['Escape'],
+          run: leaveFrame,
+        },
+      ]),
+    )
+    act(() => modeStore.setState({ mode: 'play' }))
+    act(() => enterFrame('studio/home/a'))
+    cleanups.push(() => act(() => leaveFrame()))
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+    const inner = iframe.contentWindow as typeof window
+    const slider = inner.document.createElement('input')
+    slider.type = 'range'
+    inner.document.body.append(slider)
+    slider.focus()
+
+    act(() => {
+      slider.dispatchEvent(
+        new inner.KeyboardEvent('keydown', {
+          key: 'Escape',
+          code: 'Escape',
+          bubbles: true,
+        }),
+      )
+    })
+
+    expect(enteredStore.getState().ref).toBeNull()
   })
 
   it('stands the entered tag below a laptop base rather than on its chin', () => {

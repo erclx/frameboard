@@ -136,13 +136,21 @@ export function useActionGroup(group: string): Action[] {
 }
 
 /**
+ * `board` skips a field or a dialog but a toast. `frame`, for a frame's window,
+ * skips only a composing or page-prevented press, so Esc leaves from a field.
+ */
+export type TypingRule = 'board' | 'frame'
+
+/**
  * Binds the registry's keys, a press running the first enabled action for it,
- * and no key firing in a field or a dialog other than a toast.
+ * and no key firing where `typing` skips it, the board's rule by default.
  */
 export function bindKeys(
   target: Window | Element,
   only?: readonly string[],
+  { typing = 'board' }: { typing?: TypingRule } = {},
 ): () => void {
+  const ignore = typing === 'frame' ? isFramePressTaken : isTyping
   const bind = (actions: readonly Action[]) => {
     const keys = new Set(
       actions
@@ -154,7 +162,7 @@ export function bindKeys(
       Object.fromEntries(
         [...keys].map((key) => [key, (event) => press(key, event)]),
       ),
-      { ignore: isTyping },
+      { ignore },
     )
   }
   let unbind = bind(registry.getState().actions)
@@ -204,4 +212,8 @@ function isTyping(event: KeyboardEvent): boolean {
   if (target.closest?.('[data-slot="toast"]') != null)
     return event.key === 'Enter'
   return target.closest?.('[role="dialog"]') != null
+}
+
+function isFramePressTaken(event: KeyboardEvent): boolean {
+  return event.isComposing || event.defaultPrevented
 }

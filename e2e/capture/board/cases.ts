@@ -54,6 +54,7 @@ const WRITING_SECTIONS = [
   'present-steps',
   'controls-edit',
   'controls-play',
+  'controls-play-left',
 ]
 
 const CHANGE_LOG = join(SERVED_BOARD, '.run/changes/log.json')
