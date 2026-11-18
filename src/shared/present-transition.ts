@@ -208,8 +208,8 @@ export type StepEffect = (typeof STEP_EFFECTS)[number]
 
 export const STEP_EFFECT_LABELS = {
   appear: 'Appear',
-  fade: 'Fade in',
-  fly: 'Fly in',
+  fade: 'Fade',
+  fly: 'Fly',
   wipe: 'Wipe',
   zoom: 'Zoom',
 } as const satisfies Record<StepEffect, string>
@@ -223,7 +223,7 @@ export const STEP_STARTS = ['click', 'with', 'after'] as const
 export type StepStart = (typeof STEP_STARTS)[number]
 
 export const STEP_START_LABELS = {
-  click: 'On click',
-  with: 'With previous',
-  after: 'After previous',
+  click: 'On press',
+  with: 'With last',
+  after: 'After last',
 } as const satisfies Record<StepStart, string>
