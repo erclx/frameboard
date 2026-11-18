@@ -1,4 +1,3 @@
-import { cn } from '@/client/lib/cn'
 import type { FileFlag } from '@/shared/frame-bridge/media'
 
 import type { LiveMedia } from '../../element/media'
@@ -9,6 +8,7 @@ import {
   SoundButton,
   Unplayable,
 } from '../../element/media-bar'
+import { SwitchRow } from './switch-row'
 import type { WriteElement } from './write'
 
 interface VideoSectionProps {
@@ -115,28 +115,12 @@ function FileSwitch({
     if (!written) media.setFileFlag(attribute, on)
   }
   return (
-    <label className="flex items-center justify-between gap-2">
-      <span>{label}</span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        aria-label={name}
-        disabled={disabled}
-        onClick={() => void turn()}
-        className={cn(
-          'relative h-3.5 w-[26px] shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50',
-          on ? 'bg-primary' : 'bg-input',
-        )}
-      >
-        <span
-          aria-hidden
-          className={cn(
-            'absolute top-0.5 size-2.5 rounded-full bg-white transition-[left] motion-reduce:transition-none',
-            on ? 'left-[14px]' : 'left-0.5',
-          )}
-        />
-      </button>
-    </label>
+    <SwitchRow
+      label={label}
+      name={name}
+      on={on}
+      disabled={disabled}
+      onTurn={() => void turn()}
+    />
   )
 }
