@@ -2,7 +2,6 @@ import {
   type RefObject,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -30,6 +29,7 @@ import {
   type LoadTransitions,
   useOwnKeyframes,
 } from './own-transitions'
+import { useRoom } from './room'
 import { readSteps, showSteps, type StepGroup, touchesSteps } from './steps'
 import {
   countSteps,
@@ -196,25 +196,6 @@ function useLeaveWithFullscreen(): boolean {
   return full
 }
 
-/** The overlay's size, read before paint and on every resize. */
-function useRoom(element: RefObject<HTMLElement | null>) {
-  const [room, setRoom] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight,
-  })
-  useLayoutEffect(() => {
-    const target = element.current
-    if (!target) return
-    const read = () =>
-      setRoom({ width: target.clientWidth, height: target.clientHeight })
-    read()
-    const observer = new ResizeObserver(read)
-    observer.observe(target)
-    return () => observer.disconnect()
-  }, [element])
-  return room
-}
-
 /**
  * The presented page, one frame at a time over the window, rendering nothing
  * until a page presents.
@@ -354,7 +335,8 @@ function Presenting({
             <ScaledFrame
               frame={drawn}
               room={room}
-              live={role === 'enter'}
+              walk={role === 'enter' ? 'live' : 'off'}
+              keys={role === 'enter'}
               held={role === 'enter' && leaving !== null}
               wake={wake}
             />
@@ -400,16 +382,24 @@ function Presenting({
   )
 }
 
+/**
+ * How a presented frame walks its steps: `live` counts them into this window's
+ * present store and shows the step it holds, `first` hides every one, and
+ * `off` leaves the document as it stands.
+ */
+export type StepWalk = 'live' | 'first' | 'off'
+
 interface LiveProps {
-  /** Whether the frame is the one arriving, which alone takes the present keys and the pointer. */
-  live: boolean
+  walk: StepWalk
+  /** Whether the frame takes the present keys and the pointer, which only the audience's arriving frame does. */
+  keys: boolean
   /** Whether the frame's own animations wait, as they do while it arrives, so its clock starts once it lands. */
   held: boolean
-  wake: () => void
+  wake?: () => void
 }
 
 /** One frame centered in the room at the scale that fits it, inside its device when it has one. */
-function ScaledFrame({
+export function ScaledFrame({
   frame,
   room,
   ...live
@@ -504,12 +494,12 @@ function onEachLoad(
 const STEP_KEYS = ['data-step', 'data-step-effect', 'data-step-start']
 
 /**
- * Walks the arriving frame's steps, re-read on each load and agent change.
+ * Walks a frame's steps as `walk` says, re-read on each load and agent change.
  * Answers whether the frame's own document loaded, since an iframe's first is blank.
  */
-function useStepsWhileLive(
+function useStepWalk(
   iframe: RefObject<HTMLIFrameElement | null>,
-  live: boolean,
+  walk: StepWalk,
 ): boolean {
   const [loaded, setLoaded] = useState(false)
   const read = useRef<{ doc: Document; groups: StepGroup[] } | null>(null)
@@ -518,12 +508,16 @@ function useStepsWhileLive(
   const entering = useRef<number | null>(null)
 
   useEffect(() => {
-    if (!live) return
+    if (walk === 'off') return
     return onEachLoad(iframe.current, (element) => {
       const doc = element.contentDocument
       if (!doc || doc.URL === 'about:blank') return
       const reread = () => {
         const groups = readSteps(doc)
+        if (walk === 'first') {
+          showSteps(doc, groups, 0)
+          return
+        }
         // Counting can resolve a step back onto this frame, which plays no entrance.
         read.current = null
         countSteps(groups.length)
@@ -547,10 +541,10 @@ function useStepsWhileLive(
       })
       return () => observer.disconnect()
     })
-  }, [iframe, live])
+  }, [iframe, walk])
 
   useEffect(() => {
-    if (!live) return
+    if (walk !== 'live') return
     return presentStore.subscribe(() => {
       const shown = shownStep()
       if (!read.current || shown === revealed.current) return
@@ -558,7 +552,7 @@ function useStepsWhileLive(
       revealed.current = shown
       showSteps(read.current.doc, read.current.groups, shown, entering.current)
     })
-  }, [live])
+  }, [walk])
 
   return loaded
 }
@@ -567,9 +561,10 @@ function useStepsWhileLive(
  * One frame's live page through the same `/frames/` address the canvas
  * loads, in the theme the frame shows on the board, never a capture.
  */
-function PresentedFrame({
+export function PresentedFrame({
   frame,
-  live,
+  walk,
+  keys,
   held,
   wake,
 }: {
@@ -578,7 +573,7 @@ function PresentedFrame({
   const iframe = useRef<HTMLIFrameElement>(null)
   // The screen rounds under its bezel, whose body cannot cover a square corner.
   const corners = frame.device ? screenCorners(frame.device) : undefined
-  const loaded = useStepsWhileLive(iframe, live)
+  const loaded = useStepWalk(iframe, walk)
   // The iframe stays mounted across slides, so only its first page waits.
   const waiting = useWaitingOnFirstLoad(iframe, true)
   const theme = useFrameTheme(frame.ref)
@@ -612,20 +607,19 @@ function PresentedFrame({
       }),
     [],
   )
-  // Only the arriving frame takes the present keys and wakes the bar.
   useEffect(
     () =>
       onEachLoad(iframe.current, (element) => {
         const target = element.contentWindow
-        if (!live || !target) return
+        if (!keys || !target) return
         const untake = takeKeys(target, true)
-        target.addEventListener('pointermove', wake)
+        if (wake) target.addEventListener('pointermove', wake)
         return () => {
           untake()
-          target.removeEventListener('pointermove', wake)
+          if (wake) target.removeEventListener('pointermove', wake)
         }
       }),
-    [live, wake],
+    [keys, wake],
   )
   return (
     <>
