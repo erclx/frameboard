@@ -67,6 +67,27 @@ describe('ThemeTab', () => {
     )
   })
 
+  it('wraps a long board path inside the note', async () => {
+    // One segment wider than the note, which no slash break rescues.
+    const path =
+      '/home/someone/averyverylongboardfolderthatnevershortens/tokens.css'
+    const long = table([row('primary')], {
+      sheets: [{ path, kind: 'board', error: null, hash: 'h' }],
+    })
+
+    render(
+      <div style={{ width: 240 }}>
+        <ThemeTab project="studio" load={async () => long} />
+      </div>,
+    )
+
+    const note = await screen.findByText(/^From board/)
+    const code = within(note).getByText(path)
+    expect(code.getBoundingClientRect().right).toBeLessThanOrEqual(
+      note.getBoundingClientRect().right,
+    )
+  })
+
   it('draws each color with a light and a dark swatch', async () => {
     render(
       <ThemeTab
