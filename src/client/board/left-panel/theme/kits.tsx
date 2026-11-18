@@ -44,10 +44,8 @@ interface KitsSectionProps {
 }
 
 /**
- * The kits a project added, each with the count of frames using it, and the
- * Add kit list of every shipped and saved kit plus a note asking the agent
- * for a new one. Counts read the live board, so Remove's confirm names the
- * frames it clears as they stand.
+ * The kits a project added and the Add kit list. Counts read the live board,
+ * so Remove's confirm names the frames it clears as they stand.
  */
 export function KitsSection({
   project,
