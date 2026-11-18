@@ -45,10 +45,9 @@ Owns Generate, which shows the provider and its price from `GET sourcing/provide
 
 ### `src/client/board/guide/`
 
-Owns the first-run guide, the card a new board's empty page shows, asking for a project name, a first frame size, a kit, and who draws the first frame. The agent choice writes no frame and names the folder to open Claude Code in, being the parent of `.frameboard/`.
+Owns the first-run guide, the card a new board's empty page shows, asking for a project name, a first frame size, and who draws the first frame. The agent choice writes no frame and names the folder to open Claude Code in, being the parent of `.frameboard/`.
 
 - `untouched.ts` holds while the board is the start project alone with its one empty start page and the tab writes, so nothing on disk records the guide
 - `state.ts` keeps the step in the tab, so it outlives the canvas a rename remounts, and Skip or Finish ends it until reload
 - A tab `main.tsx` booted on `/` lands on the start page once per tab while the board is untouched, and home renders nothing until access is known
-- Each answer goes through a write the board already makes, so Undo takes each back, and Finish installs the kit, writes the frame, and fits the view to it
-- The kit step writes nothing, since an install refuses over any sheet, drops out where the token table names one, and shows its cards once `GET /api/kits` answers
+- Each answer goes through a write the board already makes, so Undo takes each back, and Finish writes the frame and fits the view to it

@@ -50,7 +50,7 @@ Owns the HTTP route modules `app.ts` mounts, one per surface, being the frame an
 - A non-frame file answers a single byte `Range` with a streamed 206, so a `<video>` seeks, while a frame is served whole since its head is spliced in memory
 - A non-frame file carries a weak `ETag` under `no-cache`, while a frame, a `?at=` version, a 206, and a 416 stay `no-store`, since an asset edit reloads every frame
 - A file's `frames` count comes from the cache in `src/server/board/asset-usage.ts` over the link check's `frameLoads`, which a watcher batch under the project drops
-- A kit replace records the take-out of the old look as its own step first, since one step cannot take out a path and write it again, so two undos bring it back
+- A kit remove records the folder's take-out and every cleared `kit` key as one step, so one undo brings back the kit and the frames naming it
 - Kit files sit under `/frameboard/` and `GET /api/access/open` answers only under `serve --open-route`, since a bare `/kits` shadows the client's module folder under Vite
 
 ### `src/server/preview/`

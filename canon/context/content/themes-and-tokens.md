@@ -15,7 +15,7 @@ Owns how a frame gets its look from outside itself, being the token stylesheets 
 
 Owns the head spliced into a served frame, the Theme tab's token table, and the static color and flow reads the inspector shows, served through the face, sheet, and token routes in `src/server/routes/`, which `canon/context/board/server.md` owns. `starter.ts` writes a project `tokens.css`, refusing `tokens-exist` where a sheet reaches it.
 
-- One `<style data-frameboard>` goes first in `head`, importing the faces, the board sheet, the project sheet, then a kit's `assets/kit/kit.css`, so a frame's own stylesheet still wins
+- One `<style data-frameboard>` goes first in `head`, importing the faces, the board sheet, the project sheet, then the kit sheets `kitSheetFiles` lists, so a frame's own stylesheet still wins
 - It lands after a stated `head` start tag, else `html`, else the doctype, else byte 0 past a BOM, in the response alone, and the file on disk never changes
 - The style carries the served bytes' hash as `data-hash`, so a live frame names the exact file an address was read from
 - A self-removing script applies the `?theme=` query through `setFrameTheme`, setting `data-theme`, `color-scheme`, and `.dark` or `.light`, so a live frame keeps only the style
@@ -25,9 +25,9 @@ Owns the head spliced into a served frame, the Theme tab's token table, and the 
 
 Owns design kits, each a folder of plain files being `kit.json`, a `tokens.css` with a dark block, a `kit.css` of `kit-` classes, a `kit.md` an agent reads, and a `kit` page of sample frames. Clean, Sketch, and Wireframe sit in `shipped/`, copied to `dist/kits/` at build.
 
-- `install.ts` copies the tokens as the project's sheet, the page as its `kit` page, and the rest into `assets/kit/`
-  - It refuses `tokens-exist` where any sheet reaches the project, unless `replace` is given
-- `save.ts` writes a project's look into the board's `.kits/`, a dot folder so home never lists it, taking whichever sheet reaches the project and refusing a name a shipped or saved kit holds
+- `install.ts` copies a kit's folder into the project's `assets/kits/<kit>/`, touching no sheet and no page, and refuses `name-taken` where the project holds a kit by that name
+- `remove.ts` takes that folder out and clears the kit from every frame naming it under every page's lock, and `project.ts` lists a project's kits with the frames naming each
+- `save.ts` writes a project's look into the board's `.kits/`, a dot folder so home never lists it, taking whichever sheet reaches the project and an `assets/kit/` only where it holds `kit.json`
 - `list.ts` answers the shipped kits in picker order, then the board's own, each with its preview frame's laid-out size
 - Sketch's rough outline is an SVG filter given as a data URL on a `::before` layer, since the kit sheet reaches a frame holding no SVG of its own, and only that layer takes it so text stays crisp
 
