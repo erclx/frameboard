@@ -181,7 +181,7 @@ function huggingFrames(
 
 /**
  * The hugging frames whose file was written after their page's `layout.json`,
- * as one edited while no server ran, which the start sweep measures before
+ * as one edited while no server ran, which the start sweep measures after
  * the first board goes out. Every other frame's stored size already holds.
  */
 export async function writtenSinceLayout(board: ListResult): Promise<string[]> {

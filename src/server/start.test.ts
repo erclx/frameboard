@@ -880,6 +880,143 @@ describe.skipIf(shell === null)(
   },
 )
 
+describe.skipIf(shell === null)(
+  'startServer start measure',
+  { timeout: 30_000 },
+  () => {
+    let clientDir: string
+    let board: FixtureBoard
+    let servers: RunningServer[]
+    let sockets: WebSocket[]
+
+    beforeEach(() => {
+      clientDir = mkdtempSync(join(tmpdir(), 'frameboard-client-'))
+      board = copyFixtureBoard('live')
+      const layout = join(board.root, 'studio/home/layout.json')
+      const file = JSON.parse(readFileSync(layout, 'utf8'))
+      file.frames.hero.hugHeight = true
+      writeFileSync(layout, JSON.stringify(file))
+      servers = []
+      sockets = []
+    })
+
+    afterEach(async () => {
+      for (const socket of sockets) socket.terminate()
+      await Promise.all(servers.map((server) => server.close()))
+      board.cleanup()
+      rmSync(clientDir, { recursive: true, force: true })
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    // Dated against the layout, which the start sweep reads as edited offline or not.
+    const writeHero = (html: string, offsetMs: number) => {
+      const path = join(board.root, 'studio/home/hero.html')
+      writeFileSync(path, html)
+      const layout = statSync(join(board.root, 'studio/home/layout.json'))
+      const at = new Date(layout.mtimeMs + offsetMs)
+      utimesSync(path, at, at)
+    }
+
+    async function start() {
+      const { chromium } = await import('playwright-core')
+      const server = await startServer({
+        clientDir,
+        facesDir: clientDir,
+        root: board.root,
+        port: 0,
+        openUrl: () => {},
+        launch: () => chromium.launch(),
+      })
+      servers.push(server)
+      return server
+    }
+
+    async function connect(server: RunningServer) {
+      const messages: ServerMessage[] = []
+      const socket = new WebSocket(`ws://127.0.0.1:${server.port}/api/live`)
+      sockets.push(socket)
+      socket.on('message', (data) => messages.push(JSON.parse(String(data))))
+      await new Promise((resolve) => socket.once('open', resolve))
+      socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
+      return messages
+    }
+
+    const heroHeights = (messages: ServerMessage[]) =>
+      messages.flatMap((message) =>
+        message.type === 'board'
+          ? (message.data.projects[0]?.pages
+              .flatMap((page) => page.frames)
+              .filter((frame) => frame.ref === 'studio/home/hero')
+              .map((frame) => frame.box.height) ?? [])
+          : [],
+      )
+
+    it('sends a hello during the measure the stored size, then the measured board', async () => {
+      // Held until the hello hears a board, so the measure is still running then.
+      let requested: () => void = () => {}
+      const measuring = new Promise<void>((resolve) => {
+        requested = resolve
+      })
+      let release: () => void = () => {}
+      const released = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const held = createServer((_request, response) => {
+        requested()
+        void released.then(() => response.end(''))
+      })
+      await new Promise<void>((resolve) => held.listen(0, '127.0.0.1', resolve))
+      const { port } = held.address() as AddressInfo
+
+      try {
+        writeHero(
+          `<!doctype html><html><head><style>body { margin: 0 }</style><script src="http://127.0.0.1:${port}/hold.js"></script></head><body><div style="height: 1200px"></div></body></html>`,
+          5000,
+        )
+        const server = await start()
+        await measuring
+        const messages = await connect(server)
+
+        await expect
+          .poll(() => heroHeights(messages), { timeout: 10_000 })
+          .toEqual([900])
+        release()
+        // The last board, since the measure's own layout write sends one more.
+        await expect
+          .poll(() => heroHeights(messages).at(-1), { timeout: 10_000 })
+          .toBe(1200)
+      } finally {
+        release()
+        held.closeAllConnections()
+        await new Promise((resolve) => held.close(resolve))
+      }
+    })
+
+    it('sends one board on a start with no frame written since its layout', async () => {
+      writeHero(
+        '<!doctype html><html><head><style>body { margin: 0 }</style></head><body><div style="height: 900px"></div></body></html>',
+        -5000,
+      )
+      const server = await start()
+      const messages = await connect(server)
+
+      // A sentinel's reload lands behind any board the start still owed.
+      writeFileSync(join(board.root, 'studio/home/sentinel.html'), '<p>s</p>')
+      await expect
+        .poll(
+          () =>
+            messages.some(
+              (message) =>
+                message.type === 'reload' &&
+                message.refs.includes('studio/home/sentinel'),
+            ),
+          { timeout: 10_000 },
+        )
+        .toBe(true)
+      expect(heroHeights(messages)).toEqual([900, 900])
+    })
+  },
+)
+
 describe('withoutRepeats', () => {
   const board = (name: string): ServerMessage =>
     ({ type: 'board', data: { name } }) as unknown as ServerMessage
