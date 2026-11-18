@@ -122,7 +122,7 @@ export function registerHistoryActions({
     const [project = '', page = ''] = answer.page.split('/')
     navigate(boardUrl(project, page))
   }
-  // One step out at a time, a repeat dropped and one press slotted, so a held key overshoots once.
+  // One step out at a time, one press slotted, and a refusal emptying the slot, since a toast changes the next press.
   let out = false
   let queued: (() => void) | null = null
   // Waits only once refused as claimed, since the board cannot name its frames.

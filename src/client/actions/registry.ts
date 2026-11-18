@@ -187,9 +187,9 @@ function press(key: string, event: KeyboardEvent): void {
 }
 
 /**
- * tinykeys' default skip without its auto-repeat drop, also skipping an open
- * dialog but a toast, which base-ui gives `role="dialog"` and would otherwise
- * kill every key including undo.
+ * tinykeys' skip without its repeat drop, also skipping a dialog but a toast,
+ * whose `role="dialog"` would kill undo, Enter there staying with the toast. A
+ * target without `matches`, being a document or window, passes through.
  */
 function isTyping(event: KeyboardEvent): boolean {
   const target = event.target as Partial<HTMLElement> | null
