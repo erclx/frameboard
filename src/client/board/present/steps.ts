@@ -29,14 +29,23 @@ const STYLE_ID = 'frameboard-present-steps'
  * is. It keeps the hidden step's room, so revealing one moves nothing else,
  * and under reduced motion every step appears with no movement.
  */
-// canon-allow-embedded: interpolates the step attribute, length, and delay names, and is injected into the presented document as text
-const STEP_STYLE = `
-[${SHOWN}='hidden'] { visibility: hidden !important }
+/**
+ * Each effect's keyframes, named `frameboard-step-<effect>`. The inspector's
+ * tiles mount them in the board's own document too, so a tile plays the
+ * motion a presented step does.
+ */
+export const STEP_KEYFRAMES = `
 @keyframes frameboard-step-appear { from { visibility: hidden } to { visibility: visible } }
 @keyframes frameboard-step-fade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes frameboard-step-fly { from { opacity: 0; translate: 0 40px } to { opacity: 1; translate: 0 0 } }
 @keyframes frameboard-step-wipe { from { clip-path: inset(0 100% 0 0) } to { clip-path: inset(0 0 0 0) } }
 @keyframes frameboard-step-zoom { from { opacity: 0; scale: 0.6 } to { opacity: 1; scale: 1 } }
+`
+
+// canon-allow-embedded: interpolates the step attribute, length, and delay names, and is injected into the presented document as text
+const STEP_STYLE = `
+[${SHOWN}='hidden'] { visibility: hidden !important }
+${STEP_KEYFRAMES}
 @media (prefers-reduced-motion: no-preference) {
   [${SHOWN}='enter'] {
     animation-duration: ${STEP_MS}ms;
@@ -150,12 +159,7 @@ export function showSteps(
   shown: number,
   entering: number | null = null,
 ): void {
-  if (!doc.getElementById(STYLE_ID)) {
-    const style = doc.createElement('style')
-    style.id = STYLE_ID
-    style.textContent = STEP_STYLE
-    doc.head?.append(style)
-  }
+  holdStepStyle(doc)
   for (const [index, group] of groups.entries()) {
     for (const { element, effect, delayMs } of group) {
       const state =
@@ -165,6 +169,47 @@ export function showSteps(
       inlineStyleOf(element)?.setProperty(DELAY, `${delayMs}ms`)
     }
   }
+}
+
+function holdStepStyle(doc: Document): void {
+  if (doc.getElementById(STYLE_ID)) return
+  const style = doc.createElement('style')
+  style.id = STYLE_ID
+  style.textContent = STEP_STYLE
+  doc.head?.append(style)
+}
+
+/**
+ * How long an Appear preview holds the element hidden. Appear's own entrance
+ * runs 1 ms, which would show nothing, so the preview blinks it instead.
+ */
+const APPEAR_PREVIEW_MS = STEP_MS / 2
+
+/**
+ * Plays `effect` once on one element of a frame shown in Edit, as a press
+ * would reveal it, and takes every mark back off once it ends. The returned
+ * call ends it early, leaving the element as the file shows it. Under
+ * reduced motion the step style plays no entrance, so nothing moves. It
+ * writes no delay, which the style reads as none, so no `style` attribute
+ * is left behind on an element that held none.
+ */
+export function previewStep(element: Element, effect: StepEffect): () => void {
+  const doc = element.ownerDocument
+  holdStepStyle(doc)
+  const appear = effect === 'appear'
+  element.setAttribute(SHOWN, appear ? 'hidden' : 'enter')
+  element.setAttribute(`${SHOWN}-effect`, effect)
+  let done = false
+  const end = () => {
+    if (done) return
+    done = true
+    clearTimeout(timer)
+    element.removeAttribute(SHOWN)
+    element.removeAttribute(`${SHOWN}-effect`)
+    if (!doc.querySelector(`[${SHOWN}]`)) doc.getElementById(STYLE_ID)?.remove()
+  }
+  const timer = setTimeout(end, appear ? APPEAR_PREVIEW_MS : STEP_MS)
+  return end
 }
 
 /** Takes every mark the board wrote out of `doc`, so it shows each step as the file does. */
