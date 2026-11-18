@@ -57,6 +57,7 @@ const WRITING_SECTIONS = [
   'page-transition-own',
   'present-steps',
   'step-effect',
+  'presenter-view',
   'controls-edit',
   'controls-play',
   'controls-play-left',
