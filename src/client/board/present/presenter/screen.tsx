@@ -5,7 +5,7 @@ import { themeStore, useShownTheme } from '@/client/theme/store'
 import { bezelBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { fitScale } from '../fit'
+import { presentScale } from '../fit'
 import { ScaledFrame, type StepWalk } from '../overlay'
 import { useRoom } from '../room'
 import { presentOrder, presentStore, usePresent } from '../store'
@@ -301,7 +301,7 @@ function EndOfDeck({
 }) {
   const { width, height } = like.box
   const body = bezelBox({ x: 0, y: 0, width, height }, like.device)
-  const scale = fitScale(body, room)
+  const scale = presentScale(like, room)
   return (
     <div
       data-end-of-deck
