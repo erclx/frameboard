@@ -47,6 +47,9 @@ export default mergeConfig(
             // them too, and scripts/test-locked.ts bounds the whole run.
             testTimeout: 15_000,
             hookTimeout: 30_000,
+            // A frame's bridge can answer past `expect.poll`'s 1 s default on a
+            // loaded machine, so a poll waits 5 s, still well inside the test.
+            expect: { poll: { timeout: 5_000 } },
             browser: {
               enabled: true,
               // The provider finds a file's frame by a name every tester

@@ -27,6 +27,8 @@ The limit bounds a run that hangs, so a stuck run no longer holds a slot for goo
 
 `scripts/lib/tester-frame.ts` gives the browser project's provider a `frame()` that finds the running file's frame by its iframe id, since the provider's own can return the file before under load. `vitest.config.ts` wraps the provider in it until a Vitest upgrade fixes `frame()`.
 
+`vitest.config.ts` also gives the browser project's `expect.poll` 5 seconds rather than Vitest's 1, since a frame's bridge can answer past 1 second on a loaded machine. The node project keeps the 1 second default.
+
 ### `e2e/`
 
 Owns the Playwright specs by role in `cli/`, `agent-work/`, `hand-edits/`, and `shell/`, none at the root, the helpers in `e2e/support/`, the harness `e2e/screenshot.ts`, its cases in `e2e/capture/board/`, and the baseline in `e2e/evidence/`. A board-route load helper waits for `[data-layer]`, since the loading view's controls are inert.
