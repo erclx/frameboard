@@ -7,6 +7,7 @@ import {
   ASSETS_FOLDER,
   BOARD_FILE,
   FRAME_EXTENSION,
+  LAYOUT_FILE,
   PROJECT_FILE,
 } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
@@ -46,8 +47,7 @@ import { projectKits } from '../kits/project'
 import { isCode, readRecord, type RecordSpec } from './json-record'
 import { listTransitionNames } from './transitions'
 
-export const LAYOUT_FILE = 'layout.json'
-export { ASSETS_FOLDER, BOARD_FILE, FRAME_EXTENSION, PROJECT_FILE }
+export { ASSETS_FOLDER, BOARD_FILE, FRAME_EXTENSION, LAYOUT_FILE, PROJECT_FILE }
 
 export const layoutSpec: RecordSpec<LayoutFile> = {
   schema: layoutFileSchema,

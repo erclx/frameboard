@@ -25,13 +25,14 @@ import {
   checkNesting,
 } from './structure'
 import { checkTheme } from './theme'
-import { tokenSheets } from './tokens'
+import { frameKit, tokenSheets } from './tokens'
 import { checkUppercase } from './uppercase'
 
 /** What every frame in one project is checked against, read once per call. */
 export interface ProjectContext {
   config: ProjectChecks
-  tokens: Sheet[]
+  /** The sheets a frame naming `kit` renders with, read once for each kit. */
+  tokens: (kit: string | null) => Sheet[]
 }
 
 /**
@@ -46,9 +47,10 @@ export function checkFrame(target: FrameTarget): CheckResult {
 
 export function checkFrameIn(
   target: FrameTarget,
-  { config, tokens }: ProjectContext,
+  { config, tokens: tokensFor }: ProjectContext,
 ): Finding[] {
   const source = readFrame(target)
+  const tokens = tokensFor(frameKit(target))
   const cascade = buildCascade(source, tokens)
   return withoutOff(
     [
@@ -78,9 +80,16 @@ export function readProjectContext(
   project: string,
   boardSheet?: string | null,
 ): ProjectContext {
+  const byKit = new Map<string | null, Sheet[]>()
   return {
     config: readConfig(root, project),
-    tokens: tokenSheets(root, project, boardSheet),
+    tokens: (kit) => {
+      const held = byKit.get(kit)
+      if (held) return held
+      const sheets = tokenSheets(root, project, boardSheet, kit)
+      byKit.set(kit, sheets)
+      return sheets
+    },
   }
 }
 

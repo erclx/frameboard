@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -7,7 +6,13 @@ import { z } from 'zod'
 
 import { resolveAsset } from '@/server/board/assets'
 import { resolveFrameRef } from '@/server/board/refs'
-import { frameFrom, readFrame, type Sheet } from '@/server/checks/frame-source'
+import {
+  frameFrom,
+  type FrameTarget,
+  readFrame,
+  type Sheet,
+} from '@/server/checks/frame-source'
+import { frameKit, readSheets } from '@/server/checks/tokens'
 import { refuseClaimed } from '@/server/claims/gate'
 import { contentHash } from '@/server/edit/address'
 import { applyEdit } from '@/server/edit/apply'
@@ -410,7 +415,7 @@ export function editRoutes(
         if (!bare.ok) return bare
         const facts = elementPlaceFacts(
           frameFrom(frame, bare.html),
-          tokenSheets(frame.project),
+          tokenSheets(frame),
         )
         return placeElement(
           bare.html,
@@ -560,8 +565,7 @@ export function editRoutes(
           spot,
           drop: spot ? [] : (drop ?? []),
         })),
-        (html) =>
-          elementPlaceFacts(frameFrom(frame, html), tokenSheets(frame.project)),
+        (html) => elementPlaceFacts(frameFrom(frame, html), tokenSheets(frame)),
       )
       if (!result.ok) {
         return c.json(
@@ -605,7 +609,7 @@ export function editRoutes(
     // Facts read from other bytes than the hash names would pick the wrong tags.
     const facts =
       contentHash(source.html) === body.hash
-        ? elementPlaceFacts(source, tokenSheets(frame.project))
+        ? elementPlaceFacts(source, tokenSheets(frame))
         : []
     const result = placeFrameFile(
       frame.path,
@@ -658,7 +662,7 @@ export function editRoutes(
     // Facts read from other bytes than the hash names would pick the wrong tags.
     const facts =
       contentHash(source.html) === body.hash
-        ? elementPlaceFacts(source, tokenSheets(frame.project))
+        ? elementPlaceFacts(source, tokenSheets(frame))
         : []
     const result = wrapFrameFile(
       frame.path,
@@ -756,18 +760,11 @@ export function editRoutes(
     return c.json({ ok: true, data })
   })
 
-  /** The project's token sheets as the cascade reads them, board-wide first. */
-  const tokenSheets = (project: string): Sheet[] => {
-    const paths = sheets?.(project)
-    return [paths?.board ?? null, paths?.project ?? null]
-      .filter((path) => path !== null)
-      .map((path) => ({
-        css: readFileSync(path, 'utf8'),
-        origin: 'token',
-        path,
-        offset: 0,
-      }))
-  }
+  /** The sheets the frame renders with ahead of its own, as the frame route imports them. */
+  const tokenSheets = (frame: FrameTarget): Sheet[] =>
+    sheets
+      ? readSheets(root, frame.project, sheets(frame.project), frameKit(frame))
+      : []
 
   app.onError(answerRefusal)
 
