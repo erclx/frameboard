@@ -7,12 +7,14 @@ import { expect, type Page } from '@playwright/test'
 import type { ListResult } from '@/shared/records/list'
 
 import type { CaptureCase } from '../types'
+import { pointerPressOnLoad } from './canvas'
 import {
   asWriter,
   AVATAR,
   both,
   chooseOnLoad,
   LIVE_BOARD,
+  noAgentChanges,
   noTokens,
   openOverlayOnLoad,
   PRESS_FRAMES,
@@ -23,6 +25,7 @@ import {
   STATE_ONLY,
   TAB_FRAMES,
   themedFor,
+  webappKits,
 } from './setup'
 
 /**
@@ -657,6 +660,27 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
       setup: themed(both(longBoardSheet, themeTab)),
+    },
+    {
+      // Two kits added, one on a frame, and the Add kit list open over the tokens.
+      section: 'theme-tab-kits',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          webappKits,
+          noAgentChanges,
+          themeTab,
+          pointerPressOnLoad(
+            'section[aria-labelledby="theme-kits"] [aria-haspopup="menu"]',
+          ),
+          readyWhen('[role="menu"] [role="menuitem"][aria-disabled="true"]'),
+        ),
+      ),
     },
     {
       section: 'theme-tab-empty',
