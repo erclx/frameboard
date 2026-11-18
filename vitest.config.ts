@@ -1,6 +1,7 @@
 import { playwright } from '@vitest/browser-playwright'
 import { defineConfig, mergeConfig } from 'vitest/config'
 
+import { ownTesterFrame } from './scripts/lib/tester-frame.ts'
 import viteConfig from './vite.config.ts'
 
 // The dev proxy sends a frame iframe's request on to the board server
@@ -48,7 +49,9 @@ export default mergeConfig(
             hookTimeout: 30_000,
             browser: {
               enabled: true,
-              provider: playwright(),
+              // The provider finds a file's frame by a name every tester
+              // iframe shares, which a loaded run answers with the file before.
+              provider: ownTesterFrame(playwright()),
               headless: true,
               // Wide enough for the board's panels, which hide below 1024.
               viewport: { width: 1280, height: 800 },
