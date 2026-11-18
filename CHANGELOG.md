@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.39.0](https://github.com/erclx/frameboard/compare/v0.38.0...v0.39.0) (2026-11-18)
+
+
+### Features
+
+* **board:** place a device frame with its body clear of its neighbor ([#367](https://github.com/erclx/frameboard/issues/367)) ([3804607](https://github.com/erclx/frameboard/commit/3804607e0330d99a90a752abc6fcd9aefbe1ec80))
+* **board:** pulse a grey block over a frame still loading past a second ([#369](https://github.com/erclx/frameboard/issues/369)) ([1c56c42](https://github.com/erclx/frameboard/commit/1c56c424ec027b7e93d879948310b7cb17c1dd41))
+* **controls:** tune drawn controls in Play and keep their values ([#354](https://github.com/erclx/frameboard/issues/354)) ([4f74e83](https://github.com/erclx/frameboard/commit/4f74e835ac629442557888f58e06d1653c29bb54))
+* **kits:** pick a project's look from design kit preview cards ([#356](https://github.com/erclx/frameboard/issues/356)) ([b113ac1](https://github.com/erclx/frameboard/commit/b113ac189dead29bddd790f605b4ff19fd633a2d))
+* **server:** send the first board ahead of the start measure ([#365](https://github.com/erclx/frameboard/issues/365)) ([b730f15](https://github.com/erclx/frameboard/commit/b730f15975efc7a01ac392996d99d7f4fec9486e))
+
+
+### Bug Fixes
+
+* **board:** leave an entered frame on Esc from a focused field ([#364](https://github.com/erclx/frameboard/issues/364)) ([43eefd1](https://github.com/erclx/frameboard/commit/43eefd1b74b3d6fa19c52acaa324b2b28148b167))
+* **home:** run the folder tab's fill into the card to close its seam ([#368](https://github.com/erclx/frameboard/issues/368)) ([e9cd01a](https://github.com/erclx/frameboard/commit/e9cd01a7c5dc7ab474cf52cde09349840035481c))
+
 ## [0.38.0](https://github.com/erclx/frameboard/compare/v0.37.0...v0.38.0) (2026-11-16)
 
 
