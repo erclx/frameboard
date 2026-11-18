@@ -80,6 +80,16 @@ describe('assets', () => {
       ])
     })
 
+    it('skips a license file, so neither the Assets tab nor the usage counts draw one', async () => {
+      put('house.jpg')
+      put('house.jpg.license.json', '{}')
+      put('img/tree.png.license.json', '{}')
+
+      expect((await listAssets(project)).map((file) => file.path)).toEqual([
+        'house.jpg',
+      ])
+    })
+
     it('skips a symlink that leaves the folder and keeps one that stays', async () => {
       put('real.png')
       writeFileSync(join(board.root, 'secret.png'), 'secret')

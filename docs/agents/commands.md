@@ -1,6 +1,6 @@
 ---
 title: Commands
-description: The board commands an agent runs to edit, inspect, capture, size, and share frames
+description: The board commands an agent runs to edit, inspect, capture, size, and share frames, and to find or generate images
 ---
 
 # Commands
@@ -53,6 +53,15 @@ A responsive page is one frame file shown at several widths, so every fix to the
 `frame device <frame-ref> on`, or `--device on` on `frame add`, has the board draw the frame inside the device its width names, being a phone from 320 to 479 wide, a tablet from 480 to 1023, and a laptop from 1024 up. The frame file and its size stay as they are, and `off` hides it.
 
 The older `phone` and `tablet` read as `on`, and `none` as `off`.
+
+## Images
+
+The `image` commands put a picture into a project's `assets/` with a `<file>.license.json` beside it, which records where it came from.
+
+- `image find "<query>"` searches Openverse for public domain images with no key and writes nothing, and `--credited` adds images that ask only for credit
+- `--save <id>` saves one result, and `--name <stem>` names the file, which otherwise takes the query
+- `image generate "<prompt>"` runs on fal or Google, whichever key the environment holds first, and spends on that key at once, so `--dry-run` answers the provider and price first
+- `image doctor` reports the GPU, a local ComfyUI server, and which keys are set, and installs nothing
 
 ## Design references
 

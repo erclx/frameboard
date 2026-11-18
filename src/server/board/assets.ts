@@ -20,6 +20,7 @@ import {
 import { ASSETS_FOLDER } from '@/shared/board-files'
 import { NAME_MAX_LENGTH, nextFreeName } from '@/shared/names'
 import type { AssetAddResult, AssetFile } from '@/shared/records/assets'
+import { LICENSE_FILE_SUFFIX } from '@/shared/records/sourcing'
 
 import { isCode, LOCK_SUFFIX, TEMP_SUFFIX } from './json-record'
 
@@ -31,8 +32,8 @@ export interface AssetUpload {
 
 /**
  * Every file under a project's `assets/` by relative path, skipping dot-named
- * paths, lock and temp files, and any file whose real path leaves the folder.
- * A folder that does not exist lists as empty.
+ * paths, lock, temp, and license files, and any file whose real path leaves
+ * the folder. A folder that does not exist lists as empty.
  */
 export async function listAssets(projectDir: string): Promise<AssetFile[]> {
   const folder = join(projectDir, ASSETS_FOLDER)
@@ -69,6 +70,8 @@ async function walk(
       await walk(path, `${prefix}${name}/`, real, into)
       continue
     }
+    // An image's license file shows on the image's own tile, never as a tile of its own.
+    if (name.endsWith(LICENSE_FILE_SUFFIX)) continue
     // A symlink counts only when it resolves to a file inside the folder.
     let target: string
     let size: number

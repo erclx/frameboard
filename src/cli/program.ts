@@ -10,6 +10,7 @@ import { registerDocs } from './commands/docs'
 import { registerEdit } from './commands/edit'
 import { registerEditing } from './commands/editing'
 import { registerFrame } from './commands/frame'
+import { registerImage } from './commands/image'
 import { registerInbox } from './commands/inbox'
 import { registerInspect } from './commands/inspect'
 import { registerKit } from './commands/kit'
@@ -34,6 +35,8 @@ export interface CliIo {
   openUrl: (url: string) => void
   /** Aborting stops a running `serve`, closing its server and removing its address file. */
   signal?: AbortSignal
+  /** The network for a verb reaching outside the machine, the global `fetch` when absent. */
+  fetch?: typeof fetch
 }
 
 /** The flags every verb takes, and `--project` where a project applies. */
@@ -169,6 +172,7 @@ export function createProgram(context: ProgramContext): Command {
   registerList(program, context)
   registerProject(program, context)
   registerKit(program, context)
+  registerImage(program, context)
   registerPage(program, context)
   registerFrame(program, faced)
   registerEdit(program, context)

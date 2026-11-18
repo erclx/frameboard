@@ -29,6 +29,7 @@ describe('docs', () => {
       contentFormat: {
         controls: string[]
         kits: string[]
+        images: string[]
         names: { pattern: string }
         frameSizes: Record<string, { width: number; height: number }>
       }
@@ -62,6 +63,9 @@ describe('docs', () => {
       'kit list',
       'kit add',
       'kit save',
+      'image find',
+      'image generate',
+      'image doctor',
       'page add',
       'page duplicate',
       'page rename',
@@ -110,6 +114,23 @@ describe('docs', () => {
     expect(records.layout?.type).toBe('object')
   })
 
+  it('prints the image records and the codes their verbs refuse with', async () => {
+    const run = await cli(['docs', '--json'], { cwd })
+    const data = run.json().data as {
+      records: Record<string, { type?: string; oneOf?: unknown[] }>
+      exitCodes: Record<string, number>
+    }
+
+    expect(data.records.imageFind?.type).toBe('object')
+    expect(data.records.licenseFile?.oneOf).toHaveLength(2)
+    expect(data.exitCodes).toMatchObject({
+      'result-not-found': 3,
+      'no-provider': 3,
+      'source-failed': 13,
+      'provider-failed': 13,
+    })
+  })
+
   it('appends the social and video sizes after every earlier size, unchanged', async () => {
     const { contentFormat } = await docs()
 
@@ -135,6 +156,16 @@ describe('docs', () => {
     expect(contentFormat.controls[0]).toContain(
       'data-binds="<selector> <--property>" and data-unit="<unit>"',
     )
+  })
+
+  it('states the default licenses, the provider order, and the license file', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.images[0]).toContain('under cc0, pdm alone')
+    expect(contentFormat.images[1]).toContain(
+      'fal (fal-ai/flux/schnell, FAL_KEY), google (gemini-nano-banana-2.1, GEMINI_API_KEY)',
+    )
+    expect(contentFormat.images[2]).toContain('<file>.license.json')
   })
 
   it('names the kit files, the shipped kits, and where an installed kit sits', async () => {

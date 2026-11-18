@@ -30,7 +30,13 @@ export async function cli(
     cwd,
     signal,
     clientDir = STUB_CLIENT,
-  }: { cwd: string; signal?: AbortSignal; clientDir?: string },
+    fetch,
+  }: {
+    cwd: string
+    signal?: AbortSignal
+    clientDir?: string
+    fetch?: typeof globalThis.fetch
+  },
 ): Promise<CliRun> {
   let stdout = ''
   let stderr = ''
@@ -43,6 +49,7 @@ export async function cli(
       cwd,
       openUrl: (url) => opened.push(url),
       signal,
+      fetch,
     },
     { clientDir },
   )
