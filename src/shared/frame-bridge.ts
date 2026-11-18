@@ -153,6 +153,17 @@ export function isElementBox(value: unknown): value is ElementBox {
   )
 }
 
+/** Whether a value is how a text edit ends, what `text-edit` pushes. */
+export function isTextEditEnd(value: unknown): value is TextEditEnd {
+  if (!isRecord(value)) return false
+  if (value.kind === 'closed') return true
+  return (
+    value.kind === 'commit' &&
+    typeof value.text === 'string' &&
+    typeof value.breaks === 'boolean'
+  )
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }

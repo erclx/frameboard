@@ -4,6 +4,7 @@ import {
   BRIDGE_TAG,
   isElementAddress,
   isElementBox,
+  isTextEditEnd,
   readBridgeMessage,
 } from './frame-bridge'
 
@@ -145,5 +146,22 @@ describe('isElementBox', () => {
     ['an infinite edge', { left: 0, top: 1, right: Infinity, bottom: 3 }],
   ])('refuses %s', (_case, value) => {
     expect(isElementBox(value)).toBe(false)
+  })
+})
+
+describe('isTextEditEnd', () => {
+  it.each([
+    ['a commit', { kind: 'commit', text: 'Hi', breaks: false }],
+    ['a close', { kind: 'closed' }],
+  ])('accepts %s', (_case, value) => {
+    expect(isTextEditEnd(value)).toBe(true)
+  })
+
+  it.each([
+    ['a commit with no text', { kind: 'commit', breaks: false }],
+    ['a commit with no breaks flag', { kind: 'commit', text: 'Hi' }],
+    ['an unknown kind', { kind: 'open' }],
+  ])('refuses %s', (_case, value) => {
+    expect(isTextEditEnd(value)).toBe(false)
   })
 })

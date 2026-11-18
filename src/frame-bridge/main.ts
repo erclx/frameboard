@@ -9,6 +9,8 @@ import {
   readBridgeMessage,
 } from '@/shared/frame-bridge'
 
+import { openTextEdit } from './text-edit'
+
 /**
  * Answers one request, returning its reply value. A thrown error replies as
  * a refusal.
@@ -38,8 +40,45 @@ function elementBox(args: unknown): ElementBox | null {
   return { left, top, right, bottom }
 }
 
+/** The open text edits by their request id, each answering how to cancel it. */
+const editing = new Map<string, () => void>()
+
+/** The committed text edits awaiting the board's write, each answering how to show the old text. */
+const committed = new Map<string, () => void>()
+
+function textEdit(args: unknown, id: string): boolean {
+  if (!isElementAddress(args)) throw new Error('not an element address')
+  const element = addressed(args)
+  const cancel =
+    element &&
+    openTextEdit(element, (end, restore) => {
+      editing.delete(id)
+      if (end.kind === 'commit') committed.set(id, restore)
+      send({ tag: BRIDGE_TAG, kind: 'push', id, value: end })
+    })
+  if (!cancel) return false
+  editing.set(id, cancel)
+  return true
+}
+
+function textWritten(args: unknown): null {
+  const { edit, written } = (args ?? {}) as {
+    edit?: unknown
+    written?: unknown
+  }
+  if (typeof edit !== 'string' || typeof written !== 'boolean') {
+    throw new Error('not a written edit')
+  }
+  const restore = committed.get(edit)
+  committed.delete(edit)
+  if (!written) restore?.()
+  return null
+}
+
 const handlers: Partial<Record<BridgeOp, Handler>> = {
   'element-box': elementBox,
+  'text-edit': textEdit,
+  'text-written': textWritten,
 }
 
 function send(message: BridgeMessage): void {
@@ -51,6 +90,10 @@ if (board !== window) {
   window.addEventListener('message', (event) => {
     if (event.source !== board) return
     const message = readBridgeMessage(event, boardOrigin)
+    if (message?.kind === 'close') {
+      editing.get(message.id)?.()
+      editing.delete(message.id)
+    }
     if (message?.kind !== 'request') return
     const { id } = message
     const handler = handlers[message.op]
