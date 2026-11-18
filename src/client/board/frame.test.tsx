@@ -13,6 +13,7 @@ import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 import { ringFocused } from '@/test/focus-ring'
 
+import { holdShown } from './bridge/shown'
 import { openFindings } from './findings/open'
 import { Frame, LabelRename } from './frame'
 import { stampRenderedHash } from './frame-dom'
@@ -1174,10 +1175,8 @@ describe('Frame preview', () => {
     await loaded(iframe)
     const document = iframe.contentDocument
     if (!document) throw new Error('no frame document')
-    document.head.insertAdjacentHTML(
-      'beforeend',
-      '<style data-frameboard data-hash="old"></style>',
-    )
+    // As the page's bridge would announce the bytes it shows.
+    holdShown(iframe, 'old')
     document.body.innerHTML = '<div style="height:320px"></div>'
     document.body.style.margin = '0'
     act(() => setPreview(['studio/home/a'], 1440))

@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 // The board and a frame's bridge talk over `postMessage`, whatever the frame's
 // origin. A request's id comes back on its one reply, and on every push a
 // subscribing op sends until either side closes it.
@@ -46,6 +48,8 @@ export type TextEditEnd =
 export interface BridgeOps {
   /** The element's live box, or null when the frame shows other bytes or no element there. */
   'element-box': { args: ElementAddress; value: ElementBox | null; push: never }
+  /** Moves the frame's stamp to a hash whose bytes it already shows, answering whether it held one to move. */
+  restamp: { args: { hash: string }; value: boolean; push: never }
   /** Opens the element's text for typing, answering whether it opened, and pushes how the edit ends. */
   'text-edit': { args: TextEditArgs; value: boolean; push: TextEditEnd }
   /** Tells a committed edit, by its request id, whether the text was written, so a refusal shows the old text. */
@@ -82,9 +86,21 @@ export type BridgeMessage =
     }
   | { tag: typeof BRIDGE_TAG; kind: 'push'; id: string; value: unknown }
   | { tag: typeof BRIDGE_TAG; kind: 'close'; id: string }
+  /**
+   * The hash of the bytes a frame shows, outside any request, posted as its
+   * bridge starts, on a restamp, and null as its page goes away. `page` names
+   * the page, since a page going away posts with no window to tell it by.
+   */
+  | {
+      tag: typeof BRIDGE_TAG
+      kind: 'shown'
+      page: string
+      hash: string | null
+    }
 
 const OPS: readonly string[] = [
   'element-box',
+  'restamp',
   'text-edit',
   'text-written',
 ] satisfies readonly BridgeOp[]
@@ -100,13 +116,16 @@ export function readBridgeMessage(
 ): BridgeMessage | null {
   const { data } = event
   if (event.origin !== origin || !isRecord(data)) return null
-  if (
-    data.tag !== BRIDGE_TAG ||
-    typeof data.id !== 'string' ||
-    data.id === ''
-  ) {
-    return null
+  if (data.tag !== BRIDGE_TAG) return null
+  if (data.kind === 'shown') {
+    const { page, hash } = data
+    return typeof page === 'string' &&
+      page !== '' &&
+      (typeof hash === 'string' || hash === null)
+      ? { tag: BRIDGE_TAG, kind: 'shown', page, hash }
+      : null
   }
+  if (typeof data.id !== 'string' || data.id === '') return null
   const { id } = data
   switch (data.kind) {
     case 'request':
@@ -141,6 +160,60 @@ export function readBridgeMessage(
   }
 }
 
+const elementBoxSchema = z.object({
+  left: z.number().finite(),
+  top: z.number().finite(),
+  right: z.number().finite(),
+  bottom: z.number().finite(),
+})
+
+const textEditEndSchema = z.union([
+  z.object({
+    kind: z.literal('commit'),
+    text: z.string(),
+    breaks: z.boolean(),
+    run: z.number().int().nonnegative().optional(),
+  }),
+  z.object({ kind: z.literal('closed') }),
+])
+
+/** What each op's reply and pushes must hold, checked where the board takes them in. */
+const SCHEMAS: {
+  [O in BridgeOp]: {
+    value: z.ZodType<BridgeOps[O]['value']>
+    push?: z.ZodType<BridgeOps[O]['push']>
+  }
+} = {
+  'element-box': { value: elementBoxSchema.nullable() },
+  restamp: { value: z.boolean() },
+  'text-edit': { value: z.boolean(), push: textEditEndSchema },
+  'text-written': { value: z.null() },
+}
+
+/** What `replyValue` and `pushValue` answer for a value its schema refuses. */
+export const REFUSED: unique symbol = Symbol('refused')
+
+/**
+ * An op's reply value as its schema reads it, or `refused` for one of any
+ * other shape, since a frame's script can post in the bridge's shape.
+ */
+export function replyValue<O extends BridgeOp>(
+  op: O,
+  value: unknown,
+): BridgeOps[O]['value'] | typeof REFUSED {
+  const read = SCHEMAS[op].value.safeParse(value)
+  return read.success ? read.data : REFUSED
+}
+
+/** A pushed value as its op's schema reads it, or `refused` as `replyValue` answers. */
+export function pushValue<O extends BridgeOp>(
+  op: O,
+  value: unknown,
+): BridgeOps[O]['push'] | typeof REFUSED {
+  const read = SCHEMAS[op].push?.safeParse(value)
+  return read?.success ? read.data : REFUSED
+}
+
 /** Whether a value is an element address, the arguments the element ops take. */
 export function isElementAddress(value: unknown): value is ElementAddress {
   return (
@@ -163,23 +236,12 @@ export function isTextEditArgs(value: unknown): value is TextEditArgs {
 
 /** Whether a value is an element box, the value `element-box` replies with. */
 export function isElementBox(value: unknown): value is ElementBox {
-  return (
-    isRecord(value) &&
-    [value.left, value.top, value.right, value.bottom].every(Number.isFinite)
-  )
+  return elementBoxSchema.safeParse(value).success
 }
 
 /** Whether a value is how a text edit ends, what `text-edit` pushes. */
 export function isTextEditEnd(value: unknown): value is TextEditEnd {
-  if (!isRecord(value)) return false
-  if (value.kind === 'closed') return true
-  return (
-    value.kind === 'commit' &&
-    typeof value.text === 'string' &&
-    typeof value.breaks === 'boolean' &&
-    (value.run === undefined ||
-      (Number.isInteger(value.run) && (value.run as number) >= 0))
-  )
+  return textEditEndSchema.safeParse(value).success
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

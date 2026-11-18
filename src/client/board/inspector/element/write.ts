@@ -1,8 +1,8 @@
 import { toast } from '@/client/components/ui/toast'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
-import { renderedHash } from '@/shared/frame-bridge/elements'
 import type { EditResult } from '@/shared/records/edit'
 
+import { shownHashOf } from '../../bridge/shown'
 import { WaitDropped, whenFree } from '../../claims/waiting'
 import { catchUpTree, trees } from '../../element/tree'
 import { liveIframe, stampRenderedHash } from '../../frame-dom'
@@ -408,8 +408,8 @@ async function editInTurn(
 
 /** The hash of the bytes a frame's live iframe shows, null while none does. */
 export function shownHash(ref: string): string | null {
-  const shown = liveIframe(ref)?.contentDocument
-  return shown ? renderedHash(shown) : null
+  const iframe = liveIframe(ref)
+  return iframe ? shownHashOf(iframe) : null
 }
 
 /**

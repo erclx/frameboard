@@ -1,4 +1,5 @@
-import { LOOK_MARKER, RENDERED_HASH } from '@/shared/theme'
+import { request } from './bridge/channel'
+import { holdShown, shownHashOf } from './bridge/shown'
 
 /** A frame's own live iframe on the canvas, leaving out its linked widths. */
 export function liveIframe(ref: string): HTMLIFrameElement | null {
@@ -17,15 +18,17 @@ export const RESTAMPED = 'frameboard:restamped'
 /**
  * Stamps a live frame as rendering the file `hash` names, as its reload
  * would have, for a page that already shows those bytes, and dispatches
- * `RESTAMPED` on the iframe. A page with no stamp to move is left alone.
+ * `RESTAMPED` on the iframe. The board holds the hash at once, ahead of the
+ * frame's word, so a read the event wakes sees it. A page announcing no
+ * stamp is left alone.
  */
 export function stampRenderedHash(
   iframe: HTMLIFrameElement,
   hash: string,
 ): void {
-  const stamp = iframe.contentDocument?.querySelector(`style[${LOOK_MARKER}]`)
-  if (!stamp) return
-  stamp.setAttribute(RENDERED_HASH, hash)
+  if (shownHashOf(iframe) === null) return
+  holdShown(iframe, hash)
+  void request(iframe, 'restamp', { hash })
   iframe.dispatchEvent(new Event(RESTAMPED))
 }
 

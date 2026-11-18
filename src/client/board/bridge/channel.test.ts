@@ -78,6 +78,17 @@ describe('request', () => {
     await expect(answer).resolves.toBeNull()
   })
 
+  it('answers null for a reply its schema refuses', async () => {
+    const asked = await mount('')
+    const sent = nextRequestId(asked)
+
+    const answer = request(asked, 'element-box', { index: 3, hash: HASH })
+    const id = await sent
+    postFrom(asked, { tag: BRIDGE_TAG, kind: 'reply', id, ok: true, value: 1 })
+
+    await expect(answer).resolves.toBeNull()
+  })
+
   it('ignores a reply from a window it never asked', async () => {
     const asked = await mount('')
     const other = await mount('')
@@ -110,6 +121,21 @@ describe('request', () => {
   })
 })
 
+/** Resolves once the frame's `drained` marker, posted after everything before it, reaches the board. */
+function untilDrained(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const done = (event: MessageEvent) => {
+      if (event.data !== 'drained') return
+      window.removeEventListener('message', done)
+      resolve()
+    }
+    window.addEventListener('message', done)
+  })
+}
+
+const BEFORE = { kind: 'commit', text: 'Hi', breaks: false }
+const AFTER = { kind: 'closed' }
+
 describe('subscribe', () => {
   it('delivers no push once the frame closes the subscription', async () => {
     const asked = await mount('')
@@ -138,13 +164,38 @@ describe('subscribe', () => {
       ok: true,
       value: true,
     })
-    postFrom(asked, { tag: BRIDGE_TAG, kind: 'push', id, value: 'before' })
+    postFrom(asked, { tag: BRIDGE_TAG, kind: 'push', id, value: BEFORE })
     postFrom(asked, { tag: BRIDGE_TAG, kind: 'close', id })
-    postFrom(asked, { tag: BRIDGE_TAG, kind: 'push', id, value: 'after' })
+    postFrom(asked, { tag: BRIDGE_TAG, kind: 'push', id, value: AFTER })
     postFrom(asked, 'drained')
     await drained
 
     await expect(subscription.opened).resolves.toBe(true)
-    expect(pushes).toEqual(['before'])
+    expect(pushes).toEqual([BEFORE])
+  })
+
+  it('drops a push in a shape its op never pushes', async () => {
+    const asked = await mount('')
+    const sent = nextRequestId(asked)
+    const pushes: unknown[] = []
+    subscribe(asked, 'text-edit', { index: 3, hash: HASH }, (value) =>
+      pushes.push(value),
+    )
+    const id = await sent
+    const drained = untilDrained()
+
+    postFrom(asked, {
+      tag: BRIDGE_TAG,
+      kind: 'reply',
+      id,
+      ok: true,
+      value: true,
+    })
+    postFrom(asked, { tag: BRIDGE_TAG, kind: 'push', id, value: 'typed' })
+    postFrom(asked, { tag: BRIDGE_TAG, kind: 'push', id, value: AFTER })
+    postFrom(asked, 'drained')
+    await drained
+
+    expect(pushes).toEqual([AFTER])
   })
 })

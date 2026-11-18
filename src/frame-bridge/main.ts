@@ -9,6 +9,7 @@ import {
   isTextEditArgs,
   readBridgeMessage,
 } from '@/shared/frame-bridge/messages'
+import { LOOK_MARKER, RENDERED_HASH } from '@/shared/theme'
 
 import { openTextEdit } from './text-edit'
 
@@ -80,8 +81,20 @@ function textWritten(args: unknown): null {
   return null
 }
 
+/** Moves the frame route's stamp to a hash whose bytes the page already shows, then announces it. */
+function restamp(args: unknown): boolean {
+  const { hash } = (args ?? {}) as { hash?: unknown }
+  if (typeof hash !== 'string') throw new Error('not a hash')
+  const stamp = document.querySelector(`style[${LOOK_MARKER}]`)
+  if (!stamp) return false
+  stamp.setAttribute(RENDERED_HASH, hash)
+  announce()
+  return true
+}
+
 const handlers: Partial<Record<BridgeOp, Handler>> = {
   'element-box': elementBox,
+  restamp,
   'text-edit': textEdit,
   'text-written': textWritten,
 }
@@ -90,8 +103,17 @@ function send(message: BridgeMessage): void {
   board.postMessage(message, boardOrigin)
 }
 
+/** Tells the board which bytes the page shows, which it holds for every read a press takes at once. */
+function announce(hash = renderedHash(document)): void {
+  send({ tag: BRIDGE_TAG, kind: 'shown', page, hash })
+}
+
+const page = crypto.randomUUID()
+
 // A frame shown on its own, as capture and the phone link show one, has no board.
 if (board !== window) {
+  announce()
+  window.addEventListener('pagehide', () => announce(null))
   window.addEventListener('message', (event) => {
     if (event.source !== board) return
     const message = readBridgeMessage(event, boardOrigin)
