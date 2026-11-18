@@ -315,7 +315,7 @@ async function drawBezel(
     await page.setContent(
       `<!doctype html><html><body style="margin:0;background:transparent">` +
         `<div style="position:absolute;left:${-outer.x}px;top:${-outer.y}px;width:${box.width}px;height:${box.height}px">` +
-        `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="display:block;width:100%;height:100%">` +
+        `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="display:block;width:100%;height:100%;border-radius:${radius}">` +
         `<div style="position:absolute;inset:0;border-radius:${radius};box-shadow:${bezelShadow(device, { board: false })}">${marks}</div>` +
         `</div></body></html>`,
       { waitUntil: 'load' },
