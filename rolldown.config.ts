@@ -9,8 +9,12 @@ const resolve = {
 // Left to the installed package, since it ships browser protocol files a bundle
 // cannot carry, and loaded through a dynamic import only by verbs that render.
 // oxfmt is an optional peer of 17 MB that only `references sync` loads.
-// rolldown builds the frame bridge on a source run alone, never from the bundle.
-const external = ['playwright-core', 'oxfmt', 'rolldown']
+const external = [
+  'playwright-core',
+  'oxfmt',
+  // Builds the frame bridge on a source run alone, never from the bundle.
+  'rolldown',
+]
 
 // One config per entry, so a later entry never shares a chunk with the CLI.
 export default defineConfig([
