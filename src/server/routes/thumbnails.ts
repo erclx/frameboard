@@ -6,12 +6,14 @@ import { scanBoard } from '@/server/board/scan'
 import type { ThumbnailStore } from '@/server/capture/thumbnails'
 import { cardFrames } from '@/shared/card-frames'
 import { FrameboardError } from '@/shared/errors'
+import type { ListResult } from '@/shared/records/list'
 import { isTheme, type Theme } from '@/shared/theme'
 
 import { answerRefusal } from './envelope'
 
 /**
- * The thumbnail routes, queueing stale renders so home hears each landing on
+ * The thumbnail routes, answering each project's card frames or one named
+ * page's visible frames, queueing stale renders so home hears each landing on
  * the socket, and caching a capture for good, since a change takes a new stamp.
  */
 export function thumbnailRoutes(root: string, store: ThumbnailStore): Hono {
@@ -20,15 +22,18 @@ export function thumbnailRoutes(root: string, store: ThumbnailStore): Hono {
   app.get('/api/thumbnails', async (c) => {
     const theme = themeOf(
       c.req.query('theme'),
-      'Ask for /api/thumbnails?theme=<light|dark>.',
+      'Ask for /api/thumbnails?theme=<light|dark>&page=<page-ref>.',
     )
     const board = await scanBoard(root)
-    const frames = board.projects.flatMap((project) =>
-      cardFrames(project).map(({ ref, box }) => ({
-        ref,
-        box: { width: box.width, height: box.height },
-      })),
-    )
+    const page = c.req.query('page')
+    const picked =
+      page === undefined
+        ? board.projects.flatMap((project) => cardFrames(project))
+        : visibleFramesOf(board, page)
+    const frames = picked.map(({ ref, box }) => ({
+      ref,
+      box: { width: box.width, height: box.height },
+    }))
     return c.json({ ok: true, data: { stamps: store.ask(theme, frames) } })
   })
 
@@ -58,6 +63,22 @@ export function thumbnailRoutes(root: string, store: ThumbnailStore): Hono {
   app.onError(answerRefusal)
 
   return app
+}
+
+function visibleFramesOf(board: ListResult, ref: string) {
+  const page = board.projects
+    .flatMap((project) => project.pages)
+    .find((candidate) => candidate.ref === ref)
+  if (!page) {
+    throw new FrameboardError(
+      'page-not-found',
+      `No page ${ref} on the board.`,
+      {
+        page: ref,
+      },
+    )
+  }
+  return page.frames.filter((frame) => !frame.hidden)
 }
 
 function themeOf(value: string | undefined, usage: string): Theme {

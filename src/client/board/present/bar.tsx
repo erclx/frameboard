@@ -1,6 +1,14 @@
-import { ChevronLeft, ChevronRight, type LucideIcon, X } from 'lucide-react'
+import {
+  ChevronLeft,
+  ChevronRight,
+  LayoutGrid,
+  type LucideIcon,
+  X,
+} from 'lucide-react'
 interface PresentBarProps {
   shown: boolean
+  /** Whether the overview covers the bar, which then takes no focus or press. */
+  covered: boolean
   /** One-based, as the count reads. */
   at: number
   count: number
@@ -10,6 +18,7 @@ interface PresentBarProps {
   name: string
   onPrevious: () => void
   onNext: () => void
+  onOverview: () => void
   onLeave: () => void
 }
 
@@ -19,6 +28,7 @@ interface PresentBarProps {
  */
 export function PresentBar({
   shown,
+  covered,
   at,
   count,
   step,
@@ -26,12 +36,14 @@ export function PresentBar({
   name,
   onPrevious,
   onNext,
+  onOverview,
   onLeave,
 }: PresentBarProps) {
   return (
     <div
       role="toolbar"
       aria-label="Presenting"
+      inert={covered}
       data-shown={shown || undefined}
       className="absolute bottom-6 left-1/2 flex -translate-x-1/2 items-center gap-0.5 rounded-[10px] bg-[rgba(30,30,30,.82)] p-1 text-body text-[#eee] opacity-0 backdrop-blur-[8px] focus-within:opacity-100 hover:opacity-100 data-shown:opacity-100 motion-safe:transition-opacity motion-safe:duration-200"
     >
@@ -53,6 +65,11 @@ export function PresentBar({
         icon={ChevronRight}
         disabled={at >= count && step >= steps}
         onClick={onNext}
+      />
+      <BarButton
+        label="Slide overview"
+        icon={LayoutGrid}
+        onClick={onOverview}
       />
       <StepSlot step={step} steps={steps} />
       <Separator />

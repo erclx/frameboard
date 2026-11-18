@@ -1,3 +1,4 @@
+import { thumbnailUrl } from '@/client/live/thumbnail-url'
 import { cardFrames } from '@/shared/card-frames'
 import type { ProjectRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
@@ -65,8 +66,4 @@ export function FrameSkeleton({
       })}
     </svg>
   )
-}
-
-function thumbnailUrl(ref: string, theme: Theme, stamp: string): string {
-  return `/api/thumbnails/png?${new URLSearchParams({ ref, theme, v: stamp })}`
 }

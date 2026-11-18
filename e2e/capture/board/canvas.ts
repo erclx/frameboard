@@ -271,12 +271,18 @@ function presentFocusedOnLoad(focus: string): (page: Page) => Promise<void> {
   return (page) => presentingOnLoad(page, focus)
 }
 
+/** Presents as `presentOnLoad` does, then opens the slide overview from the bar. */
+async function presentOverviewOnLoad(page: Page): Promise<void> {
+  await presentingOnLoad(page, 'Slide overview', true)
+}
+
 async function presentingOnLoad(
   page: Page,
   focus: string | null,
+  click = false,
 ): Promise<void> {
   await page.addInitScript(
-    ({ frames, focus }) => {
+    ({ frames, focus, click }) => {
       let left = frames
       const press = () => {
         const button = document.querySelector<HTMLButtonElement>(
@@ -299,7 +305,8 @@ async function presentingOnLoad(
           const target = document.querySelector<HTMLButtonElement>(
             `[data-presenting] button[aria-label="${focus}"]`,
           )
-          if (target) {
+          if (target && click) target.click()
+          else if (target) {
             target.focus({ focusVisible: true } as FocusOptions)
             target.setAttribute('data-focused', '')
           } else if (--tries > 0) requestAnimationFrame(reach)
@@ -308,7 +315,7 @@ async function presentingOnLoad(
       }
       document.addEventListener('DOMContentLoaded', press)
     },
-    { frames: ROW_FRAMES, focus },
+    { frames: ROW_FRAMES, focus, click },
   )
 }
 
@@ -624,6 +631,20 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           noAgentChanges,
           presentFocusedOnLoad('Next frame'),
           readyWhen('[data-presenting] [data-focused]'),
+        ),
+      ),
+    },
+    {
+      section: 'present-overview',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      setup: themed(
+        both(
+          noAgentChanges,
+          presentOverviewOnLoad,
+          readyWhen('[data-overview] li:last-child img'),
         ),
       ),
     },
