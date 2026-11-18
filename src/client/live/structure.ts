@@ -66,9 +66,9 @@ export function createStructure(send: typeof fetch = fetch) {
     /** Writes a starter `tokens.css`, refused as `tokens-exist` where any sheet reaches the project. */
     projectTokens: (ref: string, look: StarterLook) =>
       post<StarterSheetRecord>('/api/project/tokens', { ref, ...look }),
-    /** Installs a kit into a project, `replace` installing over a look a sheet already gives it. */
-    installKit: (project: string, kit: string, replace = false) =>
-      post<KitInstallRecord>('/api/kits/install', { project, kit, replace }),
+    /** Adds a kit to a project in one undo step, for its frames to name. */
+    installKit: (project: string, kit: string) =>
+      post<KitInstallRecord>('/api/kits/install', { project, kit }),
     /** Saves a project's look as the kit `name` on this board. */
     saveKit: (project: string, name: string) =>
       post<KitSaveRecord>('/api/kits/save', { project, name }),

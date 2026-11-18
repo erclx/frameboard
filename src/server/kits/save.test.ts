@@ -18,6 +18,17 @@ function read(board: TempBoard, path: string): string {
   return readFileSync(join(board.root, path), 'utf8')
 }
 
+/** A project holding one project-wide kit, as an install before per-frame kits left it. */
+const PROJECT_WIDE_KIT = {
+  'acme/tokens.css': ':root { --accent: teal }\n',
+  'acme/assets/kit/kit.json':
+    '{ "version": 1, "title": "Sketch", "description": "Hand drawn", "preview": "sample" }\n',
+  'acme/assets/kit/kit.css': '.kit-card { border: 2px solid }\n',
+  'acme/kit/layout.json':
+    '{ "version": 1, "frames": { "sample": { "x": 0, "y": 0, "width": 480, "height": 300, "order": 0 } } }\n',
+  'acme/kit/sample.html': '<!doctype html><title>sample</title>\n',
+}
+
 describe('saveKit', () => {
   let board: TempBoard
 
@@ -26,24 +37,25 @@ describe('saveKit', () => {
   })
 
   it('saves a project that installs into another project unchanged', async () => {
-    board = writeBoard(TWO_PROJECTS)
-    await installKit(board.root, 'acme', findKit(board.root, 'sketch'))
+    board = writeBoard({ ...TWO_PROJECTS, ...PROJECT_WIDE_KIT })
 
     await saveKit(board.root, 'acme', 'brainstorm')
     await installKit(board.root, 'beta', findKit(board.root, 'brainstorm'))
 
-    expect(read(board, 'beta/tokens.css')).toBe(read(board, 'acme/tokens.css'))
-    expect(read(board, 'beta/assets/kit/kit.css')).toBe(
+    const added = 'beta/assets/kits/brainstorm'
+    expect(read(board, `${added}/tokens.css`)).toBe(
+      read(board, 'acme/tokens.css'),
+    )
+    expect(read(board, `${added}/kit.css`)).toBe(
       read(board, 'acme/assets/kit/kit.css'),
     )
-    expect(read(board, 'beta/kit/sample.html')).toBe(
+    expect(read(board, `${added}/kit/sample.html`)).toBe(
       read(board, 'acme/kit/sample.html'),
     )
   })
 
   it("lists the saved kit with the project's name and the installed kit's preview", async () => {
-    board = writeBoard(TWO_PROJECTS)
-    await installKit(board.root, 'acme', findKit(board.root, 'sketch'))
+    board = writeBoard({ ...TWO_PROJECTS, ...PROJECT_WIDE_KIT })
 
     await saveKit(board.root, 'acme', 'brainstorm')
 

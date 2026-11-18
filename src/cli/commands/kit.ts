@@ -1,6 +1,6 @@
 import { basename, resolve } from 'node:path'
 
-import type { Command } from 'commander'
+import { type Command, Option } from 'commander'
 
 import { installKit } from '@/server/kits/install'
 import { findKit, listKits } from '@/server/kits/list'
@@ -17,7 +17,6 @@ import {
 
 interface AddOptions extends CommonOptions {
   from?: string
-  replace?: boolean
 }
 
 export function registerKit(program: Command, context: ProgramContext): void {
@@ -25,14 +24,14 @@ export function registerKit(program: Command, context: ProgramContext): void {
   const kit = program
     .command('kit')
     .description(
-      "Install a design kit's tokens, styles, and sample frames into a project, or save a project's look as one",
+      "Add a design kit to a project for its frames to name, remove one, or save a project's look as a kit",
     )
 
   act<CommonOptions>(
     addVerb(
       kit,
       'list',
-      'List the kits a project can install, the shipped ones first and then the board’s own',
+      'List the kits a project can add, the shipped ones first and then the board’s own',
     ),
     context,
     async (_args, options) => {
@@ -50,15 +49,13 @@ export function registerKit(program: Command, context: ProgramContext): void {
     addVerb(
       kit,
       'add',
-      'Install a kit into a project no token sheet reaches, refusing tokens-exist where a board, --tokens, or project sheet does unless --replace is given',
+      'Add a kit to a project as a copy under assets/kits/<kit>/, leaving its token sheets alone, so frame kit can set it on a frame. Refuses name-taken where the project already holds a kit by that name',
     )
       .argument('<project>', 'the project')
       .argument('[kit]', 'a kit `kit list` names')
-      .option('--from <folder>', 'install the kit in this folder instead')
-      .option(
-        '--replace',
-        "install over the project's own sheet, kit page, and kit files, or over a board sheet",
-      ),
+      .option('--from <folder>', 'add the kit in this folder instead')
+      // Accepted and ignored, since a script written for the install that replaced a look may still pass it.
+      .addOption(new Option('--replace').hideHelp()),
     context,
     async ([project = '', name], options) => {
       if ((name === undefined) === (options.from === undefined)) {
@@ -74,12 +71,10 @@ export function registerKit(program: Command, context: ProgramContext): void {
         folder === null
           ? findKit(root, name ?? '')
           : { name: basename(folder), path: folder }
-      const record = await installKit(root, project, found, {
-        replace: options.replace ?? false,
-      })
+      const record = await installKit(root, project, found)
       return {
         data: record,
-        human: `Installed ${record.kit} into ${record.project}`,
+        human: `Added ${record.kit} to ${record.project}`,
       }
     },
   )
@@ -88,7 +83,7 @@ export function registerKit(program: Command, context: ProgramContext): void {
     addVerb(
       kit,
       'save',
-      "Save a project's tokens, kit files, and kit page as a kit the board's projects can install",
+      "Save a project's tokens, kit files, and kit page as a kit the board's projects can add",
     )
       .argument('<project>', 'the project')
       .argument('<name>', 'the new kit'),

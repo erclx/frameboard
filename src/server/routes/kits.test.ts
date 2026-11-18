@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -65,13 +65,13 @@ describe('kitRoutes', () => {
       kit: 'sketch',
     })
     expect(response.status).toBe(200)
-    expect(existsSync(join(board.root, 'acme/assets/kit/kit.css'))).toBe(true)
+    expect(
+      existsSync(join(board.root, 'acme/assets/kits/sketch/kit.css')),
+    ).toBe(true)
 
     await history.undo()
 
-    expect(existsSync(join(board.root, 'acme/tokens.css'))).toBe(false)
     expect(existsSync(join(board.root, 'acme/assets'))).toBe(false)
-    expect(existsSync(join(board.root, 'acme/kit'))).toBe(false)
   })
 
   it('answers 401 to an install from a tab without the board key', async () => {
@@ -82,41 +82,39 @@ describe('kitRoutes', () => {
     )
 
     expect(response.status).toBe(401)
-    expect(existsSync(join(board.root, 'acme/tokens.css'))).toBe(false)
+    expect(existsSync(join(board.root, 'acme/assets'))).toBe(false)
   })
 
-  it('answers tokens-exist for a project a sheet already reaches', async () => {
+  it('answers name-taken for a kit the project already holds', async () => {
     await post('/api/kits/install', { project: 'acme', kit: 'clean' })
 
     const response = await post('/api/kits/install', {
       project: 'acme',
-      kit: 'sketch',
+      kit: 'clean',
     })
 
     const body = (await response.json()) as { error: { code: string } }
-    expect(body.error.code).toBe('tokens-exist')
+    expect(body.error.code).toBe('name-taken')
   })
 
-  it('installs over a kit with replace, and a second undo brings the old sheet back', async () => {
-    await post('/api/kits/install', { project: 'acme', kit: 'clean' })
-    const clean = readFileSync(join(board.root, 'acme/tokens.css'), 'utf8')
+  it('accepts replace and ignores it, adding the kit beside a project sheet it leaves alone', async () => {
+    writeFileSync(join(board.root, 'acme/tokens.css'), ':root { --a: 1 }\n')
 
     const response = await post('/api/kits/install', {
       project: 'acme',
       kit: 'sketch',
       replace: true,
     })
-    expect(response.status).toBe(200)
-    await history.undo()
-    await history.undo()
 
+    expect(response.status).toBe(200)
     expect(readFileSync(join(board.root, 'acme/tokens.css'), 'utf8')).toBe(
-      clean,
+      ':root { --a: 1 }\n',
     )
+    expect(history.counts().undo).toBe(1)
   })
 
   it("saves a project's look as a kit the list then answers", async () => {
-    await post('/api/kits/install', { project: 'acme', kit: 'sketch' })
+    writeFileSync(join(board.root, 'acme/tokens.css'), ':root { --a: 1 }\n')
 
     await post('/api/kits/save', { project: 'acme', name: 'mine' })
     const listed = (await (await app.request('/api/kits')).json()) as {
