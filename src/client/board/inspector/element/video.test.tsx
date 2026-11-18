@@ -89,7 +89,8 @@ describe('VideoSection', () => {
     // A real press, since the page plays with sound only on a user's activation.
     await realClick(await screen.findByRole('button', { name: 'Play' }))
     await waitFor(() => expect(liveVideo(iframe).paused).toBe(false))
-    await realClick(screen.getByRole('button', { name: 'Pause' }))
+    // The button follows the reading the frame pushes once it plays.
+    await realClick(await screen.findByRole('button', { name: 'Pause' }))
 
     await waitFor(() => expect(liveVideo(iframe).paused).toBe(true))
     expect(write).not.toHaveBeenCalled()
