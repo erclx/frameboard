@@ -19,7 +19,8 @@ On the board, Cmd-click or double-click selects an element inside a frame. Once 
 
 Several elements in one frame select together and edit as one.
 
-- With an element selected, Shift-click on the canvas or in the layers panel adds another from that frame or takes one out, and Cmd+A selects its siblings
+- With an element selected, Shift-click on the canvas adds another from that frame or takes one out, and Cmd+A selects its siblings
+- In the layers panel, Shift-click selects every open row from the last one picked, and Cmd-click, or Ctrl-click on Linux, adds or takes out one row, for frames and elements alike
 - A drag from the empty body of a selected frame selects the elements it touches, and a drag from an element in it moves the frame
 - With several selected, the inspector shows `Mixed` where their values differ and `1 of 3` on a section only some have, and an edit or Delete applies to them all as one undo step
 - Several selected elements take one box with corner handles and their size. A drag or an arrow key moves every Absolute one together, and a corner drag scales them in proportion, each as one undo step.

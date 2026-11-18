@@ -34,7 +34,7 @@ Images, videos, and audio come from the project's `assets/` folder and land the 
 - A dropped video is written with `controls`, so Play shows the browser's own strip to pause it and turn on its sound
 - A selected video in Edit draws a bar inside its bottom edge, and an audio's bar sits under it
   - The inspector's Video section carries the same play, scrub, and sound controls, which change nothing in the file
-- Controls, Autoplay, Loop, and Muted in the file are the switches that write, each setting or dropping one attribute, and audio has no Controls switch
+- Controls, Autoplay, Loop, and Muted under In the file are the switches that write, each setting or dropping one attribute while the clip keeps playing, and audio has no Controls switch
 
 ## Drawn controls
 
