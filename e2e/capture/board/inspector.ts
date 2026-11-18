@@ -15,6 +15,7 @@ import {
   focusOnLoad,
   headlineOnHero,
   inspectorTab,
+  LIVE_BOARD,
   noAgentChanges,
   noTokens,
   onCanvas,
@@ -192,7 +193,7 @@ const REPLACE_INDIGO = '^Replace 4f46e5 with a token$'
 function searchPages(query: string): (page: Page) => Promise<void> {
   return async (page) => {
     await page.addInitScript(
-      ({ text, frames }) => {
+      ({ text, frames, live }) => {
         let left = frames
         const type = () => {
           const field = document.querySelector<HTMLInputElement>(
@@ -210,9 +211,11 @@ function searchPages(query: string): (page: Page) => Promise<void> {
           field.dispatchEvent(new Event('input', { bubbles: true }))
         }
         const run = () => {
-          const button = document.querySelector<HTMLButtonElement>(
-            'button[aria-label="Search pages"]',
-          )
+          const button = document.querySelector(live)
+            ? document.querySelector<HTMLButtonElement>(
+                'button[aria-label="Search pages"]',
+              )
+            : null
           if (!button) {
             if (--left > 0) requestAnimationFrame(run)
             else console.error('No pages search to open')
@@ -223,7 +226,7 @@ function searchPages(query: string): (page: Page) => Promise<void> {
         }
         document.addEventListener('DOMContentLoaded', run)
       },
-      { text: query, frames: ROW_FRAMES },
+      { text: query, frames: ROW_FRAMES, live: LIVE_BOARD },
     )
   }
 }

@@ -12,6 +12,7 @@ import {
   AVATAR,
   both,
   chooseOnLoad,
+  LIVE_BOARD,
   noTokens,
   openOverlayOnLoad,
   PRESS_FRAMES,
@@ -377,7 +378,7 @@ async function rulesOff(page: Page): Promise<void> {
  */
 async function nameEditOnLoad(page: Page): Promise<void> {
   await page.addInitScript(
-    ({ frames }) => {
+    ({ frames, live }) => {
       let left = frames
       const edit = () => {
         const row = document.querySelector<HTMLElement>(
@@ -388,12 +389,13 @@ async function nameEditOnLoad(page: Page): Promise<void> {
         else console.error('The name row never lit')
       }
       const open = () => {
-        const trigger = [...document.querySelectorAll('button')].find(
-          (button) =>
-            /from git user\.name$|saved on this machine$|^Account$/.test(
-              button.getAttribute('aria-label') ?? '',
-            ),
-        )
+        const trigger = document.querySelector(live)
+          ? [...document.querySelectorAll('button')].find((button) =>
+              /from git user\.name$|saved on this machine$|^Account$/.test(
+                button.getAttribute('aria-label') ?? '',
+              ),
+            )
+          : undefined
         if (!trigger) {
           if (--left > 0) requestAnimationFrame(open)
           else console.error('No avatar to open')
@@ -404,7 +406,7 @@ async function nameEditOnLoad(page: Page): Promise<void> {
       }
       document.addEventListener('DOMContentLoaded', open)
     },
-    { frames: PRESS_FRAMES },
+    { frames: PRESS_FRAMES, live: LIVE_BOARD },
   )
 }
 
