@@ -27,9 +27,8 @@ interface PoseButtonsProps {
 
 /**
  * The Closed, Half, and Open buttons under a selected foldable, as
- * `canon/design/canvas/foldable-buttons` draws them. Held at screen size
- * under the body, and reached through the hit layer as the label's controls
- * are.
+ * `canon/design/canvas/foldable-buttons` draws them, held at screen size and
+ * reached through the hit layer as the label's controls are.
  */
 export function PoseButtons({
   frameRef,

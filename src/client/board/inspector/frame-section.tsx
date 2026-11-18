@@ -412,10 +412,9 @@ function widthDeviceName({ box }: FrameRecord): string {
 }
 
 /**
- * Whether the board draws each frame inside its device, leaving the file as
- * it is, and which device that is: the one its width picks or the foldable
- * the frame names. A press on `Mixed` turns it on for all. A foldable's pose
- * is read here and set on the canvas, as `canon/design/inspector/device-foldable` draws.
+ * Whether the board draws each frame inside its device, and which: the one
+ * its width picks or the foldable it names, whose pose is set on the canvas
+ * as `canon/design/inspector/device-foldable` draws. `Mixed` turns it on for all.
  */
 function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
   const id = 'inspector-device'

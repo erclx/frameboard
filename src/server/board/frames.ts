@@ -913,12 +913,9 @@ export async function setFrameFlag(
 }
 
 /**
- * Shows or hides the device the board draws around a frame, names or
- * un-names the foldable, and folds it. `show` absent leaves the device as it
- * stands, but for naming a foldable, which shows it. The frame's file is
- * never written. A width-picked device leaves the box alone, while naming
- * a foldable or giving it a pose sets the box to that pose's screen, fixed
- * on both axes, a newly named one starting in the pose nearest its width.
+ * Shows or hides a frame's device, names or un-names the foldable, and folds
+ * it, never writing the frame's file. Naming a foldable shows it and, as a
+ * pose does, sets the box to that pose's screen, fixed on both axes.
  */
 export async function setFrameDevice(
   root: string,

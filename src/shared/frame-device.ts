@@ -32,10 +32,9 @@ const LAPTOP_CHIN = 28
 export const LAPTOP_BASE = { height: 14, reach: 0.06, radius: 10 } as const
 
 /**
- * Bezels measured off a current Pro phone and 13-inch tablet, the tablet's
- * screen radius a guess, and the laptop scaled off the picked mock. The
- * foldable's border is its body's published size less its glass, and its
- * screen radius is an estimate no source gives.
+ * Bezels measured off a current Pro phone and 13-inch tablet, the laptop
+ * scaled off the picked mock, and the foldable's body less its glass. The
+ * tablet's and the foldable's screen radii are guesses no source gives.
  */
 export const BEZELS = {
   phone: { border: 16, bottom: 16, screenRadius: 62, bodyRadius: 78 },
