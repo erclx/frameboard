@@ -75,6 +75,24 @@ async function slidingHero(page: Page): Promise<void> {
 }
 
 /**
+ * Serves hero with its headline tilted, so the inspector draws the 3D section
+ * filled and the Rotation row off, and puts the file back once the page closes.
+ */
+async function tiltedHero(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/hero.html')
+  const original = readFileSync(path, 'utf8')
+  writeFileSync(
+    path,
+    original.replace(
+      '<h1 data-name="Headline">',
+      // A gentle turn, since the headline spans the frame and a steep rotateY throws its near edge off it.
+      '<h1 data-name="Headline" style="transform: perspective(800px) rotateX(20deg) rotateY(-8deg)">',
+    ),
+  )
+  page.once('close', () => writeFileSync(path, original))
+}
+
+/**
  * Seeks the Motion track to its middle and marks the body once hero reads
  * paused there, since the Held chip draws before the seek lands.
  */
@@ -439,6 +457,27 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
           asWriter,
           headlineOnHero,
           readyWhen('#inspector-selection-colors ~ ul li'),
+        ),
+      ),
+    },
+    {
+      section: 'element-tilt',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      // Hero's headline tilted, its 3D section filled and its Rotation row off.
+      setup: themed(
+        both(
+          tiltedHero,
+          noAgentChanges,
+          asWriter,
+          headlineOnHero,
+          // The section draws only for an element, and filled once the tilt is read.
+          readyWhen(
+            'body:has(#inspector-tilt):has(#inspector-selection-colors ~ ul li)',
+          ),
         ),
       ),
     },
