@@ -285,7 +285,7 @@ function ShapeTool({ actions, carets, menuDisabled }: ToolProps) {
             side="top"
             align="start"
             sideOffset={8}
-            className="w-[220px]"
+            className="w-max min-w-[220px]"
           >
             <DropdownMenuRadioGroup
               value={shown.kind}

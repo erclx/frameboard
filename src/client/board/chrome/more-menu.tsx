@@ -231,7 +231,7 @@ export function MoreMenu({
         side="top"
         align="start"
         sideOffset={8}
-        className="w-[220px]"
+        className="w-max min-w-[220px]"
       >
         {stage === 'more' ? (
           <>
