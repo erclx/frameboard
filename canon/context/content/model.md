@@ -71,7 +71,7 @@ Project files sit beside the pages.
 Holds what a running board writes about itself, and ignores itself through its own `.gitignore`.
 
 - The address file `serve` writes holds the URL, pid, and token at mode 0600, beside the claims `editing` writes
-- `.run/thumbnails/` holds the home view's captures by frame and theme, emptied at each start, since a frame edited while no server ran would show a stale one
+- `.run/thumbnails/` holds the captures home's cards and the slide overview draw, by frame and theme, emptied at each start, since a frame edited while no server ran would show a stale one
 - `.run/changes/` holds the change log and the versions it names by hash, read at start and read as empty when missing or unparsable
 - `.run/board-key.json` holds the board key at mode 0600 and survives restarts, so a tab's cookie does too. Deleting it and restarting `serve` revokes every board's cookie
 

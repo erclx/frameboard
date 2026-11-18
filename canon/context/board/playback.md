@@ -33,7 +33,7 @@ Owns Play's state and surfaces, being the frame `entered.ts` holds, the `shield.
 
 ### `src/client/board/present/`
 
-Owns present mode, a page's frames one at a time over the window on black through the Fullscreen API, each fit to at most twice its size and recording no undo step. `order.ts` reads rows, `store.ts` holds the page, frame, and step, `overlay.tsx` takes the keys, and transitions and steps are the board's own drawing.
+Owns present mode, a page's frames one at a time over the window on black through the Fullscreen API, each fit to at most twice its size and recording no undo step. `order.ts` reads rows, `store.ts` holds the page, frame, and step, `overlay.tsx` takes the keys, `overview.tsx` is the slide grid, and transitions and steps are the board's own drawing.
 
 - It asks for full screen inside the starting press, since the browser grants it only then, and a refusal presents in the window
 - Tab on the board and the Layers panel keep Layers order, so the two orders differ on one page
