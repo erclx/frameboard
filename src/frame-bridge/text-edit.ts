@@ -191,10 +191,27 @@ function openRunEdit(
     child,
     editable: child.getAttribute('contenteditable'),
   }))
+  const nodes = [...element.childNodes]
+  const texts = nodes.map((child) => (child instanceof Text ? child.data : ''))
   let open = true
 
+  // A composition the browser would not cancel writes wherever the caret sat, so every node but the run goes back.
+  const putBack = () => {
+    for (const stray of [...element.childNodes]) {
+      if (!nodes.includes(stray)) stray.remove()
+    }
+    for (let at = nodes.length - 1; at >= 0; at--) {
+      const child = nodes[at]
+      if (child !== node && child instanceof Text) child.data = texts[at] ?? ''
+      const next = nodes[at + 1]
+      if (child && child.parentNode !== element) {
+        element.insertBefore(child, next?.parentNode === element ? next : null)
+      }
+    }
+  }
   const close = () => {
     open = false
+    putBack()
     element.removeAttribute('contenteditable')
     element.removeAttribute(EDITING)
     for (const { child, editable } of children) {

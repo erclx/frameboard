@@ -478,6 +478,45 @@ describe('editTextInPlace on a run beside a child element', () => {
     expect(last.data).toBe(' two')
   })
 
+  it('puts back a sibling run a composition wrote into, writing only the run', async () => {
+    const { container, iframe, shown, heading } = await mount(MIXED)
+    const { first, last } = runs(heading)
+    const { changes, write } = recorder()
+    await editTextInPlace(container, KEY, write, middleOf(shown, last)).opened
+
+    // What the browser writes natively for a composition left at the first run.
+    first.data = 'Oneか'
+    heading.insertBefore(shown.createTextNode('stray'), heading.firstChild)
+    press(heading, 'Escape')
+    await settled(iframe)
+
+    expect([...heading.childNodes].map((child) => child.textContent)).toEqual([
+      'One ',
+      'x',
+      ' two',
+    ])
+    expect(changes).toEqual([])
+  })
+
+  it('puts the run back where it was when a composition detached it', async () => {
+    const { container, iframe, shown, heading } = await mount(MIXED)
+    const { last } = runs(heading)
+    const edit = editTextInPlace(
+      container,
+      KEY,
+      recorder().write,
+      middleOf(shown, last),
+    )
+    await edit.opened
+
+    last.remove()
+    edit.cancel()
+    await settled(iframe)
+
+    expect(heading.lastChild).toBe(last)
+    expect(last.data).toBe(' two')
+  })
+
   it('inserts nothing when the caret has left the run for the child', async () => {
     const { container, iframe, shown, heading } = await mount(MIXED)
     const { code, last } = runs(heading)
