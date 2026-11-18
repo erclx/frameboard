@@ -364,6 +364,218 @@ describe('editTextInPlace', () => {
   })
 })
 
+describe('editTextInPlace on a run beside a child element', () => {
+  const MIXED = '<h1>One <code>x</code> two</h1>'
+
+  /** The frame-local point at the middle of a text node, as a double-click there sends it. */
+  function middleOf(shown: Document, node: Node) {
+    const range = shown.createRange()
+    range.selectNodeContents(node)
+    const { left, top, width, height } = range.getBoundingClientRect()
+    return { x: left + width / 2, y: top + height / 2 }
+  }
+
+  // The frame's nodes come from its own realm, so `instanceof Text` misses them.
+  const isText = (node: Node | undefined): node is Text =>
+    node?.nodeType === Node.TEXT_NODE
+
+  function runs(heading: HTMLElement) {
+    const [first, , last] = heading.childNodes
+    const code = heading.querySelector('code')
+    if (!isText(first) || !isText(last) || !code) {
+      throw new Error('The heading holds no run beside a code.')
+    }
+    return { first, code, last }
+  }
+
+  function inputs(target: HTMLElement, data: string) {
+    target.dispatchEvent(
+      new InputEvent('beforeinput', {
+        inputType: 'insertText',
+        data,
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+  }
+
+  function caretIn(shown: Document, node: Node, offset: number) {
+    const range = shown.createRange()
+    range.setStart(node, offset)
+    range.collapse(true)
+    shown.getSelection()?.removeAllRanges()
+    shown.getSelection()?.addRange(range)
+  }
+
+  it('opens the run under the point, selected, with the child shut to the caret', async () => {
+    const { container, shown, heading } = await mount(MIXED)
+    const { code, last } = runs(heading)
+
+    const opened = await editTextInPlace(
+      container,
+      KEY,
+      recorder().write,
+      middleOf(shown, last),
+    ).opened
+
+    expect(opened).toBe(true)
+    expect(shown.activeElement).toBe(heading)
+    expect(shown.getSelection()?.toString()).toBe(' two')
+    expect(code.getAttribute('contenteditable')).toBe('false')
+  })
+
+  it('writes the typed run by its index, keeping the child', async () => {
+    const { container, shown, heading } = await mount(MIXED)
+    const { code, last } = runs(heading)
+    const { changes, write } = recorder()
+    await editTextInPlace(container, KEY, write, middleOf(shown, last)).opened
+
+    caretIn(shown, last, last.length)
+    inputs(heading, '!')
+    press(heading, 'Escape')
+
+    await expect
+      .poll(() => changes)
+      .toEqual([[{ kind: 'text', value: ' two!', run: 1 }]])
+    expect(code.textContent).toBe('x')
+  })
+
+  it('inserts nothing when the caret has left the run for the child', async () => {
+    const { container, iframe, shown, heading } = await mount(MIXED)
+    const { code, last } = runs(heading)
+    const { changes, write } = recorder()
+    await editTextInPlace(container, KEY, write, middleOf(shown, last)).opened
+
+    caretIn(shown, code.firstChild ?? code, 1)
+    inputs(heading, 'z')
+    press(heading, 'Escape')
+    await settled(iframe)
+
+    expect(code.textContent).toBe('x')
+    expect(last.data).toBe(' two')
+    expect(changes).toEqual([])
+  })
+
+  it('adds no line on Enter in an element that collapses its breaks, and pastes a break as a space', async () => {
+    const { container, shown, heading } = await mount(MIXED)
+    const { last } = runs(heading)
+    const { changes, write } = recorder()
+    await editTextInPlace(container, KEY, write, middleOf(shown, last)).opened
+
+    caretIn(shown, last, last.length)
+    press(heading, 'Enter')
+    paste(heading, 'a\r\nb')
+    press(heading, 'Escape')
+
+    await expect
+      .poll(() => changes)
+      .toEqual([[{ kind: 'text', value: ' twoa b', run: 1 }]])
+  })
+
+  it('keeps the space beside the child while collapsing the rest, writing nothing unchanged', async () => {
+    const { container, iframe, shown, heading } = await mount(
+      '<h1>One \n  <code>x</code> two</h1>',
+    )
+    const { first } = runs(heading)
+    const { changes, write } = recorder()
+    await editTextInPlace(container, KEY, write, middleOf(shown, first)).opened
+
+    expect(first.data).toBe('One ')
+    press(heading, 'Escape')
+    await settled(iframe)
+
+    expect(changes).toEqual([])
+    expect(first.data).toBe('One \n  ')
+  })
+
+  it('opens nothing for a point on the child', async () => {
+    const { container, shown, heading } = await mount(MIXED)
+    const { code } = runs(heading)
+
+    const opened = await editTextInPlace(
+      container,
+      KEY,
+      recorder().write,
+      middleOf(shown, code),
+    ).opened
+
+    expect(opened).toBe(false)
+    expect(heading.hasAttribute('contenteditable')).toBe(false)
+  })
+
+  it('puts the old run back when the write is refused', async () => {
+    const { container, shown, heading } = await mount(MIXED)
+    const { last } = runs(heading)
+    await editTextInPlace(
+      container,
+      KEY,
+      recorder(false).write,
+      middleOf(shown, last),
+    ).opened
+
+    caretIn(shown, last, last.length)
+    inputs(heading, '!')
+    press(heading, 'Escape')
+
+    await expect.poll(() => last.data).toBe(' two')
+  })
+
+  describe("each child's own contenteditable", () => {
+    const STATED =
+      '<h1>One <code contenteditable="true">x</code> two <em>y</em></h1>'
+
+    async function openStated() {
+      const mounted = await mount(STATED)
+      const code = mounted.heading.querySelector('code')
+      const em = mounted.heading.querySelector('em')
+      const two = mounted.heading.childNodes[2]
+      if (!code || !em || !two)
+        throw new Error('The heading holds no children.')
+      const { changes, write } = recorder()
+      const edit = editTextInPlace(
+        mounted.container,
+        KEY,
+        write,
+        middleOf(mounted.shown, two),
+      )
+      await edit.opened
+      return { ...mounted, code, em, two, edit, changes }
+    }
+
+    it('comes back once the edit commits', async () => {
+      const { heading, shown, code, em, two, changes } = await openStated()
+
+      caretIn(shown, two, 1)
+      inputs(heading, '!')
+      press(heading, 'Escape')
+
+      await expect.poll(() => changes).toHaveLength(1)
+      expect(code.getAttribute('contenteditable')).toBe('true')
+      expect(em.hasAttribute('contenteditable')).toBe(false)
+    })
+
+    it('comes back once the edit is cancelled', async () => {
+      const { iframe, code, em, edit } = await openStated()
+
+      edit.cancel()
+      await settled(iframe)
+
+      expect(code.getAttribute('contenteditable')).toBe('true')
+      expect(em.hasAttribute('contenteditable')).toBe(false)
+    })
+
+    it('comes back once the frame unloads', async () => {
+      const { iframe, code, em } = await openStated()
+      const shown = iframe.contentWindow
+
+      shown?.dispatchEvent(new PageTransitionEvent('pagehide'))
+
+      expect(code.getAttribute('contenteditable')).toBe('true')
+      expect(em.hasAttribute('contenteditable')).toBe(false)
+    })
+  })
+})
+
 describe('editTextWhenShown', () => {
   it('opens once the reload brings the bytes the key names', async () => {
     const { container, iframe } = await mount()
