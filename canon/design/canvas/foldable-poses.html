@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>fold-device-poses-720</title>
+    <style>
+      :root {
+        --canvas: #ececec;
+        --panel: #fff;
+        --raised: #f2f2f2;
+        --border: #e4e4e4;
+        --text: #1a1a1a;
+        --muted: #6e6e6e;
+        --faint: #a5a5a5;
+        --accent: #2f7bf0;
+      }
+      :root[data-theme='dark'] {
+        --canvas: #1f1f1f;
+        --panel: #2a2a2a;
+        --raised: #363636;
+        --border: #353535;
+        --text: #e6e6e6;
+        --muted: #a0a0a0;
+        --faint: #6b6b6b;
+        --accent: #4e92f6;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        font-family: Geist, 'DejaVu Sans', sans-serif;
+        font-size: 11px;
+        color: var(--text);
+        background: var(--canvas);
+      }
+      .stage {
+        width: 720px;
+        padding: 14px 16px 20px;
+      }
+      .cap {
+        color: var(--muted);
+        line-height: 1.45;
+        margin-bottom: 12px;
+        max-width: 680px;
+      }
+      .cap b,
+      .note b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .cols {
+        display: flex;
+        gap: 10px;
+        align-items: stretch;
+      }
+      .view {
+        flex: 1;
+        min-width: 0;
+        border-radius: 10px;
+        box-shadow: 0 0 0 1px var(--border);
+        background: var(--canvas);
+        padding: 26px 10px 14px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-end;
+        justify-content: center;
+      }
+      .dv {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+      .dv .lb {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .dev {
+        position: relative;
+        padding: calc(var(--s)*18px);
+        border-radius: calc(var(--s)*66px);
+        background: linear-gradient(
+          145deg,
+          #3a3c42 0%,
+          #17181b 22%,
+          #0d0e10 60%,
+          #2a2c31 100%
+        );
+        box-shadow:
+          inset 0 0 0 1px #5b5e66,
+          inset 0 0 0 calc(var(--s)*4px) #0a0a0c,
+          0 calc(var(--s)*40px) calc(var(--s)*70px) calc(var(--s)*-30px)
+            rgba(0, 0, 0, 0.5),
+          0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+      .dev::before,
+      .dev::after {
+        content: '';
+        position: absolute;
+        right: calc(var(--s)*-3px);
+        width: calc(var(--s)*4px);
+        border-radius: 2px;
+        background: linear-gradient(90deg, #17181b, #4a4d55);
+      }
+      .dev::before {
+        top: 26%;
+        height: 11%;
+      }
+      .dev::after {
+        top: 42%;
+        height: 7%;
+      }
+      .scr {
+        position: relative;
+        display: flex;
+        overflow: hidden;
+        border-radius: calc(var(--s)*48px);
+        background: #fff;
+        color: #111;
+        width: calc(var(--s)*var(--w)*1px);
+        height: calc(var(--s)*var(--h)*1px);
+        font-family: Inter, Geist, sans-serif;
+      }
+      .island {
+        position: absolute;
+        z-index: 3;
+        top: calc(var(--s)*14px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(var(--s)*100px);
+        height: calc(var(--s)*30px);
+        border-radius: 99px;
+        background: #050506;
+      }
+      .scr.wide .island {
+        left: 75%;
+      }
+      .bar {
+        position: absolute;
+        z-index: 3;
+        bottom: calc(var(--s)*8px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(var(--s)*140px);
+        height: calc(var(--s)*5px);
+        border-radius: 9px;
+        background: rgba(20, 20, 20, 0.55);
+      }
+      .crease {
+        position: absolute;
+        z-index: 2;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: calc(var(--s)*26px);
+        transform: translateX(-50%);
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(0, 0, 0, 0.05) 35%,
+          rgba(0, 0, 0, 0.11) 50%,
+          rgba(255, 255, 255, 0.5) 56%,
+          transparent
+        );
+      }
+      .fold {
+        position: absolute;
+        z-index: 2;
+        top: 0;
+        bottom: 0;
+        left: 50%;
+        width: calc(var(--s)*150px);
+        transform: translateX(-50%);
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(0, 0, 0, 0.1) 30%,
+          rgba(0, 0, 0, 0.34) 49%,
+          rgba(0, 0, 0, 0.34) 51%,
+          rgba(0, 0, 0, 0.08) 70%,
+          transparent
+        );
+      }
+      .dev.half {
+        background: linear-gradient(
+          90deg,
+          #2f3136 0%,
+          #17181b 46%,
+          #050506 50%,
+          #17181b 54%,
+          #2f3136 100%
+        );
+      }
+      .pane {
+        flex: 1;
+        min-width: 0;
+        padding: calc(var(--s)*62px) calc(var(--s)*20px) 0;
+        font-size: calc(var(--s)*15px);
+      }
+      .pane + .pane {
+        border-left: 1px solid #ececec;
+        background: #fafafa;
+      }
+      .st {
+        position: absolute;
+        z-index: 3;
+        top: calc(var(--s)*18px);
+        left: calc(var(--s)*34px);
+        font-size: calc(var(--s)*15px);
+        font-weight: 600;
+      }
+      .ttl {
+        font-size: calc(var(--s)*30px);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin-bottom: calc(var(--s)*14px);
+      }
+      .rw {
+        display: flex;
+        gap: calc(var(--s)*12px);
+        align-items: center;
+        padding: calc(var(--s)*11px) 0;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .av {
+        flex: none;
+        width: calc(var(--s)*40px);
+        height: calc(var(--s)*40px);
+        border-radius: 50%;
+      }
+      .tx {
+        flex: 1;
+        min-width: 0;
+      }
+      .tx b {
+        display: block;
+        height: calc(var(--s)*9px);
+        width: 62%;
+        border-radius: 9px;
+        background: #1c1c1e;
+        margin-bottom: calc(var(--s)*7px);
+      }
+      .tx i {
+        display: block;
+        height: calc(var(--s)*7px);
+        width: 88%;
+        border-radius: 9px;
+        background: #d6d6da;
+      }
+      .hero {
+        height: calc(var(--s)*210px);
+        border-radius: calc(var(--s)*22px);
+        background: linear-gradient(160deg, #ffb37a, #ff6f91 55%, #6a5cff);
+        margin-bottom: calc(var(--s)*18px);
+      }
+      .h2 {
+        height: calc(var(--s)*13px);
+        width: 56%;
+        border-radius: 9px;
+        background: #1c1c1e;
+        margin-bottom: calc(var(--s)*14px);
+      }
+      .ln {
+        height: calc(var(--s)*8px);
+        border-radius: 9px;
+        background: #d6d6da;
+        margin-bottom: calc(var(--s)*10px);
+      }
+      .cta {
+        margin-top: calc(var(--s)*16px);
+        height: calc(var(--s)*44px);
+        width: 46%;
+        border-radius: 99px;
+        background: #0a84ff;
+      }
+      .sel {
+        outline: 1.5px solid var(--accent);
+        outline-offset: 6px;
+        border-radius: calc(var(--s)*72px);
+      }
+      .poses {
+        display: inline-flex;
+        gap: 2px;
+        padding: 3px;
+        border-radius: 10px;
+        background: var(--panel);
+        box-shadow:
+          0 0 0 1px var(--border),
+          0 4px 14px rgba(0, 0, 0, 0.14);
+      }
+      .poses span {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 9px;
+        border-radius: 7px;
+        color: var(--muted);
+        font-size: 10.5px;
+        font-weight: 500;
+      }
+      .poses span.on {
+        background: var(--raised);
+        color: var(--text);
+        font-weight: 600;
+      }
+      .poses svg {
+        display: block;
+      }
+      .box {
+        background: var(--panel);
+        box-shadow: 0 0 0 1px var(--border);
+        border-radius: 10px;
+        padding: 10px;
+        width: 186px;
+        flex: none;
+        align-self: flex-start;
+      }
+      h4 {
+        font-size: 11px;
+        font-weight: 600;
+        margin: 0 0 6px;
+        display: flex;
+        justify-content: space-between;
+      }
+      h4 span {
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 6px;
+      }
+      .row label {
+        width: 52px;
+        color: var(--muted);
+        flex: none;
+      }
+      .f {
+        flex: 1;
+        height: 24px;
+        border-radius: 5px;
+        background: var(--raised);
+        padding: 0 7px;
+        line-height: 24px;
+        display: flex;
+        justify-content: space-between;
+        min-width: 0;
+      }
+      .f em,
+      .dim {
+        font-style: normal;
+        color: var(--faint);
+      }
+      .seg {
+        flex: 1;
+        display: flex;
+        gap: 2px;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 6px;
+      }
+      .seg span {
+        flex: 1;
+        text-align: center;
+        line-height: 20px;
+        border-radius: 4px;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .seg span.on {
+        background: var(--panel);
+        color: var(--text);
+        font-weight: 600;
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .sw {
+        width: 26px;
+        height: 15px;
+        border-radius: 8px;
+        background: var(--accent);
+        position: relative;
+        margin-left: auto;
+        flex: none;
+      }
+      .sw::after {
+        content: '';
+        position: absolute;
+        left: 13px;
+        top: 2px;
+        width: 11px;
+        height: 11px;
+        border-radius: 6px;
+        background: #fff;
+      }
+      .sec {
+        border-top: 1px solid var(--border);
+        padding-top: 8px;
+        margin-top: 8px;
+      }
+      .hint {
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .note {
+        margin-top: 10px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <p class="cap">
+        <b>fold-device-poses-720.</b> The three poses of one foldable frame.
+        Closed is the cover screen, Half open splits the inner screen at the
+        fold, and Open is the full inner screen.
+      </p>
+      <div class="cols">
+        <div class="view">
+          <div class="dv">
+            <div class="dev" style="--s: 0.2335">
+              <div class="scr" style="--w: 466; --h: 678">
+                <span class="st">9:41</span><span class="island"></span>
+                <div class="pane">
+                  <div class="ttl">Inbox</div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #ffb37a, #ff6f91);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 62%"></b><i style="width: 88%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #7ad7ff, #5c7cff);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 48%"></b><i style="width: 74%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #9be7a3, #2fb8a0);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 70%"></b><i style="width: 92%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #d7b3ff, #8a5cff);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 54%"></b><i style="width: 80%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #ffe08a, #ff9f43);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 66%"></b><i style="width: 68%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #c9ccd6, #8d93a3);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 44%"></b><i style="width: 86%"></i
+                    ></span>
+                  </div>
+                </div>
+                <span class="bar"></span>
+              </div>
+            </div>
+            <span class="lb">Closed · 466 by 678</span>
+          </div>
+          <div class="dv">
+            <div class="dev half" style="--s: 0.25">
+              <div class="scr wide" style="--w: 890; --h: 626">
+                <span class="st">9:41</span><span class="island"></span>
+                <div class="pane">
+                  <div class="ttl">Inbox</div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #ffb37a, #ff6f91);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 62%"></b><i style="width: 88%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #7ad7ff, #5c7cff);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 48%"></b><i style="width: 74%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #9be7a3, #2fb8a0);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 70%"></b><i style="width: 92%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #d7b3ff, #8a5cff);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 54%"></b><i style="width: 80%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #ffe08a, #ff9f43);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 66%"></b><i style="width: 68%"></i
+                    ></span>
+                  </div>
+                </div>
+                <div class="pane">
+                  <div class="hero"></div>
+                  <div class="h2"></div>
+                  <div class="ln" style="width: 96%"></div>
+                  <div class="ln" style="width: 88%"></div>
+                  <div class="ln" style="width: 92%"></div>
+                  <div class="ln" style="width: 60%"></div>
+                  <div class="cta"></div>
+                </div>
+                <span class="fold"></span><span class="bar"></span>
+              </div>
+            </div>
+            <span class="lb">Half open · 890 by 626</span>
+          </div>
+          <div class="dv">
+            <div class="dev" style="--s: 0.25">
+              <div class="scr wide" style="--w: 890; --h: 626">
+                <span class="st">9:41</span><span class="island"></span>
+                <div class="pane">
+                  <div class="ttl">Inbox</div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #ffb37a, #ff6f91);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 62%"></b><i style="width: 88%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #7ad7ff, #5c7cff);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 48%"></b><i style="width: 74%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #9be7a3, #2fb8a0);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 70%"></b><i style="width: 92%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #d7b3ff, #8a5cff);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 54%"></b><i style="width: 80%"></i
+                    ></span>
+                  </div>
+                  <div class="rw">
+                    <span
+                      class="av"
+                      style="
+                        background: linear-gradient(135deg, #ffe08a, #ff9f43);
+                      "
+                    ></span
+                    ><span class="tx"
+                      ><b style="width: 66%"></b><i style="width: 68%"></i
+                    ></span>
+                  </div>
+                </div>
+                <div class="pane">
+                  <div class="hero"></div>
+                  <div class="h2"></div>
+                  <div class="ln" style="width: 96%"></div>
+                  <div class="ln" style="width: 88%"></div>
+                  <div class="ln" style="width: 92%"></div>
+                  <div class="ln" style="width: 60%"></div>
+                  <div class="cta"></div>
+                </div>
+                <span class="crease"></span><span class="bar"></span>
+              </div>
+            </div>
+            <span class="lb">Open · 890 by 626</span>
+          </div>
+        </div>
+      </div>
+      <p class="note">
+        <b>One frame, one file.</b> The pose changes the frame's width and its
+        body, and the page reflows as it would on the device. Sizes are the
+        iPhone Duo's two screens in points, worked out from Apple's pixel counts
+        at three pixels to a point.
+      </p>
+    </div>
+  </body>
+</html>
