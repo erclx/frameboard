@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { frameRecordSchema } from '@/shared/records/list'
+import { frameRecordSchema, listResultSchema } from '@/shared/records/list'
 
 import { cli } from '../../../test/support/cli'
 import {
@@ -326,6 +326,82 @@ describe('frame', () => {
 
       expect(result.exitCode).toBe(2)
       expect(result.json().error?.code).toBe('usage')
+    })
+  })
+
+  describe('speaker-notes', () => {
+    it('sets a note with its line breaks and answers the frame holding it', async () => {
+      const run = on('basic')
+
+      const result = await run(
+        'frame',
+        'speaker-notes',
+        'webapp/home/about',
+        'Open on the price.\nThen the demo.',
+      )
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).toHaveProperty(
+        'speakerNotes',
+        'Open on the price.\nThen the demo.',
+      )
+    })
+
+    it('prints the note it holds with no text given', async () => {
+      const run = on('basic')
+      await run('frame', 'speaker-notes', 'webapp/home/about', 'Open on it.')
+
+      const result = await run('frame', 'speaker-notes', 'webapp/home/about')
+
+      expect(result.json().data).toHaveProperty('speakerNotes', 'Open on it.')
+    })
+
+    it('removes the note with --clear', async () => {
+      const run = on('basic')
+      await run('frame', 'speaker-notes', 'webapp/home/about', 'Open on it.')
+
+      const result = await run(
+        'frame',
+        'speaker-notes',
+        'webapp/home/about',
+        '--clear',
+      )
+
+      expect(result.json().data).not.toHaveProperty('speakerNotes')
+    })
+
+    it('refuses text beside --clear with usage, exit 2', async () => {
+      const run = on('basic')
+
+      const result = await run(
+        'frame',
+        'speaker-notes',
+        'webapp/home/about',
+        'Open on it.',
+        '--clear',
+      )
+
+      expect(result.exitCode).toBe(2)
+      expect(result.json().error?.code).toBe('usage')
+    })
+
+    it('carries the note on the frame list --json answers', async () => {
+      const run = on('basic')
+      await run('frame', 'speaker-notes', 'webapp/home/about', 'Open on it.')
+
+      const result = await run('list')
+
+      const frames = listResultSchema
+        .parse(result.json().data)
+        .projects.flatMap((project) =>
+          project.pages.flatMap((page) => page.frames),
+        )
+      expect(frames).toContainEqual(
+        expect.objectContaining({
+          ref: 'webapp/home/about',
+          speakerNotes: 'Open on it.',
+        }),
+      )
     })
   })
 
