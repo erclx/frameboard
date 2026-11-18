@@ -71,7 +71,8 @@ export const PRESS_FRAMES = 600
 
 /**
  * Presses the control named `label`, by `aria-label` or else its text, from an
- * init script, since `setup` runs before the harness navigates.
+ * init script, since `setup` runs before the harness navigates. It waits out a
+ * `disabled` or `aria-disabled` control, which the loading chrome draws inert.
  */
 export function pressOnLoad(label: string): (page: Page) => Promise<void> {
   return async (page) => {
@@ -82,6 +83,7 @@ export function pressOnLoad(label: string): (page: Page) => Promise<void> {
           const control = [...document.querySelectorAll('button')].find(
             (button) =>
               !button.disabled &&
+              button.getAttribute('aria-disabled') !== 'true' &&
               (
                 button.getAttribute('aria-label') ??
                 button.textContent?.trim() ??
