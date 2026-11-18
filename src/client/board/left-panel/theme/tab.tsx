@@ -8,6 +8,7 @@ import {
 } from '@/shared/records/tokens'
 
 import { fetchTokenTable, useTokenTable } from '../../tokens'
+import { KitsSection } from './kits'
 import { ColorRow, ValueRow } from './rows'
 import { type TokenChange, type TokenSheet, writeToken } from './write'
 
@@ -35,12 +36,22 @@ interface Landed {
   hash: string
 }
 
+/** The Theme tab, the project's kits above its tokens. */
+export function ThemeTab(props: ThemeTabProps) {
+  return (
+    <>
+      <KitsSection project={props.project} />
+      <TokensSection {...props} />
+    </>
+  )
+}
+
 /**
- * The Theme tab, editing each value into the sheet its tag names. A `--tokens`
- * sheet outside the board belongs to whatever handed it over, so its rows stay
- * read-only.
+ * The token table, editing each value into the sheet its tag names. A
+ * `--tokens` sheet outside the board belongs to whatever handed it over, so
+ * its rows stay read-only.
  */
-export function ThemeTab({
+function TokensSection({
   project,
   load = fetchTokenTable,
   write = writeToken,
