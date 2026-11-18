@@ -16,7 +16,7 @@ Owns how an agent's work shows on the board and how the developer hands work bac
 Owns the Note tool, its markers, the composer, and the thread, which change together. Send hands a note to a listening session or starts one through New session, and the card closes on Esc, a press outside, or focus leaving, capped at the canvas height with its messages scrolling.
 
 - The Note tool, key N, is enabled only while the tab may write, and its click opens the composer and goes no further, since selection gestures bind only under Move
-- A pick hit-tests inside the iframe, counting through `board/frame-dom.ts` past the injected elements, and sends the `modifiedAt` the iframe loaded, so a stale pick is refused
+- A pick asks the frame's bridge what sits under the point, counted past the injected elements, and sends the `modifiedAt` the iframe loaded, so a stale pick is refused
 - An amber numbered marker points its tail at its element's top right corner, or its frame's once the element is lost, per `board/pin-corner.ts`
 - Markers hide in Play and once done, and notes whose pins would overlap stack into a count pin listing them in `pin-list.tsx`
 - Unsent text waits in `notesUi` by note or frame, and a pasted image waits as a thumbnail until Save or Send uploads it, dropping when the card closes
