@@ -56,8 +56,7 @@ export function MenuRow({
         <span aria-hidden className="ml-auto flex gap-[3px]">
           {parts.map((part, index) => (
             <kbd
-              // A binding can repeat a part no more than its own order allows.
-              // oxlint-disable-next-line react/no-array-index-key
+              // oxlint-disable-next-line react/no-array-index-key -- a binding's parts are fixed in order
               key={index}
               className="grid h-5 min-w-5 place-items-center rounded-[5px] bg-muted px-[5px] font-sans text-[11px] font-normal text-muted-foreground"
             >

@@ -8,9 +8,7 @@ export function severityOf(findings: readonly Finding[]): Finding['severity'] {
 }
 
 /**
- * The classes of a findings count, read off the `data-severity` its element
- * carries. An error is a pill filled and ringed in the destructive hue, and
- * warnings alone are the count in the label's own grey with no fill, so a
+ * A findings count's classes by `data-severity`, warnings in plain grey so a
  * board of warnings stays quiet and an error stands out.
  */
 export const FINDINGS_MARK =

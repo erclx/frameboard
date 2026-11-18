@@ -64,14 +64,9 @@ export interface PlaceDeps {
 const SHAPE_SIDE = 100
 
 /**
- * Places one element of `kind` into the frame under a board point, at the gap
- * between children `gapUnder` reads there, then selects it and returns to
- * Move, as one click of a placement tool. Where `placesFree` says so for the
- * gap, the element lands out of the flow in the same write, and a Divider
- * always joins the flow. It answers the new element, or null when nothing was
- * written. A frame another session holds is refused with nothing sent, since
- * its indices go stale, and so is one whose iframe has not finished a load.
- * The insert goes in the frame's turn behind any element edit in flight.
+ * Places one element at the gap under a point in the frame's turn, free where
+ * `placesFree` says so. A held frame or an unloaded iframe is refused with
+ * nothing sent, since its indices would go stale.
  */
 export async function placeElement(
   container: ParentNode,
@@ -220,11 +215,8 @@ export function fileFrameBox(natural: AssetSize | null, at: BoardPoint): Box {
 }
 
 /**
- * Adds a frame the size of `file` centered on a board point, holding the
- * file edge to edge, in one write the developer undoes as one step, then
- * selects it, as a tile dropped on bare canvas. The frame is named for the
- * file, taking the next free name, and an audio's hugs the height its player
- * takes. Resolves to the added frame, or null once a refusal is reported.
+ * Adds a frame the file's size around a point, holding the file, in one write
+ * and one undo step, an audio's frame hugging its player's height.
  */
 export async function placeFileFrame(
   page: string,
@@ -265,13 +257,9 @@ export async function placeFileFrame(
 }
 
 /**
- * Moves the selected element into the gap under a board point in its own
- * frame, then selects it where it landed, as a drag of the element released
- * there. It answers the element as it now stands, or null when nothing was
- * written, as over another frame, inside the element, or in the gap it
- * already sits in, each of which sends nothing. It goes in the frame's turn
- * as `placeElement` does, refused with nothing sent on a frame another
- * session holds.
+ * Moves the selected element to the gap under a point in its own frame, in the
+ * frame's turn, sending nothing where the move would change nothing or the
+ * frame is held.
  */
 export async function moveElement(
   container: ParentNode,
@@ -307,16 +295,9 @@ export async function moveElement(
 }
 
 /**
- * Moves an element to another place among its siblings, `to` mapping the
- * place it holds to the one it lands on, as a Layers row dropped there or a
- * move key, then selects it where it landed. It answers the element as it
- * now stands, or null when nothing was written. A place past either end, or
- * the one it holds, sends nothing and says nothing.
- *
- * The gap is read in the frame's turn from the tree at the bytes the write
- * goes from, so a move queued behind another goes from the index and hash
- * that one answered rather than from the tree the press saw. A frame another
- * session holds is refused with nothing sent, as `writeAtGap` does.
+ * Moves an element among its siblings. The gap is read in the frame's turn, so
+ * a move queued behind another goes from the index and hash that one answered
+ * rather than from the tree the press saw.
  */
 export async function moveElementTo(
   page: string,
@@ -347,10 +328,7 @@ export async function moveElementTo(
   await inFrameTurn(ref, async (prior): Promise<Landed> => {
     const before = prior ? await prior : undefined
     if (before === null) return null
-    // A move ahead of this one answered where the element went, so this one
-    // follows it there, whichever hash of the chain the press read. Any other
-    // write ahead that shifted indices leaves the element's own, which the
-    // server refuses as stale.
+    // Follows a move ahead, while any other shift leaves its own hash to be refused.
     const follows = before !== undefined && before.from.includes(key.hash)
     const moved = follows
       ? (before.moves?.get(slot(key.hash, key.index)) ??
@@ -388,8 +366,7 @@ export async function moveElementTo(
       selectElement(selection, page, landed)
       const at = new Map(follows ? before.at : [])
       at.set(key.index, answer.index)
-      // Every other element's index shifted by an amount nobody read, so
-      // only this element's addresses carry forward.
+      // Only this element's addresses carry forward, since every other index shifted.
       const moves = new Map<string, number>()
       for (const [address, now] of (follows && before.moves) || []) {
         if (now === index) moves.set(address, answer.index)
@@ -404,8 +381,7 @@ export async function moveElementTo(
         moves,
       }
     } catch (error) {
-      // A move refused behind an edit leaves that edit in the file, so the
-      // toast says the element itself is all that stayed.
+      // The edit ahead stays in the file, so only the element itself stayed.
       notify({
         title: 'Nothing moved',
         description: `${
@@ -439,11 +415,8 @@ async function treeAtHash(
 }
 
 /**
- * Sends one write whose indices a gap read off the rendered frame, in the
- * frame's turn behind any element edit still in flight, from the hash that
- * edit answered, and hands the hash it answers to the selection before the
- * frame reloads. A frame another session holds is refused with nothing
- * sent, since its indices go stale when that session writes.
+ * Sends a gap's write in the frame's turn from the hash the edit ahead
+ * answered, and refuses a held frame, whose indices go stale when it writes.
  */
 async function writeAtGap(
   { frame, hash }: FrameGap,
@@ -466,9 +439,7 @@ async function writeAtGap(
   await inFrameTurn(ref, async (prior): Promise<Landed> => {
     const before = prior ? await prior : undefined
     if (before === null) return null
-    // An edit ahead that landed in place keeps every index, so the gap
-    // holds on the bytes it answered. One found again past an agent's write
-    // may not, so the write goes from its own hash and is refused as stale.
+    // Rebases only past an in-place edit, since one past an agent's write may shift.
     const rebased =
       before !== undefined && before.from.includes(hash) && !before.shifted
     const from = rebased ? before.to : hash
@@ -505,11 +476,8 @@ async function writeAtGap(
 }
 
 /**
- * Deletes the selected element, with what it holds, from the bytes it was
- * selected at, then selects its frame, as Delete does with an element
- * selected. It goes in the frame's turn like a placement, and a frame
- * another session holds waits under the claim card, as an element edit
- * does, rather than racing that session's write. Answers whether it landed.
+ * Deletes the selected element and its subtree in the frame's turn, waiting
+ * under a claim as an element edit does rather than racing that session.
  */
 export function deleteElement(
   page: string,
@@ -539,8 +507,7 @@ export async function deleteElements(
   const landed = await inFrameTurn(ref, async (prior): Promise<Landed> => {
     const before = prior ? await prior : undefined
     if (before === null) return null
-    // An edit ahead that landed in place keeps every index, so the element
-    // holds on the bytes it answered, as a placement's gap does.
+    // Rebases only past an in-place edit, as a placement's gap does.
     const rebased =
       before !== undefined && before.from.includes(key.hash) && !before.shifted
     const from = rebased ? before.to : key.hash
@@ -617,15 +584,9 @@ function sizeSlot({ frame, index }: Pick<ElementKey, 'frame' | 'index'>) {
 }
 
 /**
- * Places the selected element at a spot out of the flow, or back in the flow
- * on null, through `POST /api/frames/place`, which writes its start tag and
- * its static parent's as one step, then selects it at the bytes written.
- * Back in flow also drops each size the placement in this tab wrote that
- * `inline` still holds. It
- * goes in the frame's turn from the hash an edit ahead answered, as a delete
- * does, and keeps every index, so an edit queued behind goes as it would
- * have. A frame another session holds is refused with nothing sent, as a
- * move is. Answers whether it landed.
+ * Places the element free, or back in the flow on null, writing its tag and
+ * its static parent's as one step. Back in flow drops each size this tab's
+ * placement wrote, and the write keeps every index.
  */
 export async function placeFree(
   page: string,
@@ -838,12 +799,9 @@ export interface WrapRequest {
 }
 
 /**
- * Wraps the selected elements `keys` names, siblings in one frame at one
- * hash, in one flow container, in the frame's turn behind any edit queued on
- * it, and selects the container where it landed. A wrap shifts every index
- * after the container, so an edit queued behind it goes from the indices it
- * answered for the members and from its own hash for anything else. A frame
- * another session holds, or a refusal, raises a toast and answers false.
+ * Wraps sibling elements in one flow container in the frame's turn. A wrap
+ * shifts every index after it, so a queued edit goes from the answered indices
+ * for the members and from its own hash otherwise.
  */
 export async function wrapSelection(
   page: string,
@@ -900,8 +858,7 @@ export async function wrapSelection(
         })
       }
       done()
-      // A wrap shifts every index after its container, so the turn is held
-      // until Layers reads the new tree. A failed read leaves it to the reload.
+      // The turn holds until Layers reads the shifted tree, or a failed read leaves it.
       await catchUp(ref, answer.hash).catch(() => {})
       const at = new Map(follows ? before.at : [])
       for (const [place, { index }] of keys.entries()) {

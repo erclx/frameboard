@@ -381,8 +381,7 @@ describe('placeFile', () => {
       },
     )
 
-    // The main spans the frame's 400px, so a 1600 by 900 photo lands at 400 by 225,
-    // and a block main places it out of the flow at the point.
+    // Capped at the main's 400px, a 1600 by 900 photo lands at 400 by 225, placed free.
     expect(sent).toEqual([
       {
         ref: HERO.ref,
@@ -609,10 +608,7 @@ describe('moveElementTo', () => {
     ],
   })
 
-  /**
-   * A server answering each request in turn with the next of `data`, keeping
-   * each request's body. The answer to request `holdAt` waits for `release`.
-   */
+  // Answers in turn with `data`, holding request `holdAt` until `release`.
   function answers(...data: unknown[]) {
     const sent: unknown[] = []
     let release = () => {}

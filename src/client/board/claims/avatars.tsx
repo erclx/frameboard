@@ -13,11 +13,8 @@ interface ClaimAvatarsProps {
 }
 
 /**
- * One initial per listening session beside the developer's avatar, solid
- * while the session holds a claim and pale while it only listens. A holder
- * that is not listening is left off, since its frame already shows it. A
- * click follows the session, drawing its initial as the `Following` chip of
- * agents/unseen-many, and a second click stops.
+ * One initial per listening session, a holder not listening left off since its
+ * frame already shows it, and a click following the session.
  */
 export function ClaimAvatars({ listeners, claims }: ClaimAvatarsProps) {
   const followed = useStore(followStore, (state) => state.session)

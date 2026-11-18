@@ -45,10 +45,8 @@ const HEADER_FILL =
   'grid size-5 place-items-center rounded-md group-hover/target:bg-accent group-focus-visible/target:ring-3 group-focus-visible/target:ring-ring/50 group-aria-disabled/target:bg-transparent group-aria-pressed/target:bg-accent'
 
 /**
- * A project's pages in their saved order, each switching the canvas to it.
- * A tab that may write adds a page, renames one on a double-click or F2,
- * deletes the focused one with Delete, and drags one to a new place. The
- * search filters the list by name and closes on Esc.
+ * A project's pages in saved order, each switching the canvas to it, with
+ * edits for a writing tab and a search that closes on Esc.
  */
 export function PagesList({
   pages,
@@ -128,8 +126,7 @@ export function PagesList({
             className="size-[13px] shrink-0 text-muted-foreground"
           />
           <input
-            // The search opens on a click that asks for it, so it takes focus.
-            // oxlint-disable-next-line jsx-a11y/no-autofocus
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- opened by a click that asks for it
             autoFocus
             aria-label="Search pages"
             value={query}
@@ -186,8 +183,7 @@ function PageRow({ page, pages, context, needle, canWrite }: PageRowProps) {
   const { current } = context
   const row = useRef<HTMLLIElement>(null)
   const isCurrent = page.name === current
-  // A page just added lands below the fold once the list holds more rows
-  // than it shows, so the page on the canvas is brought into view.
+  // Scrolls a page just added into view, since it can land below the fold.
   useEffect(() => {
     if (isCurrent) row.current?.scrollIntoView({ block: 'nearest' })
   }, [isCurrent])

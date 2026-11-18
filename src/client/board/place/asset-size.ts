@@ -23,10 +23,8 @@ const METADATA_MS = 3000
 const MAX_SIDE = 10_000
 
 /**
- * The box a placed file lands at: its natural size, else the fallback, no
- * wider than `room`, the container's content width, and no side past what
- * the insert route takes, its ratio kept. A container with no width caps
- * only the sides.
+ * A placed file's box, its natural size or the fallback, capped at `room` and
+ * the insert route's side limit with its ratio kept.
  */
 export function placedSize(natural: AssetSize | null, room: number): AssetSize {
   const size =
@@ -44,11 +42,8 @@ export function placedSize(natural: AssetSize | null, room: number): AssetSize {
 }
 
 /**
- * The size a file at `url` draws at on its own, read off an image's natural
- * size, an SVG's own width and height else its view box, or a video's
- * metadata, with audio at `AUDIO_SIZE` unread. Null when it does not load,
- * when it states no size, as an SVG with neither, or when a video's metadata
- * has not come within a few seconds.
+ * The size a file draws at on its own, audio taking `AUDIO_SIZE` unread. Null
+ * when it does not load, states no size, or a video's metadata stalls.
  */
 export function naturalSize(
   url: string,

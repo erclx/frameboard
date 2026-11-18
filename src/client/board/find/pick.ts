@@ -11,11 +11,8 @@ import {
 } from '../selection'
 
 /**
- * Selects what a hit names on its page and zooms to its frame: the frame
- * for a frame hit, else the element by the index and hash the search read.
- * A frame whose iframe already shows other bytes takes the frame alone, as
- * its own load check would, since that check has already run and the index
- * may now name another element. A frame not live yet runs that check on load.
+ * Selects a hit and zooms to its frame. A frame already showing other bytes
+ * takes the frame alone, since its load check has run and the index may move.
  */
 export function pickHit(
   project: string,

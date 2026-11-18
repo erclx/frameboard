@@ -5,11 +5,8 @@ import type { Listener } from '@/shared/records/notes'
 export const NEW_SESSION = 'frameboard:new-session'
 
 /**
- * The session a picker starts on: the session holding the frame's claim
- * while it listens, else the only listener, else a new session when nobody
- * listens and `serve` can start one, else none until the developer picks. A
- * holder that stopped listening is never picked, since it would never see
- * the note.
+ * The picker's starting session, a listening claim holder, else the only
+ * listener, else a new session, never a holder that stopped listening.
  */
 export function defaultSession(
   listeners: readonly Listener[],
@@ -24,10 +21,8 @@ export function defaultSession(
 }
 
 /**
- * The pick a picker shows: the developer's while the picker still offers it,
- * so a listener leaving takes its pick with it and a sole one arriving is
- * picked. `startByDefault` false keeps New session offered but never picked
- * for the developer, as a thread does, so a reply stays a plain reply.
+ * The shown pick, the developer's while still offered. `startByDefault` false
+ * never picks New session, so a thread's reply stays a plain reply.
  */
 export function pickedSession(
   session: string,

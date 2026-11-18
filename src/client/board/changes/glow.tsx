@@ -30,10 +30,8 @@ interface ChangeGlowProps {
 }
 
 /**
- * A brief glow over the elements an agent changed, per agents/claim-full's
- * `.flash`, or over the whole frame for a change too wide to name by
- * element. It plays once the frame's iframe shows the bytes the change left,
- * and again on Show, and Play hides it.
+ * A glow over the elements an agent changed, playing once the iframe shows the
+ * change's bytes and again on Show.
  */
 export function ChangeGlow({ frames, container }: ChangeGlowProps) {
   const playing = useMode((state) => state.mode === 'play')

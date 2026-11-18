@@ -29,11 +29,8 @@ interface PageMenuProps {
 }
 
 /**
- * The Page menu of `canon/design/menus/context` on a pages list row. The
- * `page.*` actions act on the page on the canvas, so opening the menu moves
- * the canvas to the row's page first, and New page below runs `page.new`,
- * which adds the page after the one on the canvas. The menu key and
- * Shift+F10 open it too.
+ * A pages row's menu, moving the canvas to that page first, since the `page.*`
+ * actions act on the page shown.
  */
 export function PageMenu({ onOpen, trigger }: PageMenuProps) {
   const [rename, duplicate, add, up, down, remove] = useActions(IDS)

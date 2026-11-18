@@ -48,10 +48,8 @@ interface FindPanelProps {
 }
 
 /**
- * The find panel of `canon/design/layers/find`, standing in for the left
- * panel's tabs: the field with its clear button, the kind filters, the hits
- * grouped by page with their counts and the match marked, and the way back.
- * The field owns Esc, since the registry skips keys typed in a field.
+ * The find panel, standing in for the left panel's tabs, its field owning Esc,
+ * since the registry skips keys typed in a field.
  */
 export function FindPanel({
   project,

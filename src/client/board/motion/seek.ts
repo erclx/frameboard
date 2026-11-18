@@ -91,10 +91,8 @@ export function releaseIn(view: Window, motion: Motion): void {
 }
 
 /**
- * The selected frame's timeline as its live page runs it, read again each
- * time the frame loads or swaps its page for a placeholder. Undefined while
- * a read is pending, null for a frame with nothing to seek or not on the
- * canvas.
+ * The selected frame's live timeline, re-read on each load or swap, undefined
+ * while pending and null with nothing to seek.
  */
 export function useFrameMotion(ref: string): FrameMotion | null | undefined {
   const [read, setRead] = useState<{
@@ -124,8 +122,7 @@ export function useFrameMotion(ref: string): FrameMotion | null | undefined {
     }
     resolve()
     if (!host) return
-    // A load does not bubble, so it is caught on the way down, and the swap
-    // to a placeholder is the box's own child list changing.
+    // Captured, since a load never bubbles, and a swap shows as a child change.
     const swaps = new MutationObserver(resolve)
     swaps.observe(host, { childList: true })
     host.addEventListener('load', resolve, true)
@@ -140,11 +137,8 @@ export function useFrameMotion(ref: string): FrameMotion | null | undefined {
 }
 
 /**
- * Drives one frame's live page from the motion store: seeks it to the held
- * moment, runs the play clock, re-seeks after an agent's write reloads it,
- * and hands it back to its own clock once its hold ends. A timeline that ends stops held at its end, and one that repeats
- * forever loops over one iteration. Entering Play and leaving the page both
- * end the hold.
+ * Drives a frame's live page from the motion store, re-seeking after a reload.
+ * Entering Play and leaving the page end the hold.
  */
 export function useMotionDriver(
   iframe: RefObject<HTMLIFrameElement | null>,
@@ -167,9 +161,7 @@ export function useMotionDriver(
       found: FrameMotion
       seek: (ms: number) => Promise<void>
     } | null = null
-    // Each load is a new generation. A read started for an older one is
-    // dropped, and may never settle, since a discarded document runs no
-    // animation frames, so it never blocks the bind of the page now shown.
+    // Generations drop a stale read, which may never settle in a discarded document.
     let generation = 0
     let bindingFor: number | null = null
     // Whether this document has been seeked, so a release touches only a page the board moved.
@@ -186,9 +178,7 @@ export function useMotionDriver(
       if (!clock || !bound) return
       const { span, motion } = bound.found
       const elapsed = clock.from + (now - clock.started)
-      // A timeline that ends stops held at its end rather than released,
-      // since a release plays a finished CSS animation over from 0. The hold
-      // stops the clock through `apply`, so no frame is asked for after it.
+      // Held at its end, since a release replays a finished CSS animation from 0.
       if (motion.duration !== null && elapsed >= span) {
         holdMotion(ref, span)
         return
@@ -236,8 +226,7 @@ export function useMotionDriver(
       apply()
     }
 
-    // An agent's write reloads the page, so the hold binds the new document
-    // and lands on the same moment.
+    // Rebinds the reloaded document at the same moment.
     const reload = () => {
       generation += 1
       stopClock()
@@ -265,11 +254,8 @@ export function useMotionDriver(
 }
 
 /**
- * Whether a frame the board does not drive has run its timeline to the end,
- * read once now and again by one timer set for the time left, cheaper than a
- * read every animation frame. Always false for a held frame, one that
- * repeats forever, and a `__hf` page, which gives no live reading. A new
- * `found`, as a reload reads, starts the reading over.
+ * Whether an undriven frame's timeline has ended, read by one timer for the
+ * time left rather than every frame, and false for a `__hf` page.
  */
 export function useMotionEnded(
   ref: string,

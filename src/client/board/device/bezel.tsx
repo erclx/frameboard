@@ -13,11 +13,8 @@ import {
 const EDGE = 'calc(1px / var(--zoom, 1))'
 
 /**
- * The device drawn around a frame's box, in board units so it scales with
- * the canvas as the frame does. It lies over the frame's page, rounding its
- * corners to the screen radius, with the phone's island and home bar or the
- * laptop's chin and base, and takes no pointer events, so a click reaches
- * the frame as it would bare.
+ * The device around a frame's box in board units, taking no pointer events,
+ * so a click reaches the frame as it would bare.
  */
 export function Bezel({
   device,

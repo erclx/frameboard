@@ -19,10 +19,8 @@ export function prefersReducedMotion(): boolean {
 }
 
 /**
- * The transition a step draws, a cut under reduced motion. Going forward a
- * slide arrives with its own transition, and going back the slide leaving
- * takes back the one it arrived with, so each pair of slides reads the same
- * both ways.
+ * The transition a step draws, a cut under reduced motion, going back taking
+ * back the arrival so each pair of slides reads the same both ways.
  */
 export function travelOf(
   transition: ResolvedTransition,

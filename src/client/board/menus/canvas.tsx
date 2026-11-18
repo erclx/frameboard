@@ -44,13 +44,8 @@ const WIDTH: Record<MenuTarget['kind'], string> = {
 }
 
 /**
- * The right-click menu over the hit layer, its body following what the
- * click landed on: a frame, the selected element, or empty canvas, per
- * `canon/design/menus/context` and `menus/toast`. A right-click on a frame
- * not yet selected selects it first, and one on the frame around the
- * selected element selects the frame, so every item acts on the selection
- * the way its key does. A `contextmenu` the gestures prevented, being a
- * Ctrl-press on the primary button mid-drag, opens nothing.
+ * The right-click menu, selecting what it lands on first so every item acts
+ * the way its key does, and opening nothing for a Ctrl-press the gestures took.
  */
 export function CanvasMenu({
   page,

@@ -5,11 +5,8 @@ import { OVERLAY_Z } from '../geometry/overlay'
 import { tileDragStore } from './asset-drop'
 
 /**
- * The frame a dragged Assets tile would make where it is, drawn while the
- * tile is over bare canvas: a dashed box the file's size holding
- * `New frame` and that size, with the frame's name above it where a frame's
- * label sits. It draws nothing over a frame, where the drop line shows the
- * gap instead, and nothing until the file's size is read.
+ * The frame a dragged tile would make over bare canvas, drawn once its size is
+ * read and never over a frame, where the drop line shows the gap instead.
  */
 export function DropGhost() {
   const ghost = useStore(tileDragStore, (state) => state.ghost)

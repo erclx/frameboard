@@ -28,11 +28,8 @@ type Held =
   | { key: string; status: 'refused'; message: string }
 
 /**
- * The search for `query` across `project`, sent after `QUIET_MS` of quiet
- * and again when a reload names one of the project's frames. An answer older
- * than the last search sent is dropped, the last answer stays up marked as
- * updating until the next lands, and a blank field answers idle with nothing
- * sent.
+ * The search, sent after `QUIET_MS` of quiet and on a reload in the project,
+ * an answer older than the last search dropped.
  */
 export function useFindAnswer(
   project: string,

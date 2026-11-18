@@ -674,11 +674,7 @@ describe('LeftPanel', () => {
         'link',
       )
 
-    /**
-     * Renders the panel over `storage`, returning a re-render that keeps the
-     * same mount, as a live store change does. The re-render settles the
-     * frame the page-count check waits, so a drag after it is not undone.
-     */
+    // Its re-render settles the page-count check's frame, so a later drag is not undone.
     function splitPanel(storage: Map<string, string>) {
       const location = memoryLocation({ path: '/', record: true })
       const kept = {

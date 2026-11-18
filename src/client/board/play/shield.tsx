@@ -19,17 +19,13 @@ interface PlayShieldProps {
 }
 
 /**
- * The layer under the frames in Play. The frames' layer passes the pointer
- * through to it everywhere but the entered frame, so the wheel, a pinch, and
- * a drag reach the board's zoom over any other frame. A click enters the
- * frame under it and a click on empty canvas leaves. d3-zoom swallows the
- * click ending a drag, so a pan starting over a frame never enters it.
+ * The layer under the frames in Play, taking the pointer everywhere but the
+ * entered frame, so a pan over any other frame reaches the board's zoom.
  */
 export function PlayShield({ viewport, frames, page, live }: PlayShieldProps) {
   useEffect(() => leaveFrame, [page])
 
-  // A culled frame draws a placeholder, which takes no input, and a hidden
-  // or deleted one draws nothing.
+  // Left on a culled, hidden, or deleted frame, which takes no input.
   useEffect(() => {
     if (!live) return
     const ref = enteredStore.getState().ref

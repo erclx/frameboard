@@ -12,10 +12,8 @@ interface PinListProps {
 }
 
 /**
- * The list a count pin opens: one row per note at its spot, its number on a
- * small pin and its first line, a row opening that note's thread. Focus
- * starts on the first row, the arrows, Home, and End move it, and Escape
- * closes the list.
+ * The list a count pin opens, one row per note, focus starting on the first
+ * and moving by the arrows, Home, and End.
  */
 export function PinList({ title, notes, onPick, onClose }: PinListProps) {
   const rows = useRef<(HTMLButtonElement | null)[]>([])
@@ -46,15 +44,13 @@ export function PinList({ title, notes, onPick, onClose }: PinListProps) {
         }
         const step = steps[event.key]
         if (step) {
-          // The board binds the arrows to nudging a selection, which a list
-          // with focus in it never means.
+          // Kept from the board's arrow nudges.
           event.preventDefault()
           event.stopPropagation()
           step()
         }
       }}
-      // The canvas pans on a drag and the Note tool pins on a click, and
-      // neither belongs to a press inside the card.
+      // Kept from the canvas, whose drag pans and whose Note tool pins on a click.
       onPointerDown={(event) => event.stopPropagation()}
       onWheel={(event) => event.stopPropagation()}
       className="pointer-events-auto flex min-h-0 w-[240px] flex-col overflow-hidden rounded-xl border border-border bg-card text-body text-card-foreground shadow-[0_12px_40px_rgba(0,0,0,.3)]"

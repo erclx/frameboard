@@ -118,10 +118,8 @@ function animationName(name: string, role: LayerRole, project: string): string {
 }
 
 /**
- * One slide filling the overlay, playing its side of the step's transition.
- * A leaving layer stacks under the arriving one wherever it sits among its
- * siblings and takes no pointer, so a press during a transition lands on
- * the slide arriving.
+ * One slide playing its side of a transition, a leaving layer taking no
+ * pointer, so a press mid-transition lands on the slide arriving.
  */
 export function TransitionLayer({
   role,

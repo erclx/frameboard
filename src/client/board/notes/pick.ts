@@ -23,10 +23,8 @@ export interface NotePick {
 const FRAME_LEVEL = new Set(['HTML', 'BODY'])
 
 /**
- * The frame or element under a board point, topmost frame first, or null
- * over bare canvas. It hit-tests inside a live frame's iframe on its own, so
- * it needs no selection, and a frame drawn as a placeholder takes a frame
- * note.
+ * The frame or element under a point, hit-tested inside a live iframe with no
+ * selection, a placeholder frame taking a frame note.
  */
 export function pickAt(
   container: ParentNode,
@@ -45,8 +43,7 @@ export function pickAt(
     at.x - frame.box.x,
     at.y - frame.box.y,
   )
-  // An iframe that has not finished a load names no file, so its click is a
-  // frame note rather than an index the server cannot check.
+  // An unloaded iframe names no file, so its click makes a frame note.
   const renderedAt = iframe?.dataset.renderedAt ?? null
   const element =
     document && target && renderedAt && !FRAME_LEVEL.has(target.tagName)

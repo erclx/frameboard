@@ -50,10 +50,8 @@ export interface WaitOptions {
 }
 
 /**
- * How long a refused edit waits for the socket to show the claim the
- * server refused it on, before it tries again. The refusal can land ahead
- * of the claims message, and an edit waiting for a drop the board never saw
- * would otherwise sit until the claim expired.
+ * How long a refused edit waits to see the refusing claim before retrying,
+ * since the refusal can beat the claims message.
  */
 export const REFUSAL_GRACE_MS = 2000
 
@@ -80,10 +78,8 @@ export function useWaiting(): readonly WaitingEdit[] {
 }
 
 /**
- * Resolves at once when nobody holds a frame `refs` reaches, else records a
- * waiting edit naming each holder and resolves once the board's claims drop
- * every one. A ref is a frame, page, or project ref. Rejects with
- * `WaitDropped` when a newer edit replaces it or the wait is cancelled.
+ * Resolves once no claim holds a frame `refs` reaches, rejecting with
+ * `WaitDropped` when a newer edit replaces the wait or it is cancelled.
  */
 export function afterClaims(
   refs: readonly string[],

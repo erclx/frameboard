@@ -44,11 +44,8 @@ let cancelWait: (() => void) | null = null
 let closeOffer: (() => void) | null = null
 
 /**
- * Decides what a `show` message does in this tab. An idle board jumps to the
- * frame, and a developer mid-action is never pulled away: a tab following a
- * session waits for the last busy signal to clear, and any other offers the
- * jump as a toast. A show that would change project is only taken while
- * following. The newest show replaces a waiting one and an open offer.
+ * Decides what a `show` does here. A developer mid-action is never pulled
+ * away, a following tab waiting for busy to clear and any other offering the jump.
  */
 export function receiveShow(ref: string, deps: ShowDeps = defaults): void {
   supersede()

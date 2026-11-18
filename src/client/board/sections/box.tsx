@@ -12,11 +12,8 @@ const CORNER_PLACE: Record<SectionCorner, string> = {
 }
 
 /**
- * Each section's box on the canvas, drawn under every frame, as
- * `canon/design/canvas/sections` holds it: a faint plate with its name inside
- * the top left at the labels' constant screen size. The name is the box's one
- * handle, which the gestures find by `data-section-label`, so a press on the
- * empty plate reaches the canvas as a press on bare canvas does.
+ * Each section's box under every frame, its name the one handle the gestures
+ * find by `data-section-label`, so a press on the plate reaches bare canvas.
  */
 export function SectionBoxes({
   page,

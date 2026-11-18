@@ -296,15 +296,9 @@ type Mark =
   | { kind: 'frame'; corner: Corner }
 
 /**
- * Binds the Move tool's pointer gestures to the hit layer over the frames,
- * on `d3-drag` beside the viewport's `d3-zoom`. A click selects, Shift-click
- * toggles, a drag on a frame moves the selection, a drag on a corner handle
- * resizes it, and a drag on empty canvas draws a marquee. A move released
- * with Alt held copies the frames at the drop instead. A drag writes the
- * frames and the overlay straight from its handler and sends one write on
- * release. Returns the function that unbinds them, and `cursorAt`, which
- * answers the resize cursor a pointer event's position takes, null where a
- * press there would not resize.
+ * Binds the Move tool's gestures on `d3-drag` beside the viewport's `d3-zoom`.
+ * A drag writes the frames and overlay from its handler and sends one write on
+ * release, and `cursorAt` answers the resize cursor a position takes.
  */
 export function attachGestures(
   hit: HTMLElement,
@@ -328,11 +322,7 @@ export function attachGestures(
 
   const overlay = () =>
     target.layer.querySelector<HTMLElement>('[data-overlay]')
-  // The element outline is drawn beside the frame overlay rather than in it,
-  // so a frame drag shifts it here, as `drawMove` shifts the frame's.
-  // GPU raster leaves slivers of an outline moved inside the fractionally
-  // scaled layer, so `styles.css` gives it a layer of its own while
-  // `data-carrying` is set, and only then, since a layer blurs it at rest.
+  // `data-carrying` gives the outline its own layer mid-drag alone, since one blurs it at rest.
   const markCarrying = (on: boolean) => {
     if (on) target.layer.dataset.carrying = ''
     else delete target.layer.dataset.carrying
@@ -345,9 +335,7 @@ export function attachGestures(
         dx === 0 && dy === 0 ? '' : `translate(${dx}px, ${dy}px)`
     }
   }
-  // Note pins sit in their own layer beside the frames, so a frame drag
-  // shifts the pins of the frames it moves here. The individual `translate`
-  // property composes with the pin's own centering and zoom `transform`.
+  // `translate` composes with the pin's own centering and zoom `transform`.
   const shiftPins = (refs: readonly string[], dx: number, dy: number) => {
     const pins =
       target.viewport.querySelectorAll<HTMLElement>('[data-note-frame]')
@@ -366,9 +354,7 @@ export function attachGestures(
       pin.style.translate = dx !== 0 || dy !== 0 ? `${dx}px ${dy}px` : ''
     }
   }
-  // A resize moves a pin by the gap between where `cornerOf` puts it on the
-  // frame's next box and where the board drew it from the stored one, so an
-  // element's pin follows the element as the frame reflows it.
+  // A pin moves by `cornerOf`'s gap, so it follows its element as the frame reflows.
   const followPins = (boxes: Readonly<Record<string, Box>>) => {
     const pins =
       target.viewport.querySelectorAll<HTMLElement>('[data-note-frame]')
@@ -432,13 +418,7 @@ export function attachGestures(
     return badge ? { kind: 'badge', ref: badge } : null
   }
 
-  /**
-   * The corner mark a press at this point takes, null when it takes none.
-   * Only an element that takes a resize answers from its marks. Any other
-   * press on the selected element, a divider's or a rotated element's
-   * corners included, carries it on a drag. The frame's handles are hidden
-   * while an element is selected, so they answer nothing then.
-   */
+  // Only a resizable element answers, and frame handles are hidden while one is selected.
   const markAt = (
     event: MouseEvent,
     point: Point,
@@ -502,8 +482,7 @@ export function attachGestures(
       return 'corner' in gesture ? cornerCursor(gesture.corner) : null
     }
     if (!moveToolOn() || !stores.canWrite()) return null
-    // A card over the mark takes the press itself, so its move bubbles here
-    // with nothing to resize.
+    // A card over the mark takes the press, so its move bubbles with nothing to resize.
     if (event.target !== hit) return null
     const mark = markAt(event, toCanvas(event), withDrawn(target.frames()))
     if (!mark) return null
@@ -518,8 +497,7 @@ export function attachGestures(
   }
 
   const start = (event: MouseEvent) => {
-    // A press hits the frames where they draw, previewed widths included,
-    // and a drag writes from their boxes, which a preview never reaches.
+    // A press hits frames as drawn, while a drag writes from their unpreviewed boxes.
     const drawn = withDrawn(target.frames())
     const point = toCanvas(event)
     from = point
@@ -550,8 +528,7 @@ export function attachGestures(
     const element = state.element
     const members = selectedElements(state)
     const several = members.length > 1
-    // A press on one of several reads as a press on that element, and a drag
-    // moves every free one with it. One with none free carries that one alone.
+    // A drag on one of several moves every free member, else that one alone.
     const member = several
       ? selectedElementBoxes(target.layer)
           .reverse()
@@ -615,9 +592,7 @@ export function attachGestures(
       }
       return
     }
-    // A ghost shows an element past its frame's edge, which a press selects
-    // and a drag carries back, as a press on the selected outline does. A
-    // selected frame's or section's corner over it keeps the press.
+    // A selected frame's or section's corner over a ghost keeps the press.
     const ghost = ghostAt(target.layer, drawn, point)
     if (ghost) {
       selectElement(selection, target.page, ghost)
@@ -630,9 +605,7 @@ export function attachGestures(
       }
       return
     }
-    // A section's name is its handle, over a frame's label strip but never
-    // over a frame itself. The rest of its plate is bare canvas, so a press
-    // there marquees, which keeps a drag across a section free.
+    // Only the name is a handle, so a press on the plate marquees across the section.
     const label = drawn.some((shown) => inBox(shown.box, point))
       ? null
       : topmost(target.layer, '[data-section-label]', event)
@@ -644,8 +617,7 @@ export function attachGestures(
     }
     const frame = frameAt(drawn, point, zoom())
     if (frame) {
-      // Pressing an unselected frame selects it at once, so a drag moves it.
-      // A press leaving a field waits for the drag, since its click selects nothing.
+      // Selects at once so a drag moves it, unless the press only leaves a field.
       const unselected = !chosen.some(({ ref }) => ref === frame.ref)
       if (!leaving && !event.shiftKey && unselected) {
         select(selection, target.page, [frame.ref])
@@ -795,8 +767,7 @@ export function attachGestures(
       if (locked || !stores.canWrite()) gesture = { kind: 'none' }
     }
     if (gesture.kind === 'move' || gesture.kind === 'resize') {
-      // The frames move or resize from their own boxes, so they leave any
-      // preview as the drag starts rather than jump on release.
+      // Previews end as the drag starts, so frames never jump on release.
       endPreview(Object.keys(gesture.boxes))
       elements = framesElements(Object.keys(gesture.boxes))
     }
@@ -996,11 +967,7 @@ export function attachGestures(
     }
   }
 
-  /**
-   * Puts the dragged frames back and copies them at the drop, as a move
-   * released with Alt held. One duplicate write lands the copies, and no box
-   * write is sent, so the originals stay where they were.
-   */
+  // An Alt release sends one duplicate write and no box write, so originals stay put.
   const dropCopies = (boxes: Record<string, Box>) => {
     const [first] = Object.entries(boxes)
     const dropped = first ? elements.get(first[0]) : undefined
@@ -1027,11 +994,7 @@ export function attachGestures(
     )
   }
 
-  /**
-   * Adds the element under a Shift-click to the selected ones or takes it
-   * out, a turn holding nothing there leaving the selection as it stands. An
-   * element in another frame starts a new selection there.
-   */
+  // An element in another frame starts a new selection there.
   const pickToggle = (event: MouseEvent) => {
     const turn = presses
     void stores
@@ -1043,12 +1006,7 @@ export function attachGestures(
       })
   }
 
-  /**
-   * Selects the element a plain click in `frame` lands on, picked as a
-   * Cmd-click picks it, or the frame where it lands on none, as on its bare
-   * body or its label strip. It waits on the frame's tree, and a later press
-   * drops it.
-   */
+  // Waits on the frame's tree, and a later press drops it.
   const pickOrFrame = (event: MouseEvent, frame: FrameRecord) => {
     const turn = presses
     void stores
@@ -1067,13 +1025,7 @@ export function attachGestures(
     )
 
   let revealing: ReturnType<typeof setTimeout> | undefined
-  /**
-   * Centers a frame a click just selected once a double-click can no longer
-   * follow, since the double-click picks through the view and a travel
-   * started by its first click would move the point under it. A later press
-   * drops it, and a frame larger than the view is never fitted, so a click
-   * leaves the zoom the developer chose.
-   */
+  // Waits out a double-click, since a travel would move the point it picks through.
   const revealLater = (frame: FrameRecord) => {
     const turn = presses
     clearTimeout(revealing)
@@ -1160,8 +1112,7 @@ export function attachGestures(
     } else if (gesture.kind === 'placed') {
       const { from: start, to, move, key } = gesture
       if (to && (to.left !== start.left || to.top !== start.top)) {
-        // The outline stays at the drop until the reloaded frame measures
-        // the element, and a refusal puts it back with the element.
+        // Held until the reload measures the element, and a refusal puts it back.
         const outline = selectedElementBox(target.layer)
         if (outline) {
           holdOutline({
@@ -1201,8 +1152,7 @@ export function attachGestures(
       for (const [ref, box] of Object.entries(gesture.boxes)) {
         const element = elements.get(ref)
         if (!element) continue
-        // A move keeps the size it started from, which a frame that just
-        // left its preview may not have drawn yet.
+        // The start size, which a frame just leaving its preview may not have drawn.
         const drawn =
           gesture.kind === 'move'
             ? {
@@ -1226,12 +1176,7 @@ export function attachGestures(
     elements = new Map()
   }
 
-  /**
-   * Sends a dragged section's box, read back off its element, with the
-   * boxes of the members it carried shifted as far, as one write. A refusal
-   * puts the box back where the board holds it, since no newer board
-   * redraws it.
-   */
+  // A refusal restores the box itself, since no newer board redraws it.
   const writeSection = (
     section: SectionRecord,
     members: Readonly<Record<string, Box>>,
@@ -1263,15 +1208,10 @@ export function attachGestures(
       })
   }
 
-  // Esc puts any pointer drag back, writing nothing. It listens in the capture
-  // phase and stops the press there, since the key registry's window listener
-  // registered first and would also run Esc's `selection.clear` or `element.up`
-  // on the same press. The button may stay down long after, so everything goes
-  // back now rather than on release.
+  // Captures Esc ahead of the registry's earlier listener, which would also clear.
   const onEscape = (event: KeyboardEvent) => {
     if (event.key !== 'Escape') return
-    // A corner press is already a `resize`, ahead of the click distance and the
-    // lock check, and with no drag there is nothing to put back.
+    // With no drag there is nothing to put back, though a corner press is a `resize`.
     if (!moved) return
     const root = overlay()
     if (gesture.kind === 'placed') {
@@ -1328,9 +1268,7 @@ export function attachGestures(
 
   const behavior = drag<HTMLElement, unknown>()
     .container(() => target.viewport)
-    // The primary button alone, and a Ctrl-press too, since Ctrl turns
-    // snapping off rather than meaning a right-click here.
-    // Held Space hands the drag to the viewport's pan.
+    // A Ctrl-press counts, since Ctrl turns snapping off rather than meaning right-click.
     .filter((event: MouseEvent) => event.button === 0 && moveToolOn())
     .touchable(false)
     .on('start', (event: { sourceEvent: MouseEvent }) => {

@@ -50,8 +50,7 @@ export function pressRail(layer: ParentNode, event: PointerEvent): boolean {
     page.window.scrollBy({ top: toward * page.window.innerHeight })
     return true
   }
-  // The track is the page's full height drawn at the frame's screen height,
-  // so a pixel of drag moves the page by that ratio, whatever the zoom.
+  // A drag pixel moves the page by the track's ratio, whatever the zoom.
   const ratio = page.root.scrollHeight / track.height
   const from = { y: event.clientY, scroll: page.window.scrollY }
   rail.setAttribute('data-dragging', '')

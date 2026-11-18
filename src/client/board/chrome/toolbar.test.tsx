@@ -596,10 +596,7 @@ describe('the stage a room picks', () => {
 })
 
 describe('the toolbar in a narrow column', () => {
-  /**
-   * The column is the bar's parent, whose width less the bar's 24px margin is
-   * the room. It takes the 12px the board screen sets, which the widths assume.
-   */
+  // The room is the column's width less 24px, with the board screen's 12px assumed.
   function renderInRoom(room: number) {
     const { container } = render(
       <TooltipProvider>

@@ -15,10 +15,8 @@ export interface DraftImage {
 }
 
 /**
- * The images a note box holds until Save or Send: added from a paste or a
- * drop, removed one at a time, and uploaded to the page before the note
- * names them. A file the server would refuse is left out with a sentence,
- * and the note still saves without it.
+ * A note box's images until Save or Send, uploaded before the note names them,
+ * a refused file left out so the note still saves.
  */
 export function useDraftImages() {
   const [images, setImages] = useState<DraftImage[]>([])

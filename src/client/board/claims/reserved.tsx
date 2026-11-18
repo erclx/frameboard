@@ -4,10 +4,8 @@ import { initialOf } from './label'
 import { useReservedBoxes } from './reservations'
 
 /**
- * Each frame an agent reserved on the page and has not written yet, as a
- * hatched box in the claim color where its file will land, labeled with its
- * name, the agent's initial, and its place in the set, and reading drawing
- * or queued. Play shows the frames as they ship, so it draws none.
+ * Each reserved, unwritten frame as a hatched box where its file will land,
+ * none in Play, which shows the frames as they ship.
  */
 export function ReservedBoxes({
   page,

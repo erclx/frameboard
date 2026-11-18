@@ -52,10 +52,8 @@ export function showChange(
 }
 
 /**
- * Registers Show on `\`, Next on `]`, Previous on `[`, and Mark all seen on
- * `⇧]` while the board is mounted. Next and Previous step through the
- * changes in the order they landed, wrapping, and show each, since the view
- * moves only because the developer asked.
+ * Registers the change toast's keys. Next and Previous wrap through the changes
+ * in landing order and show each, since the view moves only when asked.
  */
 export function useChangeActions(
   store: UnseenStore = unseenStore,

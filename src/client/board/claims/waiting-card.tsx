@@ -28,10 +28,8 @@ interface WaitingCardsProps {
 }
 
 /**
- * A card at the bottom edge of each frame a hand edit waits on, naming who
- * holds it and how long they have, drawn on the canvas layer at constant
- * screen size. Esc, leaving the page, and Play cancel every waiting edit,
- * and Play hides the cards.
+ * A card under each frame a hand edit waits on, naming the holder. Esc,
+ * leaving the page, and Play cancel every waiting edit.
  */
 export function WaitingCards({ page, frames }: WaitingCardsProps) {
   const edits = useWaiting()
@@ -76,11 +74,8 @@ export function WaitingCards({ page, frames }: WaitingCardsProps) {
 }
 
 /**
- * The cards of waits on frames this page does not show, such as a rename of
- * another page in the list, docked at the canvas's bottom left outside the
- * scaled layer. The dock sits clear of the toolbar's row, being its 16px
- * inset, its 44px pill, and an 8px gap, so no column width brings the two
- * together.
+ * Waits on frames this page does not show, docked bottom left outside the
+ * scaled layer and clear of the toolbar's row at any column width.
  */
 export function WaitingDock({ frames }: { frames: readonly FrameRecord[] }) {
   const edits = useWaiting()

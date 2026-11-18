@@ -75,14 +75,9 @@ const inLayers = (list: string) =>
 const NO_SECTIONS: readonly SectionRecord[] = []
 
 /**
- * The page's frames top of the stack first, each opening onto its elements,
- * with a hidden frame dimmed. A row click selects its frame and Shift-click
- * adds or takes it out, a double-click or F2 renames it, a drag restacks it,
- * and its eye and lock show on hover and stay while on. A hidden frame does
- * not select, since the next board would prune it. A section's row holds its
- * frames' rows, then the frames in no section follow, and a row restacks
- * within its own group, never into or out of a section. In Play a row click
- * brings its frame into view and enters it.
+ * The page's frames top of the stack first. A hidden frame does not select,
+ * since the next board would prune it, and a row restacks within its own group,
+ * never into or out of a section.
  */
 export function LayersList({
   frames,
@@ -101,10 +96,7 @@ export function LayersList({
   useRevealSelected(setExpanded)
   const groups = groupsOf(frames, sections)
 
-  // A row lands at a place in its group, which counts from the top of the
-  // stack, while the server counts a page-wide index from the bottom. The
-  // frame goes beside the neighbor it lands by, so the canvas draws it over
-  // or under that frame whatever sits between them in the page's stack.
+  // Group places count from the top and the server's index from the bottom, so land by a neighbor.
   const move = useCallback(
     (from: number, to: number, list: string) => {
       const group = groupsOf(frames, sections).find(
@@ -475,10 +467,8 @@ function listOf(group: FrameGroup): string {
 }
 
 /**
- * Opens the rows above each newly selected element, its frame first and
- * then every element it sits in, waiting on the frame's tree when it has
- * not arrived yet. It follows the stores rather than rendering from them, so
- * collapsing all afterwards closes those rows too.
+ * Opens the rows above each newly selected element, following the stores
+ * rather than rendering from them, so collapsing all still closes them.
  */
 function useRevealSelected(
   setExpanded: (

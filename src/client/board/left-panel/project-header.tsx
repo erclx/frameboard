@@ -70,10 +70,8 @@ export function ProjectHeader({ project, page, calls }: ProjectHeaderProps) {
 }
 
 /**
- * The project name and its menu, which the header and the Hide UI pill
- * share so the two never drift. A click on the name renames the project in
- * place, and the chevron opens Rename, Duplicate, a Switch project submenu,
- * a Rules turned off submenu, and All projects, built from the chrome menu of `canon/design/menus/avatar`.
+ * The project name and its menu, shared by the header and the Hide UI pill so
+ * the two never drift.
  */
 export function ProjectTitle({ project, page, calls }: ProjectHeaderProps) {
   const [rename, duplicate, home] = useActions(TITLE_IDS)

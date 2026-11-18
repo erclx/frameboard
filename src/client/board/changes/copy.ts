@@ -23,12 +23,8 @@ export interface ToastCopy {
 }
 
 /**
- * What the toast says. One frame names the frame and how many of its
- * elements changed, several name how many frames on how many pages and
- * which one the toast is on. A pile an agent only showed says showed
- * rather than changed, and a pile mixing shows with writes says changed,
- * since claiming every frame was shown would hide a write. An unclaimed
- * change names no agent, since a wrong name is worse than none.
+ * What the toast says. A pile mixing shows with writes says changed, since
+ * showed would hide a write, and an unclaimed change names no agent.
  */
 export function toastCopy(
   unseen: Readonly<Record<string, FrameChange>>,

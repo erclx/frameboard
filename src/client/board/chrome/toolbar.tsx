@@ -78,11 +78,8 @@ function usePublishToastLift(bar: RefObject<HTMLElement | null>): void {
 }
 
 /**
- * The floating pill centered at the foot of the canvas column, drawing what its
- * column has room for, with More holding the rest. Every button runs its action
- * from the registry, and one whose action no row has registered yet shows
- * disabled with its name and key on hover. Given the project, it opens the
- * Image tool's picker above itself.
+ * The floating toolbar, drawing what its column has room for with More holding
+ * the rest, an unregistered action's button showing disabled.
  */
 export function Toolbar({ project }: { project?: string }) {
   const registered = useActions(IDS)

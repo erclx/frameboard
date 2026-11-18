@@ -25,11 +25,8 @@ interface AssetPickerProps {
 }
 
 /**
- * The Image tool's picker: the project's images, GIFs, SVGs, and videos as
- * the Assets tab draws its tiles, a choice arming the tool so the next click
- * places that file. It opens while `pickerStore` says so, and never on a
- * read-only tab. With no such file it offers Add files, which posts through
- * the Assets tab's upload.
+ * The Image tool's picker, a choice arming the tool for the next click. It
+ * never opens on a read-only tab, and with no file it offers Add files.
  */
 export function AssetPicker({
   project,

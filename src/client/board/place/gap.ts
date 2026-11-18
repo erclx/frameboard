@@ -27,10 +27,8 @@ export interface Gap {
   /** Whether the container lays its children out as flex or grid, where a placed element joins that flow. */
   flow: boolean
   /**
-   * The frame point an element placed out of the flow here counts its `left`
-   * and `top` from: the container's padding box for any container but `body`,
-   * which a placement makes relative when static, else the nearest positioned
-   * ancestor's, else the document's origin.
+   * Where a free element's `left` and `top` count from, the container's padding
+   * box unless it is `body`, else the nearest positioned ancestor or the origin.
    */
   origin: FramePoint
   /** The container's content width in frame pixels, which a placed file is capped at. */
@@ -82,10 +80,8 @@ const LEAVES = new Set([
 const HTML_NS = 'http://www.w3.org/1999/xhtml'
 
 /**
- * Whether a placed element can go inside `element`: a block-level HTML
- * element that already holds elements, no text of its own, and sits in no
- * SVG. An empty box is a leaf, so a click on a placed shape lands beside it
- * rather than inside. The body always can.
+ * Whether a placed element can go inside `element`. An empty box is a leaf, so
+ * a click on a placed shape lands beside it rather than inside.
  */
 function holds(element: Element, view: Window): boolean {
   if (element.localName === 'body') return true
@@ -167,12 +163,9 @@ function sitsBefore(
 }
 
 /**
- * The container and the gap between its children under a point in a live
- * frame, read off the DOM and each container's computed layout. A point over
- * an element that cannot hold one, being a leaf, an inline element, one
- * holding text, or anything in an SVG, takes its parent and the gap beside
- * it. A flex row or a grid reads its gaps along x, and a column or a block
- * along y. Null when the point names no element the file states.
+ * The container and gap under a point in a live frame, a point over an element
+ * that cannot hold one taking its parent's gap beside it, read along x in a
+ * row or grid and along y otherwise.
  */
 export function gapAt(document: Document, at: FramePoint): Gap | null {
   const view = document.defaultView
@@ -293,10 +286,8 @@ export function gapUnder(
 }
 
 /**
- * The gap under a board point the element at `index` in frame `ref` could
- * move to, or null where a move would change nothing or could not land: over
- * another frame or bare canvas, inside the element itself, or in the gap it
- * already sits in.
+ * The gap a carried element could move to under a point, null where the move
+ * would change nothing or could not land.
  */
 export function moveGapUnder(
   container: ParentNode,

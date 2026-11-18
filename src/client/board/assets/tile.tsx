@@ -28,13 +28,8 @@ type Copy = 'idle' | 'copied' | 'failed'
 const COPIED_MS = 1500
 
 /**
- * One file of `canon/design/tabs/assets`: the thumbnail, the name inside its
- * folder, and the `<type> · <frames>` line, `Unused` in the note color for a
- * file no frame links, with the size kept in the accessible name. A listing
- * with no counts keeps the `<type> · <size>` line. A click copies the path a
- * frame links it by. An
- * image, GIF, SVG, video, or audio drags onto a frame while this tab may write,
- * landing where the canvas's drop target places it.
+ * One asset tile, its size kept in the accessible name. A click copies the
+ * path a frame links it by, and media drags onto a frame while the tab writes.
  */
 export function Tile({ project, file }: TileProps) {
   const [copy, setCopy] = useState<Copy>('idle')
@@ -171,11 +166,8 @@ type Media =
   | { state: 'unplayable' }
 
 /**
- * A video's first frame with its length, preloading metadata alone so a tab
- * of videos loads little, and playing muted only while `playing`, rewound on
- * leave so the tile shows the first frame again. A file the browser cannot
- * decode, or one that decodes no picture, as ProRes in a `.mov` does in
- * Chrome, says so in place of a black box.
+ * A video's first frame, preloading metadata alone so a tab of videos loads
+ * little, and naming a codec it cannot decode in place of a black box.
  */
 function VideoThumbnail({ url, playing }: { url: string; playing: boolean }) {
   const video = useRef<HTMLVideoElement>(null)

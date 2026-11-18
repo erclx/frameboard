@@ -45,11 +45,8 @@ export function canPlayOwn(project: string, name: string): boolean {
 }
 
 /**
- * The keyframes of `project`'s own transitions, as one stylesheet text,
- * empty until they arrive. It reads them when presenting starts and again
- * when `names`, the project record's own names joined by commas, changes,
- * and drops them when presenting ends. A project holding none is never
- * asked.
+ * A project's own transition keyframes as one stylesheet, read when presenting
+ * starts and when `names` changes, and never asked for a project holding none.
  */
 export function useOwnKeyframes(
   project: string | undefined,

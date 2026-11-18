@@ -177,10 +177,8 @@ interface Picking {
 }
 
 /**
- * A swatch that opens the picker on Custom for its theme, titled Light or
- * Dark. The swatch previews the picked color while the picker is open, which
- * writes once as it closes or on Enter in the hex field, and Esc closes it
- * writing nothing.
+ * A theme swatch opening the picker, previewing while open and writing once
+ * as it closes, Esc writing nothing.
  */
 function SwatchPicker({
   name,
@@ -364,8 +362,7 @@ function TextValue({
   return (
     <input
       aria-label={label}
-      // The field replaces the button the click landed on, so it takes focus in its place.
-      // oxlint-disable-next-line jsx-a11y/no-autofocus
+      // oxlint-disable-next-line jsx-a11y/no-autofocus -- it replaces the clicked button
       autoFocus
       value={draft}
       spellCheck={false}

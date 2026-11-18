@@ -46,11 +46,8 @@ const SIZE_SHAPES: Record<FrameSizePreset, string> = {
 }
 
 /**
- * The card a new board's empty page shows in place of its note, asking for
- * the project's name, the first frame's size, a kit to start from, and who
- * draws the first frame. Each answer goes through a write the board already
- * makes, so Undo takes it back, and the kit step drops out where a token
- * sheet already reaches the project.
+ * The first-run guide card, each answer going through a write the board
+ * already makes, so Undo takes it back.
  */
 export function GuideCard({
   page,

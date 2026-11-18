@@ -115,11 +115,8 @@ export async function deletePage(
 }
 
 /**
- * Registers `page.new`, `page.duplicate`, `page.rename`, `page.moveUp`,
- * `page.moveDown`, `page.delete`, `page.next`, and `page.previous` for the
- * page on the canvas while a board is mounted. Each edit is lit while the tab
- * may write, and a new or copied page opens on the canvas, a new one with its
- * name ready to type over. Next and previous open the page beside it in any tab.
+ * Registers the `page.*` actions for the page on the canvas, each edit lit
+ * while the tab writes, and a new page opening with its name ready to type over.
  */
 export function usePageActions(
   project: string,

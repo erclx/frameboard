@@ -20,10 +20,8 @@ interface HiddenPillsProps {
 }
 
 /**
- * What Hide UI keeps of the panels, per `canon/design/shell/hide-ui`: the
- * way home, the project name with the header's own menu, and the button
- * bringing the panels back top left, and the avatar with the zoom level top
- * right.
+ * What Hide UI keeps of the panels, per `canon/design/shell/hide-ui`, reusing
+ * the header's own project menu.
  */
 export function HiddenPills({ project, page, calls }: HiddenPillsProps) {
   const [hideUi] = useActions(['view.hideUi'])

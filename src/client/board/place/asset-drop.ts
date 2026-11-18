@@ -56,13 +56,9 @@ interface AssetDropOptions {
 }
 
 /**
- * Makes the canvas's hit layer a drop target for an Assets tile, placing its
- * file at the gap under the release as the Image tool's click does, while
- * this tab may write. A release over no frame's box makes a frame the file's
- * size instead, and while the tile is there the store holds that frame's
- * ghost once the size is read. A drag of anything else is not taken. A file
- * dragged from the system is taken and dropped on nothing, so it never opens
- * in place of the board.
+ * Makes the hit layer a drop target for an Assets tile, a release over no frame
+ * making a frame of its own. A system file is taken and dropped on nothing, so
+ * it never opens in place of the board.
  */
 export function useAssetDrop(
   target: RefObject<HTMLElement | null>,
