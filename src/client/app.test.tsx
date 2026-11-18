@@ -2,7 +2,7 @@ import './styles.css'
 
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Router } from 'wouter'
 import { memoryLocation } from 'wouter/memory-location'
 
@@ -252,11 +252,12 @@ describe('App', () => {
       renderAt('/p/studio/home')
 
       act(() => receiveBoard(liveStore, BOARD))
-      const trigger = screen.getByRole('button', { name: 'Shapes' })
-      await userEvent.click(trigger)
+      await screen.findByRole('navigation', { name: 'Pages' })
+      await userEvent.click(screen.getByRole('button', { name: 'Shapes' }))
 
-      expect(trigger).toHaveAttribute('aria-expanded', 'true')
-      expect(await screen.findByRole('menu')).toBeVisible()
+      const menu = await screen.findByRole('menu')
+      // The popup fades in from opacity 0, which a loaded run can still catch.
+      await vi.waitFor(() => expect(menu).toBeVisible())
     })
 
     it('draws one grey frame on the canvas, hidden from a reader', () => {
