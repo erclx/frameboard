@@ -70,6 +70,12 @@ export function inspectorTab(name: string): (page: Page) => Promise<void> {
 export const PRESS_FRAMES = 600
 
 /**
+ * Drawn by the live board in every mode and never by `BoardLoading`, whose live
+ * menus close when the board replaces them, so a board-route load script waits.
+ */
+export const LIVE_BOARD = '[data-layer]'
+
+/**
  * Presses the control named `label`, by `aria-label` or else its text, from an
  * init script, since `setup` runs before the harness navigates. It waits out a
  * `disabled` or `aria-disabled` control, which the loading chrome draws inert.
@@ -77,26 +83,31 @@ export const PRESS_FRAMES = 600
 export function pressOnLoad(label: string): (page: Page) => Promise<void> {
   return async (page) => {
     await page.addInitScript(
-      ({ name, frames }) => {
+      ({ name, frames, live }) => {
         let left = frames
         const press = () => {
-          const control = [...document.querySelectorAll('button')].find(
-            (button) =>
-              !button.disabled &&
-              button.getAttribute('aria-disabled') !== 'true' &&
-              (
-                button.getAttribute('aria-label') ??
-                button.textContent?.trim() ??
-                ''
-              ).match(name),
-          )
+          const boardLive =
+            !location.pathname.startsWith('/p/') ||
+            document.querySelector(live) !== null
+          const control = boardLive
+            ? [...document.querySelectorAll('button')].find(
+                (button) =>
+                  !button.disabled &&
+                  button.getAttribute('aria-disabled') !== 'true' &&
+                  (
+                    button.getAttribute('aria-label') ??
+                    button.textContent?.trim() ??
+                    ''
+                  ).match(name),
+              )
+            : undefined
           if (control) control.click()
           else if (--left > 0) requestAnimationFrame(press)
           else console.error(`No button named ${name} to press`)
         }
         document.addEventListener('DOMContentLoaded', press)
       },
-      { name: label, frames: PRESS_FRAMES },
+      { name: label, frames: PRESS_FRAMES, live: LIVE_BOARD },
     )
   }
 }
@@ -108,19 +119,24 @@ export function pressOnLoad(label: string): (page: Page) => Promise<void> {
 export function chooseOnLoad(label: string): (page: Page) => Promise<void> {
   return async (page) => {
     await page.addInitScript(
-      ({ name, frames }) => {
+      ({ name, frames, live }) => {
         let left = frames
         const choose = () => {
-          const item = [
-            ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
-          ].find((candidate) => candidate.textContent?.trim().match(name))
+          const boardLive =
+            !location.pathname.startsWith('/p/') ||
+            document.querySelector(live) !== null
+          const item = boardLive
+            ? [
+                ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+              ].find((candidate) => candidate.textContent?.trim().match(name))
+            : undefined
           if (item) item.click()
           else if (--left > 0) requestAnimationFrame(choose)
           else console.error(`No menu item named ${name} to choose`)
         }
         document.addEventListener('DOMContentLoaded', choose)
       },
-      { name: label, frames: PRESS_FRAMES },
+      { name: label, frames: PRESS_FRAMES, live: LIVE_BOARD },
     )
   }
 }
@@ -460,8 +476,9 @@ const PIXEL = Buffer.from(
 )
 
 /**
- * Holds the shot until `selector` draws, `absent` matches nothing, every SVG
- * image decodes, and two frames paint, which the harness's own wait skips.
+ * Holds the load until `selector` draws, `absent` matches nothing, SVG images
+ * decode, and two frames paint. A miss stays held, since any answer shoots the
+ * wrong state as a pass, and is named on stderr ahead of the timeout.
  */
 export function readyWhen(
   selector: string,
@@ -471,6 +488,9 @@ export function readyWhen(
     let ready: () => void = () => {}
     const drawn = new Promise<void>((resolve) => (ready = resolve))
     await page.exposeFunction('captureReady', () => ready())
+    await page.exposeFunction('captureLost', () =>
+      console.error(`${page.url()}: ${selector} never drew`),
+    )
     await page.route('**/capture-ready.gif', async (route) => {
       await drawn
       await route.fulfill({ contentType: 'image/gif', body: PIXEL })
@@ -500,7 +520,10 @@ export function readyWhen(
             )
             void Promise.all(images).then(painted)
           } else if (--left > 0) requestAnimationFrame(wait)
-          else console.error(`${target} never drew`)
+          else {
+            console.error(`${target} never drew`)
+            ;(window as unknown as { captureLost: () => void }).captureLost()
+          }
         }
         document.addEventListener('DOMContentLoaded', () => {
           const image = document.createElement('img')
@@ -680,10 +703,15 @@ export function focusOnLoad(
 ): (page: Page) => Promise<void> {
   return async (page) => {
     await page.addInitScript(
-      ({ selector, key, frames }) => {
+      ({ selector, key, frames, live }) => {
         let left = frames
         const act = () => {
-          const target = document.querySelector<HTMLElement>(selector)
+          const boardLive =
+            !location.pathname.startsWith('/p/') ||
+            document.querySelector(live) !== null
+          const target = boardLive
+            ? document.querySelector<HTMLElement>(selector)
+            : null
           if (!target) {
             if (--left > 0) requestAnimationFrame(act)
             return
@@ -705,7 +733,7 @@ export function focusOnLoad(
         }
         document.addEventListener('DOMContentLoaded', act)
       },
-      { selector, key, frames: ROW_FRAMES },
+      { selector, key, frames: ROW_FRAMES, live: LIVE_BOARD },
     )
   }
 }
