@@ -61,15 +61,9 @@ const CONTENT_TYPES: Record<string, string> = {
 }
 
 /**
- * Serves `/frames/<project>/<page>/<file>`, `/frames/<project>/assets/<path>`,
- * and `/frames/<project>/tokens.css` from the board, so a frame's relative
- * links resolve with no rewriting. It is a handler of its own rather than
- * static serving, since it must refuse board records, dot-named paths, and any
- * path whose realpath leaves its project. Every refusal answers 404, so
- * nothing tells a caller what exists. A frame gets the faces and token sheets
- * spliced into its `head`, in the response alone and never cached. Any other
- * file is served byte for byte under a validator, and `?at=<hash>` serves the
- * version `version` holds. `base` prefixes the head's sheet URLs.
+ * Serves the board's frames so relative links resolve unrewritten, its own
+ * handler since it must refuse records, dot-named, and escaping paths, all as
+ * 404 so nothing tells a caller what exists.
  */
 export function frameRoutes(
   root: string,
@@ -114,11 +108,9 @@ export function frameRoutes(
           'Accept-Ranges': 'bytes',
           'Cache-Control': 'no-store',
         }
-        // Hono answers HEAD by dropping the GET body unread, which would
-        // leave an opened read stream holding its file handle.
+        // An unread stream would hold its file handle when Hono drops the body.
         if (c.req.method === 'HEAD') return c.body(null, 206, headers)
-        // Node types its web stream apart from the global one Hono takes,
-        // though at runtime they are the same class.
+        // Node types its web stream apart from Hono's, though they are one class.
         const stream = Readable.toWeb(
           createReadStream(file, range),
         ) as ReadableStream
@@ -127,8 +119,7 @@ export function frameRoutes(
     }
 
     if (!isFrame && at === undefined) {
-      // A validator with no lifetime, never `max-age`, since an asset edit
-      // reloads every frame in the project and the reload has to see it.
+      // Never `max-age`, since an asset edit's reload has to see it.
       const tag = weakTag(await stat(file, { bigint: true }))
       const revalidate = { ETag: tag, 'Cache-Control': 'no-cache' }
       if (matchesTag(c.req.header('If-None-Match'), tag)) {
@@ -197,10 +188,8 @@ interface ByteRange {
 }
 
 /**
- * The inclusive bytes a single `bytes=` range names within `size`,
- * `'unsatisfiable'` for a valid range that names none of them, or null for a
- * header to ignore, which RFC 9110 allows for any range a server does not
- * support, a multi-range among them.
+ * The bytes a single range names, null for a header to ignore, which RFC 9110
+ * allows for an unsupported range such as a multi-range.
  */
 function parseRange(
   header: string,
@@ -213,8 +202,7 @@ function parseRange(
     if (last === '') return null
     const suffix = Number(last)
     if (suffix === 0) return 'unsatisfiable'
-    // RFC 9110 counts a suffix on an empty file satisfiable, and a 206 cannot
-    // name zero bytes, so the empty file is served whole.
+    // Served whole, since a 206 cannot name zero bytes.
     if (size === 0) return null
     return { start: Math.max(0, size - suffix), end: size - 1 }
   }
@@ -290,10 +278,8 @@ async function resolveFile(
 }
 
 /**
- * Whether a file the request reached is one the route may serve, read off
- * where it really sits in its project rather than the name asked for, so a
- * symlink in `assets/` naming a record or a dot-named path is refused as the
- * name itself would be.
+ * Whether the route may serve a file, read off its real path, so a symlink to
+ * a record or a dot-named path is refused.
  */
 function servableInProject(segments: string[]): boolean {
   if (segments.some((segment) => segment.startsWith('.'))) return false

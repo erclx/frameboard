@@ -14,11 +14,8 @@ export interface LineInput {
 }
 
 /**
- * The one line a follower prints per note. It opens with `frameboard note`,
- * which the skill tells the agent to act on, and names the verbs that answer
- * it. Text is collapsed onto one line, stripped of control characters so it
- * cannot drive the terminal, and cut at 200 characters. Image paths sit
- * between the text and the hints, so the prefix and the hints never move.
+ * The one line a follower prints per note, opening on `frameboard note`, with
+ * control characters stripped so the text cannot drive the terminal.
  */
 export function noteLine({
   id,

@@ -94,14 +94,8 @@ const sendSchema = z
   })
 
 /**
- * The board's note writes, each behind `requireWriter`: pin a note, reply in
- * its thread, send it to a listening session, and mark it done. Each answers
- * the CLI's `{ ok, data }` envelope, and a refusal its `{ ok, error }`. Pin,
- * reply, and send take `dispatch: true` in place of `to`, which starts a
- * session through `dispatch` and marks the thread's root delivered to it, and
- * a failed start takes back the message the request added. Images go up first
- * to `/api/notes/images`, and `/api/note-images/...` reads one back with no
- * writer check, since an `<img>` sends no `Origin`.
+ * The board's note writes, a failed dispatch taking back the message it added,
+ * and image reads taking no writer check, since an `<img>` sends no `Origin`.
  */
 export function notesRoutes(
   root: string,
@@ -135,10 +129,7 @@ export function notesRoutes(
     return dispatch
   }
 
-  /**
-   * Starts a session on a thread already on disk, then hands the root to it
-   * as delivered, answering the note `answer` names.
-   */
+  // Started on a thread already on disk, so the root is delivered to it.
   const startSession = async (
     run: Dispatch,
     place: PageNotes,

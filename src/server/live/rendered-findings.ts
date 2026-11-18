@@ -9,11 +9,8 @@ import type { FrameRecord, ListResult } from '@/shared/records/list'
 export type CheckFrame = (frame: FrameRecord) => Promise<Finding[] | null>
 
 /**
- * Runs `check` at the frame's own box, then at each linked width it lists,
- * tagging each finding read at a linked width with that width. A linked
- * finding the own box already reported, being the same rule and message at
- * the same place, is left out, since it is no fault of that width. A null
- * reading at any box answers null for the frame.
+ * Runs `check` at the own box and each linked width, leaving out a linked
+ * finding the own box already reported, since it is no fault of that width.
  */
 export async function acrossWidths(
   frame: Pick<FrameRecord, 'box' | 'widths'>,
@@ -39,10 +36,8 @@ function sameness(finding: Finding): string {
 
 export interface RenderedFindings {
   /**
-   * Queues `refs` for a browser recheck, along with every frame whose box or
-   * file time changed since it was last queued, which covers a new frame, a
-   * resize no file write announces, and a write the watcher has not batched
-   * yet. The first call queues every frame.
+   * Queues `refs` and every frame whose box or file time moved, catching a
+   * resize no write announces.
    */
   queue: (board: ListResult, refs: string[]) => void
   /** Resolves once no recheck of any of `refs` is queued or running. */
@@ -59,13 +54,8 @@ interface Waiter {
 }
 
 /**
- * The server's warm checker. Rechecks run one at a time on their own queue,
- * so a PNG never waits behind them, and a ref queued again before its result
- * lands drops that result, so the board never shows findings from an older
- * file. `onResult` receives each landed frame's browser findings, an empty
- * list for a frame whose recheck failed, so no finding outlives its file.
- * The first recheck to run after a browser could not launch queues every
- * frame again, since the ones checked meanwhile landed nothing.
+ * The warm checker, on its own queue so a PNG never waits, dropping a result
+ * a requeue made stale, so no finding outlives its file.
  */
 export function createRenderedFindings({
   check,
@@ -129,8 +119,7 @@ export function createRenderedFindings({
           failure = 'browser-not-found'
           return
         }
-        // A frame removed or failing to load mid-check clears what the older
-        // file held, and the next write to it queues it again.
+        // Clears the older file's findings, and the next write requeues it.
         if (current()) onResult(ref, [])
       })
       .finally(() => {

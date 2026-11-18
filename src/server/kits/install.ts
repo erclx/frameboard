@@ -17,12 +17,8 @@ interface InstallOptions extends JournalOptions {
   /** The `--tokens` sheet a server was given, null for none, or absent to read the address file. */
   tokens?: string | null
   /**
-   * Installs over the look already there: `takeOutLook` takes out the
-   * project's own sheet, `kit` page, and `assets/kit/`, and a board or
-   * `--tokens` sheet is left as it is, which the project's new sheet
-   * overrides. False when absent. A caller recording undo steps calls
-   * `takeOutLook` as a step of its own first, since one step cannot both take
-   * out a path and write it again, so the call here finds nothing to take.
+   * Installs over the project's own look. An undo-recording caller takes it out
+   * as its own step first, since one step cannot take out and rewrite a path.
    */
   replace?: boolean
 }
@@ -58,15 +54,9 @@ function lookPaths(projectPath: string): string[] {
 }
 
 /**
- * Installs `kit` into the project `ref` names: its token sheet becomes the
- * project's `tokens.css`, its sample page the project's `kit` page, and every
- * other file sits under `assets/kit/`, which the frame route imports after
- * the token sheets. Without `replace`, it refuses `tokens-exist` where a
- * board, `--tokens`, or project sheet already reaches the project, so a kit
- * never writes under a look somebody chose, and `name-taken` where the
- * project already holds a `kit` page or `assets/kit/`. Refuses `kit-invalid`
- * for a kit with no readable `kit.json` or no token sheet. Every refusal
- * writes nothing.
+ * Installs a kit into a project, refusing without `replace` where a sheet
+ * already reaches it, so a kit never writes under a chosen look, and writing
+ * nothing on any refusal.
  */
 export async function installKit(
   root: string,

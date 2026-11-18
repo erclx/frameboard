@@ -218,10 +218,8 @@ const projectTokensSchema = z.object({
 })
 
 /**
- * The bytes a new frame holds for the asset at `path`, as an insert writes
- * them, at the size the frame is added at. An audio takes the width alone, so
- * its frame hugs the player's height, and every other kind refuses `usage`
- * without both sides.
+ * A new frame's bytes for an asset, an audio taking the width alone so its
+ * frame hugs the player's height.
  */
 function mediaMarkup(
   ref: string,
@@ -246,14 +244,8 @@ function mediaMarkup(
 }
 
 /**
- * The board's structure writes, each behind `requireWriter`, its body
- * mirroring the CLI verb's flags and its answer the record the CLI prints.
- * Each write reports into its own journal and records one step, so the
- * developer can undo it, and names the page the board shows on either side
- * of it, so an undo can follow a page it brings back or renames.
- * `measure` reads a frame's content on the warm browser for a fit, which
- * refuses `browser-not-found` where none is given. `tokens` is the
- * `--tokens` sheet the server was given, which a starter sheet never goes under.
+ * The board's structure writes, mirroring the CLI verbs, each one undo step
+ * naming the page on either side, so an undo can follow a page it brings back.
  */
 export function structureRoutes(
   root: string,
@@ -285,12 +277,7 @@ export function structureRoutes(
     return result
   }
 
-  /**
-   * Refuses a write that would rename, move, or remove a frame another
-   * session holds, before anything is written. Writes that leave every
-   * existing frame file and box alone, being an add, a duplicate, a flag, a
-   * copy, a paste, and a move of a page or frame in its order, go at once.
-   */
+  // Only writes renaming, moving, or removing a held frame are refused up front.
   const refuseHeld = (refs: string[]) => refuseClaimed(root, refs, new Date())
 
   /** `refuseHeld` for frames as the body names them, read back to their canonical refs. */
@@ -533,13 +520,7 @@ export function structureRoutes(
     return c.json({ ok: true, data: frames })
   })
 
-  /**
-   * Sets the widths each frame also shows at, in one step, leaving every
-   * frame file alone. A frame whose stored list differs from its `expected`
-   * refuses `stale-layout` before any frame is written, so a hand write never
-   * drops a width an agent added since the board drew it. The compare and
-   * the write share one layout lock. A locked frame refuses the whole write.
-   */
+  // Compared to `expected` under the write's lock, so no agent's width is dropped.
   app.post('/api/frame/widths', async (c) => {
     const body = await parseBody(c.req.raw, frameWidthsSchema)
     const targets: WidthsTarget[] = body.refs.map((ref) => {
@@ -574,16 +555,7 @@ export function structureRoutes(
     return c.json({ ok: true, data: frames })
   })
 
-  /**
-   * Sets how each frame holds its height, `fixed`, `fit`, or `scroll`, in one
-   * step. `expected` holds each frame's box as the caller saw it, keyed by the
-   * ref the body names, and a frame changed since refuses `stale-layout`
-   * before any frame is written. `heights` gives a `scroll` write the screen
-   * height each named frame takes, and refuses `usage` with any other mode. A
-   * locked or claimed frame refuses the whole
-   * write, and `fit` measures each frame and its linked widths on the warm
-   * browser first, refusing `browser-not-found` where none runs.
-   */
+  // One step for every frame's height mode, refused whole on a moved `expected`.
   app.post('/api/frame/height', async (c) => {
     const body = await parseBody(c.req.raw, frameHeightSchema)
     if (body.heights && body.mode !== 'scroll') {
@@ -618,8 +590,7 @@ export function structureRoutes(
       for (const target of targets) {
         const frame = await readFrame(root, target.ref, { cwd })
         const content = await measure(frame)
-        // A fit turns height hugging on with no write to the frame file,
-        // which queues no hug measure, so each linked width is measured here.
+        // Measured here, since a fit writes no frame file and so queues no hug.
         const widths: LinkedWidth[] = []
         for (const { width } of frame.widths) {
           const linked = await measure(frame, {
@@ -650,11 +621,7 @@ export function structureRoutes(
     return c.json({ ok: true, data: deleted })
   })
 
-  /**
-   * The frames the developer last copied or cut, held as bytes and boxes in
-   * memory, so a paste never depends on the source surviving and a restart
-   * empties it.
-   */
+  // Held as bytes, so a paste never depends on the source surviving.
   let clipboard: HeldFrame[] = []
 
   app.post('/api/clipboard/copy', async (c) => {
@@ -815,11 +782,7 @@ export function structureRoutes(
     return c.json({ ok: true, data: projects })
   })
 
-  /**
-   * Turns one check rule off for the project, or back on, as one undo step.
-   * It waits on no claim, since it writes `project.json` alone and under its
-   * lock. Turning off a rule no check declares answers `usage`.
-   */
+  // Waits on no claim, since it writes `project.json` alone under its lock.
   app.post('/api/project/rule', async (c) => {
     const body = await parseBody(c.req.raw, projectRuleSchema)
     const rules = await recorded(

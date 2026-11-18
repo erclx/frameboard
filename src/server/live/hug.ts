@@ -19,12 +19,8 @@ export type MeasureFrame = (
 
 export interface Hug {
   /**
-   * Measures every hugging frame among `refs` at its own box and writes the
-   * sizes that moved, answering whether `board` now trails a stored size, so
-   * the batch rescans before it sends the board. That covers a size `later`
-   * stored after the scan, which leaves this call nothing to write. The
-   * linked widths of those frames are queued on `later`'s queue, so the
-   * board waits on one measure per frame.
+   * Measures and writes hugging frames, answering whether `board` now trails a
+   * stored size, so the batch rescans before it sends the board.
    */
   now: (board: ListResult, refs: readonly string[]) => Promise<boolean>
   /**
@@ -37,12 +33,8 @@ export interface Hug {
 }
 
 /**
- * The server's hug step. A frame hugs when either flag is on, and its sizes
- * are written through `setMeasured`, which takes the page's lock, writes
- * only the axes the stored entry still hugs, and records no undo step. A
- * frame whose content sizes itself off the viewport, whose body is empty,
- * or that fails to load keeps its box, and a browser that cannot launch
- * writes nothing at all.
+ * The server's hug step, writing through `setMeasured`, with an unbounded,
+ * empty, or failing frame keeping its box.
  */
 export function createHug({
   root,
@@ -92,9 +84,7 @@ export function createHug({
     let written = false
     for (const [page, measured] of pages) {
       if (closed) break
-      // A file written since `board` was measured at its old content, and
-      // that write's own batch measures it again. Checking just ahead of
-      // the write narrows the window rather than closing it.
+      // Skips a file written since, whose own batch measures it, narrowing the window.
       const unchanged = await Promise.all(
         measured.map(({ frame }) => unchangedSince(frame)),
       )
@@ -108,8 +98,7 @@ export function createHug({
         const names = await setMeasured(root, page, sizes, { cwd: root })
         written ||= names.length > 0
       } catch (error) {
-        // A layout that does not parse is refused rather than overwritten,
-        // and a page removed since the scan has nothing to write.
+        // An unparsable layout or a removed page has nothing to write.
         if (!(error instanceof FrameboardError)) throw error
       }
     }

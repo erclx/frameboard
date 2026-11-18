@@ -35,15 +35,8 @@ interface SaveOptions extends JournalOptions {
 }
 
 /**
- * Saves the look of the project `ref` names as the kit `name` in the board's
- * kits folder, so any project on the board can install it. The kit takes the
- * token sheet reaching the project, its `assets/kit/` files, and its `kit`
- * page, writing a `kit.json` naming the project and a stub `kit.md` where the
- * project holds none. Refuses `name-taken` for a name a shipped or saved kit
- * holds, never overwriting one, and `tokens-not-found` for a project no
- * token sheet reaches, since a kit with no tokens carries no look. The kit
- * is written beside its place and renamed in, so a refusal or a failure
- * leaves no half-written kit.
+ * Saves a project's look as a board kit, never overwriting a taken name, and
+ * renamed into place, so a refusal or a failure leaves no half-written kit.
  */
 export async function saveKit(
   root: string,

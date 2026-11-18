@@ -80,10 +80,8 @@ import { createPreviewSlot } from './preview/listener'
 const HOSTNAME = '127.0.0.1'
 
 /**
- * How long a batch's changes wait before the board hears of them, so a hand
- * write of many frames, whose first files can reach a batch at its 250 ms
- * ceiling before the history records the step, is withdrawn as the board's
- * own rather than marked.
+ * How long a batch's changes wait, so a large hand write reaching a batch
+ * before history records the step is withdrawn rather than marked.
  */
 const OWN_GRACE_MS = 1000
 
@@ -114,10 +112,8 @@ export interface StartOptions {
 }
 
 /**
- * The board tabs holding a live connection to this server, counting apart the
- * ones that can write. The route a tab connects through calls `open` and
- * `close`, and `serve` waits on a writer before deciding to open a tab of its
- * own, since a tab typed in by hand reads the board but cannot change it.
+ * The live board tabs, counting writers apart, since `serve` waits on a
+ * writer and a hand-typed tab cannot change the board.
  */
 export class BoardTabs {
   #count = 0
@@ -210,8 +206,7 @@ async function listen({
   }
   const boardUrl = () =>
     `http://${HOSTNAME}:${bound}/api/access/redeem?ticket=${tickets.mint().ticket}`
-  // Scans run one at a time, so a slow scan never lands after a newer one and
-  // sends a board older than the last.
+  // One scan at a time, so a slow scan never sends an older board.
   let scanning: Promise<unknown> = Promise.resolve()
   const inTurn = <T>(task: () => Promise<T>): Promise<T> => {
     const run = scanning.then(task)
@@ -269,9 +264,7 @@ async function listen({
   }
   // The board the tabs last received, which a moved frame's stamp is read against.
   const shown: { board: ListResult | null } = { board: null }
-  // The board the last batch scanned, which a newly placed frame is read
-  // against. A tab's snapshot can scan a placement before its batch runs,
-  // so `shown` would read it as placed already.
+  // Not `shown`, since a tab's snapshot can scan a placement before its batch.
   const scanned: { board: ListResult | null } = { board: null }
   let moved: MovedFolder[] = []
   const recentlyMoved = () => {
@@ -328,8 +321,7 @@ async function listen({
     broadcast: (list) => hub.broadcast({ type: 'claims', claims: list }),
     inTurn,
   })
-  // One browser serves the PNG route, the checker, and the thumbnails, each on
-  // its own queue, launched by the startup sweep.
+  // One browser for every renderer, each on its own queue.
   const browser = createWarmBrowser(() =>
     launchCaptureBrowser({
       purpose: 'Board PNGs, thumbnails, and browser checks',
@@ -365,9 +357,7 @@ async function listen({
         }),
       )
       if (list === null) return null
-      // A file written since the scan was read at the box from before the
-      // write, which a hugging frame is about to leave, so that write's batch
-      // checks it again instead.
+      // Left to a newer write's batch, since this read used the old box.
       return (await modifiedAt(frame.path)) === frame.modifiedAt ? list : null
     },
     onResult: (ref, list) => {
@@ -409,8 +399,7 @@ async function listen({
     thumbnails,
     measure,
     frameVersion: tracker.version,
-    // A batch logging the agent's write may still be running when the board
-    // sends the edit it queued behind the claim, so the lookup waits its turn.
+    // Waits its turn behind a batch still logging the agent's write.
     settledVersion: (ref, hash) =>
       inTurn(async () => tracker.version(ref, hash)),
     assetUsage,
@@ -420,9 +409,7 @@ async function listen({
           try {
             const board = await scanBoard(root)
             rendered.queue(board, [])
-            // An agent's write the watcher has not batched is taken in here,
-            // so its change findings land before the route answers. Its batch
-            // then finds the bytes already held and logs nothing twice.
+            // Takes in an unbatched agent write, so its findings land before the answer.
             const held = await tracker.update(
               board,
               refs.map(
@@ -453,8 +440,7 @@ async function listen({
           open: openUrl,
           graceMs: 0,
         }),
-      // Marks log in the scan turn, the one writer of the log, then the
-      // tabs hear the marks before the jump to the first frame.
+      // In the scan turn, the log's one writer, so tabs hear marks before the jump.
       show: (refs, author) =>
         inTurn(async () => {
           const changes = tracker.show(refs, author)
@@ -480,14 +466,12 @@ async function listen({
   })
   server.on('upgrade', hub.handleUpgrade)
 
-  // Every frame is checked once at start, ahead of any hello's findings, and
-  // queued for the browser sweep, whose findings follow as they land.
+  // Checked once at start, ahead of any hello's findings.
   void inTurn(async () => {
     // A reserved frame written while no server ran lands in its box first.
     await landReserved(root, new Date()).catch(() => [])
     let board = await scanBoard(root)
-    // Only a frame written while no server ran holds the first board, since
-    // every other stored size already holds, and the rest measure after it.
+    // Only frames written offline hold the first board, since other sizes already hold.
     const stale = await writtenSinceLayout(board).catch((): string[] => [])
     if (await hug.now(board, stale).catch(() => false)) {
       board = await scanBoard(root)
@@ -565,11 +549,7 @@ async function listen({
           // A tab's keep-alive connection would hold close open indefinitely.
           server.closeAllConnections()
         })
-        // A turn still queued, such as a settled change saving its log, would
-        // otherwise write into a folder the caller removes next. A request
-        // already inside a handler can queue one more as the last drains, so
-        // this waits until the tail stops moving. Every turn catches its own
-        // failure, so the wait is unbounded.
+        // Drains until the tail stops moving, so no turn writes into a removed folder.
         let tail: Promise<unknown>
         do {
           tail = scanning
@@ -582,12 +562,8 @@ async function listen({
 }
 
 /**
- * One rescan per batch: the whole board to every tab, then the frames to
- * reload, marking their thumbnails stale in both themes without rendering
- * any, then the findings of every frame the batch rechecked, queueing the
- * same frames for the browser checker, then the notes of every page whose
- * notes or frames it touched, whose queue it offers to delivery. The frames
- * an agent changed wait out the grace before the board hears of them.
+ * One rescan per batch pushed in a fixed order, an agent's changes waiting out
+ * the grace before the board hears of them.
  */
 async function pushBatch(
   root: string,
@@ -630,31 +606,24 @@ async function pushBatch(
   let placed: string[]
   let relisted: string[] = []
   try {
-    // A reserved frame's file lands in its box ahead of the scan, so the
-    // board first sees it there and a hugging frame measures from it.
+    // Lands reserved frames first, so the board first sees them in their box.
     await landReserved(root, new Date()).catch(() => [])
     board = await scanBoard(root)
     const previous = scanned.board
     scanned.board = board
     own = ownFileRefs(board, paths)
-    // A frame written first and placed after changed only `layout.json`,
-    // which reloads nothing, so it is measured here without a reload.
+    // Measured here, since a placement changes only `layout.json`.
     placed = previous
       ? placedRefs(previous, board, paths).filter((ref) => !own.includes(ref))
       : []
-    // A frame given new linked widths changed only `layout.json` too, and
-    // its widths are measured after the push, as `hug.now` queues them.
+    // New linked widths measure after the push, as `hug.now` queues them.
     relisted = previous ? relistedRefs(previous, board) : []
-    // A frame its own file reloaded is measured first, so the board never
-    // shows it at its old size, and the write's own batch reloads nothing.
+    // Measured first, so the board never shows a reloaded frame at its old size.
     if (await hug.now(board, [...own, ...placed]).catch(() => false)) {
       const measured = board
       board = await scanBoard(root)
       scanned.board = board
-      // A frame placed during that measure is in the rescan, so the next
-      // batch reads it as placed already, and it is measured here once.
-      // One placed during this second measure is left out of `scanned`,
-      // which keeps it new to the next batch.
+      // Measures frames placed mid-measure once, since the next batch reads them as placed.
       const late = placedRefs(measured, board)
       if (late.length > 0) {
         placed = [...placed, ...late]
@@ -671,8 +640,7 @@ async function pushBatch(
   const last = shown.board
   shown.board = board
   const refs = reloadRefs(root, paths, board, tokens)
-  // A token or asset change reloads every frame it reaches, so those are
-  // measured after the push rather than holding it.
+  // Measured after the push, since a token change reaches every frame.
   hug.later(
     board,
     [...new Set([...refs, ...relisted])].filter(
@@ -737,14 +705,9 @@ async function ownFileHashes(
 }
 
 /**
- * Runs `outranked` over each settled agent write against the bytes it
- * replaced, holding the result in place of the frame's previous write's, and
- * returns the merged lists to send. A write raising nothing keeps a held
- * warning while it still holds against the bytes that raised it, so a later
- * edit elsewhere in the frame never clears it before `check` reports it.
- * `raised` holds those bytes by ref. A created frame holds none. A frame
- * rewritten since is left to the write that rewrote it, and a removed one to
- * the batch that drops it.
+ * Runs `outranked` over each settled agent write, keeping a warning while it
+ * still holds against the bytes that raised it, so a later edit elsewhere never
+ * clears it before `check` reports it.
  */
 function changeFindings(
   root: string,

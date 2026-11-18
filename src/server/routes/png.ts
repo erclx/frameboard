@@ -30,15 +30,8 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
 const DEFAULT_SCALE = 2
 
 /**
- * `GET /api/frames/png?ref=<frame-ref>&theme=<light|dark>&scale=<1|2|3>`, a
- * frame rendered at `scale` times its layout size, twice when none is given.
- * Three additions each change what is drawn and exclude each other, each
- * refusing as `usage`: `filmstrip=<n>` renders `n` moments of the timeline in
- * one row, `device=1` draws a frame's device inside its body, and
- * `element=<index>&hash=<hash>` renders that one element alone on a
- * transparent ground, refusing a moved file as 409 `stale-address`. It takes
- * no token, since the image shows only what the frame route already serves,
- * and a refusal answers the CLI's `{ ok, error }` envelope.
+ * `GET /api/frames/png`, its filmstrip, device, and element options exclusive,
+ * taking no token, since the image shows only what the frame route serves.
  */
 export function pngRoutes(
   root: string,

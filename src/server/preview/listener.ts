@@ -30,13 +30,9 @@ export interface PreviewOptions {
 }
 
 /**
- * The phone link's read-only app: GET and HEAD under `/v/<token>/` for one
- * project's frames and assets at `frames/<project>/...` and the faces and
- * board sheet at `frameboard/...`, each answered by the board's own frame and
- * look routes, so their refusals of board records, dot-named paths, and
- * escaping paths hold here unrestated. Anything else answers 404, so nothing
- * tells a caller what exists. It carries no Host check, since a phone names
- * the machine's address, and the token is what keeps other pages out.
+ * The phone link's read-only app through the board's own routes, anything else
+ * 404, and no Host check, since a phone names the machine's address and the
+ * token keeps other pages out.
  */
 export function previewApp(token: string, options: PreviewOptions): Hono {
   const base = `${LINK_PREFIX}${token}`
@@ -47,8 +43,7 @@ export function previewApp(token: string, options: PreviewOptions): Hono {
   }).routes
   const app = new Hono()
 
-  // A frame's outbound link or asset would otherwise carry the token in its
-  // Referer to whatever host it names.
+  // Keeps the token out of an outbound request's Referer.
   app.use('*', async (c, next) => {
     await next()
     c.res = withHeader(c.res, 'Referrer-Policy', 'no-referrer')
@@ -67,8 +62,7 @@ export function previewApp(token: string, options: PreviewOptions): Hono {
       const value = c.req.header(name)
       if (value !== undefined) headers.set(name, value)
     }
-    // A query is the theme a frame opens in, never `?at=`, which names a
-    // replaced version the phone has no business reading.
+    // Theme alone, never `?at=`, which names a replaced version.
     const theme = url.searchParams.get('theme')
     const query = theme === null ? '' : `?${new URLSearchParams({ theme })}`
     const answer = await served.fetch(
@@ -157,11 +151,8 @@ export interface PreviewListener {
 }
 
 /**
- * Starts the phone listener on `host`, the machine's local network address,
- * at `port`, or on a free port when that one is taken, with a fresh token.
- * Binding the one address rather than every interface keeps the listener off
- * any other network the machine sits on. The board's own listener is
- * untouched, staying on loopback behind its Host check.
+ * Starts the phone listener with a fresh token on the one local address, never
+ * every interface, so it stays off any other network the machine sits on.
  */
 export async function startPreviewListener(
   options: PreviewOptions & { host: string; port: number },

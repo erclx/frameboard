@@ -11,11 +11,8 @@ import { frameLoads } from '@/server/checks/links'
 import { FrameboardError } from '@/shared/errors'
 
 /**
- * The files a frame loads inside its project's `assets/`, by their path there,
- * sorted and each once. A load naming no file is left to the link check's
- * `missing-file`, so it copies nothing here. A file in the frame's page folder
- * refuses `page-file-load`, since the link check allows it and a reference
- * folder holds nothing it could resolve to, so it would land broken.
+ * The asset files a frame loads, refusing a page-folder load, since a reference
+ * folder holds nothing it could resolve to.
  */
 export function frameAssets(source: FrameSource): string[] {
   const assets = assetsDirOf(source)

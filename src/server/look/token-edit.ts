@@ -32,15 +32,9 @@ const NAME = /^--[\w-]+$/
 const UNSAFE_VALUE = /[;{}\n\r]|\/\*/
 
 /**
- * The project or board sheet with `edit` applied, every byte outside the
- * token's declarations left as it stood. `board` is the token's declarations
- * in the board sheet under it, none when `css` is the board sheet itself. A
- * one-theme edit keeps the other theme rendering as it did,
- * pinning its old value under that theme's rule when the new declaration
- * would reach it, since a project `:root` ties a board dark rule on
- * specificity and wins by coming later. Refuses `invalid-edit` for a name or
- * value that is not one declaration, a reset of a token the board does not
- * set, and a sheet that does not parse.
+ * The sheet with `edit` applied, keeping every other byte. A one-theme edit
+ * pins the other theme's old value, since a project `:root` ties a board dark
+ * rule on specificity and wins by coming later.
  */
 export function editTokenCss(
   css: string,
@@ -79,8 +73,7 @@ export function editTokenCss(
     if (next.dark !== undefined) next.dark = value
   }
   const written = writeSides(root, edit.name, next)
-  // An unclosed quote or bracket passes the character guard and breaks the
-  // whole sheet, so the sheet is read back before anything is written.
+  // Read back first, since an unclosed quote passes the guard and breaks the sheet.
   let readBack: TokenSides | undefined
   try {
     readBack = sidesIn(postcss.parse(written), edit.name)
@@ -95,9 +88,7 @@ export function editTokenCss(
 
 /**
  * The sheet with the token's declarations made exactly `sides`, as undo
- * restores them. A side present replaces the last declaration on that side,
- * or is added to that side's rule, and a side absent takes out every
- * declaration on it, dropping a rule it leaves empty.
+ * restores them, dropping a rule it leaves empty.
  */
 export function setTokenSides(
   css: string,
@@ -115,11 +106,8 @@ export function tokenSides(css: string, name: string): TokenSides {
 export type SheetWrite = 'written' | 'created' | 'stale'
 
 /**
- * Writes the token sheet at `path` through a temporary file and a rename,
- * reading the sheet again just before the rename and leaving it as it is
- * when its hash is no longer `hash`. A null `hash` means the sheet did not
- * exist, so it is created only while none does. Takes no lock, since an
- * agent's raw write never takes one.
+ * Writes the sheet through a rename unless its hash moved, a null `hash`
+ * creating it only while none exists. No lock, as an agent's write takes none.
  */
 export function writeTokenSheet(
   path: string,
@@ -198,8 +186,7 @@ function sidesIn(root: Root, name: string): TokenSides {
 
 function writeSides(root: Root, name: string, sides: TokenSides): string {
   const found = declsIn(root, name)
-  // Dark first, so a light or `:root` declaration added after it can be
-  // placed ahead of every dark declaration the sheet then holds.
+  // Dark first, so a later light or `:root` one can go ahead of every dark one.
   for (const side of ['dark', 'base', 'light'] as const) {
     const value = sides[side]
     const decls = found[side]
@@ -260,12 +247,8 @@ const NEW_SELECTOR: Record<Side, string> = {
 }
 
 /**
- * The top-level rule a new declaration on `side` goes into: the last such
- * rule outside any at-rule, else a new one. A new `:root` or light rule goes
- * ahead of every other rule, so a dark rule that ties it on specificity
- * still comes later and wins in dark, and a new dark rule goes last. With
- * `before`, the token's first dark declaration, a rule must come ahead of
- * it, and a new one goes just before it when none does.
+ * The rule a new declaration on `side` goes into, a new light rule going first
+ * so a tying dark rule still comes later and wins in dark.
  */
 function ruleFor(root: Root, side: Side, before?: ChildNode): Rule {
   const held = root.nodes.filter(

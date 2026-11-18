@@ -12,10 +12,8 @@ export const DISPATCH_ENV = 'FRAMEBOARD_DISPATCH'
 const DISPATCH_LOG = 'dispatch.log'
 
 /**
- * How long a command has to fail before it counts as started. A command that
- * backgrounds its session and exits 0, as `claude --bg` does, counts at once.
- * `claude --bg` refusing an untrusted folder exits 1 near 700 ms, so the
- * window sits well past that.
+ * How long a command has to fail before it counts as started, well past the
+ * 700 ms `claude --bg` takes to refuse an untrusted folder.
  */
 const START_WINDOW_MS = 2000
 
@@ -42,11 +40,8 @@ export interface DispatcherOptions {
 }
 
 /**
- * Starts a session for a note by running the developer's command detached,
- * its output appended to `.run/dispatch.log`. The note reaches the command as
- * environment variables alone, never spliced into the command string, so its
- * text is data to the shell. Resolves once the command exits 0 or outlives
- * the window, and refuses `dispatch-failed` when it exits otherwise inside it.
+ * Starts a session for a note by running the developer's command detached, the
+ * note reaching it as environment variables alone, so its text is data to the shell.
  */
 export function createDispatcher({
   command,

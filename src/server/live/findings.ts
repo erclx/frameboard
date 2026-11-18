@@ -25,10 +25,8 @@ export interface BoardFindings {
     paths: string[] | 'all',
   ) => Record<string, Finding[]>
   /**
-   * Holds a frame's browser findings beside its static ones, returning the
-   * frame's merged list as a partial map. A frame whose static findings have
-   * not landed yet, as one the watcher has not batched, is held and sent
-   * nothing until they do.
+   * Holds a frame's browser findings beside its static ones, sending nothing
+   * until the static ones land.
    */
   setRendered: (ref: string, findings: Finding[]) => Record<string, Finding[]>
   /** The browser findings held for each of `refs`, an unchecked one as empty. */
@@ -44,16 +42,9 @@ export interface BoardFindings {
 }
 
 /**
- * The board's check findings, held between batches so a hello needs no
- * check. Each frame's list is its static findings, then those its last agent
- * write raised against the bytes it replaced, then the browser findings the
- * server's warm checker last landed for it. `tokens` is the
- * server's `--tokens` sheet, null for none.
- *
- * The change and browser findings are held as they landed and read without
- * the rules their project's `checks.off` named at its last recheck, so one
- * leaves when its rule is turned off and comes back when it is turned on,
- * with no write to the frame between.
+ * The board's findings, held between batches so a hello needs no check, and
+ * filtered by `checks.off` at read, so a rule turned back on returns its
+ * findings with no write to the frame.
  */
 export function createBoardFindings(
   root: string,
@@ -126,10 +117,8 @@ export function createBoardFindings(
 }
 
 /**
- * The frames a batch changed the findings of: every frame whose rendered
- * inputs changed, token sheets among them, plus every frame a project's
- * check config reaches, which the reload rule leaves alone since it renders
- * nothing.
+ * The frames a batch changed the findings of, adding those a check config
+ * reaches, which the reload rule leaves alone since it renders nothing.
  */
 export function recheckRefs(
   root: string,

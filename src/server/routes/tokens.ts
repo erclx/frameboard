@@ -53,14 +53,8 @@ interface Target {
 }
 
 /**
- * The Theme tab's token write, behind `requireWriter`. `POST /api/tokens/edit`
- * sets one token the project's sheets list on one theme or both in the sheet
- * `sheet` names. `project`, the default, writes the project's `tokens.css`,
- * and a reset there takes its override back to the board's value. `board`
- * writes the board's sheet for a token it already sets. A stale `hash` answers
- * 409 `stale-tokens` and an invalid edit 409 `invalid-edit`, each writing
- * nothing. A landed edit records one step and answers the token's values and
- * the hash written.
+ * The Theme tab's token write into the sheet `sheet` names, one undo step,
+ * writing nothing on a stale `hash` or an invalid edit.
  */
 export function tokenRoutes(
   root: string,

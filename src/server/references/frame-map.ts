@@ -7,11 +7,8 @@ const REFERENCE = new RegExp(`^${SEGMENT}(/${SEGMENT}){1,2}$`)
 const BOARD_REF = /^[^/\s]+\/[^/\s]+\/[^/\s@]+(@[1-9]\d*)?$/
 
 /**
- * Reads `frames.json`, mapping each reference, `<group>/<name>` or
- * `<group>/<section>/<name>`, to the board frame `<project>/<page>/<frame>`
- * it is captured from, or `<project>/<page>/<frame>@<width>` to capture it at
- * one of its widths. An entry in any other shape refuses rather than filing
- * into the wrong folder.
+ * Reads `frames.json`, refusing an entry of any other shape rather than filing
+ * it into the wrong folder.
  */
 export function parseFrameMap(json: string): Map<string, string> {
   const parsed = parseJson(json)

@@ -20,12 +20,8 @@ const BOM = [0xef, 0xbb, 0xbf]
 export const THEME_SCRIPT = `(function(s,t){if(t==='light'||t==='dark')(${setFrameTheme.toString()})(document.documentElement,t);s.remove()})(document.currentScript,new URLSearchParams(location.search).get(${JSON.stringify(THEME_QUERY)}))`
 
 /**
- * What the frame route puts first in a frame's `head`: one marked stylesheet
- * importing `sheets` in the order given, so a later sheet overrides an
- * earlier one and the frame's own sheets override them all, then the theme
- * script. The stylesheet carries `hash`, the content hash of the bytes
- * served, as its one other attribute, since a further injected element
- * would shift every live index that forgets to skip it.
+ * The frame route's injected `head`, one stylesheet carrying `hash` as its one
+ * other attribute, since another element would shift every live index.
  */
 export function frameHead(sheets: readonly string[], hash: string): string {
   const imports = sheets.map((url) => `@import url(${JSON.stringify(url)});`)
@@ -33,10 +29,8 @@ export function frameHead(sheets: readonly string[], hash: string): string {
 }
 
 /**
- * Splices `head` into a frame's bytes where the browser starts its `head`:
- * after a stated `head` start tag, else after a stated `html` start tag,
- * else after the doctype, else at the start past any BOM. Every byte of the
- * file stays as it was around the splice.
+ * Splices `head` where the browser starts its `head`, keeping every byte of
+ * the file around it.
  */
 export function injectHead(
   bytes: Uint8Array,
@@ -52,10 +46,7 @@ export function injectHead(
 }
 
 /**
- * The byte offset `injectHead` splices at. The bytes are decoded as Latin-1,
- * one character per byte, so parse5's offsets are byte offsets, and markup
- * is ASCII in either decoding. A BOM decodes as three spaces, which the
- * parser skips the way a browser drops the BOM.
+ * The splice offset, decoded as Latin-1 so parse5's offsets are byte offsets.
  */
 function headOffset(bytes: Uint8Array): number {
   const bom = BOM.every((byte, index) => bytes[index] === byte)

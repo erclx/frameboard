@@ -20,12 +20,8 @@ const StartBody = z.object({
 const StopBody = z.object({ token: z.string().min(1).optional() })
 
 /**
- * `POST /api/preview` with `{ ref, port? }` starts the phone listener for the
- * frame's project and answers the link landing on that frame, ending any
- * link already open. `DELETE /api/preview` with `{ token? }` ends it, or only
- * the listener holding `token`. Both sit behind `requireWriter`, since a
- * start opens a port to the local network. A machine with no local network
- * address refuses `no-network-address` and starts nothing.
+ * Starts and ends the phone listener behind `requireWriter`, since a start
+ * opens a port to the local network.
  */
 export function previewRoutes(
   root: string,

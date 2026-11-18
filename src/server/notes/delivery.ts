@@ -45,11 +45,8 @@ interface Entry {
 }
 
 /**
- * The listener registry and the queue. A note stays `queued` on disk until a
- * follower acks it, so a follower that drops before its ack gets it again on
- * reconnect, and an acked note is never sent again. A session's flushes and
- * acks run one at a time, since a flush that read the file before an ack
- * landed would otherwise send the acked note again.
+ * The listener registry and queue, a note staying `queued` until acked, with
+ * a session's flushes and acks serialized so an acked note is never resent.
  */
 export function createDelivery({
   pending,

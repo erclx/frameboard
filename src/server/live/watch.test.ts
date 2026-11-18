@@ -267,10 +267,7 @@ describe('watchBoard', { timeout: SEEN_MS + 2000 }, () => {
     board.cleanup()
   })
 
-  // On macOS the copy of the fixture can report late `board.json` and
-  // `layout.json` events into a batch, and under load the watcher can lose a
-  // create that lands beside other writes. So a test asserts on the paths it
-  // wrote, and writes them again on each poll until they are seen.
+  // Rewrites until seen, since macOS reports late events and load can lose a create.
   it('reports each write in a batch', async () => {
     const hero = join(board.root, 'studio/home/hero.html')
     const styles = join(board.root, 'studio/home/styles.css')
@@ -311,8 +308,7 @@ describe('watchBoard', { timeout: SEEN_MS + 2000 }, () => {
     ]
     mkdirSync(join(board.root, '.run'), { recursive: true })
     for (const path of ignored) writeFileSync(path, '{}')
-    // A watched write after the ignored ones, so its batch arriving means
-    // every earlier event has been reported or dropped.
+    // Its batch arriving means every earlier event was reported or dropped.
     const sentinel = join(board.root, 'studio/home/sentinel.txt')
 
     await expect

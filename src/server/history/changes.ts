@@ -96,18 +96,13 @@ export type Change =
    */
   | { kind: 'path'; path: string; present: Side; hash: string; slot: string }
   /**
-   * The one element a hand edit rewrote in a frame file, held as its span on
-   * both sides, so an undo restores that element while the agent left it
-   * alone and keeps every other byte of the file as it stands. `ref` names
-   * the frame an undo answers the hash for.
+   * One element a hand edit rewrote, held as its span on both sides, so an undo
+   * restores it and keeps every other byte as it stands.
    */
   | { kind: 'element'; path: string; ref: string; span: ElementSpan }
   /**
-   * The one element a placement tool wrote into a frame file, or a hand
-   * delete took out of one, present on the `present` side alone. Moving to
-   * the other side takes out the element its bytes match, and moving back
-   * puts it under its parent, so an agent's write elsewhere in the file
-   * neither blocks either nor is reverted.
+   * One element placed or deleted by hand, matched by its bytes, so an agent's
+   * write elsewhere in the file neither blocks the step nor is reverted.
    */
   | {
       kind: 'inserted'
@@ -117,10 +112,8 @@ export type Change =
       present: Side
     }
   /**
-   * The elements one hand delete took out of a frame file, in the order taken
-   * out. Each span's gap holds only with the ones after it still out, so they
-   * are read and written as one chain rather than as separate changes, which
-   * a step checks against one state of the file.
+   * One hand delete's elements as one chain, since each span's gap holds only
+   * with the ones after it still out.
    */
   | {
       kind: 'deleted'
@@ -163,10 +156,8 @@ export function lockPaths(change: Change): string[] {
 }
 
 /**
- * Whether the board still stands as `side` of the change left it, read
- * under the record's lock. A change that no longer holds was overtaken, and
- * so was one whose record an agent left unreadable, since writing it back
- * would overwrite that file and keeping the step would block every older one.
+ * Whether the board still stands as `side` left it, an unreadable record
+ * counting as overtaken, since writing it back would overwrite the agent's file.
  */
 export async function holds(change: Change, side: Side): Promise<boolean> {
   try {
@@ -259,10 +250,8 @@ async function reads(change: Change, side: Side): Promise<boolean> {
 }
 
 /**
- * The entry a step holds, taking the stored size on each axis both it and the
- * stored entry hug, since the server measures that size and the developer
- * never set it, so a measure after a hand move neither overtakes the step nor
- * is reverted by it.
+ * The step's entry with the stored size on hugged axes, so a measure after a
+ * hand move neither overtakes the step nor is reverted by it.
  */
 function withMeasured(
   entry: LayoutEntry | undefined,
@@ -403,10 +392,8 @@ export async function restore(
 }
 
 /**
- * The frame with a delete's elements back, `before` restoring them in the
- * reverse of the order taken out, or out again, `after` taking them in that
- * order, undefined when any one's bytes or gap no longer read. Answers the
- * spans as the frame then stands, in the order taken out.
+ * The frame with a delete's chain restored or taken out again, undefined when
+ * any one's bytes or gap no longer read.
  */
 function chainDeleted(
   source: string,
@@ -458,13 +445,8 @@ async function rewriteToken(
 }
 
 /**
- * Writes a hand edit's element to the other side through a temporary file and
- * a rename, reading the file again just before the rename. A write landing
- * before that read is not overwritten: the rewrite is made once more from the
- * fresh bytes, and refused once they change again or no longer hold the
- * element. Bytes that fail a UTF-8 round trip are refused too, since decoding
- * would rewrite each invalid byte outside the element. The change keeps where
- * the element was found, through `keep`, so the next side lands on it.
+ * Writes an element's other side through a rename, redoing it once from fresh
+ * bytes when a write lands first, and refusing bytes that fail a UTF-8 round trip.
  */
 async function rewriteFrame(
   change: Extract<

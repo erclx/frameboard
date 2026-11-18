@@ -22,11 +22,8 @@ const HUGGING = new Set(['fit-content', 'max-content', 'min-content'])
 const STRETCHING = new Set(['normal', 'stretch'])
 
 /**
- * The selected element's flow from a cascade built over `FLOW_PROPERTIES`:
- * the rule that makes it a container, so a shared one can be named, and
- * Fixed, Hug, or Fill per axis. Fill reads only under a flex parent, along
- * the main axis from a growing `flex`, across it from a stretch with no
- * declared size, as Figma offers Fill only inside auto layout.
+ * The selected element's flow and sizing per axis, Fill reading only under a
+ * flex parent, as Figma offers it only inside auto layout.
  */
 export function flowOf(cascade: Cascade, element: Element): ElementFlow {
   const container = layoutOf(cascade, element) !== 'block'

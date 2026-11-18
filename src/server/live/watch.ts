@@ -31,11 +31,8 @@ export interface BoardWatcher {
 }
 
 /**
- * Watches the board folder and reports changes in batches, so a burst of
- * writes from one agent turn costs one rescan. Resolves once the watch is
- * warm, so a write after it is always seen. Each of `files` outside the
- * board, such as a `--tokens` sheet, is watched too and lands in the same
- * batches.
+ * Watches the board in batches, so one agent turn costs one rescan, resolving
+ * once warm, so a later write is always seen.
  */
 export async function watchBoard(
   root: string,
@@ -44,8 +41,7 @@ export async function watchBoard(
   const listeners = new Set<BatchListener>()
   const batcher = createBatcher((paths) => {
     for (const listener of listeners) {
-      // A listener that throws would escape the timer as an uncaught
-      // exception, stopping the server and every listener after it.
+      // A throw would escape the timer and stop the server.
       try {
         listener(paths)
       } catch (error) {
@@ -147,13 +143,8 @@ function isIgnored(root: string, path: string): boolean {
 }
 
 /**
- * The frames a batch changed what they render: a frame's own file, or a temp
- * file it is saved through, reloads that frame, any other file in a page folder reloads the page's frames since
- * any of them may link it, and an asset or the project's token sheet reloads
- * the whole project. The board's token sheet, or the `tokens` sheet standing
- * in for it, reloads every frame. A layout or notes file reloads nothing,
- * since moving a frame must not restart it.
- * Only frames in `board` are named, in board order.
+ * The frames a batch changed what they render, a layout or notes file
+ * reloading nothing, since moving a frame must not restart it.
  */
 export function reloadRefs(
   root: string,
@@ -252,11 +243,8 @@ export interface MovedFolder {
 }
 
 /**
- * `refs` less each frame that only moved with a folder the board renamed,
- * being one under a moved folder whose file carries the stamp `last`, the
- * board sent before the move, showed at its old path. It renders what the
- * tab already shows, so a reload would restart it for nothing, while a file
- * written before or after the move that `last` never showed still reloads.
+ * `refs` less frames that only moved with a renamed folder and still match
+ * `last`, since a reload would restart them for nothing.
  */
 export function unmovedRefs(
   refs: string[],
@@ -303,13 +291,8 @@ function frameNameOf(name: string): string | null {
 }
 
 /**
- * The hugging frames `next` holds placed that `previous` held unplaced or
- * not at all, on a page whose `layout.json` is among `paths`, as one an
- * agent wrote and then placed. Placing writes `layout.json` alone, which
- * reloads nothing, so these are measured without a reload. A frame that only
- * moved was placed in both, and one a folder rename carried has a new ref
- * but a batch naming the folder alone, so both are left out. Given no
- * `paths`, as for two scans of one batch, every page is read.
+ * Hugging frames newly placed, measured without a reload, since placing writes
+ * `layout.json` alone, which reloads nothing.
  */
 export function placedRefs(
   previous: ListResult,
@@ -341,11 +324,8 @@ export function placedRefs(
 }
 
 /**
- * The frames hugging their height whose list of linked widths differs
- * between two scans, as a `frame resize --widths` leaves one. That write
- * touches `layout.json` alone, which reloads nothing, so a width it adds is
- * measured here or holds its stand-in height until the frame file is next
- * written. A frame absent from `previous` is `placedRefs`'s to name.
+ * Height-hugging frames whose linked widths changed, measured here, since
+ * that write reloads nothing.
  */
 export function relistedRefs(previous: ListResult, next: ListResult): string[] {
   const before = new Map(

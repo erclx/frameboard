@@ -54,10 +54,8 @@ export function boardKitsDir(root: string): string {
 }
 
 /**
- * Every kit a project can install, the shipped ones in the order a picker
- * shows them and then the board's own by name. A board kit sharing a shipped
- * kit's name is left out, since the shipped one answers to the name, and so
- * is a board kit that does not read.
+ * Every installable kit, shipped first, leaving out a board kit that does not
+ * read or shares a shipped kit's name.
  */
 export async function listKits(
   root: string,

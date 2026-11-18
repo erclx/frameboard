@@ -28,13 +28,8 @@ const BASE_SELECTOR = ':root'
 export type SheetTokens = Map<string, Partial<Record<Side, string>>>
 
 /**
- * Reads a project's token sheets into one row per custom property, with its
- * light and dark values after the project sheet overrides the board's. A
- * declaration under a dark selector or a dark `prefers-color-scheme` query is
- * dark, one under a light selector is light, and one under plain `:root`
- * fills whichever side its sheet sets no value for. A property set under no
- * recognized selector is left out. A sheet that does not parse is named with
- * its error and adds no rows.
+ * One row per custom property with light and dark values after overrides, a
+ * plain `:root` filling whichever side its sheet leaves unset.
  */
 export function readTokenTable(
   root: string,

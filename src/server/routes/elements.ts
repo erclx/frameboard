@@ -36,13 +36,8 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
 }
 
 /**
- * A frame's element tree, read from the file rather than a live iframe so a
- * culled frame lists the indices `edit` addresses, with each element's
- * layout read from the static cascade over `tokens`, and the selection the
- * writing tab last reported, which `POST /api/selection` takes behind
- * `requireWriter` and `GET /api/selection` answers as the `selection` record.
- * `GET /api/frames/styles` answers a frame's or an element's colors from the
- * static cascade over `tokens`, the server's `--tokens` sheet when it has one.
+ * The element tree, read from the file so a culled frame lists the indices
+ * `edit` addresses, the reported selection, and the static colors.
  */
 export function elementsRoutes(
   root: string,
@@ -74,10 +69,7 @@ export function elementsRoutes(
     }
   }
 
-  /**
-   * The reported element with its tag and name, or null once the file has
-   * changed past the hash the tab read, since the index may now name another.
-   */
+  // Null once the file moved past the tab's hash, since the index may name another.
   const named = async (
     element: NonNullable<SelectionReport['element']>,
   ): Promise<SelectedElement | null> => {
