@@ -257,6 +257,21 @@ describe('measure', () => {
     asked.close()
   })
 
+  it("pushes a group again once a member's offsets change, which no resize sees", async () => {
+    const frame = await frameOf(`${at(10, 20)}${at(200, 20)}`)
+    const asked = await ask(frame, 'measure', {
+      hash: HASH,
+      indexes: [3, 4],
+    })
+
+    frame.contentDocument
+      ?.querySelector<HTMLElement>('body > div')
+      ?.style.setProperty('left', '40px')
+
+    await expect.poll(() => asked.pushes.at(-1)?.[0]?.box.x).toBe(40)
+    asked.close()
+  })
+
   it('answers null for keys read from other bytes', async () => {
     const frame = await frameOf(at(10, 20))
 

@@ -315,11 +315,12 @@ export const measureHandlers: Handlers = {
       return box && box.width > 0 && box.height > 0 ? [{ index, box }] : []
     })
   },
-  // A group drag previews offsets no resize sees, so styles are watched too.
+  // A group drag previews offsets no resize sees, so a group's styles are watched, and one element's drag shifts its outline on the board, which a pushed offset would move twice.
   measure: ({ hash, indexes }, { push, onClose }) => {
     const elements = shownElements(hash, indexes)
     if (!elements) return null
-    onClose(watch(elements, () => push(measured(indexes, elements)), true))
+    const read = () => push(measured(indexes, elements))
+    onClose(watch(elements, read, elements.length > 1))
     return measured(indexes, elements)
   },
   overflow: (_args, { push, onClose }) => {
