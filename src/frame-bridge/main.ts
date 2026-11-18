@@ -13,6 +13,7 @@ import { gapHandlers } from './gap'
 import { addressed, type Handler, type Handlers } from './handler'
 import { liveElementHandlers } from './live-element'
 import { measureHandlers } from './measure'
+import { mediaHandlers } from './media'
 import { previewHandlers } from './preview'
 import { openTextEdit } from './text-edit'
 
@@ -37,6 +38,7 @@ const handlers: Handlers = {
   ...gapHandlers,
   ...liveElementHandlers,
   ...measureHandlers,
+  ...mediaHandlers,
   'element-box': (address) => {
     const element = addressed(address)
     if (!element) return null

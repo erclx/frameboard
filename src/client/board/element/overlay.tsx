@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 
 import type { FrameRecord } from '@/shared/records/list'
-import { LOOK_MARKER } from '@/shared/theme'
 
+import { subscribe } from '../bridge/channel'
+import { followFrame } from '../bridge/shown'
 import type { Box } from '../geometry/box'
 import { OUTLINE, screen, sizeLabel } from '../geometry/draw'
 import { CHIP, OVERLAY_Z } from '../geometry/overlay'
@@ -293,25 +294,6 @@ interface CanvasMediaBarProps {
 /** How far inside a video's left, right, and bottom edges its bar sits, in screen pixels. */
 const BAR_INSET = 4
 
-const STRIP_ID = 'frameboard-media-strip'
-
-/**
- * Hides the strip the browser draws for `controls` on every video in `doc`,
- * by one injected style, and answers its undo. The strip grows with the
- * frame's zoom and the bar never does, so the bar cannot cover it.
- */
-function hideVideoStrips(doc: Document): () => void {
-  if (doc.getElementById(STRIP_ID)) return () => {}
-  const style = doc.createElement('style')
-  style.id = STRIP_ID
-  // Marked as the board's own, so no element's file index moves.
-  style.setAttribute(LOOK_MARKER, '')
-  style.textContent =
-    'video::-webkit-media-controls { display: none !important }'
-  doc.head?.append(style)
-  return () => style.remove()
-}
-
 /**
  * The media bar at a constant screen size, an audio's under the player rather
  * than over it. It draws in the notes layer, since a press on the frames' layer
@@ -320,8 +302,18 @@ function hideVideoStrips(doc: Document): () => void {
 function CanvasMediaBar({ element, box, container }: CanvasMediaBarProps) {
   const editing = useMode((state) => state.mode === 'edit')
   const media = useLiveMedia(editing ? element : null)
-  const page = media?.reading.tag === 'video' ? media.page : null
-  useEffect(() => (page ? hideVideoStrips(page) : undefined), [page])
+  const video = media?.reading.tag === 'video'
+  const frame = element?.frame
+  // The browser's own strip grows with the frame's zoom and the bar never does, so each page hides it under the bar.
+  useEffect(() => {
+    if (!video || !frame || !container) return
+    return followFrame(
+      container,
+      frame,
+      (iframe) => subscribe(iframe, 'hide-strips', {}, () => {}).close,
+      () => {},
+    )
+  }, [video, frame, container])
   const layer = container?.parentElement?.querySelector(
     ':scope > [data-notes-layer]',
   )

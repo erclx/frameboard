@@ -56,8 +56,8 @@ function iframeIn(
 
 /**
  * Keeps a subscription open on a frame's iframe while `open` answers one,
- * opening it again for each page and restamp, since each subscription lives
- * in one document and reads one hash.
+ * opening it again for each page, restamp, and iframe swap, since each
+ * subscription lives in one document and reads one hash.
  */
 export function followFrame(
   container: HTMLElement,
@@ -74,12 +74,17 @@ export function followFrame(
     if (!close) none()
   }
   reopen()
-  // A swap mounts a new iframe, which announces itself on the way in.
   const stop = subscribeShown((iframe) => {
     if (iframe === watched || iframe === iframeIn(container, ref)) reopen()
   })
+  // A removed iframe's page goes with no word the board can place, so the swap is watched too.
+  const swaps = new MutationObserver(() => {
+    if (iframeIn(container, ref) !== watched) reopen()
+  })
+  swaps.observe(container, { childList: true, subtree: true })
   return () => {
     stop()
+    swaps.disconnect()
     close?.()
   }
 }

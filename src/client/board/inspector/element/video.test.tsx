@@ -5,9 +5,11 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { LOOK_MARKER, RENDERED_HASH } from '@/shared/theme'
+import { BRIDGE } from '@/test/frame-bridge'
 import { realClick } from '@/test/real-pointer'
 
 import CLIP from '../../../../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
+import { request } from '../../bridge/channel'
 import { useLiveMedia } from '../../element/media'
 import type { ElementKey } from '../../selection'
 import { VideoSection } from './video'
@@ -46,8 +48,10 @@ async function loadPage(
 ): Promise<void> {
   await new Promise<void>((resolve) => {
     iframe.addEventListener('load', () => resolve(), { once: true })
-    iframe.srcdoc = `<!doctype html><html><head><style ${LOOK_MARKER} ${RENDERED_HASH}="${hash}"></style></head><body>${media}</body></html>`
+    iframe.srcdoc = `<!doctype html><html><head><style ${LOOK_MARKER} ${RENDERED_HASH}="${hash}"></style>${BRIDGE}</head><body>${media}</body></html>`
   })
+  // Its reply follows the hash the bridge announced as it started.
+  await request(iframe, 'element-box', { index: 0, hash: '' })
 }
 
 function liveVideo(iframe: HTMLIFrameElement): HTMLVideoElement {

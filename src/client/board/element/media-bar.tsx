@@ -1,9 +1,10 @@
 import { Pause, Play, Volume2, VolumeX } from 'lucide-react'
 
 import { cn } from '@/client/lib/cn'
+import type { MediaReading } from '@/shared/frame-bridge/media'
 
 import { formatLength } from '../assets/describe'
-import type { LiveMedia, MediaReading } from './media'
+import type { LiveMedia } from './media'
 
 const ICON_BUTTON =
   'grid shrink-0 place-items-center rounded-[5px] text-foreground outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50'

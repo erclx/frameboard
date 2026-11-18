@@ -12,6 +12,12 @@ import {
   type PinCorner,
   pinCornersSchema,
 } from './live-element'
+import {
+  type MediaAct,
+  mediaActSchema,
+  type MediaReading,
+  mediaReadingSchema,
+} from './media'
 
 // The board and a frame's bridge talk over `postMessage`, whatever the frame's
 // origin. A request's id comes back on its one reply, and on every push a
@@ -99,6 +105,20 @@ export interface BridgeOps {
   'live-element': {
     args: { hash: string; indexes: number[] }
     value: LiveElement[] | null
+    push: never
+  }
+  /** Hides the strip the browser draws for `controls` on every video until closed, answering whether it hid them. */
+  'hide-strips': { args: Record<string, never>; value: boolean; push: never }
+  /** A media element's reading, pushed again on every playback change until closed, null for no media at the address. */
+  media: {
+    args: ElementAddress
+    value: MediaReading | null
+    push: MediaReading | null
+  }
+  /** Moves a media element's live playback, answering whether the page showed it at the address. */
+  'media-act': {
+    args: ElementAddress & { act: MediaAct }
+    value: boolean
     push: never
   }
   /** Measures the named elements, pushing again on every resize, style change, or scroll until closed, null when the frame shows other bytes or misses one. */
@@ -191,10 +211,13 @@ const OPS: readonly string[] = [
   'element-box',
   'element-boxes',
   'gap-at',
+  'hide-strips',
   'keep-previews',
   'live-body',
   'live-element',
   'measure',
+  'media',
+  'media-act',
   'overflow',
   'paint',
   'pick-at',
@@ -341,7 +364,17 @@ const SCHEMAS: {
     args: z.object({ at: pointSchema, carried: indexSchema.optional() }),
     value: shownGapSchema,
   },
+  'hide-strips': { args: noArgsSchema, value: z.boolean() },
   'keep-previews': { args: noArgsSchema, value: z.null() },
+  media: {
+    args: addressSchema,
+    value: mediaReadingSchema,
+    push: mediaReadingSchema,
+  },
+  'media-act': {
+    args: addressSchema.extend({ act: mediaActSchema }),
+    value: z.boolean(),
+  },
   paint: { args: z.object({ fill: z.string() }), value: z.string().nullable() },
   'preview-style': {
     args: z.object({
