@@ -265,6 +265,19 @@ describe.skipIf(shell === null)(
         ])
       })
 
+      it('draws no loading bar over a model whose clock it holds', async () => {
+        const opened = await open('spinning', 'hold')
+        const height = await opened.page.evaluate(() => {
+          const bar = document
+            .querySelector('model-viewer')
+            ?.shadowRoot?.querySelector('#default-progress-bar > .bar')
+          return bar ? getComputedStyle(bar).height : null
+        })
+        await opened.close()
+
+        expect(height).toBe('0px')
+      })
+
       it('shoots a different picture at a later moment, the same on a second run', async () => {
         const at = async (ms: number) => {
           const opened = await open('spinning', 'hold')

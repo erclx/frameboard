@@ -1,5 +1,7 @@
 import type { Page } from 'playwright-core'
 
+import { LOOK_MARKER } from '@/shared/theme'
+
 /** A `<model-viewer>` a capture shot with no model in it. */
 export interface UnloadedModel {
   /** The element's address index, skipping Frameboard's own injected elements. */
@@ -48,17 +50,27 @@ function recordFailedModels(): void {
  * Waits for every `<model-viewer>` to draw its model, then holds each at the
  * start of its animation, so two captures match. A model with no picture is
  * returned rather than refused, as an unloaded video is. Reads the failures
- * `watchModels` recorded on the same page.
+ * `watchModels` recorded on the same page, and hides each viewer's loading
+ * bar, which is no part of the frame at rest.
  */
 export async function settleModels(
   page: Page,
   timeoutMs: number,
 ): Promise<UnloadedModel[]> {
-  return page.evaluate(waitForModels, Math.max(0, timeoutMs))
+  return page.evaluate(waitForModels, {
+    timeoutMs: Math.max(0, timeoutMs),
+    marker: LOOK_MARKER,
+  })
 }
 
 // Runs in the page, so it carries everything it reads.
-async function waitForModels(timeoutMs: number): Promise<UnloadedModel[]> {
+async function waitForModels({
+  timeoutMs,
+  marker,
+}: {
+  timeoutMs: number
+  marker: string
+}): Promise<UnloadedModel[]> {
   interface Viewer extends HTMLElement {
     loaded: boolean
     modelIsVisible: boolean
@@ -79,6 +91,13 @@ async function waitForModels(timeoutMs: number): Promise<UnloadedModel[]> {
     viewers.push({ index: own, viewer: element as Viewer, src })
   }
   if (viewers.length === 0) return []
+
+  // A viewer fades its loading bar out over a second, and a held clock freezes it at whatever width it reached.
+  const bar = document.createElement('style')
+  // Marked as the board's own, so no element's file index moves.
+  bar.setAttribute(marker, '')
+  bar.textContent = 'model-viewer { --progress-bar-height: 0px !important }'
+  document.head.append(bar)
 
   const failed = (
     window as unknown as Record<symbol, WeakSet<EventTarget> | undefined>
