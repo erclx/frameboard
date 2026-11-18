@@ -38,7 +38,12 @@ export type SingleChange =
       readonly name: string
       readonly remove: true
     }
-  | { readonly kind: 'text'; readonly value: string }
+  | {
+      readonly kind: 'text'
+      readonly value: string
+      /** One text node among the element's text-node children, the rest kept, where absent the whole content is the text. */
+      readonly run?: number
+    }
 
 export type EditChange =
   | SingleChange
@@ -147,6 +152,13 @@ function checkChange(change: EditChange): EditRefused | undefined {
     const invalid = checkValue(change.value)
     if (invalid) return invalid
   }
+  if (
+    change.kind === 'text' &&
+    change.run !== undefined &&
+    !(Number.isInteger(change.run) && change.run >= 0)
+  ) {
+    return refuse('invalid-edit', `${change.run} names no text run`)
+  }
   if (change.kind === 'attribute') {
     if (!ATTRIBUTE_NAME.test(change.name)) {
       return refuse('invalid-edit', `${change.name} is not an attribute name`)
@@ -198,7 +210,7 @@ function editedAttribute(change: EditChange): string | undefined {
 
 function write(source: string, element: Element, change: EditChange): Written {
   if (change.kind === 'text') {
-    const written = setText(source, element, change.value)
+    const written = setText(source, element, change.value, change.run)
     return written.ok ? written : refuse('not-text-only', written.detail)
   }
   if (change.kind === 'attribute') {
@@ -266,7 +278,18 @@ function changesOnlyTarget(
   const now = after.elements[index]
   if (!was || !now || was.tagName !== now.tagName) return false
   const name = editedAttribute(change)
-  if (name === undefined) {
+  if (change.kind === 'text' && change.run !== undefined) {
+    // Only the run is copied, so a changed child element still fails the comparison.
+    const run = textNodes(was)[change.run]
+    const written = textNodes(now)[change.run]
+    if (!run) return false
+    was.childNodes =
+      change.value === ''
+        ? was.childNodes.filter((node) => node !== run)
+        : was.childNodes.map((node) =>
+            node === run && written ? written : node,
+          )
+  } else if (name === undefined) {
     was.childNodes = now.childNodes
   } else {
     const written = now.attrs.find((attribute) => isNamed(attribute, name))
@@ -279,16 +302,28 @@ function changesOnlyTarget(
   return serialize(before.document) === serialize(after.document)
 }
 
+function textNodes(element: Element): DefaultTreeAdapterTypes.TextNode[] {
+  return element.childNodes.filter(
+    (node): node is DefaultTreeAdapterTypes.TextNode =>
+      node.nodeName === '#text',
+  )
+}
+
 function textOf(element: Element): string {
-  return element.childNodes
-    .map((node) =>
-      'value' in node && node.nodeName === '#text' ? node.value : '',
-    )
+  return textNodes(element)
+    .map((node) => node.value)
     .join('')
 }
 
 /** Whether the target holds the value the change asked for. */
 function holdsValue(element: Element, change: EditChange): boolean {
+  if (change.kind === 'text' && change.run !== undefined) {
+    // An emptied run leaves no node, which the target comparison then proves.
+    return (
+      change.value === '' ||
+      textNodes(element)[change.run]?.value === change.value
+    )
+  }
   if (change.kind === 'text') return textOf(element) === change.value
   if (change.kind === 'attribute') {
     const stated = element.attrs.find((attribute) =>

@@ -434,6 +434,63 @@ describe('applyEdit', () => {
       ).toMatchObject({ ok: false, reason: 'address-mismatch' })
     })
 
+    describe('a run', () => {
+      const MIXED =
+        '<ul><li>Wipes in beside it, <code>wipe</code> same press</li></ul>'
+      const LI = { index: 4 }
+
+      it('should write one run beside a child element and keep the child', () => {
+        expect(
+          applyEdit(MIXED, LI, {
+            kind: 'text',
+            value: 'Wipes & beside it, ',
+            run: 0,
+          }),
+        ).toMatchObject({
+          ok: true,
+          html: '<ul><li>Wipes &amp; beside it, <code>wipe</code> same press</li></ul>',
+          span: {
+            scope: 'element',
+            before: '<li>Wipes in beside it, <code>wipe</code> same press</li>',
+            after:
+              '<li>Wipes &amp; beside it, <code>wipe</code> same press</li>',
+          },
+        })
+      })
+
+      it('should drop a run emptied of text and keep the rest', () => {
+        expect(
+          applyEdit(MIXED, LI, { kind: 'text', value: '', run: 1 }),
+        ).toMatchObject({
+          ok: true,
+          html: '<ul><li>Wipes in beside it, <code>wipe</code></li></ul>',
+        })
+      })
+
+      it('should refuse a run past the last text node and write nothing', () => {
+        expect(
+          applyEdit(MIXED, LI, { kind: 'text', value: 'x', run: 2 }),
+        ).toEqual({
+          ok: false,
+          reason: 'not-text-only',
+          detail: '<li> holds no text run 2',
+        })
+      })
+
+      it.each([-1, 1.5])('should refuse the run %d', (run) => {
+        expect(
+          applyEdit(MIXED, LI, { kind: 'text', value: 'x', run }),
+        ).toMatchObject({ ok: false, reason: 'invalid-edit' })
+      })
+
+      it('should refuse a run whose written text the parser reads otherwise', () => {
+        // The parser reads a lone carriage return as a line feed.
+        expect(
+          applyEdit(MIXED, LI, { kind: 'text', value: 'a\rb', run: 0 }),
+        ).toMatchObject({ ok: false, reason: 'verify-failed' })
+      })
+    })
+
     it('should refuse text into head', () => {
       expect(
         applyEdit(
