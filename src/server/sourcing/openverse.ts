@@ -1,5 +1,5 @@
 import { FrameboardError } from '@/shared/errors'
-import type { ImageResult } from '@/shared/records/sourcing'
+import type { ImageResult, LicenseFile } from '@/shared/records/sourcing'
 import { version } from '@/shared/version'
 
 export const OPENVERSE_API = 'https://api.openverse.org/v1/images/'
@@ -70,6 +70,31 @@ export async function imageById(
     )
   }
   return image
+}
+
+/** The license file for an Openverse image, `query` null when it was saved by id. */
+export function foundLicense(
+  image: OpenverseImage,
+  query: string | null,
+  savedAt: Date,
+): LicenseFile {
+  return {
+    version: 1,
+    origin: 'found',
+    source: 'openverse',
+    id: image.id,
+    query,
+    title: image.title,
+    creator: image.creator,
+    creatorUrl: image.creatorUrl,
+    license: image.license,
+    licenseVersion: image.licenseVersion,
+    licenseUrl: image.licenseUrl,
+    attribution: image.attribution,
+    landingUrl: image.landingUrl,
+    url: image.url,
+    savedAt: savedAt.toISOString(),
+  }
 }
 
 async function request(
