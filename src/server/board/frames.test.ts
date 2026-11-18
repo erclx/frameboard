@@ -992,7 +992,33 @@ describe('frames', () => {
           cwd: root,
         })
 
-        expect(copy.box.x).toBe(1520 + 390 + 16 + 80)
+        expect(copy.box.x).toBe(1520 + 390 + 16 + 80 + 16)
+      })
+
+      it('duplicate stands a laptop copy 80 clear of its source, base to body', async () => {
+        const root = open()
+        await setFrameDevice(root, 'webapp/home/hero', true, { cwd: root })
+
+        const copy = await duplicateFrame(root, 'webapp/home/hero', {
+          cwd: root,
+        })
+
+        expect(copy.box.x).toBe(1440 + 109 + 80 + 109)
+      })
+
+      it('turning the device on moves no frame', async () => {
+        const root = open()
+        const before = layout('webapp/home').frames
+
+        await setFrameDevice(root, 'webapp/home/hero', true, { cwd: root })
+        await setFrameDevice(root, 'webapp/home/about', true, { cwd: root })
+
+        const after = layout('webapp/home').frames
+        expect(after.hero).toMatchObject({ x: before.hero.x, y: before.hero.y })
+        expect(after.about).toMatchObject({
+          x: before.about.x,
+          y: before.about.y,
+        })
       })
     })
 

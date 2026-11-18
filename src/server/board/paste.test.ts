@@ -63,6 +63,24 @@ describe('paste', () => {
     })
   })
 
+  it('pastes a laptop frame onto its own page with its body 80 clear of the source', async () => {
+    const page = JSON.parse(file('webapp/home/layout.json'))
+    page.frames.hero.showDevice = true
+    writeFileSync(
+      join(board.root, 'webapp/home/layout.json'),
+      JSON.stringify(page),
+    )
+    const held = await holdFrames(board.root, ['webapp/home/hero'], {
+      cwd: board.root,
+    })
+
+    const [pasted] = await pasteFrames(board.root, 'webapp/home', held, {
+      cwd: board.root,
+    })
+
+    expect(pasted?.box.x).toBe(1440 + 109 + 80 + 109)
+  })
+
   it("pastes into another project's page at the source's box, on top", async () => {
     const held = await holdFrames(board.root, ['webapp/home/about'], {
       cwd: board.root,

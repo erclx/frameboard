@@ -7,13 +7,17 @@ import { FrameboardError } from '@/shared/errors'
 import { deviceForWidth } from '@/shared/frame-device'
 import {
   DEFAULT_FRAME_SIZE,
-  FRAME_GAP,
   FRAME_SIZES,
   type FrameSizeName,
   frameSizeOf,
   referenceHeight,
 } from '@/shared/frame-sizes'
-import { drawnExtent, type LinkedWidth, widthsOf } from '@/shared/frame-widths'
+import {
+  drawnExtent,
+  type LinkedWidth,
+  widthsOf,
+  xPast,
+} from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
 import {
   storedTransitionOf,
@@ -509,10 +513,10 @@ export function linkedWidths(
   }))
 }
 
-/** The x a copy placed beside a frame takes, past its device and the row of linked widths it draws. */
+/** The x a copy placed beside a frame takes, its own body clear of the frame's device and linked widths. */
 export function pastExtent({ box, widths, device }: Placement): number {
   const extent = drawnExtent(box, widths, device)
-  return extent.x + extent.width + FRAME_GAP
+  return xPast(extent.x + extent.width, box.width, device)
 }
 
 /**
