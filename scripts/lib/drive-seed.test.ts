@@ -1,5 +1,6 @@
 import {
   cpSync,
+  existsSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -203,6 +204,7 @@ describe('the raw colors page', () => {
         'tuner',
         'mixed',
         'tilt',
+        'model',
         'device',
         'fold',
       ],
@@ -249,6 +251,7 @@ describe('the scroll feed page', () => {
         'tuner',
         'mixed',
         'tilt',
+        'model',
         'device',
         'fold',
       ],
@@ -641,6 +644,34 @@ describe('the mixed text page', () => {
     const seeded = await seedDrive(root, new Date())
 
     expect(seeded.mixed).toBe('kept')
+    expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
+  })
+})
+
+describe('the model page', () => {
+  it('lays one model viewer with its model and the viewer script in the project assets', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    const html = readFileSync(join(root, 'webapp/model/spin.html'), 'utf8')
+    expect(seeded.model).toBe('laid')
+    expect(html).toContain(
+      '<script type="module" src="../assets/model-viewer.min.js"></script>',
+    )
+    expect(html).toContain('src="../assets/spin.glb"')
+    expect(existsSync(join(root, 'webapp/assets/spin.glb'))).toBe(true)
+    expect(existsSync(join(root, 'webapp/assets/model-viewer.min.js'))).toBe(
+      true,
+    )
+  })
+
+  it('leaves a hand-edited model page alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    const edited = join(root, 'webapp/model/spin.html')
+    writeFileSync(edited, '<p>edited by a reel</p>')
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.model).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })
