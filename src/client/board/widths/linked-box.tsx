@@ -110,7 +110,9 @@ export function LinkedBox({
     const bind = () => {
       unbind()
       const target = element.contentWindow
-      unbind = target ? bindKeys(target, PLAY_KEYS) : () => {}
+      unbind = target
+        ? bindKeys(target, PLAY_KEYS, { typing: 'frame' })
+        : () => {}
     }
     bind()
     element.addEventListener('load', bind)
