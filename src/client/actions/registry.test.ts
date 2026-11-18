@@ -11,8 +11,12 @@ function register(...actions: Action[]): void {
   cleanups.push(registerActions(actions))
 }
 
-function bind(target: Window | Element, only?: readonly string[]): void {
-  cleanups.push(bindKeys(target, only))
+function bind(
+  target: Window | Element,
+  only?: readonly string[],
+  options?: Parameters<typeof bindKeys>[2],
+): void {
+  cleanups.push(bindKeys(target, only, options))
 }
 
 function action(
@@ -219,6 +223,101 @@ describe('bindKeys', () => {
     )
 
     expect(exitPlay.runs).toBe(1)
+  })
+
+  describe('with the frame typing rule', () => {
+    function focusedIn(html: string): HTMLElement {
+      document.body.innerHTML = html
+      const focused = document.body.querySelector<HTMLElement>('[data-focus]')
+      if (!focused) throw new Error('no element marked data-focus')
+      focused.focus()
+      return focused
+    }
+
+    it('runs Esc pressed on a focused input', async () => {
+      const leave = action('play.leaveFrame', { keys: ['Escape'] })
+      register(leave)
+      bind(window, ['Escape'], { typing: 'frame' })
+      focusedIn('<input type="range" data-focus>')
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(leave.runs).toBe(1)
+    })
+
+    it('runs Esc pressed on a focused select', async () => {
+      const leave = action('play.leaveFrame', { keys: ['Escape'] })
+      register(leave)
+      bind(window, ['Escape'], { typing: 'frame' })
+      focusedIn('<select data-focus><option>one</option></select>')
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(leave.runs).toBe(1)
+    })
+
+    it('runs Esc pressed on a focused textarea', async () => {
+      const leave = action('play.leaveFrame', { keys: ['Escape'] })
+      register(leave)
+      bind(window, ['Escape'], { typing: 'frame' })
+      focusedIn('<textarea data-focus></textarea>')
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(leave.runs).toBe(1)
+    })
+
+    it('runs Esc pressed inside an editable region', async () => {
+      const leave = action('play.leaveFrame', { keys: ['Escape'] })
+      register(leave)
+      bind(window, ['Escape'], { typing: 'frame' })
+      focusedIn('<div contenteditable="true" data-focus>text</div>')
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(leave.runs).toBe(1)
+    })
+
+    it('leaves Esc the page prevented to the page', async () => {
+      const leave = action('play.leaveFrame', { keys: ['Escape'] })
+      register(leave)
+      bind(window, ['Escape'], { typing: 'frame' })
+      const menu = focusedIn('<button data-focus>menu</button>')
+      menu.addEventListener('keydown', (event) => event.preventDefault())
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(leave.runs).toBe(0)
+    })
+
+    it('leaves Esc pressed while composing to the input method', () => {
+      const leave = action('play.leaveFrame', { keys: ['Escape'] })
+      register(leave)
+      bind(window, ['Escape'], { typing: 'frame' })
+      const field = focusedIn('<input data-focus>')
+
+      field.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          code: 'Escape',
+          bubbles: true,
+          isComposing: true,
+        }),
+      )
+
+      expect(leave.runs).toBe(0)
+    })
+
+    it('keeps the board rule leaving Esc on a focused input to the input', async () => {
+      const leave = action('play.leaveFrame', { keys: ['Escape'] })
+      register(leave)
+      bind(window, ['Escape'])
+      focusedIn('<input data-focus>')
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(leave.runs).toBe(0)
+    })
   })
 
   describe('with a held key', () => {
