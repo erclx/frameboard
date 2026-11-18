@@ -2,7 +2,7 @@ import {
   type FramePoint,
   isElementBox,
   isTextEditEnd,
-} from '@/shared/frame-bridge'
+} from '@/shared/frame-bridge/messages'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { request, subscribe } from '../bridge/channel'

@@ -1,10 +1,11 @@
 import { toast } from '@/client/components/ui/toast'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
+import { renderedHash } from '@/shared/frame-bridge/elements'
 import type { EditResult } from '@/shared/records/edit'
 
 import { WaitDropped, whenFree } from '../../claims/waiting'
 import { catchUpTree, trees } from '../../element/tree'
-import { liveIframe, renderedHash, stampRenderedHash } from '../../frame-dom'
+import { liveIframe, stampRenderedHash } from '../../frame-dom'
 import {
   awaitHash,
   type ElementKey,

@@ -1,6 +1,10 @@
+import {
+  elementAt,
+  elementIndex,
+  renderedHash,
+} from '@/shared/frame-bridge/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { elementAt, elementIndex, renderedHash } from '../frame-dom'
 import { type BoardPoint, pickAt } from '../notes/pick'
 
 /** A point inside a live frame, in its own viewport pixels. */

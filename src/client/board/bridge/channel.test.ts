@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { BRIDGE_TAG } from '@/shared/frame-bridge'
+import { BRIDGE_TAG } from '@/shared/frame-bridge/messages'
 
 import { request, subscribe } from './channel'
 

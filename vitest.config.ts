@@ -27,13 +27,19 @@ export default mergeConfig(
               'src/{cli,server,shared}/**/*.test.ts',
               'scripts/**/*.test.ts',
             ],
+            // Read off a live document, so they run in the browser below.
+            exclude: ['src/shared/frame-bridge/elements.test.ts'],
           },
         },
         {
           extends: true,
           test: {
             name: 'browser',
-            include: ['src/client/**/*.test.{ts,tsx}'],
+            include: [
+              'src/client/**/*.test.{ts,tsx}',
+              'src/frame-bridge/**/*.test.ts',
+              'src/shared/frame-bridge/elements.test.ts',
+            ],
             setupFiles: ['src/test/setup.ts'],
             // Vitest's own browser defaults, pinned so a change to them shows
             // here. They run in the page, so a page that stops running stops

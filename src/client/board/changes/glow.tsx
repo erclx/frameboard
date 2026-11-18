@@ -1,10 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { unseenStore } from '@/client/live/unseen'
+import { elementAt, renderedHash } from '@/shared/frame-bridge/elements'
 import type { FrameChange } from '@/shared/records/changes'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { elementAt, renderedHash } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { screen } from '../geometry/draw'
 import { OVERLAY_Z } from '../geometry/overlay'

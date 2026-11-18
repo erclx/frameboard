@@ -1,7 +1,11 @@
+import {
+  elementAt,
+  elementIndex,
+  renderedHash,
+} from '@/shared/frame-bridge/elements'
 import type { ElementTree, TreeElement } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { elementAt, elementIndex, renderedHash } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { type BoardPoint, pickAt } from '../notes/pick'
 import type { ElementKey } from '../selection'

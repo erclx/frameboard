@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react'
 
-import { STEP_ATTRIBUTES } from '@/shared/present-transition'
-import type { FrameStyles, UsedColor } from '@/shared/records/elements'
-
 import {
   elementAt,
   elementIndex,
   renderedHash,
-  RESTAMPED,
-} from '../../frame-dom'
+} from '@/shared/frame-bridge/elements'
+import { STEP_ATTRIBUTES } from '@/shared/present-transition'
+import type { FrameStyles, UsedColor } from '@/shared/records/elements'
+
+import { RESTAMPED } from '../../frame-dom'
 import type { FreeSpot } from '../../place/write'
 import type { ElementKey } from '../../selection'
 import type { LiveStep } from './step'

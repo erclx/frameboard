@@ -1,6 +1,5 @@
+import { elementIndex } from '@/shared/frame-bridge/elements'
 import type { FrameRecord } from '@/shared/records/list'
-
-import { elementIndex } from '../frame-dom'
 
 /** A point on the board, in the canvas layer's own pixels. */
 export interface BoardPoint {

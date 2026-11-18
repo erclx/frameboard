@@ -1,4 +1,4 @@
-import { elementAt, renderedHash } from '@/client/board/frame-dom'
+import { elementAt, renderedHash } from '@/shared/frame-bridge/elements'
 import {
   BRIDGE_TAG,
   type BridgeMessage,
@@ -8,7 +8,7 @@ import {
   isElementAddress,
   isTextEditArgs,
   readBridgeMessage,
-} from '@/shared/frame-bridge'
+} from '@/shared/frame-bridge/messages'
 
 import { openTextEdit } from './text-edit'
 

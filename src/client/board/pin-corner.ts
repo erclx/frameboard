@@ -1,6 +1,5 @@
+import { elementAt } from '@/shared/frame-bridge/elements'
 import type { FrameRecord } from '@/shared/records/list'
-
-import { elementAt } from './frame-dom'
 
 /**
  * A pin's spot, its element's top right corner clamped to the frame, else the

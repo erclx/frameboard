@@ -3,10 +3,10 @@ import '../../styles.css'
 import { act, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { elementIndex } from '@/shared/frame-bridge/elements'
 import { frameOf } from '@/test/board'
 
 import CLIP from '../../../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
-import { elementIndex } from '../frame-dom'
 import { modeStore } from '../mode'
 import {
   clear,

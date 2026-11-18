@@ -8,13 +8,14 @@ import { bindKeys, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import { chooseTheme, flipFrame, themeStore } from '@/client/theme/store'
+import { frameElements } from '@/shared/frame-bridge/elements'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 import { ringFocused } from '@/test/focus-ring'
 
 import { openFindings } from './findings/open'
 import { Frame, LabelRename } from './frame'
-import { frameElements, stampRenderedHash } from './frame-dom'
+import { stampRenderedHash } from './frame-dom'
 import { modeStore } from './mode'
 import {
   holdMotion,

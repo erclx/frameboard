@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
-import { elementAt, renderedHash } from '../frame-dom'
+import { elementAt, renderedHash } from '@/shared/frame-bridge/elements'
+
 import type { ElementKey } from '../selection'
 
 /** A selected `<video>` or `<audio>` as its frame's live page plays it. */

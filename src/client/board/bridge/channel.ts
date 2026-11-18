@@ -4,7 +4,7 @@ import {
   type BridgeOp,
   type BridgeOps,
   readBridgeMessage,
-} from '@/shared/frame-bridge'
+} from '@/shared/frame-bridge/messages'
 
 /**
  * How long a request waits on a frame that never answers, such as one

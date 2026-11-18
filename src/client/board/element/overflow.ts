@@ -1,4 +1,5 @@
-import { frameElements } from '../frame-dom'
+import { frameElements } from '@/shared/frame-bridge/elements'
+
 import type { Box } from '../geometry/box'
 
 /** An element whose box runs past its frame's viewport, by file index. */

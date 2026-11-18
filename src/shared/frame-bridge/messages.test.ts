@@ -7,7 +7,7 @@ import {
   isTextEditArgs,
   isTextEditEnd,
   readBridgeMessage,
-} from './frame-bridge'
+} from './messages'
 
 const ORIGIN = 'http://127.0.0.1:4000'
 

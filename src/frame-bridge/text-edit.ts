@@ -2,7 +2,7 @@ import {
   EDITING,
   type FramePoint,
   type TextEditEnd,
-} from '@/shared/frame-bridge'
+} from '@/shared/frame-bridge/messages'
 
 /** A line break in a platform's two-character or old Mac form. */
 const BREAKS = /\r\n|\r/g

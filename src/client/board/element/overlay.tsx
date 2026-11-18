@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 
+import { elementAt, renderedHash } from '@/shared/frame-bridge/elements'
 import type { FrameRecord } from '@/shared/records/list'
 import { LOOK_MARKER } from '@/shared/theme'
 
-import { elementAt, renderedHash, RESTAMPED } from '../frame-dom'
+import { RESTAMPED } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { OUTLINE, screen, sizeLabel } from '../geometry/draw'
 import { CHIP, OVERLAY_Z } from '../geometry/overlay'

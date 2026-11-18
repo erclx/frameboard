@@ -1,7 +1,7 @@
 import { toast } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
+import { elementAt, renderedHash } from '@/shared/frame-bridge/elements'
 
-import { elementAt, renderedHash } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { type Corner, resizeBox } from '../geometry/resize'
 import {
