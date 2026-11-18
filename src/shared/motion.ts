@@ -2,10 +2,11 @@ import { FrameboardError } from './errors'
 
 /**
  * Where a frame's timeline was found: HyperFrames' `window.__hf`, the
- * `window.__timelines` registry its compositions fill, or the page's own CSS
- * and Web Animations through `document.getAnimations()`.
+ * `window.__timelines` registry its compositions fill, the page's own CSS
+ * and Web Animations through `document.getAnimations()`, or the clip a loaded
+ * `<model-viewer>` plays.
  */
-export type MotionSource = 'hf' | 'timelines' | 'css'
+export type MotionSource = 'hf' | 'timelines' | 'css' | 'model'
 
 export interface Motion {
   source: MotionSource
@@ -23,6 +24,10 @@ export async function readMotionIn(
 ): Promise<Motion | null> {
   interface Timeline {
     seek?: unknown
+    duration?: unknown
+  }
+  interface Clip {
+    availableAnimations?: unknown[]
     duration?: unknown
   }
   const end = view.performance.now() + timeoutMs
@@ -76,6 +81,19 @@ export async function readMotionIn(
         duration: ends.length === 0 ? null : Math.round(Math.max(...ends)),
       }
     }
+    // A viewer lists its clips once its model loads, which a capture waits on first.
+    const clips = [...view.document.querySelectorAll('model-viewer')]
+      .map((viewer) => viewer as Element & Clip)
+      .filter((viewer) => (viewer.availableAnimations?.length ?? 0) > 0)
+    if (clips.length > 0) {
+      const lengths = clips
+        .map((viewer) => seconds(viewer.duration))
+        .filter((length) => length !== null)
+      return {
+        source: 'model',
+        duration: lengths.length === 0 ? null : Math.max(...lengths),
+      }
+    }
     return null
   }
 
@@ -89,8 +107,8 @@ export async function readMotionIn(
 }
 
 /**
- * Holds the page at `ms` once painted, converting to the seconds HyperFrames
- * and GSAP take here alone, self-contained as `readMotionIn` is.
+ * Holds the page at `ms` once painted, converting to the seconds HyperFrames,
+ * GSAP, and a model viewer take here alone, self-contained as `readMotionIn` is.
  */
 export async function holdMotionIn(
   view: Window,
@@ -113,11 +131,21 @@ export async function holdMotionIn(
       timeline.pause?.()
       await timeline.seek(at / 1000)
     }
-  } else {
+  } else if (motion.source === 'css') {
     for (const animation of view.document.getAnimations()) {
       animation.pause()
       animation.currentTime = at
     }
+  }
+  // Whatever the page's timeline, every model holds the same moment of its own clip.
+  for (const element of view.document.querySelectorAll('model-viewer')) {
+    const viewer = element as Element & {
+      pause?: () => void
+      currentTime?: number
+    }
+    if (typeof viewer.pause !== 'function') continue
+    viewer.pause()
+    viewer.currentTime = at / 1000
   }
   // Two frames, so the held style has painted before anything reads it.
   await new Promise<void>((done) =>

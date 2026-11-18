@@ -265,7 +265,7 @@ async function pageOf(
   )
 }
 
-/** One line per image written, and under it one per video it shows with no picture. */
+/** One line per image written, and under it one per video or model it shows with no picture. */
 function describe(images: CapturedImage[]): string {
   return images
     .flatMap((image) => [
@@ -274,6 +274,14 @@ function describe(images: CapturedImage[]): string {
         (video) =>
           `  No picture for the video ${video.src} at element ${video.index} of ${video.ref}, which ${
             video.state === 'error'
+              ? 'failed to load'
+              : 'was still loading when the load budget ran out'
+          }`,
+      ),
+      ...(image.models ?? []).map(
+        (model) =>
+          `  No model drawn for ${model.src} at element ${model.index} of ${model.ref}, which ${
+            model.state === 'error'
               ? 'failed to load'
               : 'was still loading when the load budget ran out'
           }`,

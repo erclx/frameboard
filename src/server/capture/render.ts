@@ -25,6 +25,7 @@ import { settleAnimations } from './animation-settle'
 import { isolateElement } from './element-shot'
 import { assertFontsPresent } from './fonts'
 import { settleImages } from './image-loads'
+import { settleModels, type UnloadedModel } from './model-loads'
 import { holdAnimationClock } from './seek'
 import { settleVideos, type UnloadedVideo } from './video-loads'
 
@@ -61,13 +62,15 @@ export interface OpenFrame {
   page: Page
   /** The videos a `require` open left with no picture, empty under `wait`. */
   videos: UnloadedVideo[]
+  /** The models a `require` open left undrawn, empty under `wait`. */
+  models: UnloadedModel[]
   close: () => Promise<void>
 }
 
 /**
- * Loads a frame within one budget for faces, images, and videos, then settles
- * finite animations. A missing face or image refuses, while an unloaded video
- * is returned rather than refused.
+ * Loads a frame within one budget for faces, images, videos, and models, then
+ * settles finite animations. A missing face or image refuses, while an
+ * unloaded video or model is returned rather than refused.
  */
 export async function openFrame(
   browser: Browser,
@@ -114,11 +117,13 @@ export async function openFrame(
     // The `wait` readers measure layout, which a video's picture never moves.
     const videos =
       fonts === 'require' ? await settleVideos(page, deadline - Date.now()) : []
+    const models =
+      fonts === 'require' ? await settleModels(page, deadline - Date.now()) : []
     // The `wait` readers finish finite animations themselves on every write.
     if (fonts === 'require' && motion === 'settle') {
       await settleAnimations(page, deadline - Date.now())
     }
-    return { page, videos, close }
+    return { page, videos, models, close }
   } catch (error) {
     await close()
     throw error
