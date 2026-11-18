@@ -513,6 +513,26 @@ describe('Frame', () => {
     expect(queryByRole('img', { name: 'Unseen change' })).toBeNull()
   })
 
+  it("chips a kit frame's label with its kit", () => {
+    const { getByTitle } = render(
+      <Frame
+        frame={{ ...frame('checkout'), kit: 'sketch' }}
+        live={false}
+        version={0}
+      />,
+    )
+
+    expect(getByTitle('checkout')).toHaveTextContent('Kit sketch')
+  })
+
+  it('chips no kit on a plain frame', () => {
+    const { getByTitle } = render(
+      <Frame frame={frame('checkout')} live={false} version={0} />,
+    )
+
+    expect(getByTitle('checkout')).not.toHaveTextContent(/kit/i)
+  })
+
   it('names the frame above it', () => {
     const { getByTitle } = render(
       <Frame frame={frame('checkout')} live={false} version={0} />,
