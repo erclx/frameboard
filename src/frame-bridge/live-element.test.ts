@@ -72,6 +72,67 @@ describe('live-element', () => {
   })
 })
 
+describe('live-element transform', () => {
+  async function transformAt(body: string, index: number) {
+    const frame = await frameOf(body)
+    const asked = await ask(frame, 'live-element', {
+      hash: HASH,
+      indexes: [index],
+    })
+    if (!('value' in asked.reply)) throw new Error(asked.reply.error)
+    return asked.reply.value?.[0]?.rotation.transform
+  }
+
+  it("reads the element's own transform as its style states it", async () => {
+    expect(
+      await transformAt(
+        '<h1 style="transform: perspective(800px) rotateX(20deg)">T</h1>',
+        3,
+      ),
+    ).toEqual({
+      own: 'perspective(800px) rotateX(20deg)',
+      ruled: false,
+      reanchors: false,
+    })
+  })
+
+  it('reads a transform a rule gives as ruled', async () => {
+    expect(
+      await transformAt(
+        '<style>h1 { transform: rotate(5deg) }</style><h1>T</h1>',
+        4,
+      ),
+    ).toMatchObject({ own: '', ruled: true })
+  })
+
+  it('reads an absolute descendant anchored above it as one a transform re-anchors', async () => {
+    expect(
+      await transformAt(
+        '<div><p><span style="position: absolute">a</span></p></div>',
+        3,
+      ),
+    ).toMatchObject({ reanchors: true })
+  })
+
+  it('reads an absolute descendant anchored inside it as staying put', async () => {
+    expect(
+      await transformAt(
+        '<div><p style="position: relative"><span style="position: absolute">a</span></p></div>',
+        3,
+      ),
+    ).toMatchObject({ reanchors: false })
+  })
+
+  it('reads a fixed descendant as one a transform re-anchors, positioned or not', async () => {
+    expect(
+      await transformAt(
+        '<div style="position: relative"><span style="position: fixed">a</span></div>',
+        3,
+      ),
+    ).toMatchObject({ reanchors: true })
+  })
+})
+
 describe('live-body', () => {
   it("answers the body's file index at the bytes the page shows", async () => {
     const frame = await frameOf('<h1>Title</h1>')

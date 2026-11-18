@@ -41,6 +41,7 @@ export function rotationOf(overrides: Partial<Rotation> = {}): Rotation {
     scale: { x: 1, y: 1 },
     own: {},
     translated: false,
+    transform: { own: '', ruled: false, reanchors: false },
     ...overrides,
   }
 }

@@ -623,6 +623,11 @@ describe('InspectorPanel with an element selected', () => {
       scale: { x: -1.5, y: 1.5 },
       own: { rotate: 0, scale: { x: 1, y: 1 } },
       translated: true,
+      transform: {
+        own: 'translate(-50%, -50%)',
+        ruled: false,
+        reanchors: false,
+      },
     })
   })
 
@@ -638,6 +643,7 @@ describe('InspectorPanel with an element selected', () => {
       scale: { x: 1, y: 1 },
       own: {},
       translated: false,
+      transform: { own: 'rotate(45deg)', ruled: false, reanchors: false },
     })
   })
 

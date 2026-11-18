@@ -99,6 +99,7 @@ export function readLive(element: Element): LiveElement {
       scale: scaleOf(style.scale),
       own: beneathOwn(element),
       translated: translates(style.transform),
+      transform: transformOf(element, style),
     },
     placement: placementOf(element, style),
     layout: readLayout(element, style),
@@ -222,6 +223,49 @@ function beneathOwn(element: Element): Rotation['own'] {
   if (attribute === null) node.removeAttribute('style')
   else node.setAttribute('style', attribute)
   return own
+}
+
+function transformOf(
+  element: Element,
+  style: CSSStyleDeclaration,
+): Rotation['transform'] {
+  const own =
+    element instanceof HTMLElement
+      ? element.style.getPropertyValue('transform')
+      : ''
+  return {
+    own,
+    ruled: own === '' && style.transform !== 'none',
+    reanchors: style.transform === 'none' && anchorsAbove(element, style),
+  }
+}
+
+/**
+ * Whether an absolute or fixed descendant takes its containing block from
+ * above `element`, which a transform on `element` would capture. A positioned
+ * `element` already anchors an absolute one, and only a transform a fixed one.
+ */
+function anchorsAbove(element: Element, style: CSSStyleDeclaration): boolean {
+  const positioned = style.position !== 'static'
+  for (const child of element.querySelectorAll('*')) {
+    const position = getComputedStyle(child).position
+    if (position !== 'fixed' && (position !== 'absolute' || positioned)) {
+      continue
+    }
+    let anchored = false
+    for (
+      let node = child.parentElement;
+      node && node !== element && !anchored;
+      node = node.parentElement
+    ) {
+      const computed = getComputedStyle(node)
+      anchored =
+        computed.transform !== 'none' ||
+        (position === 'absolute' && computed.position !== 'static')
+    }
+    if (!anchored) return true
+  }
+  return false
 }
 
 /** Which paints an element's `style` attribute sets, read off its parsed declarations, where a shorthand shows as its longhands. */
