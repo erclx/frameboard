@@ -203,6 +203,7 @@ describe('the raw colors page', () => {
         'tuner',
         'mixed',
         'device',
+        'fold',
       ],
     })
   })
@@ -247,6 +248,7 @@ describe('the scroll feed page', () => {
         'tuner',
         'mixed',
         'device',
+        'fold',
       ],
     })
   })
@@ -270,6 +272,25 @@ describe('the device page', () => {
     expect(seeded.device).toBe('laid')
     expect(readJson('webapp/device/layout.json')).toMatchObject({
       frames: { phone: { width: 390, showDevice: true } },
+    })
+  })
+})
+
+describe('the foldable page', () => {
+  it('lays one frame naming the foldable, closed at the cover screen', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.fold).toBe('laid')
+    expect(readJson('webapp/fold/layout.json')).toMatchObject({
+      frames: {
+        inbox: {
+          width: 466,
+          height: 678,
+          showDevice: true,
+          foldable: true,
+          pose: 'closed',
+        },
+      },
     })
   })
 })
