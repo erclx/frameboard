@@ -25,7 +25,7 @@ import { settleAnimations } from './animation-settle'
 import { isolateElement } from './element-shot'
 import { assertFontsPresent } from './fonts'
 import { settleImages } from './image-loads'
-import { settleModels, type UnloadedModel } from './model-loads'
+import { settleModels, type UnloadedModel, watchModels } from './model-loads'
 import { holdAnimationClock } from './seek'
 import { settleVideos, type UnloadedVideo } from './video-loads'
 
@@ -95,6 +95,7 @@ export async function openFrame(
   try {
     const page = await context.newPage()
     if (motion === 'hold') await holdAnimationClock(page)
+    if (fonts === 'require') await watchModels(page)
     // The frame route's injected script sets the root's theme from the URL.
     await page.goto(new URL(frameThemeUrl(ref, theme), baseUrl).href, {
       timeout: timeoutMs,

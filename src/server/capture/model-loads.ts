@@ -11,9 +11,44 @@ export interface UnloadedModel {
 }
 
 /**
+ * Records each viewer whose load fails, from before the frame's scripts run.
+ * A viewer keeps no failed state to read and can fire its `error` ahead of
+ * `settleModels`, which would then wait on an event already gone.
+ */
+export async function watchModels(page: Page): Promise<void> {
+  await page.addInitScript(recordFailedModels)
+}
+
+// Runs in the page, so it carries everything it reads.
+function recordFailedModels(): void {
+  const failed = new WeakSet<EventTarget>()
+  Object.defineProperty(window, Symbol.for('frameboard.failed-models'), {
+    value: failed,
+  })
+  const isViewer = (target: EventTarget | null): target is Element =>
+    target instanceof Element && target.localName === 'model-viewer'
+  // Neither event bubbles, and a `load` never reaches the window.
+  document.addEventListener(
+    'error',
+    ({ target }) => {
+      if (isViewer(target)) failed.add(target)
+    },
+    true,
+  )
+  document.addEventListener(
+    'load',
+    ({ target }) => {
+      if (isViewer(target)) failed.delete(target)
+    },
+    true,
+  )
+}
+
+/**
  * Waits for every `<model-viewer>` to draw its model, then holds each at the
  * start of its animation, so two captures match. A model with no picture is
- * returned rather than refused, as an unloaded video is.
+ * returned rather than refused, as an unloaded video is. Reads the failures
+ * `watchModels` recorded on the same page.
  */
 export async function settleModels(
   page: Page,
@@ -45,8 +80,25 @@ async function waitForModels(timeoutMs: number): Promise<UnloadedModel[]> {
   }
   if (viewers.length === 0) return []
 
+  const failed = (
+    window as unknown as Record<symbol, WeakSet<EventTarget> | undefined>
+  )[Symbol.for('frameboard.failed-models')]
+
   const nextFrame = () =>
     new Promise<void>((done) => requestAnimationFrame(() => done()))
+
+  // The viewer's own reading at its own threshold, since it draws no model the viewport misses.
+  const inViewport = (viewer: Viewer) =>
+    new Promise<boolean>((done) => {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          observer.disconnect()
+          done(entry?.isIntersecting ?? false)
+        },
+        { threshold: 0.00001 },
+      )
+      observer.observe(viewer)
+    })
 
   const settle = async (viewer: Viewer): Promise<'ok' | 'error'> => {
     // Module scripts ran before the load this wait follows, so an element still undefined has no viewer.
@@ -54,14 +106,16 @@ async function waitForModels(timeoutMs: number): Promise<UnloadedModel[]> {
     // A viewer loads its model only inside the viewport unless told to.
     viewer.loading = 'eager'
     if (!viewer.loaded) {
-      const failed = await new Promise<boolean>((done) => {
-        viewer.addEventListener('load', () => done(false), { once: true })
-        viewer.addEventListener('error', () => done(true), { once: true })
+      if (failed?.has(viewer)) return 'error'
+      const loads = await new Promise<boolean>((done) => {
+        viewer.addEventListener('load', () => done(true), { once: true })
+        viewer.addEventListener('error', () => done(false), { once: true })
       })
-      if (failed) return 'error'
+      if (!loads) return 'error'
     }
     viewer.pause()
     viewer.currentTime = 0
+    if (!(await inViewport(viewer))) return 'ok'
     // The viewer draws on its own frame loop, behind a poster a manual reveal keeps up.
     while (
       !viewer.modelIsVisible &&

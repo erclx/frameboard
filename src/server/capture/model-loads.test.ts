@@ -5,6 +5,8 @@ import {
   readFileSync,
   rmSync,
 } from 'node:fs'
+import { createServer, type Server } from 'node:http'
+import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,7 +24,7 @@ import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { scanPage } from '../board/scan'
 import { ensureViewer } from '../models/viewer'
 import { type FrameHost, startFrameHost } from './host'
-import { captureComposite } from './images'
+import { captureComposite, captureFrameImages } from './images'
 import { openFrame } from './render'
 import { findMotion, seekMotion } from './seek'
 
@@ -53,10 +55,15 @@ describe.skipIf(shell === null)(
     let host: FrameHost
     let board: TempBoard
     let faces: string
+    let stall: Server
 
     beforeAll(async () => {
       browser = requireShell(shell)
       faces = mkdtempSync(join(tmpdir(), 'frameboard-faces-'))
+      // Accepts a connection and never answers, so a request to it stays open.
+      stall = createServer(() => {})
+      await new Promise<void>((done) => stall.listen(0, '127.0.0.1', done))
+      const { port } = stall.address() as AddressInfo
       board = writeBoard({
         'studio/home/plain.html': `${SCRIPT}<p></p>`,
         'studio/home/still.html': `${SCRIPT}${viewer('phone.glb')}`,
@@ -65,6 +72,7 @@ describe.skipIf(shell === null)(
         'studio/home/below.html': `${SCRIPT}<div style="height:2000px"></div>${viewer('phone.glb')}`,
         'studio/home/gone.html': `${SCRIPT}<p></p>${viewer('gone.glb')}`,
         'studio/home/no-script.html': viewer('phone.glb'),
+        'studio/home/stalled.html': `${SCRIPT}<model-viewer src="http://127.0.0.1:${port}/phone.glb"></model-viewer>`,
         'studio/home/no-file.html': `${SCRIPT}<model-viewer></model-viewer>`,
         'studio/home/chrome.html': `${SCRIPT}<div data-frameboard>${viewer('gone.glb')}</div>`,
         'studio/deck/layout.json': JSON.stringify({
@@ -74,6 +82,15 @@ describe.skipIf(shell === null)(
           },
         }),
         'studio/deck/spinning.html': `${SCRIPT}${viewer('spin.glb', 'autoplay')}`,
+        'studio/tall/layout.json': JSON.stringify({
+          version: 1,
+          frames: {
+            model: { x: 0, y: 0, width: 200, height: 160, order: 0 },
+            blank: { x: 300, y: 0, width: 200, height: 160, order: 1 },
+          },
+        }),
+        'studio/tall/model.html': `${SCRIPT}<div style="height:2000px"></div>${viewer('phone.glb')}`,
+        'studio/tall/blank.html': `${SCRIPT}<div style="height:2000px"></div><div style="height:160px"></div>`,
       })
       mkdirSync(join(board.root, 'studio/assets'), { recursive: true })
       for (const file of ['phone.glb', 'spin.glb']) {
@@ -88,6 +105,8 @@ describe.skipIf(shell === null)(
 
     afterAll(async () => {
       await host.close()
+      stall.closeAllConnections()
+      await new Promise((done) => stall.close(done))
       board.cleanup()
       rmSync(faces, { recursive: true, force: true })
     }, SHELL_HOOK_TIMEOUT_MS)
@@ -175,6 +194,19 @@ describe.skipIf(shell === null)(
       ])
     })
 
+    it('returns a model whose request hangs as pending once the budget runs out', async () => {
+      const opened = await openFrame(browser, {
+        baseUrl: host.url,
+        ref: 'studio/home/stalled',
+        box: BOX,
+        theme: 'light',
+        timeoutMs: 1500,
+      })
+      await opened.close()
+
+      expect(opened.models).toMatchObject([{ index: 4, state: 'pending' }])
+    })
+
     it('returns a model whose frame loads no viewer script as error', async () => {
       const opened = await open('no-script')
       await opened.close()
@@ -253,6 +285,43 @@ describe.skipIf(shell === null)(
 
         expect(quarter.equals(await at(0))).toBe(false)
         expect(quarter.equals(await at(500))).toBe(true)
+      })
+    })
+
+    describe('in a scrolled shot', () => {
+      async function scrolled(): Promise<Record<string, Buffer>> {
+        const out = mkdtempSync(join(tmpdir(), 'frameboard-shots-'))
+        try {
+          const page = await scanPage(board.root, 'studio', 'tall', 0)
+          const images = await captureFrameImages(browser, {
+            baseUrl: host.url,
+            frames: page.frames,
+            themes: ['light'],
+            out,
+            scroll: 2000,
+          })
+          return Object.fromEntries(
+            images.map((image) => [image.ref, readFileSync(image.path)]),
+          )
+        } finally {
+          rmSync(out, { recursive: true, force: true })
+        }
+      }
+
+      it('draws a model the scroll brings into the viewport, the same on a second capture', async () => {
+        const first = await scrolled()
+        const second = await scrolled()
+
+        expect(
+          first['studio/tall/model']?.equals(
+            first['studio/tall/blank'] ?? Buffer.alloc(0),
+          ),
+        ).toBe(false)
+        expect(
+          first['studio/tall/model']?.equals(
+            second['studio/tall/model'] ?? Buffer.alloc(0),
+          ),
+        ).toBe(true)
       })
     })
 
