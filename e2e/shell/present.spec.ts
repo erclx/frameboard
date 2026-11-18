@@ -199,6 +199,42 @@ test.describe('a deck with a transition and a stepped slide', () => {
     await expect(arriving(page)).toHaveAttribute('title', 'closing')
     await expect(bar(page)).toContainText('3 / 3')
   })
+
+  test('jumps mid-deck from the overview, landing on a slide at its first step', async ({
+    page,
+  }) => {
+    const overview = page.getByRole('region', { name: 'Slide overview' })
+    await open(page)
+    await page.keyboard.press('Shift+P')
+    await expect(arriving(page)).toHaveAttribute('title', 'hero')
+    await page.keyboard.press('ArrowRight')
+    await expect(
+      bar(page).getByRole('img', { name: 'Step 0 of 2' }),
+    ).toBeAttached()
+    await page.keyboard.press('ArrowRight')
+    await expect(step(page, 'one')).toBeVisible()
+
+    await page.keyboard.press('g')
+    await expect(
+      overview.getByRole('button', { name: 'Slide 2, about' }),
+    ).toHaveAttribute('aria-current', 'true')
+    await page.keyboard.press('3')
+    await page.keyboard.press('Enter')
+
+    await expect(overview).toHaveCount(0)
+    await expect(arriving(page)).toHaveAttribute('title', 'closing')
+    await expect(presenting(page).locator('iframe')).toHaveCount(1)
+
+    await page.keyboard.press('g')
+    await page.keyboard.press('ArrowLeft')
+    await page.keyboard.press('Enter')
+
+    await expect(arriving(page)).toHaveAttribute('title', 'about')
+    await expect(
+      bar(page).getByRole('img', { name: 'Step 0 of 2' }),
+    ).toBeAttached()
+    await expect(step(page, 'one')).toBeHidden()
+  })
 })
 
 test.describe("a transition of the project's own", () => {
