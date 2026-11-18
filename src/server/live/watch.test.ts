@@ -14,6 +14,7 @@ import {
   createBatcher,
   ownReloadRefs,
   placedRefs,
+  rekittedRefs,
   relistedRefs,
   reloadRefs,
   unmovedRefs,
@@ -645,5 +646,58 @@ describe('relistedRefs', () => {
     writeHero({ widths: PHONE })
 
     expect(relistedRefs(previous, await scanBoard(board.root))).toEqual([])
+  })
+})
+
+describe('rekittedRefs', () => {
+  let board: FixtureBoard
+
+  beforeEach(() => {
+    board = copyFixtureBoard('live')
+  })
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  function writeHero(hero: object) {
+    writeFileSync(
+      join(board.root, 'studio/home/layout.json'),
+      JSON.stringify({
+        version: 1,
+        frames: {
+          hero: { x: 0, y: 0, width: 1440, height: 900, order: 0, ...hero },
+          mobile: { x: 1520, y: 0, width: 390, height: 844, order: 1 },
+        },
+      }),
+    )
+  }
+
+  it('names a frame given a kit', async () => {
+    writeHero({})
+    const previous = await scanBoard(board.root)
+    writeHero({ kit: 'sketch' })
+
+    expect(rekittedRefs(previous, await scanBoard(board.root))).toEqual([
+      'studio/home/hero',
+    ])
+  })
+
+  it('names a frame whose kit was taken off', async () => {
+    writeHero({ kit: 'sketch' })
+    const previous = await scanBoard(board.root)
+    writeHero({})
+
+    expect(rekittedRefs(previous, await scanBoard(board.root))).toEqual([
+      'studio/home/hero',
+    ])
+  })
+
+  it('leaves out a frame that only moved', async () => {
+    writeHero({ kit: 'sketch' })
+    const previous = await scanBoard(board.root)
+    writeHero({ kit: 'sketch', x: 40 })
+
+    expect(rekittedRefs(previous, await scanBoard(board.root))).toEqual([])
   })
 })

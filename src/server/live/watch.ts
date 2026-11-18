@@ -356,3 +356,27 @@ export function relistedRefs(previous: ListResult, next: ListResult): string[] {
 function listed(frame: FrameRecord): string {
   return frame.widths.map(({ width }) => width).join(',')
 }
+
+/**
+ * Frames whose kit changed, reloaded here, since the kit lives in
+ * `layout.json`, which reloads nothing, and the frame route imports its sheets.
+ */
+export function rekittedRefs(previous: ListResult, next: ListResult): string[] {
+  const before = new Map(
+    previous.projects.flatMap((project) =>
+      project.pages.flatMap((page) =>
+        page.frames.map((frame) => [frame.ref, frame.kit ?? null] as const),
+      ),
+    ),
+  )
+  return next.projects.flatMap((project) =>
+    project.pages.flatMap((page) =>
+      page.frames
+        .filter((frame) => {
+          const was = before.get(frame.ref)
+          return was !== undefined && was !== (frame.kit ?? null)
+        })
+        .map((frame) => frame.ref),
+    ),
+  )
+}
