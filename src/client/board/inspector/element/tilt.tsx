@@ -39,7 +39,20 @@ function lockOf(rotation: Rotation, tilt: Tilt | null): string | null {
   if (rotation.degrees !== 0 && rotation.own.rotate !== 0) {
     return 'A rule rotates it, so a tilt would turn it twice.'
   }
+  if (rotation.degrees !== 0 && flipOf(rotation.scale) === null) {
+    return 'Its scale stretches its turn, so a tilt could not hold the picture.'
+  }
   return null
+}
+
+/**
+ * The sign an own `rotate` takes once carried into Rotate Z, which composes
+ * after `scale`: a flip on one axis mirrors the turn, and null for a scale
+ * that stretches, which no angle after it can match.
+ */
+function flipOf(scale: Rotation['scale']): 1 | -1 | null {
+  if (!scale || Math.abs(scale.x) !== Math.abs(scale.y)) return null
+  return Math.sign(scale.x) === Math.sign(scale.y) ? 1 : -1
 }
 
 interface TiltSectionProps {
@@ -68,7 +81,7 @@ export function TiltSection({
   // Only an own `rotate` with no rule under it can be dropped for Rotate Z.
   const carried =
     !tilted && rotation.own.rotate === 0 && rotation.degrees
-      ? rotation.degrees
+      ? rotation.degrees * (flipOf(rotation.scale) ?? 1)
       : 0
   const shown: Tilt = { ...tilt, rotateZ: tilt.rotateZ || carried }
 

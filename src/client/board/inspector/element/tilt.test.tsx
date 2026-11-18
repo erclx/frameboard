@@ -119,6 +119,60 @@ describe('TiltSection', () => {
     ])
   })
 
+  it('reverses an own rotate it carries past a one-axis flip, so the turn holds', async () => {
+    const { changes, write } = recorder()
+    renderSection(
+      rotationOf({
+        degrees: 30,
+        scale: { x: -1, y: 1 },
+        own: { rotate: 0, scale: { x: 1, y: 1 } },
+      }),
+      write,
+    )
+
+    await typeInto('Rotate Y', '15')
+
+    expect(changes).toEqual([
+      {
+        kind: 'styles',
+        declarations: [
+          {
+            property: 'transform',
+            value: 'perspective(800px) rotateY(15deg) rotateZ(-30deg)',
+          },
+          { property: 'rotate', value: '' },
+        ],
+      },
+    ])
+  })
+
+  it('carries an own rotate as it is past a flip on both axes', async () => {
+    const { changes, write } = recorder()
+    renderSection(
+      rotationOf({
+        degrees: 30,
+        scale: { x: -1, y: -1 },
+        own: { rotate: 0, scale: { x: 1, y: 1 } },
+      }),
+      write,
+    )
+
+    await typeInto('Rotate Y', '15')
+
+    expect(changes).toEqual([
+      {
+        kind: 'styles',
+        declarations: [
+          {
+            property: 'transform',
+            value: 'perspective(800px) rotateY(15deg) rotateZ(30deg)',
+          },
+          { property: 'rotate', value: '' },
+        ],
+      },
+    ])
+  })
+
   it('refuses a perspective of zero, writing the least one', async () => {
     const { changes, write } = recorder()
     renderSection(
@@ -189,6 +243,11 @@ describe('TiltSection', () => {
       'an element a rule rotates',
       rotationOf({ degrees: 30 }),
       'A rule rotates it, so a tilt would turn it twice.',
+    ],
+    [
+      'a rotated element its scale stretches',
+      rotationOf({ degrees: 30, own: { rotate: 0 }, scale: { x: 2, y: 1 } }),
+      'Its scale stretches its turn, so a tilt could not hold the picture.',
     ],
   ])('turns the section off for %s, saying why', (_name, rotation, reason) => {
     const { write } = recorder()
