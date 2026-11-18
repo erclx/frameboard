@@ -9,12 +9,13 @@ const BARE = { index: 3, hash: HASH }
 // The viewer's own script counts as the file's: html 0, head 1, script 2, body 3, the viewer 4.
 const DRAWN = { index: 4, hash: HASH }
 
+// A stand-in that draws nothing, since the real viewer's WebGL starves the tests sharing this browser.
 const SCRIPT =
-  '<script type="module" src="/node_modules/@google/model-viewer/dist/model-viewer.min.js"></script>'
+  '<script type="module" src="/src/test/model-viewer-stub.js"></script>'
 
-/** A viewer on `spin.glb`, which carries one clip named Spin. */
+/** A viewer the stand-in loads with one clip named Spin. */
 const spinning = (attributes = '') =>
-  `<model-viewer src="/test/fixtures/models/spin.glb" ${attributes} style="display:block;width:200px;height:160px"></model-viewer>`
+  `<model-viewer src="spin.glb" ${attributes}></model-viewer>`
 
 /** The reading the frame last sent, its reply until it pushes. */
 function latest(asked: Asked<'model'>): ModelReading | null {
