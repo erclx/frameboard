@@ -23,7 +23,7 @@ Holds the script that runs in each frame's own realm, built to `dist/frame-bridg
 
 ### `src/client/board/bridge/`
 
-Owns the board's end, which posts a request to one iframe's window and resolves its reply by id. A message counts only from the window and origin its request went to, under an id still open, and a frame that never answers resolves null after a second.
+Owns the board's end, which posts a request to one iframe's window and resolves its reply by id. A message counts only from the window and origin its request went to, under an id still open, and a frame that never answers resolves null after 5 seconds, long enough for a loaded machine or a heavy frame to answer.
 
 - The board focuses the iframe before an edit opens, since a frame on another origin cannot take focus itself, and hands focus back when the edit is refused
 - The channel parses every reply and push against its op's schema and answers null for one in another shape, since a frame's own script can post in the bridge's shape
