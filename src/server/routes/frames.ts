@@ -8,7 +8,7 @@ import { Hono } from 'hono'
 import { ASSETS_FOLDER, LAYOUT_FILE } from '@/server/board/scan'
 import type { TokenSheetPaths } from '@/server/checks/tokens'
 import { contentHash } from '@/server/edit/address'
-import { frameHead, injectHead } from '@/server/look/inject'
+import { BRIDGE_URL, frameHead, injectHead } from '@/server/look/inject'
 import { FRAME_EXTENSION, TOKEN_FILE } from '@/shared/board-files'
 import { FACES, faceSheetUrl } from '@/shared/faces'
 import { KIT_ASSETS, KIT_SHEET } from '@/shared/kits'
@@ -151,6 +151,7 @@ export function frameRoutes(
           (url) => `${base}${url}`,
         ),
         contentHash(bytes),
+        `${base}${BRIDGE_URL}`,
       ),
     )
 

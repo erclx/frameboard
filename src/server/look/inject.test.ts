@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-import { JSDOM } from 'jsdom'
+import { JSDOM, requestInterceptor } from 'jsdom'
 import { type DefaultTreeAdapterMap, parse } from 'parse5'
 import { describe, expect, it } from 'vitest'
 
-import { frameHead, injectHead } from './inject'
+import { lookRoutes } from '@/server/routes/look'
+
+import { BRIDGE_URL, frameHead, injectHead } from './inject'
 
 type Document = DefaultTreeAdapterMap['document']
 type Element = DefaultTreeAdapterMap['element']
@@ -174,6 +176,49 @@ describe('frameHead', () => {
     expect(head).toMatch(
       /^<style data-frameboard data-hash="[0-9a-f]{64}">@import url\("\/a\.css"\);@import url\("\/b\.css"\);<\/style><script data-frameboard>/,
     )
+  })
+  it('loads the bridge after the theme script', () => {
+    const head = frameHead([], HASH, '/v/t/bridge.js')
+
+    expect(head).toMatch(
+      /<\/script><script data-frameboard src="\/v\/t\/bridge\.js"><\/script>$/,
+    )
+  })
+
+  it('loads no bridge when given none', () => {
+    expect(frameHead([], HASH)).not.toContain(' src=')
+  })
+})
+
+describe('the injected bridge script', () => {
+  /** A served frame's document once it loads, its bridge fetched from the look routes. */
+  async function load(): Promise<JSDOM['window']['document']> {
+    const look = lookRoutes({ facesDir: '/nowhere', boardSheet: () => null })
+    const { window } = new JSDOM(
+      `<!doctype html><head>${frameHead([], HASH, BRIDGE_URL)}</head><p>x</p>`,
+      {
+        url: 'http://127.0.0.1/frames/site/home/hero.html',
+        runScripts: 'dangerously',
+        resources: {
+          interceptors: [
+            requestInterceptor((request) =>
+              look.request(new URL(request.url).pathname),
+            ),
+          ],
+        },
+      },
+    )
+    await new Promise((resolve) =>
+      window.addEventListener('load', resolve, { once: true }),
+    )
+    return window.document
+  }
+
+  it('runs and removes itself, leaving the stylesheet the one injected element', async () => {
+    const document = await load()
+
+    expect(document.querySelectorAll('[data-frameboard]')).toHaveLength(1)
+    expect(document.querySelector('[data-frameboard]')?.tagName).toBe('STYLE')
   })
 })
 

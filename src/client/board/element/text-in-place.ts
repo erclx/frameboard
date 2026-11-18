@@ -1,21 +1,10 @@
+import { isElementBox, isTextEditEnd } from '@/shared/frame-bridge'
 import type { FrameRecord } from '@/shared/records/list'
 
-import { elementAt, renderedHash } from '../frame-dom'
+import { request, subscribe } from '../bridge/channel'
 import type { ElementChange } from '../inspector/element/write'
 import type { BoardPoint } from '../notes/pick'
 import type { ElementKey, SelectionStore } from '../selection'
-
-/** Marks the live element an in-place edit has open, for the overlay and the tests. */
-export const EDITING = 'data-frameboard-editing'
-
-/** A line break in a platform's two-character or old Mac form. */
-const BREAKS = /\r\n|\r/g
-
-/** The newlines a text ends on. */
-const TRAILING_BREAKS = /\n+$/
-
-/** Runs of white space a collapsing element shows as one space. */
-const SPACES = /[\t\n\f\r ]+/g
 
 /**
  * Sends the changes one edit makes to its element as one write and one undo
@@ -23,167 +12,91 @@ const SPACES = /[\t\n\f\r ]+/g
  */
 export type WriteText = (changes: readonly ElementChange[]) => Promise<boolean>
 
-/** Whether an element's computed style shows a newline in its text as a space. */
-function collapsesBreaks(element: HTMLElement, view: Window): boolean {
-  const { whiteSpace } = view.getComputedStyle(element)
-  return whiteSpace === 'normal' || whiteSpace === 'nowrap'
+/** An in-place text edit the board asked a frame to open. */
+export interface TextEdit {
+  /** Whether the frame opened it, false for an element holding anything but text. */
+  opened: Promise<boolean>
+  /** Ends the edit with nothing written, the old text shown again. */
+  cancel: () => void
 }
 
-/**
- * Opens an element's text for typing in place. A break is a newline in its one
- * text node, never a `<br>`, which would end its text-only state, and a reload
- * ends the edit with nothing sent.
- */
-export function editTextInPlace(
-  document: Document,
-  key: ElementKey,
-  write: WriteText,
-): (() => void) | null {
-  const view = document.defaultView
-  const found = elementAt(document, key.index)
-  if (
-    !view ||
-    renderedHash(document) !== key.hash ||
-    !(found instanceof view.HTMLElement) ||
-    found.childElementCount > 0 ||
-    (found.textContent ?? '').trim() === ''
-  ) {
-    return null
-  }
-  const element: HTMLElement = found
-  const source = element.textContent ?? ''
-  const collapses = collapsesBreaks(element, view)
-  const before = collapses ? source.replace(SPACES, ' ').trim() : source
-  const whiteSpace = element.style.whiteSpace
-  if (before !== source) element.textContent = before
-  let open = true
-
-  const close = () => {
-    open = false
-    element.removeAttribute('contenteditable')
-    element.removeAttribute(EDITING)
-    element.removeEventListener('keydown', keydown)
-    element.removeEventListener('paste', paste)
-    element.removeEventListener('blur', commit)
-    view.removeEventListener('pagehide', close)
-  }
-  const restore = () => {
-    element.textContent = source
-    element.style.whiteSpace = whiteSpace
-  }
-  const cancel = () => {
-    if (!open) return
-    close()
-    restore()
-  }
-  function commit() {
-    if (!open) return
-    close()
-    // A break at the end draws nothing, so none is written.
-    const value = (element.textContent ?? '')
-      .replace(BREAKS, '\n')
-      .replace(TRAILING_BREAKS, '')
-    // A source ending on a break reads unchanged once trimmed, so it writes nothing.
-    if (value === before.replace(TRAILING_BREAKS, '')) {
-      restore()
-      return
-    }
-    element.textContent = value
-    const changes: ElementChange[] = [{ kind: 'text', value }]
-    if (collapses && value.includes('\n')) {
-      changes.push({
-        kind: 'style',
-        property: 'white-space',
-        value: 'pre-line',
-      })
-    }
-    void write(changes).then((written) => {
-      // The frame reloads with a landed write, so only a refusal shows the old text.
-      if (!written && element.isConnected) restore()
-    })
-  }
-  function keydown(event: KeyboardEvent) {
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      insert('\n')
-    }
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      event.stopPropagation()
-      commit()
-    }
-  }
-  function paste(event: ClipboardEvent) {
-    event.preventDefault()
-    insert(
-      (event.clipboardData?.getData('text/plain') ?? '').replace(BREAKS, '\n'),
-    )
-  }
-  const insert = (text: string) => {
-    const range = view.getSelection()?.getRangeAt(0)
-    if (!range || !element.contains(range.commonAncestorContainer)) return
-    // The break shows while typing, as the written style will show it.
-    if (collapses && text.includes('\n')) element.style.whiteSpace = 'pre-line'
-    // One text node, so the caret lands past the insert rather than at a split.
-    const offset = (node: Node, at: number) => {
-      const before = document.createRange()
-      before.selectNodeContents(element)
-      before.setEnd(node, at)
-      return before.toString().length
-    }
-    const start = offset(range.startContainer, range.startOffset)
-    const end = offset(range.endContainer, range.endOffset)
-    const value = element.textContent ?? ''
-    const after = value.slice(end)
-    // A last newline draws no line, so a placeholder gives the caret one to trim later.
-    const placeholder = after === '' && text.endsWith('\n') ? '\n' : ''
-    element.textContent = value.slice(0, start) + text + (after || placeholder)
-    const caret = document.createRange()
-    caret.setStart(element.firstChild ?? element, start + text.length)
-    caret.collapse(true)
-    view.getSelection()?.removeAllRanges()
-    view.getSelection()?.addRange(caret)
-  }
-
-  element.setAttribute('contenteditable', 'plaintext-only')
-  element.setAttribute(EDITING, '')
-  element.addEventListener('keydown', keydown)
-  element.addEventListener('paste', paste)
-  element.addEventListener('blur', commit)
-  view.addEventListener('pagehide', close)
-  element.focus()
-  const range = document.createRange()
-  range.selectNodeContents(element)
-  const selection = view.getSelection()
-  selection?.removeAllRanges()
-  selection?.addRange(range)
-  return cancel
-}
-
-/** The live document a frame's iframe shows, or null for a placeholder. */
-function shownDocument(container: ParentNode, ref: string): Document | null {
-  return (
-    container.querySelector<HTMLIFrameElement>(
-      `[data-frame="${CSS.escape(ref)}"] iframe`,
-    )?.contentDocument ?? null
+/** A frame's live iframe on the board, or null for a placeholder. */
+function shownFrame(
+  container: ParentNode,
+  ref: string,
+): HTMLIFrameElement | null {
+  return container.querySelector<HTMLIFrameElement>(
+    `[data-frame="${CSS.escape(ref)}"] iframe`,
   )
 }
 
 /**
- * Whether a board point falls inside the live box of the element `key`
- * names, in the frame the key names, so a double-click there edits it.
+ * Opens an element's text for typing in place, in the frame showing the
+ * key's bytes, and writes the text the frame commits. The frame owns the
+ * caret and the keys, and a reload there ends the edit with nothing sent.
  */
-export function overElement(
+export function editTextInPlace(
+  container: ParentNode,
+  key: ElementKey,
+  write: WriteText,
+): TextEdit {
+  const iframe = shownFrame(container, key.frame)
+  if (!iframe) return { opened: Promise.resolve(false), cancel: () => {} }
+  const focused = document.activeElement
+  // A frame on another origin cannot take focus itself, so the board hands it over.
+  iframe.focus()
+  const edit = subscribe(
+    iframe,
+    'text-edit',
+    { index: key.index, hash: key.hash },
+    (end) => {
+      if (!isTextEditEnd(end)) return
+      edit.close()
+      if (end.kind === 'closed') return
+      const changes: ElementChange[] = [{ kind: 'text', value: end.text }]
+      if (end.breaks) {
+        changes.push({
+          kind: 'style',
+          property: 'white-space',
+          value: 'pre-line',
+        })
+      }
+      void write(changes).then((written) =>
+        request(iframe, 'text-written', { edit: edit.id, written }),
+      )
+    },
+  )
+  const opened = edit.opened.then((value) => {
+    if (value === true) return true
+    // Focus goes back where it was, so the board's keys still reach the board.
+    if (document.activeElement === iframe) {
+      iframe.blur()
+      if (focused instanceof HTMLElement) focused.focus()
+    }
+    return false
+  })
+  return { opened, cancel: edit.close }
+}
+
+/**
+ * Whether a board point falls inside the live box of the element `key`
+ * names, in the frame the key names showing the key's bytes, so a
+ * double-click there edits it.
+ */
+export async function overElement(
   container: ParentNode,
   frames: readonly FrameRecord[],
   key: ElementKey,
   at: BoardPoint,
-): boolean {
+): Promise<boolean> {
   const frame = frames.find((candidate) => candidate.ref === key.frame)
-  const shown = frame && shownDocument(container, frame.ref)
-  const element = shown && elementAt(shown, key.index)
-  if (!frame || !element) return false
-  const box = element.getBoundingClientRect()
+  const iframe = frame && shownFrame(container, frame.ref)
+  if (!frame || !iframe) return false
+  const box = await request(iframe, 'element-box', {
+    index: key.index,
+    hash: key.hash,
+  })
+  if (!isElementBox(box)) return false
   const x = at.x - frame.box.x
   const y = at.y - frame.box.y
   return x >= box.left && x < box.right && y >= box.top && y < box.bottom
@@ -199,15 +112,23 @@ export function editTextWhenShown(
   write: WriteText,
   selection: SelectionStore,
 ): () => void {
-  let cancel: (() => void) | null = null
+  let current: TextEdit | null = null
+  let waiting = true
   const stop = () => {
+    waiting = false
     container.removeEventListener('load', attempt, true)
     unsubscribe()
   }
   function attempt() {
-    const shown = shownDocument(container, key.frame)
-    cancel = shown ? editTextInPlace(shown, key, write) : null
-    if (cancel) stop()
+    current?.cancel()
+    const edit = editTextInPlace(container, key, write)
+    current = edit
+    void edit.opened.then((opened) => {
+      if (!opened) return
+      // An edit opening after a later load, or after the wait ended, is stale.
+      if (edit !== current || !waiting) edit.cancel()
+      else stop()
+    })
   }
   const unsubscribe = selection.subscribe(({ element }) => {
     if (element?.frame !== key.frame || element.index !== key.index) stop()
@@ -217,6 +138,6 @@ export function editTextWhenShown(
   attempt()
   return () => {
     stop()
-    cancel?.()
+    current?.cancel()
   }
 }

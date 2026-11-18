@@ -624,8 +624,8 @@ export function Canvas({
   })
 
   /** Opens a text element's text for typing, a double-click's or a placed Text's. */
-  const editText = (key: ElementKey, waits: boolean): boolean => {
-    if (!layer) return false
+  const editText = (key: ElementKey, waits: boolean): Promise<boolean> => {
+    if (!layer) return Promise.resolve(false)
     // A text with a break carries its white-space beside it, as one undo step.
     const write: WriteText = ([change, ...rest]) =>
       !change
@@ -640,14 +640,12 @@ export function Canvas({
     stopEditing.current = null
     if (waits) {
       stopEditing.current = editTextWhenShown(layer, key, write, selectionStore)
-      return true
+      return Promise.resolve(true)
     }
-    const shown = layer.querySelector<HTMLIFrameElement>(
-      `[data-frame="${CSS.escape(key.frame)}"] iframe`,
-    )?.contentDocument
     selectElement(selectionStore, page.ref, key)
-    stopEditing.current = shown ? editTextInPlace(shown, key, write) : null
-    return stopEditing.current !== null
+    const edit = editTextInPlace(layer, key, write)
+    stopEditing.current = edit.cancel
+    return edit.opened
   }
 
   // Edits the text selected before the double-click, else picks inside the frame.
@@ -662,9 +660,12 @@ export function Canvas({
     ) {
       const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
       const drawn = withDrawn(frames)
-      if (overElement(layer, drawn, held, { x, y }) && editText(held, false)) {
-        return
-      }
+      void overElement(layer, drawn, held, { x, y })
+        .then((over) => over && editText(held, false))
+        .then((opened) => {
+          if (!opened) pickInside(event, true)
+        })
+      return
     }
     pickInside(event, true)
   }
@@ -690,7 +691,7 @@ export function Canvas({
       (element) => {
         if (!element || turn !== picks.current) return
         // Opening an edit selects the element first, text or not.
-        if (edit) editText(element, false)
+        if (edit) void editText(element, false)
         else selectElement(selectionStore, page.ref, element)
       },
     )
@@ -903,7 +904,7 @@ export function Canvas({
                     { size: draft?.size, corner: draft?.at },
                   ).then((placed) => {
                     // A placed Text opens for typing once its frame shows it.
-                    if (placed && kind === 'text') editText(placed, true)
+                    if (placed && kind === 'text') void editText(placed, true)
                   })
                   return
                 }

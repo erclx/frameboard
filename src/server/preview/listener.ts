@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net'
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 
-import { injectHead } from '@/server/look/inject'
+import { BRIDGE_URL, injectHead } from '@/server/look/inject'
 import { BOARD_SHEET_URL } from '@/server/routes/frames'
 import { servedFrames } from '@/server/routes/look'
 import { HIDE_CONTROLS_CSS } from '@/shared/bindings'
@@ -88,7 +88,11 @@ function innerPath(
   if (!sameToken(given, token)) return null
   const inner = `/${rest.join('/')}`
 
-  if (inner === BOARD_SHEET_URL || inner.startsWith(`${FACES_URL}/`)) {
+  if (
+    inner === BOARD_SHEET_URL ||
+    inner === BRIDGE_URL ||
+    inner.startsWith(`${FACES_URL}/`)
+  ) {
     return inner
   }
   const [area, named, ...within] = rest

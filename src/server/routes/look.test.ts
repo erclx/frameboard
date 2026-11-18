@@ -11,6 +11,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { BRIDGE_URL } from '@/server/look/inject'
 import { version } from '@/shared/version'
 
 import { lookRoutes } from './look'
@@ -91,6 +92,17 @@ describe('lookRoutes', () => {
     expect(response.headers.get('content-type')).toBe('text/css; charset=utf-8')
     expect(response.headers.get('cache-control')).toBe('no-store')
     expect(await response.text()).toBe(':root { --fg: teal }')
+  })
+
+  it("serves the frame bridge's script, never cached on a source run", async () => {
+    const response = await get(BRIDGE_URL)
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe(
+      'text/javascript; charset=utf-8',
+    )
+    expect(response.headers.get('cache-control')).toBe('no-store')
+    expect(await response.text()).toContain('frameboard-bridge')
   })
 
   it('answers 404 for the board sheet when there is none', async () => {
