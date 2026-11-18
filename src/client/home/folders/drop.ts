@@ -51,10 +51,8 @@ interface HomeDragOptions {
 }
 
 /**
- * Makes a home card or row a drop target filing the project dropped on it,
- * and its link draggable when it is a project's, answering whether a project
- * that would file somewhere new is over it. The link drags rather than the
- * element, since a link drags natively and would start its own drag.
+ * Makes a home card or row a drop target, dragging by its link, since a link
+ * drags natively and would start its own drag.
  */
 export function useHomeDrag(
   element: RefObject<HTMLElement | null>,
@@ -82,9 +80,7 @@ export function useHomeDrag(
       const dragged = sourceOf(data)
       return dragged !== null && files(dragged, self)
     }
-    // A member row sits inside its folder's row, and the library runs every
-    // target under the pointer, so only the innermost one shows the hint and
-    // files, which a drop on a member would otherwise do twice.
+    // Innermost only, since a member row inside its folder's would file twice.
     const innermost = (location: DragLocationHistory) =>
       location.current.dropTargets[0]?.element === node
     const cleanups = [

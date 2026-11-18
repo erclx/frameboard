@@ -22,10 +22,8 @@ function ToastPortal({ ...props }: ToastPrimitive.Portal.Props) {
 }
 
 /**
- * The board's toolbar publishes `--toast-lift` while it shows, so no toast
- * lands on it. The stack sits above a dialog's overlay, so a toast raised from
- * inside one, such as Undo on a project deleted from an open folder, takes
- * its click.
+ * Lifted by `--toast-lift` off the toolbar, and above a dialog's overlay, so a
+ * toast raised inside one takes its click.
  */
 function ToastViewport({ className, ...props }: ToastPrimitive.Viewport.Props) {
   return (
@@ -46,14 +44,11 @@ function Toast({ className, ...props }: ToastPrimitive.Root.Props) {
       data-slot="toast"
       className={cn(
         'group/toast pointer-events-auto absolute right-0 bottom-0 z-[calc(1000-var(--toast-index))] w-full origin-bottom rounded-[10px] border border-border bg-card text-card-foreground shadow-[0_12px_40px_rgba(0,0,0,.3)] will-change-transform outline-none select-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-        // Every toast stands open in one column at rest, newest at the
-        // bottom, as menus/toast draws them, rather than collapsing behind
-        // the newest until the stack is hovered.
+        // One open column at rest, as menus/toast draws it, never collapsed.
         '[--gap:0.25rem] [--offset-y:calc(var(--toast-offset-y)*-1+calc(var(--toast-index)*var(--gap)*-1)+var(--toast-swipe-movement-y))]',
         'h-(--toast-height) [transform:translateX(var(--toast-swipe-movement-x))_translateY(var(--offset-y))] [transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
         "after:absolute after:top-full after:left-0 after:h-[calc(var(--gap)+1px)] after:w-full after:content-['']",
-        // Lifted above the toolbar, the 150% exit would end resting over the
-        // bar, so a closing toast fades as it slides.
+        // Fades as it slides, since a lifted 150% exit would rest over the bar.
         'data-limited:opacity-0 data-ending-style:opacity-0 data-starting-style:[transform:translateY(150%)]',
         '[&[data-ending-style]:not([data-limited]):not([data-swipe-direction])]:[transform:translateY(150%)]',
         'data-ending-style:data-[swipe-direction=down]:[transform:translateY(calc(var(--toast-swipe-movement-y)+150%))]',
@@ -215,9 +210,7 @@ function DefaultToast({ toastItem }: { toastItem: ToastObject }) {
 }
 
 /**
- * The one toast stack, in the corner of the window and above the toolbar on
- * the board. A toast whose `type` `bodies` names draws that body, so a surface
- * with its own controls joins the same stack rather than a second viewport
+ * The one toast stack, custom bodies joining it rather than a second viewport
  * that cannot see its heights.
  */
 function Toaster({

@@ -8,23 +8,15 @@ import { characterKeysOn } from './character-keys'
 import { isCharacterKey } from './keys'
 
 /**
- * One thing the board can do, run the same way from a button, a menu item,
- * or a key. A row needing a field this shape lacks adds it as optional to
- * `ActionBase`. Every action carries a palette row in `command` or opts out
- * with `palette: false`, so leaving one out of the palette is a choice the
- * type checker sees rather than an omission.
+ * One board action, carrying a palette row or `palette: false`, so leaving one
+ * out of the palette is a choice the type checker sees.
  */
 export type Action = ActionBase &
   ({ command: Command; palette?: never } | { palette: false; command?: never })
 
 /**
- * Lists the action in the command palette under this label and icon, which
- * may rename it, as Toggle theme names `theme.toggle`. The palette lists only
- * enabled actions carrying it. `hint` prints on the row's right, such as the
- * project a Rename acts on. `keywords` are further words the palette finds it
- * by, such as `dark` for Toggle theme. `searchOnly` keeps the row out of the
- * palette until a query is typed, as one of many frame sizes would bury the
- * rows an empty palette opens on.
+ * The action's palette row. `searchOnly` hides it until a query is typed, so
+ * many frame sizes never bury the rows an empty palette opens on.
  */
 export interface Command {
   label: string
@@ -144,12 +136,8 @@ export function useActionGroup(group: string): Action[] {
 }
 
 /**
- * Binds the registry's keys into a window or element, following later
- * registrations, and returns the function that unbinds them. `only` limits
- * it to the bindings named, as a frame's window in Play takes Esc alone.
- * A press runs the first registered action carrying that key whose
- * `enabled` is true, its auto-repeats only when that action sets `repeat`,
- * and no key fires while focus sits in a field or a dialog other than a toast.
+ * Binds the registry's keys, a press running the first enabled action for it,
+ * and no key firing in a field or a dialog other than a toast.
  */
 export function bindKeys(
   target: Window | Element,
@@ -182,10 +170,8 @@ export function bindKeys(
 }
 
 /**
- * A character key the Single-key shortcuts switch has turned off returns
- * before `preventDefault`, so the press reaches the browser untouched, as
- * WCAG 2.1.4 asks. The gate sits here rather than per action, so a key added
- * later is covered.
+ * A switched-off character key returns before `preventDefault`, as WCAG 2.1.4
+ * asks, gated here so a key added later is covered.
  */
 function press(key: string, event: KeyboardEvent): void {
   if (isCharacterKey(key) && !characterKeysOn()) return
@@ -201,15 +187,9 @@ function press(key: string, event: KeyboardEvent): void {
 }
 
 /**
- * The skip tinykeys' default ignore makes, by composing and by field tag,
- * without its drop of every auto-repeat, which `press` decides per action.
- * `isContentEditable` adds the children of an editable root. A press inside an open dialog is skipped too, so the
- * Esc that closes the shortcuts sheet never clears the selection or leaves
- * Play. A toast is the exception, since base-ui gives it `role="dialog"` and
- * it takes focus on a tab or a click, which would kill every key including
- * undo. Enter there stays with the toast, so its Show button still clicks.
- * The tag check calls `matches` on the target, which a press aimed at a
- * document or window lacks, so those pass through.
+ * tinykeys' default skip without its auto-repeat drop, also skipping an open
+ * dialog but a toast, which base-ui gives `role="dialog"` and would otherwise
+ * kill every key including undo.
  */
 function isTyping(event: KeyboardEvent): boolean {
   const target = event.target as Partial<HTMLElement> | null

@@ -46,14 +46,8 @@ interface ProjectsProps {
 }
 
 /**
- * Every project on the board as cards, per `canon/design/home/grid`, or as
- * rows, per `canon/design/home/list`, each opening its board and the menu of
- * `canon/design/menus/home`. A project filed in a folder sits in the folder's
- * card, which opens a panel, or under the folder's row, which opens in place.
- * A pinned project carries the pin mark after its name, and a folder holding
- * one rises with the pinned. Archived projects sit in a collapsed section
- * after the rest. A typed filter shows its matches flat, archived ones
- * included, and says so with a way to clear it when nothing matches.
+ * Every project as cards or rows, filed ones inside their folder, and a typed
+ * filter showing matches flat, archived ones included.
  */
 export function Projects({
   projects,
@@ -109,8 +103,7 @@ export function Projects({
       return next
     })
   const rover = roverOf(entries, focused, focusedFolder, isOpen)
-  // The pinned come first, so the rest start at the first unpinned entry,
-  // and the Pinned label and the divider show only when both groups hold one.
+  // The divider shows only when both the pinned and the rest hold one.
   const firstUnpinned = entries.findIndex((entry) => !pinnedEntry(entry, pins))
   const divideAt = firstUnpinned > 0 ? firstUnpinned : -1
   const item = (project: ProjectRecord) => ({
@@ -284,11 +277,8 @@ function NoMatch({ filter }: { filter: string }) {
 }
 
 /**
- * Where a drop hint sits so it covers no name. `well` centers it on a card's
- * 150 px well, whose middle is 82 px down past the border and margin. `row`
- * sits it over a row's two date columns, anchored from the top so an open
- * folder's hint stays on its header band. Below `sm` a row shows only its name,
- * so the ring cues the target there and the hint stays for assistive tech.
+ * Where a drop hint sits so it covers no name, a row's anchored from the top so
+ * an open folder's hint stays on its header band.
  */
 const DROP_HINT = {
   well: 'inset-x-3 top-[82px] mx-auto w-fit max-w-[calc(100%-1.5rem)] -translate-y-1/2',
@@ -304,11 +294,8 @@ interface DropItemProps {
 }
 
 /**
- * One card or row as a list item a project drops on, per `22-fix.png`. A
- * project dropped on a project in no folder makes a folder of the two, named
- * and opened for renaming as New folder is, and one dropped on a folder, or
- * on a project in one, files into it. While a project is over it, the item
- * says what the drop does.
+ * A list item a project drops on per `22-fix.png`, a drop on an unfiled
+ * project making a folder of the two, and the item saying what the drop does.
  */
 function DropItem({ entry, calls, hint, className, children }: DropItemProps) {
   const element = useRef<HTMLLIElement>(null)

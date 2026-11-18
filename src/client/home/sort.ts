@@ -28,11 +28,8 @@ export const NATURAL: Readonly<Record<HomeSort, SortDirection>> = {
 }
 
 /**
- * The home view's order, remembered for the next visit as the layout is,
- * with `home.sortEdited`, `home.sortCreated`, and `home.sortName` registered
- * so the header's menu and the palette choose it the same way. Choosing a key
- * starts it in its natural direction, and `home.sortReverse` flips it, checked
- * while the order runs against that direction.
+ * Home's remembered order, registered as actions so the menu and the palette
+ * choose it the same way.
  */
 export function useHomeSort(): HomeOrder {
   const [order, setOrder] = useState<HomeOrder>(readOrder)
@@ -81,10 +78,8 @@ export function useHomeSort(): HomeOrder {
 }
 
 /**
- * The projects as the home view shows them: the pinned above the rest, each
- * group by `sort` in `direction`, its natural one when absent. A project
- * that records no made day sits after every dated one either way, and a tie
- * falls to the name from A.
+ * The projects in home's order, the pinned first, an undated project after
+ * every dated one either way.
  */
 export function orderProjects(
   projects: readonly ProjectRecord[],

@@ -15,11 +15,8 @@ export interface BlankCard {
 }
 
 /**
- * The kits as a radio group of cards, per `canon/design/canvas/guide-kit`
- * and `home/new-project-kit`, each a live render of its sample frame in the
- * board's theme. `value` null picks `blank`, which leads the cards when
- * given. Arrow keys move through the group, since each card is a native
- * radio.
+ * The kits as a radio group of live cards per `canon/design/canvas/guide-kit`,
+ * each a native radio, so the arrows move through the group.
  */
 export function KitCards({
   kits,

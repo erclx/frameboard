@@ -41,11 +41,8 @@ interface FolderMenuProps {
 }
 
 /**
- * The right-click menu of a folder's card or row, per
- * `folders-menu-inline-720`: Open, Rename, Ungroup, and Pin running the
- * `folder.*` actions on the folder it opened from, Pin reading Unpin on a
- * pinned one. The menu key and Shift+F10 open it too, with focus on its
- * first item.
+ * A folder's right-click menu per `folders-menu-inline-720`, running the
+ * `folder.*` actions on the folder it opened from.
  */
 export function FolderMenu({
   folder,

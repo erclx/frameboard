@@ -86,12 +86,8 @@ export function identityOf(
 }
 
 /**
- * Renames a project, page, or frame on the board in hand, ahead of the
- * snapshot that will carry it, moving every count, finding, claim, note, and
- * thumbnail to the new refs and recording the alias `identityOf` reads for a
- * project or page. A
- * board that no longer holds `before`, or already holds `after`, carries the
- * rename already and is left alone.
+ * Renames on the board in hand ahead of the snapshot, moving every keyed store,
+ * and leaving a board that already carries the rename alone.
  */
 export function receiveRename(
   store: LiveStore,
@@ -103,8 +99,7 @@ export function receiveRename(
   if (!board || !takesRename(store, before, after)) return
   const moveKeys = <T>(byRef: Readonly<Record<string, T>>) =>
     movedKeys(byRef, before, after)
-  // A frame keeps no alias, since its file moved and a key held across the
-  // rename would keep its iframe on a path that no longer exists.
+  // No alias for a frame, which would keep its iframe on a dead path.
   const isFrame = before.split('/').length === 3
   const aliases = isFrame
     ? state.aliases
@@ -390,11 +385,8 @@ export function receiveThumbnails(
 }
 
 /**
- * Marks the socket closed. Writing, the listeners, the notes, the claims, and
- * the history counts all wait on the next hello, which sends them afresh, so a
- * page whose notes went while the socket was down shows none rather than
- * stale ones, and Undo never offers a step a restarted server forgot. The
- * thumbnails go too, since a restarted server empties the ones it served.
+ * Marks the socket closed, clearing what the next hello resends, so Undo never
+ * offers a step a restarted server forgot.
  */
 export function receiveDisconnect(store: LiveStore): void {
   store.setState({

@@ -14,8 +14,7 @@ const LAYOUT_KEY = 'frameboard.home.layout'
  */
 export function useHomeLayout(): HomeLayout {
   const [layout, setLayout] = useState<HomeLayout>(readLayout)
-  // The actions read the layout through the ref, so they register once and
-  // keep their place in the order while the layout changes.
+  // Read through the ref, so the actions register once and keep their order.
   const current = useRef(layout)
 
   useEffect(() => {

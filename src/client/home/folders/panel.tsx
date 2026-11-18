@@ -26,13 +26,8 @@ export interface PanelProps {
 }
 
 /**
- * The open folder over home, per `folders-menu-inline-720`: its name as the
- * one heading with the folder menu's ⋯ beside it, over its members as cards
- * that open, rename, and carry the card menu as they do on home. Its parent
- * `Dialog` holds it open. The ⋯ focuses this folder as it opens, so Rename,
- * Ungroup, and Pin act on it even when focus had moved onto a member, and a
- * double click on the name or one click on the pen beside it renames it in
- * place.
+ * The open folder over home per `folders-menu-inline-720`, its ⋯ focusing the
+ * folder as it opens, so its actions never land on a focused member.
  */
 export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
   const unseen = useUnseen((state) => state.unseen)

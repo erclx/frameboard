@@ -44,11 +44,8 @@ export interface HistoryDeps {
 }
 
 /**
- * Whether the element at file index `index` is still the one picked: every
- * element keeps its index, parent, and tag, and every other element its
- * name. A placement, a delete, or a move shifts indices, so even where the
- * picked index survives it would name another element. The picked element's
- * own name may change, as an undone text or name edit changes it.
+ * Whether the picked index still names the picked element, since a placement,
+ * delete, or move shifts indices.
  */
 function keepsElement(
   before: ElementTree,
@@ -71,13 +68,8 @@ function keepsElement(
 }
 
 /**
- * Registers `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, plus Ctrl+Y
- * off a Mac, which the toolbar draws, each lit while the tab may write and the server holds a
- * step. A step that renamed, added, or removed a page answers the page to
- * show, which the board follows, a hand edit answers its frame's hash, which
- * keeps the selected element while the frame's new tree still holds it and
- * selects the frame otherwise, and a refused step raises a toast. Returns
- * the function that removes them.
+ * Registers undo and redo, a hand edit keeping the selected element while the
+ * frame's new tree still holds it.
  */
 export function registerHistoryActions({
   store = liveStore,
@@ -97,17 +89,14 @@ export function registerHistoryActions({
 }: HistoryDeps = {}): () => void {
   const follow = (answer: StepAnswer, before: ElementTree | null) => {
     dropPending(answer.frames)
-    // The frame's reload of the restored bytes keeps the element until the
-    // check below settles it, rather than dropping it to the frame first.
+    // Keeps the element through the reload until the check below settles it.
     for (const [ref, written] of Object.entries(answer.hashes ?? {})) {
       rememberHash(ref, written)
     }
     const { page: shown, element } = selection.getState()
     const hash = element ? answer.hashes?.[element.frame] : undefined
     if (shown && element && hash) {
-      // An undone style edit leaves the element where it was, but an undone
-      // placement or delete removes or restores one, so the element takes
-      // the restored hash only while the frame's new tree still holds it.
+      // Only while the new tree holds it, since an undone placement shifts elements.
       void treeAt(element.frame, hash).then((after) => {
         if (selection.getState().element !== element) return
         if (
@@ -133,17 +122,10 @@ export function registerHistoryActions({
     const [project = '', page = ''] = answer.page.split('/')
     navigate(boardUrl(project, page))
   }
-  // One undo or redo is out at a time. A held key's auto-repeat while one is
-  // out is dropped, so the key overshoots by one step at most rather than
-  // queueing a step per repeat that runs on after it is released. A discrete
-  // press waits in one slot, the last of either kind, and runs once the step
-  // answers, so a fast second press is not lost. Any refusal empties the
-  // slot, since a toast changes what the next press means and a wait dropped
-  // on a newer step would otherwise undo that step.
+  // One step out at a time, a repeat dropped and one press slotted, so a held key overshoots once.
   let out = false
   let queued: (() => void) | null = null
-  // The board cannot name a step's frames before the server answers, so a
-  // step waits only once refused as claimed, until that claim drops.
+  // Waits only once refused as claimed, since the board cannot name its frames.
   const step = (
     run: () => Promise<StepAnswer>,
     title: string,
@@ -152,8 +134,7 @@ export function registerHistoryActions({
     const start = () => {
       out = true
       let done = () => {}
-      // The tree the selected element was picked from, read before the step
-      // rewrites those bytes, which the answer's tree is checked against.
+      // Read before the step rewrites the bytes the answer is checked against.
       let before: ElementTree | null = null
       // A step landing during the wait would be the one a bare undo takes, so it ends the wait.
       const counts = store.getState().history

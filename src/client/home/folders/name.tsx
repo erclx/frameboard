@@ -32,10 +32,8 @@ interface FolderNameProps {
 }
 
 /**
- * A folder's name, or the field renaming it with the reason its last name
- * was refused, in the name's own line box so the card or row keeps its height.
- * A double click on the name renames the folder in place while the tab may
- * write.
+ * A folder's name or its rename field, in the name's own line box so the card
+ * or row keeps its height.
  */
 export function FolderName({
   folder,
@@ -108,10 +106,8 @@ function startRename(folder: HomeFolder) {
 }
 
 /**
- * The pen beside an open folder's name, per `folder-rename-pen-720`, opening
- * the rename field in one click. It shows while the nearest `group` is hovered
- * or holds keyboard focus, or always where nothing hovers, and leaves while the field
- * is open or the tab may not write.
+ * The pen beside an open folder's name per `folder-rename-pen-720`, shown
+ * always where nothing hovers.
  */
 export function FolderPen({ folder }: { folder: HomeFolder }) {
   const renaming = useRenamingFolder(folder.key)

@@ -108,8 +108,7 @@ export function connectLive(
         receiveLiveReload(store, message.refs, message.hashes)
       } else if (message.type === 'renamed') {
         const { before, after } = message
-        // The stores keyed by frame ref move first, since the renamed board
-        // prunes a selection it no longer holds the moment it lands.
+        // Moved first, since the renamed board prunes a selection it no longer holds.
         if (takesRename(store, before, after)) {
           renameSelection(selection, before, after)
           renameFlipped(before, after, theme)
@@ -146,10 +145,8 @@ export function connectLive(
 }
 
 /**
- * Reloads the named frames, keeping the page of each whose reload renders
- * bytes a live write of this tab left it showing. A ref with a hash and a
- * write in flight waits for that write to settle, since its answer decides
- * the skip, and is then kept or reloaded, never dropped. Any doubt reloads.
+ * Reloads the named frames, skipping one already showing this tab's own write,
+ * a write in flight decided once it settles, and any doubt reloading.
  */
 export function receiveLiveReload(
   store: LiveStore,
@@ -177,8 +174,7 @@ function settleReload(
     forgetLiveHashes(ref)
     return false
   })
-  // The live write's answer already stamped the hash and kept its previews,
-  // so a drag begun since keeps its own for Esc to put back.
+  // A drag begun since keeps its own previews for Esc to put back.
   for (const ref of kept) {
     const iframe = liveIframe(ref)
     const modifiedAt = frameOf(store.getState().board, ref)?.modifiedAt

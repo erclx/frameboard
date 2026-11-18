@@ -22,8 +22,7 @@ async function settled(element: Element): Promise<void> {
 }
 
 describe('TooltipContent', () => {
-  // An axe sweep read 1.29:1 on mounted popups, which is the fill at about 15%
-  // opacity over the canvas grey, so the reading was taken mid-fade.
+  // An axe sweep read 1.29:1 mid-fade, the fill at about 15% opacity.
   it('reads at 4.5:1 or better once its fade in ends', async () => {
     render(
       <div className="bg-background">
@@ -52,8 +51,7 @@ describe('TooltipContent', () => {
       await emulateReducedMotion(false)
     })
 
-    // A sweep sampling the popup the moment it mounts reads its resting
-    // colors only when no fade or zoom runs.
+    // A sweep at mount reads resting colors only with no fade running.
     it('opens at rest and reads at 4.5:1 or better at once', async () => {
       render(
         <div className="bg-background">

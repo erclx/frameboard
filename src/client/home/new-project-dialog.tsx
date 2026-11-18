@@ -20,11 +20,8 @@ import { nextFreeName } from '@/shared/names'
 const BLANK = { title: 'Blank', description: "The board's own look" }
 
 /**
- * New project's dialog, per `canon/design/home/new-project-kit`: Blank and
- * every kit as cards, and Create project, which adds the project, installs
- * the kit picked, and opens the new card's name for renaming. Blank is
- * picked as it opens, so Enter alone adds a project the way the button
- * always has.
+ * New project's dialog per `canon/design/home/new-project-kit`, Blank picked
+ * as it opens, so Enter alone adds a project as the button always has.
  */
 export function NewProjectDialog({
   calls = structure,

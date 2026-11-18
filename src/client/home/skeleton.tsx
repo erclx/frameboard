@@ -13,12 +13,8 @@ interface FrameSkeletonProps {
 }
 
 /**
- * The frames of a project's first page holding a visible one, drawn as white boxes at their
- * layout boxes and scaled as a group to fit, centered across and held to the
- * top, as `canon/design/home/grid` and `canon/design/home/list` draw a card's
- * well and a row's mark. A frame holding a stamp draws its capture over its
- * box, so the box stays the placeholder for one still rendering or failed. A
- * project with no visible frame draws nothing, leaving the empty well.
+ * A project's first visible page as white boxes scaled to fit, each capture
+ * drawn over its box, so the box stays the placeholder for one not rendered.
  */
 export function FrameSkeleton({
   project,
