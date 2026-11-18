@@ -32,9 +32,8 @@ export interface AssetUpload {
 
 /**
  * Every file under a project's `assets/` by relative path, skipping dot-named
- * paths, lock and temp files, `*.license.json` files, and any file whose real
- * path leaves the folder. The Assets tab and the usage counts both read it.
- * A folder that does not exist lists as empty.
+ * paths, lock, temp, and license files, and any file whose real path leaves
+ * the folder. A folder that does not exist lists as empty.
  */
 export async function listAssets(projectDir: string): Promise<AssetFile[]> {
   const folder = join(projectDir, ASSETS_FOLDER)

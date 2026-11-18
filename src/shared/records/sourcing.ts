@@ -1,12 +1,8 @@
 import { z } from 'zod'
 
-/**
- * The suffix of the file a saved image's license sits in beside it, so
- * `house.jpg` carries `house.jpg.license.json`.
- */
+/** So `house.jpg` carries its license in `house.jpg.license.json` beside it. */
 export const LICENSE_FILE_SUFFIX = '.license.json'
 
-/** The hosted providers `image generate` can run on, in the order it tries them. */
 export const IMAGE_PROVIDERS = ['fal', 'google'] as const
 
 export type ImageProviderName = (typeof IMAGE_PROVIDERS)[number]
@@ -19,15 +15,11 @@ export const imageResultSchema = z.object({
   title: z.string().nullable(),
   creator: z.string().nullable(),
   creatorUrl: z.string().nullable(),
-  /** The license code the source gives, such as `cc0`, `pdm`, or `by`. */
   license: z.string(),
   licenseVersion: z.string().nullable(),
   licenseUrl: z.string().nullable(),
-  /** The credit line the source writes for the image. */
   attribution: z.string().nullable(),
-  /** The page the image was published on. */
   landingUrl: z.string().nullable(),
-  /** The full image. */
   url: z.string(),
   thumbnail: z.string().nullable(),
   width: z.int().nullable(),
@@ -40,7 +32,6 @@ export type ImageResult = z.infer<typeof imageResultSchema>
 export const imageFindSchema = z.object({
   version: z.literal(1),
   query: z.string(),
-  /** The license codes the search allowed. */
   licenses: z.array(z.string()),
   results: z.array(imageResultSchema),
 })
@@ -77,7 +68,6 @@ const generatedLicenseSchema = z.object({
   height: z.int(),
   /** The price estimated before the call, in US dollars. */
   priceUsd: z.number(),
-  /** ISO 8601. */
   savedAt: z.string(),
 })
 
@@ -95,7 +85,6 @@ export const savedImageSchema = z.object({
   project: z.string(),
   /** Relative to the project's `assets/`, the name the image landed under. */
   path: z.string(),
-  /** Relative to the project's `assets/`, always `<path>.license.json`. */
   licensePath: z.string(),
   license: licenseFileSchema,
 })
@@ -111,7 +100,6 @@ export const imageGenerateSchema = z.object({
   /** The size the provider produces, which may round the size asked for. */
   width: z.int(),
   height: z.int(),
-  /** The price estimated before the call, in US dollars. */
   priceUsd: z.number(),
   dryRun: z.boolean(),
   saved: savedImageSchema.nullable(),
@@ -128,7 +116,6 @@ export const imageDoctorSchema = z.object({
   local: z.object({ url: z.string(), running: z.boolean() }),
   /** Each provider key by its environment variable, true when set and not empty. */
   keys: z.record(z.string(), z.boolean()),
-  /** Each hosted provider in the order `image generate` tries them. */
   providers: z.array(
     z.object({
       provider: z.enum(IMAGE_PROVIDERS),
