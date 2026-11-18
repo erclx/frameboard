@@ -6,10 +6,14 @@ name: Frameboard Checks
 on:
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
   workflow_dispatch:
 
+# A push run keys on the run id, so a newer merge never cancels the run on the
+# one before it. A pull request still cancels its own earlier run.
 concurrency:
-  group: frameboard-checks-${{ github.ref }}
+  group: frameboard-checks-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -105,6 +109,9 @@ jobs:
 
   macos:
     name: 🍎 macOS Unit and CLI Smoke
+    # A queued macOS runner holds a pull request run open and blocks a failed
+    # rerun, so this job runs on main and on demand only.
+    if: github.event_name != 'pull_request'
     runs-on: macos-latest
     timeout-minutes: 15
     steps:
