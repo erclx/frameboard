@@ -461,7 +461,9 @@ const PIXEL = Buffer.from(
 
 /**
  * Holds the shot until `selector` draws, `absent` matches nothing, every SVG
- * image decodes, and two frames paint, which the harness's own wait skips.
+ * image decodes, and two frames paint, which the harness's own wait skips. A
+ * selector that never draws keeps the load held, since any answer would shoot
+ * the wrong state as a pass, and is named on stderr ahead of the timeout.
  */
 export function readyWhen(
   selector: string,
@@ -471,6 +473,9 @@ export function readyWhen(
     let ready: () => void = () => {}
     const drawn = new Promise<void>((resolve) => (ready = resolve))
     await page.exposeFunction('captureReady', () => ready())
+    await page.exposeFunction('captureLost', () =>
+      console.error(`${page.url()}: ${selector} never drew`),
+    )
     await page.route('**/capture-ready.gif', async (route) => {
       await drawn
       await route.fulfill({ contentType: 'image/gif', body: PIXEL })
@@ -500,7 +505,10 @@ export function readyWhen(
             )
             void Promise.all(images).then(painted)
           } else if (--left > 0) requestAnimationFrame(wait)
-          else console.error(`${target} never drew`)
+          else {
+            console.error(`${target} never drew`)
+            ;(window as unknown as { captureLost: () => void }).captureLost()
+          }
         }
         document.addEventListener('DOMContentLoaded', () => {
           const image = document.createElement('img')
