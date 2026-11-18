@@ -17,6 +17,7 @@ import { heldStore, holdOutline } from './held'
 import { useGhosts, useMeasures } from './measures'
 import { useLiveMedia } from './media'
 import { MediaBar } from './media-bar'
+import { TurnSurface } from './turn-surface'
 
 const CORNERS = [
   { left: 0, top: 0 },
@@ -248,6 +249,14 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
   return (
     <>
       <CanvasMediaBar element={element} box={box} container={container} />
+      {at ? (
+        <TurnSurface
+          element={element}
+          box={box}
+          frame={at}
+          container={container}
+        />
+      ) : null}
       <div
         data-element-selection
         className="pointer-events-none absolute"

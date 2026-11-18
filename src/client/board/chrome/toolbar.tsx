@@ -257,7 +257,7 @@ function ToolButton({ slot, action, pressed, tip }: ButtonProps) {
 /**
  * The Shape tool: a button placing the last shape chosen, pressed while any
  * shape is on, and a caret opening the menu of shapes, the one chosen
- * marked, each naming its key, and below them the Image, video, or audio row.
+ * marked, each naming its key, and below them the Image, video, audio, or model row.
  */
 function ShapeTool({ actions, carets, menuDisabled }: ToolProps) {
   const shown = useShape()
@@ -285,7 +285,7 @@ function ShapeTool({ actions, carets, menuDisabled }: ToolProps) {
             side="top"
             align="start"
             sideOffset={8}
-            className="w-[220px]"
+            className="w-max min-w-[220px]"
           >
             <DropdownMenuRadioGroup
               value={shown.kind}

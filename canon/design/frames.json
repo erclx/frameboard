@@ -75,6 +75,7 @@
     "inspector/step-effect": "design/16-inspector-tabs/step-effect",
     "inspector/motion": "design/16-inspector-tabs/motion-held",
     "inspector/media": "design/16-inspector-tabs/media",
+    "inspector/model": "design/16-inspector-tabs/model",
     "inspector/phone-link": "design/16-inspector-tabs/frame-phone-link",
     "inspector/export": "design/16-inspector-tabs/export",
     "inspector/slides": "design/16-inspector-tabs/slides",

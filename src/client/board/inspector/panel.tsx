@@ -14,6 +14,7 @@ import { AvatarMenu } from '../chrome/avatar-menu'
 import { ZoomControl } from '../chrome/zoom-control'
 import { ClaimAvatars } from '../claims/avatars'
 import { useLiveMedia } from '../element/media'
+import { useLiveModel, writeStaged } from '../element/model'
 import { type TreeEntry, useElementTree } from '../element/tree'
 import { usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
@@ -26,6 +27,7 @@ import { ArrangeSection } from './arrange-section'
 import { AppearanceSection } from './element/appearance'
 import { FillSection } from './element/fill'
 import { LayoutSection } from './element/layout'
+import { ModelSection } from './element/model'
 import { PositionSection } from './element/position'
 import { SeveralElements } from './element/several'
 import { ShadowSection } from './element/shadow'
@@ -288,6 +290,7 @@ function ElementDesign({ page, element }: ElementProps) {
   const theme = useFrameTheme(element.frame)
   const live = useLiveElement(element)
   const media = useLiveMedia(element)
+  const model = useLiveModel(element)
   const styles = useFrameStyles(element.frame, element.index, element.hash)
   const { colors, shadows, fonts } = useProjectTokens(element.frame)
 
@@ -306,6 +309,13 @@ function ElementDesign({ page, element }: ElementProps) {
           write={(change) =>
             writeElement(page, element, change, { previewed: true })
           }
+        />
+      ) : null}
+      {model ? (
+        <ModelSection
+          model={model}
+          disabled={disabled}
+          write={(changes) => writeStaged(page, element, changes)}
         />
       ) : null}
       <PositionSection

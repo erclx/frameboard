@@ -30,6 +30,7 @@ describe('docs', () => {
         controls: string[]
         kits: string[]
         images: string[]
+        models: string[]
         names: { pattern: string }
         frameSizes: Record<string, { width: number; height: number }>
       }
@@ -169,6 +170,31 @@ describe('docs', () => {
       'fal (fal-ai/flux/schnell, FAL_KEY), google (gemini-nano-banana-2.1, GEMINI_API_KEY)',
     )
     expect(contentFormat.images[2]).toContain('<file>.license.json')
+  })
+
+  it('states the model element, the script its head loads, and where that file ships', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.models[0]).toContain(
+      '<model-viewer src="../assets/<file>.glb" alt="">',
+    )
+    expect(contentFormat.models[1]).toContain(
+      '<script type="module" src="../assets/model-viewer.min.js"></script>',
+    )
+    expect(contentFormat.models[1]).toMatch(
+      /ships with the tool at \S+model-viewer\.min\.js,/,
+    )
+  })
+
+  it('states the staging attributes and the reach an orbit needs beside it', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.models[2]).toContain(
+      'camera-orbit="30deg 70deg 6m" max-camera-orbit="auto auto 6m"',
+    )
+    expect(contentFormat.models[2]).toContain(
+      'orientation="<roll>deg <pitch>deg <yaw>deg"',
+    )
   })
 
   it('names the kit files, the shipped kits, and where an added kit sits', async () => {

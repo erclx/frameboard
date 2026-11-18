@@ -3,6 +3,8 @@ import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { reserve } from '@/server/claims/store'
+import { ensureViewer } from '@/server/models/viewer'
+import { ASSETS_FOLDER } from '@/shared/board-files'
 import { type Pose, POSE_SIZES } from '@/shared/frame-device'
 import { FRAME_GAP, FRAME_SIZES } from '@/shared/frame-sizes'
 
@@ -123,6 +125,21 @@ const TILT = { project: 'webapp', page: 'tilt', frame: 'card' }
 
 const TILT_PAGE = join(import.meta.dirname, 'drive-tilt.html')
 
+/**
+ * The page holding one model with a clip it never plays, so the Model section
+ * has an angle, a rotation, a scale, and a clip to stage, and a double-click a
+ * model to turn.
+ */
+const MODEL = { project: 'webapp', page: 'model', frame: 'spin' }
+
+const MODEL_PAGE = join(import.meta.dirname, 'drive-model.html')
+
+/** The animated test model, which carries one clip named Spin. */
+const MODEL_FILE = join(
+  import.meta.dirname,
+  '../../test/fixtures/models/spin.glb',
+)
+
 /** The folder home opens on in a reel, holding two projects the fixture lacks. */
 const FOLDER = { name: 'Drives', projects: ['drive-app', 'drive-site'] }
 
@@ -172,6 +189,8 @@ export interface Seeded {
   mixed: 'laid' | 'kept'
   /** Whether the tilted card page was laid now or was already there and kept. */
   tilt: 'laid' | 'kept'
+  /** Whether the model page was laid now or was already there and kept. */
+  model: 'laid' | 'kept'
   /** Whether the Drives folder was laid now or was already there and kept. */
   folder: 'laid' | 'kept'
   /** Whether the long sheet path project was laid now or was already there and kept. */
@@ -205,6 +224,7 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
   })
   const mixed = await layOne(root, MIXED, MIXED_PAGE)
   const tilt = await layOne(root, TILT, TILT_PAGE)
+  const model = await layModel(root)
   const device = await layOne(
     root,
     DEVICE,
@@ -234,10 +254,27 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     tuner,
     mixed,
     tilt,
+    model,
     folder,
     longPath,
     reserved,
   }
+}
+
+/**
+ * Lays the model page with its model and the viewer script in webapp's assets,
+ * as placing a model on the board leaves them.
+ */
+async function layModel(root: string): Promise<'laid' | 'kept'> {
+  const laid = await layOne(root, MODEL, MODEL_PAGE, {
+    width: 640,
+    height: 480,
+  })
+  if (laid === 'kept') return laid
+  const project = join(root, MODEL.project)
+  await ensureViewer(project)
+  await copyFile(MODEL_FILE, join(project, ASSETS_FOLDER, 'spin.glb'))
+  return laid
 }
 
 /** Lays the long sheet path project, one empty page and a token sheet stating one color. */

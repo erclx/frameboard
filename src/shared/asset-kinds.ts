@@ -4,6 +4,7 @@ export const ASSET_KINDS = [
   'svg',
   'video',
   'audio',
+  'model',
   'font',
   'stylesheet',
   'script',
@@ -12,13 +13,14 @@ export const ASSET_KINDS = [
 
 export type AssetKind = (typeof ASSET_KINDS)[number]
 
-/** The kinds a frame shows as an `<img>`, a `<video>`, or an `<audio>`, which the board places by hand. */
+/** The kinds a frame shows as an `<img>`, a `<video>`, an `<audio>`, or a `<model-viewer>`, which the board places by hand. */
 export const PLACEABLE_KINDS = [
   'image',
   'gif',
   'svg',
   'video',
   'audio',
+  'model',
 ] as const satisfies readonly AssetKind[]
 
 export type PlaceableKind = (typeof PLACEABLE_KINDS)[number]
@@ -44,6 +46,8 @@ const ACCEPTED: Record<string, Exclude<AssetKind, 'other'>> = {
   wav: 'audio',
   ogg: 'audio',
   m4a: 'audio',
+  glb: 'model',
+  gltf: 'model',
   woff: 'font',
   woff2: 'font',
   ttf: 'font',
@@ -51,6 +55,19 @@ const ACCEPTED: Record<string, Exclude<AssetKind, 'other'>> = {
   css: 'stylesheet',
   js: 'script',
   mjs: 'script',
+}
+
+/** Model formats no frame shows, which a drop refuses with the way to a GLB rather than as an unknown file. */
+export const FOREIGN_MODELS: readonly string[] = [
+  'fbx',
+  'obj',
+  'blend',
+  'usd',
+  'stl',
+]
+
+export function isForeignModel(name: string): boolean {
+  return FOREIGN_MODELS.includes(extensionOf(name))
 }
 
 /** The lowercase text after the last dot, empty when the name has none. */

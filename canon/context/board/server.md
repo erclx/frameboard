@@ -71,6 +71,13 @@ Owns putting copied frames on the OS clipboard as one file list. `routes/clipboa
 - `wsl.ts` writes the images into Windows' temp folder and runs `Set-Clipboard -Path`, one copy at a time, since each copy clears the shared folder and would delete the files an overlapping copy names
 - With no backend the route refuses `clipboard-unsupported` and `/api/health` reports `clipboard: null`, so the board stitches several frames into one image
 
+### `src/server/models/`
+
+Owns the model viewer script a frame loads to show a `<model-viewer>`. `viewer.ts` copies the pinned `@google/model-viewer` build into a project's `assets/` the first time a model is placed there, since a frame loads nothing over the network.
+
+- A built run reads the copy `scripts/copy-viewer.ts` put in `dist/viewer/`, and a source run reads the package, so `docs` prints whichever path the install holds
+- The copy never overwrites a file already holding its name, and removing a frame's last model leaves both the file and the head's script tag
+
 ## Gotchas
 
 - A cookie write needs the board's own `Origin`, since cookies and SameSite ignore the port and another `127.0.0.1` port would otherwise write

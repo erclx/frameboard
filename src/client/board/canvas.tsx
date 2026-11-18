@@ -51,6 +51,7 @@ import {
   type WriteText,
 } from './element/text-in-place'
 import { readTree } from './element/tree'
+import { turnInPlace } from './element/turn'
 import { Frame, LabelRename } from './frame'
 import { useGeometryActions } from './geometry/actions'
 import { attachGestures } from './geometry/gestures'
@@ -659,7 +660,7 @@ export function Canvas({
     return edit.opened
   }
 
-  // Edits the text selected before the double-click, else picks inside the frame.
+  // Edits the text or turns the model selected before the double-click, else picks inside the frame.
   const doubleClick = (event: MouseEvent) => {
     const viewport = viewportRef.current
     const held = pressedOn.current
@@ -673,7 +674,12 @@ export function Canvas({
       const drawn = withDrawn(frames)
       const at = framePoint(drawn, held.frame, { x, y }) ?? undefined
       void overElement(layer, drawn, held, { x, y })
-        .then((over) => over && editText(held, false, at))
+        .then(
+          async (over) =>
+            over &&
+            ((await editText(held, false, at)) ||
+              (await turnInPlace(layer, held))),
+        )
         .then((opened) => {
           if (!opened) pickInside(event, true)
         })

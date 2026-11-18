@@ -288,6 +288,7 @@ const CHIP_NOUNS: Record<Exclude<Chip, 'all'>, string> = {
   images: 'image',
   video: 'video',
   audio: 'audio',
+  models: 'model',
   fonts: 'font',
   other: 'other',
 }

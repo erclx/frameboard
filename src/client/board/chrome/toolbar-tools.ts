@@ -69,7 +69,7 @@ export const NOTE_TOOL = {
 
 export const IMAGE_ROW = {
   id: IMAGE_TOOL,
-  label: 'Image, video, or audio',
+  label: 'Image, video, audio, or model',
   key: '$mod+Shift+KeyK',
   icon: ImageIcon,
 }

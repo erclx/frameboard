@@ -11,6 +11,9 @@ import {
   LAYOUT_FILE,
   PROJECT_FILE,
 } from '@/server/board/scan'
+import { MODEL_LOADS } from '@/server/checks/links'
+import { VIEWER_SCRIPT } from '@/server/edit/insert'
+import { shippedViewerPath } from '@/server/models/viewer'
 import { NOTES_FOLDER } from '@/server/notes/images'
 import { NOTES_FILE } from '@/server/notes/store'
 import { PROVIDERS } from '@/server/sourcing/generate'
@@ -20,6 +23,7 @@ import {
   PAGE_SIZE,
 } from '@/server/sourcing/openverse'
 import { DOWNLOAD_LIMIT } from '@/server/sourcing/save'
+import { FOREIGN_MODELS } from '@/shared/asset-kinds'
 import { BINDS_ATTRIBUTE, UNIT_ATTRIBUTE } from '@/shared/bindings'
 import { ADDRESS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
 import { FACES } from '@/shared/faces'
@@ -42,6 +46,7 @@ import {
   PROJECT_KITS,
   SHIPPED_KITS,
 } from '@/shared/kits'
+import { VIEWER_FILE, VIEWER_TAG } from '@/shared/model-viewer'
 import {
   NAME_MAX_LENGTH,
   NAME_PATTERN,
@@ -128,6 +133,12 @@ export function contentFormat() {
       `A saved image lands in the project's ${ASSETS_FOLDER}/ under the --name stem, else the query or prompt as a lowercase dashed name, taking the first free -2, -3, and onward. Its license file lands beside it as <file>${LICENSE_FILE_SUFFIX}, the licenseFile record, saying where it came from. A download is held whole, at most ${DOWNLOAD_LIMIT / 1024 / 1024} MiB, before anything is written, so a failed one leaves no file, and the Assets tab never draws a license file as its own tile.`,
       'image doctor reports the GPU nvidia-smi names, whether a ComfyUI server answers at FRAMEBOARD_COMFYUI_URL or the default address, and each key as set or unset, never its value. It installs and spends nothing.',
       `A frame links a saved image as ../${ASSETS_FOLDER}/<path>, never by its web address, since a frame loads nothing over the network.`,
+    ],
+    models: [
+      `A frame shows a 3D model through one <${VIEWER_TAG} src="../${ASSETS_FOLDER}/<file>.glb" alt=""> element, sized by its own width and height as an image is. It reads .glb and .gltf alone, and a .gltf carries its buffers and images inside itself. A drop refuses ${FOREIGN_MODELS.join(', ')}, so export any of those from Blender through File, Export, glTF 2.0 as a glTF Binary (.glb).`,
+      `The element draws only in a frame whose head loads the viewer, as ${VIEWER_SCRIPT}. Placing a model on the board copies ${VIEWER_FILE} into the project's ${ASSETS_FOLDER}/ once and adds that tag to a head loading no viewer, and removing the last model leaves both. The file ships with the tool at ${shippedViewerPath()}, so copy it to the project's ${ASSETS_FOLDER}/${VIEWER_FILE} before writing the element in a project that holds none. A frame loads nothing over the network, so never link the viewer from a CDN.`,
+      `Every staging control is an attribute on the element, set with edit --attr. camera-orbit="<theta>deg <phi>deg <radius>" places the camera, across and then down from the top, and defaults to 0deg 75deg auto. The viewer holds the camera inside max-camera-orbit, so state both once the radius passes the model's own framing, as camera-orbit="30deg 70deg 6m" max-camera-orbit="auto auto 6m". orientation="<roll>deg <pitch>deg <yaw>deg" turns the model itself, scale="<x> <y> <z>" sizes it, animation-name picks one of its clips, and autoplay starts it. The board's Model section writes these same attributes, the angle as both orbit attributes in one undo step, and a double-click on a selected model turns it by drag.`,
+      `check reports missing-file at error for a ${VIEWER_TAG} whose ${MODEL_LOADS.join(', ')} names no file, as it does for the viewer script. capture waits for each model to draw inside the frame's load budget and holds its clip at the start, and --at seeks every clip to that moment, so two captures match. A model that fails to load, or is still loading when the budget ends, never refuses: the image lists it under models with state error or pending.`,
     ],
     assets: `A frame links files in its own page folder or in its project's ${ASSETS_FOLDER}/ folder. frame duplicate and frame move carry the ${FRAME_EXTENSION} file alone, so keep files shared between frames or pages in ${ASSETS_FOLDER}/.`,
     look: [

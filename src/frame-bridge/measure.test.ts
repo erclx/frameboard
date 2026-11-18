@@ -51,6 +51,7 @@ describe('resizeKindOf', () => {
     ['an image', '<img alt="">', 'media'],
     ['a video', '<video></video>', 'media'],
     ['a video holding its sources', '<video><source></video>', 'media'],
+    ['a model', '<model-viewer></model-viewer>', 'media'],
     ['a box holding an element', '<div><span></span></div>', 'container'],
     ['text holding an inline element', '<p>Some <b>bold</b> words</p>', 'text'],
     ['a paragraph holding inline code', '<p><code>serve</code></p>', 'text'],

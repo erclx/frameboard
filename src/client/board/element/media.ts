@@ -1,14 +1,12 @@
-import { useEffect, useState } from 'react'
-
 import type {
   FileFlag,
   MediaAct,
   MediaReading,
 } from '@/shared/frame-bridge/media'
 
-import { request, subscribe } from '../bridge/channel'
-import { followFrame, shownHashOf } from '../bridge/shown'
+import { request } from '../bridge/channel'
 import type { ElementKey } from '../selection'
+import { useLiveReading } from './live-reading'
 
 /**
  * A live media element's reading and the acts on it. Every act moves the
@@ -25,56 +23,16 @@ export interface LiveMedia {
 
 /**
  * The selected media as its frame's page pushes it on every playback change,
- * held while the page shows older bytes than the key's hash, so the Video
- * section keeps its place between a hand edit and its reload.
+ * held through a hand edit's reload as `useLiveReading` holds it.
  */
 export function useLiveMedia(key: ElementKey | null): LiveMedia | null {
-  const [held, setHeld] = useState<{
-    at: string
-    iframe: HTMLIFrameElement
-    /** The bytes it was read at, which its acts name, so one never reaches a reloaded page's node. */
-    hash: string
-    reading: MediaReading
-  } | null>(null)
-  const frame = key?.frame
-  const index = key?.index
-  const hash = key?.hash
-  const at = key ? `${frame}:${index}` : null
-  useEffect(() => {
-    if (at === null || frame === undefined || index === undefined) return
-    if (hash === undefined) return
-    return followFrame(
-      document.body,
-      frame,
-      (iframe) => {
-        const shown = shownHashOf(iframe)
-        if (shown === null) return () => {}
-        // A page at older bytes only refreshes the reading held for the node on screen.
-        const stale = shown !== hash
-        let live = true
-        const hold = (reading: MediaReading | null) => {
-          if (!live) return
-          const next = reading ? { at, iframe, hash: shown, reading } : null
-          if (!stale) setHeld(next)
-          else if (next) setHeld((last) => (last?.at === at ? next : last))
-        }
-        const media = subscribe(iframe, 'media', { index, hash: shown }, hold)
-        void media.opened.then(hold)
-        return () => {
-          live = false
-          media.close()
-        }
-      },
-      // A placeholder shows no page, so it holds no media.
-      () => setHeld(null),
-    )
-  }, [at, frame, index, hash])
-  if (!held || held.at !== at || index === undefined) return null
-  const { iframe } = held
+  const held = useLiveReading(key, 'media')
+  if (!held || !key) return null
+  const { iframe, hash, reading } = held
   const send = (act: MediaAct) =>
-    void request(iframe, 'media-act', { index, hash: held.hash, act })
+    void request(iframe, 'media-act', { index: key.index, hash, act })
   return {
-    reading: held.reading,
+    reading,
     togglePlay: () => send({ kind: 'toggle-play' }),
     seek: (seconds) => send({ kind: 'seek', seconds }),
     toggleSound: () => send({ kind: 'toggle-sound' }),

@@ -17,7 +17,7 @@ Holds the script that runs in each frame's own realm, built to `dist/frame-bridg
 
 - The script removes its own `<script>` as it starts, so the live element indices the board reads match the file
 - It answers only `window.parent` at the frame's own origin, and a frame with no parent, as capture and the phone link show one, never listens
-- `main.ts` checks each request's arguments against its op's schema and hands them to one area's handlers, being `measure.ts`, `live-element.ts`, `preview.ts`, `gap.ts`, `media.ts`, or `text-edit.ts`
+- `main.ts` checks each request's arguments against its op's schema and hands them to one area's handlers, such as `measure.ts`, `media.ts`, `model.ts`, or `text-edit.ts`
 - It announces its hash in a `shown` message once its body parses, on a restamp, and as its page goes, naming the page by an id, since a page going posts with no window
 - Text in place owns `contenteditable` and the keys, opens only the run at the point beside a child, and keeps the old text until the board says whether the write landed
 
@@ -35,7 +35,7 @@ Owns the board's end, which posts a request to one iframe's window and resolves 
 Holds the contract both sides import, since the frame bundle may import nothing from the board. `messages.ts` carries the envelope, the op names, and a zod schema per op, and the files beside it carry the shapes the ops reply with.
 
 - `elements.ts` holds the element addressing helpers, `frameElements`, `elementIndex`, `elementAt`, and `renderedHash`, which the frame and the board's later readers both call
-- `live-element.ts`, `gap.ts`, and `media.ts` each pair a reply's shape with its schema, and the pure parsers such as `flowOf` sit beside the shapes they read
+- `live-element.ts`, `gap.ts`, `media.ts`, and `model.ts` each pair a reply's shape with its schema, and the pure parsers such as `flowOf` sit beside the shapes they read
 
 ## Gotchas
 

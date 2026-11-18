@@ -12,6 +12,7 @@ import {
 } from './apply'
 import { type ElementSpan, relocate, spanText } from './element-span'
 import {
+  ensureViewerScript,
   type InsertedSpan,
   insertElement,
   type MovedSpan,
@@ -151,8 +152,8 @@ export type FrameFileEdits =
 
 /**
  * Edits several elements as one write, all or none. One element named twice is
- * refused, since one undo could not put both spans back, except a text and a
- * style change, which answer one span over the whole element.
+ * refused, since one undo could not put both spans back, except a text beside
+ * a style or several attributes, which answer one span over the element.
  */
 export function editFrameFileAll(
   path: string,
@@ -232,27 +233,38 @@ function mergedTwice(
 }
 
 /**
- * Whether each element a batch names is named once, or twice only as one
- * `text` change and one `style` or `styles` change.
+ * Whether each element a batch names is named once, twice as one `text`
+ * change and one `style` or `styles` change, or by `attribute` changes that
+ * each name another attribute.
  */
 function namedOnceEach(
   indexes: readonly number[],
   edits: readonly ElementEdit[],
 ): boolean {
-  const kinds = new Map<number, string[]>()
+  const changes = new Map<number, EditChange[]>()
   for (const [at, index] of indexes.entries()) {
-    kinds.set(index, [
-      ...(kinds.get(index) ?? []),
-      edits[at]?.change.kind ?? '',
-    ])
+    const change = edits[at]?.change
+    if (change) changes.set(index, [...(changes.get(index) ?? []), change])
   }
-  return [...kinds.values()].every(
+  return [...changes.values()].every(
     (named) =>
-      named.length === 1 ||
-      (named.length === 2 &&
-        named.filter((kind) => kind === 'text').length === 1 &&
-        named.some((kind) => kind === 'style' || kind === 'styles')),
+      named.length === 1 || textAndStyle(named) || separateAttributes(named),
   )
+}
+
+function textAndStyle(named: readonly EditChange[]): boolean {
+  return (
+    named.length === 2 &&
+    named.filter(({ kind }) => kind === 'text').length === 1 &&
+    named.some(({ kind }) => kind === 'style' || kind === 'styles')
+  )
+}
+
+function separateAttributes(named: readonly EditChange[]): boolean {
+  const names = named.flatMap((change) =>
+    change.kind === 'attribute' ? [change.name.toLowerCase()] : [],
+  )
+  return names.length === named.length && new Set(names).size === names.length
 }
 
 export type FrameFileInsert =
@@ -278,9 +290,9 @@ export type FrameFileInsert =
 export type PlaceInserted = (html: string, index: number) => Placed
 
 /**
- * Writes one new element as `editFrameFile` writes, refusing a moved hash with
- * no search, since the gap's indices name nothing once the file moved, so a
- * retried insert lands at most once.
+ * Writes one new element, refusing a moved hash with no search, since the
+ * gap's indices name nothing once the file moved, so a retry lands at most
+ * once. With `viewer`, it adds the viewer's script, which an undo leaves.
  */
 export function insertFrameFile(
   path: string,
@@ -288,11 +300,27 @@ export function insertFrameFile(
   placement: Placement,
   markup: string,
   place?: PlaceInserted,
+  viewer = false,
 ): FrameFileInsert {
   const read = readSource(path)
   if (!read.ok) return read
   if (read.hash !== hash) return stale(path)
-  const inserted = insertElement(read.source, placement, markup)
+  const scripted = viewer
+    ? ensureViewerScript(read.source)
+    : { ok: true as const, html: read.source, index: null }
+  if (!scripted.ok) return scripted
+  // The gap was read against the sent bytes, which the script now sits ahead of.
+  const script = scripted.index
+  const pastScript = (index: number) =>
+    script !== null && index >= script ? index + 1 : index
+  const inserted = insertElement(
+    scripted.html,
+    {
+      parent: pastScript(placement.parent),
+      before: placement.before === null ? null : pastScript(placement.before),
+    },
+    markup,
+  )
   if (!inserted.ok) return inserted
   const placed = place?.(inserted.html, inserted.index)
   if (placed && !placed.ok) return placed
@@ -300,6 +328,10 @@ export function insertFrameFile(
   const element = parseFrame(html).elements[inserted.index]
   if (!element) return stale(path)
   if (!replaceFile(path, hash, html)) return stale(path)
+  const pastElement = shiftedPast(
+    inserted.index,
+    subtreeSize(html, inserted.index),
+  )
   return {
     ok: true,
     hash: contentHash(html),
@@ -307,7 +339,7 @@ export function insertFrameFile(
     span: { ...inserted.span, markup: spanText(html, element, 'element') },
     parent:
       placed && placed.spans.length > 1 ? (placed.spans[0] ?? null) : null,
-    remap: shiftedPast(inserted.index, subtreeSize(html, inserted.index)),
+    remap: (index) => pastElement(pastScript(index)),
   }
 }
 

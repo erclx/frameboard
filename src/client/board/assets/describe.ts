@@ -6,6 +6,7 @@ const KIND_LABELS: Record<AssetFile['kind'], string> = {
   svg: 'SVG',
   video: 'video',
   audio: 'audio',
+  model: 'model',
   font: 'font',
   stylesheet: 'stylesheet',
   script: 'script',

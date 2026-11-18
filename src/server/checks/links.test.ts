@@ -103,6 +103,58 @@ describe('checkLinks', () => {
     ])
   })
 
+  describe('a model', () => {
+    it('passes a viewer whose model, poster, and lighting files all exist', () => {
+      const findings = linksOf(
+        '<model-viewer src="../assets/phone.glb" poster="../assets/phone.png" environment-image="studio.hdr" skybox-image="studio.hdr"></model-viewer>',
+        {
+          'site/assets/phone.glb': '',
+          'site/assets/phone.png': '',
+          'site/home/studio.hdr': '',
+        },
+      )
+
+      expect(findings).toEqual([])
+    })
+
+    it.each(['src', 'poster', 'environment-image', 'skybox-image'])(
+      'reports a %s naming no file as a missing file, at error',
+      (attribute) => {
+        const findings = linksOf(
+          `<model-viewer ${attribute}="../assets/gone.glb"></model-viewer>`,
+        )
+
+        expect(findings).toMatchObject([
+          {
+            rule: 'missing-file',
+            severity: 'error',
+            location: { line: 1, column: 15 },
+          },
+        ])
+      },
+    )
+
+    it.each(['neutral', 'legacy'])(
+      'passes the %s lighting the viewer builds itself',
+      (environment) => {
+        expect(
+          linksOf(
+            `<model-viewer src="../assets/phone.glb" environment-image="${environment}"></model-viewer>`,
+            { 'site/assets/phone.glb': '' },
+          ),
+        ).toEqual([])
+      },
+    )
+
+    it('reports a model loaded over the network', () => {
+      expect(
+        linksOf(
+          '<model-viewer src="https://example.com/phone.glb"></model-viewer>',
+        ),
+      ).toMatchObject([{ rule: 'network' }])
+    })
+  })
+
   it('checks every srcset candidate', () => {
     const findings = linksOf(
       '<img srcset="a.png 1x, ../other/b.png 2x, c.png 3x">',

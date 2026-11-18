@@ -18,6 +18,12 @@ import {
   type MediaReading,
   mediaReadingSchema,
 } from './media'
+import {
+  type ModelReading,
+  modelReadingSchema,
+  type ModelStage,
+  modelStageSchema,
+} from './model'
 
 // The board and a frame's bridge talk over `postMessage`, whatever the frame's
 // origin. A request's id comes back on its one reply, and on every push a
@@ -121,6 +127,18 @@ export interface BridgeOps {
     value: boolean
     push: never
   }
+  /** A model viewer's reading, pushed again on a load, a camera move, or a staging attribute changing until closed, null for no viewer at the address. */
+  model: {
+    args: ElementAddress
+    value: ModelReading | null
+    push: ModelReading | null
+  }
+  /** Shows one staging attribute on a live viewer ahead of the write that saves it, answering whether the page showed a viewer at the address. */
+  'model-stage': {
+    args: ElementAddress & ModelStage
+    value: boolean
+    push: never
+  }
   /** Measures the named elements, pushing again on every resize, style change, or scroll until closed, null when the frame shows other bytes or misses one. */
   measure: {
     args: { hash: string; indexes: number[] }
@@ -218,6 +236,8 @@ const OPS: readonly string[] = [
   'measure',
   'media',
   'media-act',
+  'model',
+  'model-stage',
   'overflow',
   'paint',
   'pick-at',
@@ -373,6 +393,15 @@ const SCHEMAS: {
   },
   'media-act': {
     args: addressSchema.extend({ act: mediaActSchema }),
+    value: z.boolean(),
+  },
+  model: {
+    args: addressSchema,
+    value: modelReadingSchema,
+    push: modelReadingSchema,
+  },
+  'model-stage': {
+    args: addressSchema.and(modelStageSchema),
     value: z.boolean(),
   },
   paint: { args: z.object({ fill: z.string() }), value: z.string().nullable() },

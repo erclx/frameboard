@@ -36,12 +36,26 @@ export const captureResultSchema = z.object({
           }),
         )
         .optional(),
+      /** Each model the image shows undrawn, absent when every model loaded. */
+      models: z
+        .array(
+          z.object({
+            /** The frame holding the model, which a composite needs to tell its frames apart. */
+            ref: z.string(),
+            /** The element's index in document order, as `edit --index` takes it. */
+            index: z.int().min(0),
+            src: z.string(),
+            /** `error` for a model or a viewer script that failed to load, `pending` for one still loading when the load budget ran out. */
+            state: z.enum(['error', 'pending']),
+          }),
+        )
+        .optional(),
     }),
   ),
   /** The timeline an `--at` or `--filmstrip` capture seeked, absent on any other. */
   motion: z
     .object({
-      source: z.enum(['hf', 'timelines', 'css']),
+      source: z.enum(['hf', 'timelines', 'css', 'model']),
       /** Its length in ms, or null when every animation repeats forever. */
       duration: z.int().min(0).nullable(),
     })

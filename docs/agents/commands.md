@@ -25,7 +25,8 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 
 - `capture` writes PNGs of a frame or page in either theme at 1x to 3x with `--scale`, naming a scaled file `<frame>.<theme>@<n>x.png`, and `--scroll <px>` shoots a scroll frame that far down
 - `capture` holds each video on its poster, or on its first frame without one, so two captures match
-- A video with no picture is listed under its image's `videos` as `error` or `pending` and never refuses the capture
+- `capture` waits for each 3D model to draw, holds its clip at the start, and seeks it with `--at`
+- A video or a model with no picture is listed under its image's `videos` or `models` as `error` or `pending` and never refuses the capture
 
 ### Motion
 

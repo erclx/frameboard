@@ -7,9 +7,9 @@ subtitle: What you do by hand on the board, from selecting to exporting
 
 What you do by hand on the board, from selecting to exporting
 
-- [Elements](elements.md): Placing text, shapes, images, video, and audio in a frame, moving and resizing them, and media controls
+- [Elements](elements.md): Placing text, shapes, images, video, audio, and 3D models in a frame, moving and resizing them, and media controls
 - [Frames](frames.md): Moving, resizing, and adding frames, sections, widths, height, devices, the layers panel, and right-click menus
-- [Inspector](inspector.md): The Design tab, layout, position, every number field, the color picker, and selection colors
+- [Inspector](inspector.md): The Design tab, layout, position, every number field, the Model section, the color picker, and selection colors
 - [Notes](notes.md): Pinning a note on a frame or element and sending it to a listening agent
 - [Projects](projects.md): The home view, its cards, folders, sorting, and archive, and the rules a project turned off
 - [Selecting and undo](selecting.md): Selecting frames and elements, several at once, and undoing a hand edit

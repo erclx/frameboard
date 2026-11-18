@@ -6,6 +6,7 @@ export const CHIPS = [
   'images',
   'video',
   'audio',
+  'models',
   'fonts',
   'other',
 ] as const
@@ -17,6 +18,7 @@ export const CHIP_LABELS: Record<Chip, string> = {
   images: 'Images',
   video: 'Video',
   audio: 'Audio',
+  models: 'Models',
   fonts: 'Fonts',
   other: 'Other',
 }
@@ -32,6 +34,8 @@ export function chipOf(kind: AssetFile['kind']): Exclude<Chip, 'all'> {
       return 'video'
     case 'audio':
       return 'audio'
+    case 'model':
+      return 'models'
     case 'font':
       return 'fonts'
     default:

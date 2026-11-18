@@ -1,8 +1,17 @@
-import { readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
+import { join, resolve } from 'node:path'
 
 import { type Page } from '@playwright/test'
 
+import { VIEWER_SCRIPT } from '@/server/edit/insert'
+import { shippedViewerPath } from '@/server/models/viewer'
+import { VIEWER_FILE } from '@/shared/model-viewer'
 import type { ListResult } from '@/shared/records/list'
 
 import type { CaptureCase } from '../types'
@@ -90,6 +99,124 @@ async function tiltedHero(page: Page): Promise<void> {
     ),
   )
   page.once('close', () => writeFileSync(path, original))
+}
+
+/** The Model section once the viewer lists its clip, which it does only after the model draws. */
+const MODEL_READ =
+  'section[aria-labelledby="inspector-model"] button[aria-label="Animation"]:not(:disabled)'
+
+/**
+ * Serves hero with a model whose clip never plays, restoring hero on close.
+ * Its files stay in the project's assets, since removing the folder reloads
+ * the next case's page, so these cases run last among the writing ones.
+ */
+async function modelOnHero(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/hero.html')
+  const assets = join(SERVED_BOARD, 'webapp/assets')
+  const original = readFileSync(path, 'utf8')
+  if (!existsSync(join(assets, VIEWER_FILE))) {
+    mkdirSync(assets, { recursive: true })
+    copyFileSync(
+      resolve('test/fixtures/models/spin.glb'),
+      join(assets, 'spin.glb'),
+    )
+    copyFileSync(shippedViewerPath(), join(assets, VIEWER_FILE))
+  }
+  writeFileSync(
+    path,
+    original
+      .replace('</head>', `  ${VIEWER_SCRIPT}\n  </head>`)
+      .replace(
+        '</h1>',
+        '</h1>\n    <model-viewer data-name="spin.glb" src="../assets/spin.glb" alt="" camera-orbit="-40deg 75deg auto" max-camera-orbit="auto auto auto" style="display: block; width: 240px; height: 180px"></model-viewer>',
+      ),
+  )
+  page.once('close', () => writeFileSync(path, original))
+}
+
+/**
+ * Double-clicks hero's model until the board selects it. A pick waits on its
+ * frame's element tree, and one made before the server has read hero's new
+ * bytes selects nothing, so the press repeats rather than trusting one.
+ */
+async function modelSelected(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ frames, gap }) => {
+      let left = frames
+      let wait = 0
+      const pick = () => {
+        if (document.querySelector('[data-element-selection]')) return
+        if (--left <= 0) {
+          console.error('No model on webapp/home/hero to select')
+          return
+        }
+        requestAnimationFrame(pick)
+        if (--wait > 0) return
+        const shown = document.querySelector('[data-frame="webapp/home/hero"]')
+        const iframe = shown?.querySelector('iframe')
+        const model = iframe?.dataset.renderedAt
+          ? iframe.contentDocument?.querySelector('model-viewer')
+          : null
+        const hit = document.querySelector('[data-hit-layer]')
+        const layer = [
+          ...document.querySelectorAll<HTMLElement>('[data-layer]'),
+        ].find((each) => each.checkVisibility())
+        if (!shown || !model || !hit || !layer) return
+        if (layer.hasAttribute('data-staging')) return
+        wait = gap
+        const k = Number(layer.style.getPropertyValue('--zoom') || 1)
+        const frame = shown.getBoundingClientRect()
+        const inner = model.getBoundingClientRect()
+        const at = {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          clientX: frame.left + (inner.left + inner.width / 2) * k,
+          clientY: frame.top + (inner.top + inner.height / 2) * k,
+        }
+        hit.dispatchEvent(new MouseEvent('mousedown', at))
+        window.dispatchEvent(new MouseEvent('mouseup', at))
+        hit.dispatchEvent(new MouseEvent('dblclick', at))
+      }
+      document.addEventListener('DOMContentLoaded', pick)
+    },
+    // Two seconds between presses, past the time a pick takes to land.
+    { frames: PRESS_FRAMES, gap: 120 },
+  )
+}
+
+/**
+ * Double-clicks the selected model once its section reads it, which enters
+ * turn mode as a second double-click on the canvas does.
+ */
+async function turningModel(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ frames, read }) => {
+      let left = frames
+      const turn = () => {
+        const outline = document.querySelector('[data-element-selection]')
+        const hit = document.querySelector('[data-hit-layer]')
+        if (!document.querySelector(read) || !outline || !hit) {
+          if (--left > 0) requestAnimationFrame(turn)
+          else console.error('No selected model to turn')
+          return
+        }
+        const box = outline.getBoundingClientRect()
+        const at = {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          clientX: box.left + box.width / 2,
+          clientY: box.top + box.height / 2,
+        }
+        hit.dispatchEvent(new MouseEvent('mousedown', at))
+        window.dispatchEvent(new MouseEvent('mouseup', at))
+        hit.dispatchEvent(new MouseEvent('dblclick', at))
+      }
+      document.addEventListener('DOMContentLoaded', turn)
+    },
+    { frames: PRESS_FRAMES, read: MODEL_READ },
+  )
 }
 
 /**
@@ -478,6 +605,43 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
           readyWhen(
             'body:has(#inspector-tilt):has(#inspector-selection-colors ~ ul li)',
           ),
+        ),
+      ),
+    },
+    {
+      section: 'model-section',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      // Hero's model selected, its Model section naming the file, the angle, and the clip.
+      setup: themed(
+        both(
+          modelOnHero,
+          noAgentChanges,
+          asWriter,
+          modelSelected,
+          readyWhen(`body:has(${MODEL_READ})`),
+        ),
+      ),
+    },
+    {
+      section: 'model-turning',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      // The same model in turn mode, its chip under the frame.
+      setup: themed(
+        both(
+          modelOnHero,
+          noAgentChanges,
+          asWriter,
+          modelSelected,
+          turningModel,
+          readyWhen(`body:has(${MODEL_READ}):has([data-turn-surface])`),
         ),
       ),
     },

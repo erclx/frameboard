@@ -110,6 +110,7 @@ const REFERENCE_ASSETS = [
   { path: 'logo.svg', kind: 'svg', size: 2_000 },
   { path: 'Inter.woff2', kind: 'font', size: 98_000 },
   { path: 'demo.mp4', kind: 'video', size: 4_100_000 },
+  { path: 'phone.glb', kind: 'model', size: 5_576 },
   { path: 'shared.css', kind: 'stylesheet', size: 3_000 },
 ]
 
@@ -299,7 +300,7 @@ function searchOnLoad(query: string): (page: Page) => Promise<void> {
 }
 
 /**
- * Opens the Shape menu and then the picker from its Image, video, or audio row, once
+ * Opens the Shape menu and then the picker from its Image, video, audio, or model row, once
  * the server grants writes, which enable the row. Waits in an init script as
  * `pressOnLoad` does.
  */
@@ -310,7 +311,9 @@ async function imagePickerOnLoad(page: Page): Promise<void> {
       const open = () => {
         const row = [
           ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
-        ].find((item) => item.textContent?.includes('Image, video, or audio'))
+        ].find((item) =>
+          item.textContent?.includes('Image, video, audio, or model'),
+        )
         if (row && row.getAttribute('aria-disabled') !== 'true') {
           row.click()
           return
@@ -323,7 +326,8 @@ async function imagePickerOnLoad(page: Page): Promise<void> {
           caret.click()
         }
         if (--left > 0) requestAnimationFrame(open)
-        else console.error('The Image, video, or audio row never enabled')
+        else
+          console.error('The Image, video, audio, or model row never enabled')
       }
       document.addEventListener('DOMContentLoaded', open)
     },

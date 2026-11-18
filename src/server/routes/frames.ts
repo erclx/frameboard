@@ -61,6 +61,8 @@ const CONTENT_TYPES: Record<string, string> = {
   '.wav': 'audio/wav',
   '.ogg': 'audio/ogg',
   '.m4a': 'audio/mp4',
+  '.glb': 'model/gltf-binary',
+  '.gltf': 'model/gltf+json',
 }
 
 /**

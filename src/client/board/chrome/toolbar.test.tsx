@@ -474,12 +474,14 @@ describe('Toolbar', () => {
       expect(box.right).toBeLessThanOrEqual(note.left)
     })
 
-    it('opens the picker from the Image, video, or audio row and keeps the last shape in the slot', async () => {
+    it('opens the picker from the Image, video, audio, or model row and keeps the last shape in the slot', async () => {
       renderWithTools()
 
       await userEvent.click(screen.getByRole('button', { name: 'Shapes' }))
       await userEvent.click(
-        await screen.findByRole('menuitem', { name: /Image, video, or audio/ }),
+        await screen.findByRole('menuitem', {
+          name: /Image, video, audio, or model/,
+        }),
       )
 
       expect(pickerStore.getState().open).toBe(true)
@@ -716,7 +718,7 @@ describe('the toolbar in a narrow column', () => {
     'Rectangle',
     'Ellipse',
     'Divider',
-    'Image, video, or audio…',
+    'Image, video, audio, or model…',
   ]
 
   it.each([
@@ -831,7 +833,7 @@ describe('the toolbar in a narrow column', () => {
     expect(runs).toBe(1)
   })
 
-  it('opens the picker from the Image, video, or audio row in More', async () => {
+  it('opens the picker from the Image, video, audio, or model row in More', async () => {
     function PlaceTools() {
       usePlaceTools()
       return null
@@ -842,7 +844,7 @@ describe('the toolbar in a narrow column', () => {
 
     await openMore()
     await userEvent.click(
-      screen.getByRole('menuitem', { name: /Image, video, or audio/ }),
+      screen.getByRole('menuitem', { name: /Image, video, audio, or model/ }),
     )
 
     expect(pickerStore.getState().open).toBe(true)

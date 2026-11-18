@@ -170,6 +170,20 @@ describe('assets', () => {
       })
     })
 
+    it('answers model for a .glb and a .gltf', async () => {
+      put('phone.glb')
+      put('scene.gltf')
+
+      expect(await resolveAsset(project, 'phone.glb')).toEqual({
+        ok: true,
+        kind: 'model',
+      })
+      expect(await resolveAsset(project, 'scene.gltf')).toEqual({
+        ok: true,
+        kind: 'model',
+      })
+    })
+
     it('refuses a font as not placeable', async () => {
       put('Inter.woff2')
 
@@ -259,6 +273,84 @@ describe('assets', () => {
         true,
       )
       expect(readdirSync(assets)).toEqual(['ok.png'])
+    })
+
+    it('lands a .glb as a file the listing reads as a model', async () => {
+      const result = await addAssets(project, [
+        { name: 'phone.glb', bytes: bytes('glTF') },
+      ])
+
+      expect(result).toEqual({
+        added: [{ name: 'phone.glb', path: 'phone.glb' }],
+        refused: [],
+      })
+      expect(await listAssets(project)).toEqual([
+        { path: 'phone.glb', kind: 'model', size: 4 },
+      ])
+    })
+
+    it.each([
+      'chair.fbx',
+      'chair.OBJ',
+      'chair.blend',
+      'chair.usd',
+      'chair.stl',
+    ])('refuses %s with the way to export a GLB from Blender', async (name) => {
+      const result = await addAssets(project, [{ name, bytes: bytes('x') }])
+
+      expect(result.added).toEqual([])
+      expect(result.refused).toEqual([
+        {
+          name,
+          code: 'asset-type-refused',
+          message: expect.stringMatching(/Blender.*\.glb/),
+        },
+      ])
+    })
+
+    it('lands a .gltf that carries its buffers and images inside itself', async () => {
+      const gltf = JSON.stringify({
+        asset: { version: '2.0' },
+        buffers: [{ uri: 'data:application/octet-stream;base64,AAAA' }],
+        images: [{ bufferView: 0, mimeType: 'image/png' }],
+      })
+
+      const result = await addAssets(project, [
+        { name: 'scene.gltf', bytes: bytes(gltf) },
+      ])
+
+      expect(result.added).toEqual([{ name: 'scene.gltf', path: 'scene.gltf' }])
+    })
+
+    it('refuses a .gltf that loads a file beside it, naming the file', async () => {
+      const gltf = JSON.stringify({
+        asset: { version: '2.0' },
+        buffers: [{ uri: 'scene.bin' }],
+      })
+
+      const result = await addAssets(project, [
+        { name: 'scene.gltf', bytes: bytes(gltf) },
+      ])
+
+      expect(result.added).toEqual([])
+      expect(result.refused).toEqual([
+        {
+          name: 'scene.gltf',
+          code: 'asset-type-refused',
+          message: expect.stringContaining('scene.bin'),
+        },
+      ])
+      expect(existsSync(assets)).toBe(false)
+    })
+
+    it('refuses a .gltf that is not JSON', async () => {
+      const result = await addAssets(project, [
+        { name: 'scene.gltf', bytes: bytes('not json') },
+      ])
+
+      expect(result.refused.map((entry) => entry.code)).toEqual([
+        'asset-type-refused',
+      ])
     })
 
     it('leaves no temp file behind', async () => {

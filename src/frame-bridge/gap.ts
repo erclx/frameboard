@@ -37,6 +37,7 @@ const LEAVES = new Set([
   'input',
   'link',
   'meta',
+  'model-viewer',
   'noscript',
   'object',
   'picture',

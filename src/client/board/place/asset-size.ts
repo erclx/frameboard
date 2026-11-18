@@ -43,7 +43,8 @@ export function placedSize(natural: AssetSize | null, room: number): AssetSize {
 
 /**
  * The size a file draws at on its own, audio taking `AUDIO_SIZE` unread. Null
- * when it does not load, states no size, or a video's metadata stalls.
+ * for a model, and when it does not load, states no size, or a video's
+ * metadata stalls.
  */
 export function naturalSize(
   url: string,
@@ -52,6 +53,8 @@ export function naturalSize(
 ): Promise<AssetSize | null> {
   if (kind === 'svg') return svgSize(url)
   if (kind === 'audio') return Promise.resolve(AUDIO_SIZE)
+  // A model states no size of its own, so its file is never loaded to ask.
+  if (kind === 'model') return Promise.resolve(null)
   return new Promise((resolve) => {
     const media =
       kind === 'video' ? document.createElement('video') : new Image()

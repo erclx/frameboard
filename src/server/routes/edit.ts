@@ -31,12 +31,19 @@ import {
   removeFrameFileAll,
   wrapFrameFile,
 } from '@/server/edit/frame-file'
-import { elementMarkup, type InsertKind, textFont } from '@/server/edit/insert'
+import {
+  assetTag,
+  elementMarkup,
+  type InsertKind,
+  textFont,
+} from '@/server/edit/insert'
 import { placeElement } from '@/server/edit/place'
 import type { History } from '@/server/history/stack'
 import { styleValue } from '@/server/look/colors'
 import { readTokenTable } from '@/server/look/token-table'
+import { ensureViewer } from '@/server/models/viewer'
 import { followEdit, notesPath } from '@/server/notes/store'
+import { VIEWER_TAG } from '@/shared/model-viewer'
 import {
   type EditResult,
   type InsertResult,
@@ -385,12 +392,11 @@ export function editRoutes(
           409,
         )
       }
-      element = {
-        ...body.element,
-        tag:
-          asset.kind === 'video' || asset.kind === 'audio' ? asset.kind : 'img',
-      }
+      element = { ...body.element, tag: assetTag(asset.kind) }
     }
+    const viewer = element.kind === 'asset' && element.tag === VIEWER_TAG
+    // Ahead of the frame's write, so the script its head links is never missing.
+    if (viewer) await ensureViewer(join(root, frame.project))
     const { at } = body
     const insert = (place?: PlaceInserted) =>
       insertFrameFile(
@@ -399,6 +405,7 @@ export function editRoutes(
         { parent: body.parent, before: body.before },
         elementMarkup(element, shapePaint(tokens), textFont(tokens)),
         place,
+        viewer,
       )
     const placed =
       at &&

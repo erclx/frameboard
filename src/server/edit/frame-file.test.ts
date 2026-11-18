@@ -19,6 +19,7 @@ import {
   moveFrameFile,
   removeFrameFile,
 } from './frame-file'
+import { removeInserted } from './insert'
 
 // Lets a test land a write on the frame while the editor holds its temporary
 // file, which is the window the reread before the rename guards.
@@ -296,6 +297,63 @@ describe('editFrameFileAll', () => {
     ).toBe(OLD)
   })
 
+  describe('with two attributes on one element', () => {
+    const VIEWER = '<model-viewer src="a.glb"></model-viewer>'
+    const orbit = (value: string) => ({
+      index: 3,
+      change: { kind: 'attribute', name: 'camera-orbit', value } as const,
+    })
+    const reach = {
+      index: 3,
+      change: {
+        kind: 'attribute',
+        name: 'max-camera-orbit',
+        value: 'auto auto 4m',
+      } as const,
+    }
+
+    it('should write both as one write', () => {
+      writeFileSync(frame, VIEWER)
+
+      const result = editFrameFileAll(frame, contentHash(VIEWER), [
+        orbit('40deg 75deg 4m'),
+        reach,
+      ])
+
+      expect(result).toMatchObject({ ok: true, indexes: [3, 3] })
+      expect(readFileSync(frame, 'utf8')).toBe(
+        '<model-viewer src="a.glb" camera-orbit="40deg 75deg 4m" max-camera-orbit="auto auto 4m"></model-viewer>',
+      )
+    })
+
+    it('should answer the pair as one span that swaps back to the old bytes', () => {
+      writeFileSync(frame, VIEWER)
+      const result = editFrameFileAll(frame, contentHash(VIEWER), [
+        orbit('40deg 75deg 4m'),
+        reach,
+      ])
+      if (!result.ok) throw new Error(result.reason)
+      const [span] = result.spans
+
+      expect(result.spans).toHaveLength(1)
+      expect(
+        span && swapSpan(readFileSync(frame, 'utf8'), span, 'after')?.html,
+      ).toBe(VIEWER)
+    })
+
+    it('should refuse one attribute named twice and write nothing', () => {
+      writeFileSync(frame, VIEWER)
+
+      const result = editFrameFileAll(frame, contentHash(VIEWER), [
+        orbit('40deg 75deg 4m'),
+        orbit('0deg 75deg 4m'),
+      ])
+
+      expect(result).toMatchObject({ ok: false, reason: 'invalid-edit' })
+      expect(readFileSync(frame, 'utf8')).toBe(VIEWER)
+    })
+  })
+
   it('should refuse two style changes on one element and write nothing', () => {
     writeFileSync(frame, OLD)
 
@@ -342,6 +400,87 @@ describe('insertFrameFile', () => {
       ok: true,
       index: 4,
       hash: contentHash(`<main>${TEXT}</main>`),
+    })
+  })
+
+  describe('with a model', () => {
+    const MODEL =
+      '<model-viewer data-name="a.glb" src="../assets/a.glb"></model-viewer>'
+    const SCRIPT =
+      '<script type="module" src="../assets/model-viewer.min.js"></script>'
+    const BARE =
+      '<html><head><title>Hero</title></head><body><main><p>Hi</p></main></body></html>'
+
+    it("should write the viewer's script into the head and the model into the gap the sent bytes named", () => {
+      writeFileSync(frame, BARE)
+
+      const result = insertFrameFile(
+        frame,
+        contentHash(BARE),
+        { parent: 4, before: 5 },
+        MODEL,
+        undefined,
+        true,
+      )
+
+      expect(readFileSync(frame, 'utf8')).toBe(
+        `<html><head><title>Hero</title>${SCRIPT}</head><body><main>${MODEL}<p>Hi</p></main></body></html>`,
+      )
+      expect(result).toMatchObject({ ok: true, index: 6 })
+    })
+
+    it('should carry a selection past both the script and the model', () => {
+      writeFileSync(frame, BARE)
+
+      const result = insertFrameFile(
+        frame,
+        contentHash(BARE),
+        { parent: 4, before: 5 },
+        MODEL,
+        undefined,
+        true,
+      )
+
+      const remap = result.ok ? result.remap : () => null
+      expect([2, 4, 5].map(remap)).toEqual([2, 5, 7])
+    })
+
+    it('should add no second script for a second model', () => {
+      const first = `<html><head>${SCRIPT}</head><body><main>${MODEL}</main></body></html>`
+      writeFileSync(frame, first)
+
+      insertFrameFile(
+        frame,
+        contentHash(first),
+        { parent: 4, before: null },
+        MODEL,
+        undefined,
+        true,
+      )
+
+      expect(readFileSync(frame, 'utf8')).toBe(
+        `<html><head>${SCRIPT}</head><body><main>${MODEL}${MODEL}</main></body></html>`,
+      )
+    })
+
+    it('should answer a span whose undo takes the model out and leaves the script', () => {
+      writeFileSync(frame, BARE)
+      const result = insertFrameFile(
+        frame,
+        contentHash(BARE),
+        { parent: 4, before: 5 },
+        MODEL,
+        undefined,
+        true,
+      )
+
+      const undone = result.ok
+        ? removeInserted(readFileSync(frame, 'utf8'), result.span)
+        : undefined
+
+      expect(undone?.html).toBe(
+        `<html><head><title>Hero</title>${SCRIPT}</head><body><main><p>Hi</p></main></body></html>`,
+      )
     })
   })
 
