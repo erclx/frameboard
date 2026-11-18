@@ -25,8 +25,9 @@ export function stampRenderedHash(
   hash: string,
 ): void {
   if (shownHashOf(iframe) === null) return
-  holdShown(iframe, hash)
+  // Posted first, so every request the held hash wakes reaches the frame after its stamp moved.
   void request(iframe, 'restamp', { hash })
+  holdShown(iframe, hash)
   iframe.dispatchEvent(new Event(RESTAMPED))
 }
 

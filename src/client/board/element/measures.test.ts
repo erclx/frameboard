@@ -5,6 +5,7 @@ import { BRIDGE } from '@/test/frame-bridge'
 
 import { request } from '../bridge/channel'
 import { shownHashOf } from '../bridge/shown'
+import { stampRenderedHash } from '../frame-dom'
 import { heldGhost, heldMeasures, useGhosts, useMeasures } from './measures'
 
 const HASH = 'c'.repeat(64)
@@ -80,6 +81,16 @@ describe('useMeasures', () => {
 
     expect(result.current).toBeNull()
     expect(heldMeasures(keys)).toBeNull()
+  })
+
+  it('measures the key a restamp moves the page to, as a write that lands without a reload does', async () => {
+    const { layer, iframe } = await mount(BOX)
+    const keys = [{ frame: FRAME, index: 3, hash: NEXT }]
+    const { result } = renderHook(() => useMeasures(layer, keys))
+
+    stampRenderedHash(iframe, NEXT)
+
+    await expect.poll(() => result.current?.[0]?.box.width).toBe(100)
   })
 
   it('holds nothing for keys read from other bytes', async () => {
