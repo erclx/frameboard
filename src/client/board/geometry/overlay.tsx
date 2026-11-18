@@ -6,6 +6,7 @@ import { findAction } from '@/client/actions/registry'
 import { bezelBox } from '@/shared/frame-device'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
+import { POSE_BAR_ROOM } from '../device/poses'
 import { stepOrder } from '../frame-order'
 import { useSelection } from '../selection'
 import { useStripRoom } from '../speaker-notes/room'
@@ -104,9 +105,14 @@ function Selection({
   )
   // A shown speaker notes strip sits between the frame and its chips, at screen size.
   const strip = useStripRoom(only && !several ? only.ref : null)
+  // A foldable's pose buttons sit under its body, ahead of the strip, at screen size too.
+  const poses =
+    only && !several && only.device === 'foldable' ? POSE_BAR_ROOM : 0
   const chipAt =
-    below || strip
-      ? { top: `calc(100% + ${below}px + ${strip}px / var(--zoom, 1))` }
+    below || strip || poses
+      ? {
+          top: `calc(100% + ${below}px + ${poses + strip}px / var(--zoom, 1))`,
+        }
       : undefined
   return (
     <div

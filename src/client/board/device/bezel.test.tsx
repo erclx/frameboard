@@ -3,7 +3,7 @@ import '../../styles.css'
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import type { Device } from '@/shared/frame-device'
+import type { Device, Pose } from '@/shared/frame-device'
 
 import { Bezel } from './bezel'
 
@@ -12,11 +12,13 @@ function Framed({
   width,
   height,
   zoom = 1,
+  pose,
 }: {
   device: Device
   width: number
   height: number
   zoom?: number
+  pose?: Pose
 }) {
   return (
     <div
@@ -24,7 +26,7 @@ function Framed({
       style={{ transform: `scale(${zoom})` }}
     >
       <div className="absolute" style={{ left: 100, top: 100, width, height }}>
-        <Bezel device={device} width={width} height={height} />
+        <Bezel device={device} width={width} height={height} pose={pose} />
       </div>
     </div>
   )
@@ -150,6 +152,74 @@ describe('Bezel', () => {
       expect(partsOf(container).base?.width).toBeCloseTo(
         (1440 + 40 + 2 * 89) / 2,
       )
+    })
+  })
+
+  describe('foldable', () => {
+    const rectOf = (container: HTMLElement, selector: string) =>
+      container.querySelector(selector)?.getBoundingClientRect()
+
+    it('draws a 20 border and a 48 screen radius', () => {
+      const { container } = render(
+        <Framed device="foldable" width={466} height={678} pose="closed" />,
+      )
+
+      const bezel = bezelOf(container)
+
+      expect(borderOf(bezel)).toBe(20)
+      expect(getComputedStyle(bezel).borderTopLeftRadius).toBe('48px')
+    })
+
+    it('centers the island on the cover screen, with no fold', () => {
+      const { container } = render(
+        <Framed device="foldable" width={466} height={678} pose="closed" />,
+      )
+
+      const island = rectOf(container, '[data-bezel-island]')
+
+      expect((island?.left ?? 0) + (island?.width ?? 0) / 2).toBeCloseTo(
+        100 + 233,
+      )
+      expect(container.querySelector('[data-bezel-fold]')).toBeNull()
+    })
+
+    it.each(['half', 'open'] as const)(
+      'sets the island on the right half of the %s screen',
+      (pose) => {
+        const { container } = render(
+          <Framed device="foldable" width={890} height={626} pose={pose} />,
+        )
+
+        const island = rectOf(container, '[data-bezel-island]')
+
+        expect((island?.left ?? 0) + (island?.width ?? 0) / 2).toBeCloseTo(
+          100 + 667.5,
+        )
+      },
+    )
+
+    it('draws the open crease down the middle, inside the screen', () => {
+      const { container } = render(
+        <Framed device="foldable" width={890} height={626} pose="open" />,
+      )
+
+      const fold = rectOf(container, '[data-bezel-fold]')
+
+      expect((fold?.left ?? 0) + (fold?.width ?? 0) / 2).toBeCloseTo(100 + 445)
+      expect(fold?.top).toBeCloseTo(100)
+      expect(fold?.height).toBeCloseTo(626)
+    })
+
+    it('shades the half open fold wider, over the body above and below', () => {
+      const { container } = render(
+        <Framed device="foldable" width={890} height={626} pose="half" />,
+      )
+
+      const fold = rectOf(container, '[data-bezel-fold]')
+
+      expect(fold?.width).toBeCloseTo(150)
+      expect(fold?.top).toBeCloseTo(100 - 20)
+      expect(fold?.height).toBeCloseTo(626 + 40)
     })
   })
 

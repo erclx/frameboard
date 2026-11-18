@@ -1,11 +1,16 @@
 import {
   BEZEL_COLORS,
+  BEZELS,
   bezelShadow,
   type Device,
+  FOLDABLE_ISLAND,
+  foldBand,
   HOME_BAR,
+  islandCenter,
   LAPTOP_BASE,
   laptopParts,
   PHONE_ISLAND,
+  type Pose,
   screenCorners,
 } from '@/shared/frame-device'
 
@@ -20,11 +25,14 @@ export function Bezel({
   device,
   width,
   height,
+  pose = 'closed',
 }: {
   device: Device
   /** The frame's box, which a laptop's chin and base span. */
   width: number
   height: number
+  /** How a foldable is held, which no other device reads. */
+  pose?: Pose
 }) {
   const laptop = device === 'laptop'
   return (
@@ -39,7 +47,62 @@ export function Bezel({
     >
       {device === 'phone' ? <PhoneMarks /> : null}
       {laptop ? <LaptopBody width={width} height={height} /> : null}
+      {device === 'foldable' ? <FoldableMarks pose={pose} /> : null}
     </div>
+  )
+}
+
+/**
+ * A foldable's island and home bar, with the band down the inner screen's
+ * middle. Half open's band runs over the body too, which darkens at the fold.
+ */
+function FoldableMarks({ pose }: { pose: Pose }) {
+  const band = foldBand(pose)
+  const reach = pose === 'half' ? -BEZELS.foldable.border : 0
+  return (
+    <>
+      {band ? (
+        <span
+          data-bezel-fold={pose}
+          className="absolute left-1/2 -translate-x-1/2"
+          style={{
+            top: reach,
+            bottom: reach,
+            width: band.width,
+            background: band.background,
+          }}
+        />
+      ) : null}
+      <span
+        data-bezel-island
+        className="absolute -translate-x-1/2"
+        style={{
+          left: `${islandCenter(pose) * 100}%`,
+          top: FOLDABLE_ISLAND.top,
+          width: FOLDABLE_ISLAND.width,
+          height: FOLDABLE_ISLAND.height,
+          borderRadius: FOLDABLE_ISLAND.height / 2,
+          background: BEZEL_COLORS.island,
+        }}
+      />
+      <HomeBar />
+    </>
+  )
+}
+
+function HomeBar() {
+  return (
+    <span
+      data-bezel-home
+      className="absolute left-1/2 -translate-x-1/2"
+      style={{
+        bottom: HOME_BAR.bottom,
+        width: HOME_BAR.width,
+        height: HOME_BAR.height,
+        borderRadius: HOME_BAR.height / 2,
+        background: BEZEL_COLORS.homeBar,
+      }}
+    />
   )
 }
 
@@ -57,17 +120,7 @@ function PhoneMarks() {
           background: BEZEL_COLORS.island,
         }}
       />
-      <span
-        data-bezel-home
-        className="absolute left-1/2 -translate-x-1/2"
-        style={{
-          bottom: HOME_BAR.bottom,
-          width: HOME_BAR.width,
-          height: HOME_BAR.height,
-          borderRadius: HOME_BAR.height / 2,
-          background: BEZEL_COLORS.homeBar,
-        }}
-      />
+      <HomeBar />
     </>
   )
 }
