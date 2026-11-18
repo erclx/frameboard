@@ -60,8 +60,7 @@ export function registerNotes(program: Command, context: ProgramContext): void {
     .option('--page <page-ref>', 'only the notes on this page')
     .option('--frame <frame-ref>', 'only the notes on this frame')
     .option('--all', 'include the threads marked done')
-    // notes lists with flags of its own, so reply and done would otherwise
-    // lose --json and --root to it.
+    // Keeps --json and --root for reply and done, since notes has flags of its own.
     .enablePositionalOptions()
 
   act<ListOptions>(notes, context, async (_args, options) => {

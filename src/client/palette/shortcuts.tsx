@@ -17,10 +17,8 @@ import { cn } from '@/client/lib/cn'
 import { openOverlay, useOverlay } from './overlay'
 
 /**
- * One line of the sheet. A row names the actions whose first key it prints,
- * or a gesture no action carries, such as a click with a modifier.
- * `characterGestures` are gestures typing a character, drawn faint while the
- * Single-key shortcuts switch is off.
+ * One line of the sheet, naming actions or a gesture no action carries, such
+ * as a click with a modifier.
  */
 interface Row {
   label: string
@@ -174,12 +172,8 @@ const ACTION_IDS = [...SECTIONS, ...HOME_SECTIONS].flatMap((section) =>
 )
 
 /**
- * The `?` sheet of every key the board binds, or on the home view the keys
- * that move between projects. Each action row reads its keys from the
- * registry, so it never drifts from what a press does, and greys out until
- * a row registers the action. A key the Single-key shortcuts switch has
- * turned off stays listed, drawn faint. It sits outside the routes, so it
- * reads the location itself.
+ * The `?` sheet, each row reading its keys from the registry, so it never
+ * drifts from what a press does.
  */
 export function ShortcutsSheet() {
   const open = useOverlay() === 'shortcuts'

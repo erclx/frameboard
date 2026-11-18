@@ -56,8 +56,7 @@ export function registerServe(
       '--tokens <path>',
       "a token sheet another tool manages, standing in for the board's tokens.css",
     )
-    // Hidden, since it makes any local browser a writer: only a throwaway
-    // preview server should pass it.
+    // Hidden, since it makes any local browser a writer.
     .addOption(
       new Option(
         '--open-route',
@@ -77,8 +76,7 @@ export function registerServe(
         { tokens },
       )
     }
-    // The refusal comes before the board is started so it leaves nothing
-    // behind, and a live board skips it since reuse binds no client.
+    // Refused before the board starts, so it leaves nothing behind.
     const existing = await resolveBoard({
       root: options.root,
       cwd: io.cwd,
@@ -108,8 +106,7 @@ export function registerServe(
           pid: live.pid,
           root,
           reused: true,
-          // The running server keeps the sheet it started with, so a different
-          // --tokens shows here as a mismatch rather than a second server.
+          // A different --tokens shows as a mismatch rather than a second server.
           tokens: live.tokens ?? null,
           created,
           opened,

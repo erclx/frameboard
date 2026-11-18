@@ -42,10 +42,8 @@ export type ServerMessage =
   /** The whole board, on hello and after every watch batch. */
   | { type: 'board'; data: ListResult }
   /**
-   * Frames whose rendered inputs changed on disk, each to reload alone.
-   * `hashes` holds the content hash of a ref's file only when that file was
-   * the sole cause, so a tab whose live page already shows those bytes may
-   * skip the reload. A ref absent from it always reloads.
+   * Frames to reload, `hashes` set only when the file was the sole cause, so a
+   * tab already showing those bytes may skip the reload.
    */
   | { type: 'reload'; refs: string[]; hashes?: Record<string, string> }
   /** Point the open board at one frame. */

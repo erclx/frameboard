@@ -19,15 +19,9 @@ import {
 import type { Finding } from '@/shared/records/check'
 
 /**
- * What the write hook prints for one hook payload: a `block` decision whose
- * reason lists the findings, which Claude Code hands the agent beside the
- * tool result, or null to print nothing. It answers a frame and a project's
- * transition file. Any other write, a file outside any board, a file gone
- * since, and a payload that does not read all answer null, so the hook
- * never reports a write as failed.
- *
- * Imports nothing beyond the rules and `src/shared/`, since process start is
- * the hook's whole budget on every agent write.
+ * The write hook's reply, null for any write it cannot judge, so it never
+ * reports a write as failed. Imports nothing beyond the rules and
+ * `src/shared/`, since process start is its whole budget.
  */
 export function hookReply(stdin: string): string | null {
   try {

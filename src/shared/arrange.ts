@@ -63,10 +63,8 @@ export function align<B extends Box>(
 }
 
 /**
- * Spaces the boxes so the gaps between neighbors along `axis` are equal,
- * keeping the first and last where they are. It takes three boxes or more,
- * and fewer come back unchanged. A gap that does not divide evenly is
- * rounded per box, so no box lands off the pixel grid.
+ * Spaces three or more boxes evenly between the ends, rounding per box so none
+ * lands off the pixel grid.
  */
 export function distribute<B extends Box>(
   boxes: Readonly<Record<string, B>>,

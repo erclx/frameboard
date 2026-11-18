@@ -1,8 +1,6 @@
 /**
- * The drawn controls contract. A control is an ordinary input in a frame
- * carrying `data-binds="<selector> <--custom-property>"` and `data-unit`,
- * and the target's own CSS reads the property, so the frame file holds no
- * script and a kept value is plain CSS.
+ * The drawn controls contract, `data-binds="<selector> <--custom-property>"`
+ * on an input, so the frame holds no script and a kept value is plain CSS.
  */
 
 export const BINDS_ATTRIBUTE = 'data-binds'
@@ -56,11 +54,8 @@ export type KeepEdit =
     }
 
 /**
- * The batch a keep posts: each moved control's `value` attribute, so a
- * reload shows the control where it was left, then one `styles` change per
- * target, since the edit route refuses a batch naming one element twice.
- * Two controls setting one property on one target keep the later control's
- * value, as the live page shows it.
+ * The batch a keep posts, one `styles` change per target, since the edit route
+ * refuses a batch naming one element twice.
  */
 export function keepEdits(moved: readonly MovedControl[]): KeepEdit[] {
   const byTarget = new Map<number, Map<string, string>>()
@@ -88,9 +83,7 @@ export function keepEdits(moved: readonly MovedControl[]): KeepEdit[] {
 }
 
 /**
- * Hides every control wherever a frame leaves the canvas, being an export,
- * a thumbnail, a presented slide, and the phone link: the control, a label
- * holding one, and a container holding only controls and their labels, so
- * the design ships as if the controls were never drawn.
+ * Hides every control wherever a frame leaves the canvas, so the design ships
+ * as if the controls were never drawn.
  */
 export const HIDE_CONTROLS_CSS = `[${BINDS_ATTRIBUTE}], label:has([${BINDS_ATTRIBUTE}]), :not(html, body):has(> [${BINDS_ATTRIBUTE}], > label > [${BINDS_ATTRIBUTE}]):not(:has(> :not([${BINDS_ATTRIBUTE}], label))) { display: none !important }`

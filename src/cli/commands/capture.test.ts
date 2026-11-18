@@ -518,9 +518,7 @@ describe.skipIf(shell === null)('capture from source', () => {
     board.cleanup()
   })
 
-  // A child process, since the mocks above stand in for the browser in this
-  // file only. Caveat, since Geist can pass as an installed font and prove
-  // nothing.
+  // A child process escapes the mocks, and Caveat, since Geist can pass as installed.
   it('loads a bundled face when the CLI runs from source', () => {
     board = writeBoard({
       'studio/home/hero.html': '<p style="font-family: Caveat">Hello</p>',

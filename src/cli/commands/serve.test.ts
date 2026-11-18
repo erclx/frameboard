@@ -76,8 +76,7 @@ describe('serve', () => {
     expect(existsSync(join(cwd, '.frameboard'))).toBe(false)
   })
 
-  // A child process, since only a real source run resolves its own client.
-  // It reads the checkout's `dist/client`, so a built checkout skips it.
+  // A real source run in a child process, skipped on a built checkout.
   const repo = fileURLToPath(new URL('../../..', import.meta.url))
   it.skipIf(existsSync(join(repo, 'dist/client/index.html')))(
     'refuses a source run when no build exists',
@@ -92,8 +91,7 @@ describe('serve', () => {
           '--port',
           '0',
         ],
-        // A server that bound would never exit, so the kill fails the status
-        // assertion instead of hanging the run.
+        // A bound server never exits, so the kill fails the assertion, not the run.
         { cwd, encoding: 'utf8', timeout: 20_000 },
       )
 

@@ -394,10 +394,8 @@ function unseenReply(
 }
 
 /**
- * How many agent replies across the given pages' notes no open thread has
- * shown. A reply counts only while its root can still open, being a root not
- * done on a frame the board holds, since a root that draws no marker leaves
- * no thread to open and its reply would count for good.
+ * Unshown agent replies, counting only roots that can still open, since a
+ * root with no marker would count its reply for good.
  */
 export function unseenReplies(
   notes: Readonly<Record<string, readonly Note[]>>,

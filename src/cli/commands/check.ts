@@ -68,11 +68,9 @@ export function registerCheck(program: Command, context: ProgramContext): void {
       findings: [...own.findings, ...browser.findings],
       browser: browser.run,
     }
-    // A warning, such as a frame sized off the viewport on purpose, never
-    // fails a script.
+    // A warning never fails a script.
     if (result.findings.some((finding) => finding.severity === 'error')) {
-      // The findings are the verb's output, so stderr carries the summary
-      // alone, through the error's message.
+      // The findings are the output, so stderr carries the summary alone.
       if (!options.json) {
         context.io.stdout(`${describe(result, { count: false })}\n`)
       }
@@ -112,8 +110,7 @@ async function run(
     try {
       return await pageRun(root, await resolvePageRef(root, target, refOptions))
     } catch (pageError) {
-      // A bare name no page answers to reads as a project, which is what an
-      // agent copying a project name onto a board of several projects means.
+      // A bare name no page answers to reads as a project, as an agent means it.
       if (
         options.project !== undefined ||
         !(pageError instanceof FrameboardError) ||

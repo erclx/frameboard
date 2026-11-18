@@ -27,10 +27,8 @@ export interface FollowOptions {
 }
 
 /**
- * Follows a session's inbox on the board's live socket until aborted. It
- * waits quietly for a board and a running server, upgrades with the address
- * token as a bearer, and prints each note before acking it, so a follower
- * killed between the two prints the note again rather than losing it.
+ * Follows a session's inbox, printing each note before acking it, so a
+ * follower killed between the two prints it again rather than losing it.
  */
 export async function follow({
   findRoot,
@@ -80,8 +78,7 @@ function listen(
       print(message)
       socket.send(JSON.stringify({ type: 'ack', id: message.note.id }))
     })
-    // A refused or dropped connection is a server not running yet, so it
-    // stays quiet and the loop tries again.
+    // A refused connection is a server not running yet, so the loop retries quietly.
     socket.on('error', () => {})
     socket.on('close', () => {
       signal.removeEventListener('abort', stop)

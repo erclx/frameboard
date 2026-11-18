@@ -60,8 +60,7 @@ export function describeVerbs(program: Command, prefix = ''): VerbDoc[] {
   return program.commands.flatMap((command) => {
     const name = `${prefix}${command.name()}`
     const verbs = describeVerbs(command, `${name} `)
-    // A group made through addVerb takes flags and runs on its own, as notes
-    // does, where a plain group takes none and only holds its verbs.
+    // A group with flags runs on its own, as notes does, unlike a plain group.
     if (command.commands.length > 0 && command.options.length === 0) {
       return verbs
     }

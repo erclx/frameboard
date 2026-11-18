@@ -62,8 +62,7 @@ export function registerRemove(
           index: options.index,
         })
       }
-      // A note pinned on the removed element falls back to the frame, and one
-      // pinned after it follows its element to the new index.
+      // Notes on the removed element fall back to the frame, later ones follow.
       await followEdit(
         notesPath(root, frame.project, frame.page),
         frame.name,

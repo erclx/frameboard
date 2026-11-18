@@ -95,8 +95,7 @@ export function registerCapture(
     )
 
   act<CaptureOptions>(command, context, async ([ref], options) => {
-    // A two-part ref reads as `<page>/<frame>` and `<project>/<page>` alike,
-    // so the page form takes its own flag rather than a guess.
+    // A two-part ref is ambiguous, so the page form takes its own flag.
     if ((ref === undefined) === (options.page === undefined)) {
       throw new FrameboardError(
         'usage',
@@ -179,8 +178,7 @@ export function registerCapture(
     }
 
     const frame = await readFrame(root, ref ?? '', refOptions)
-    // A frame without the key never overflows by design, so a scrolled shot
-    // would show a state the board never draws.
+    // Without `scroll` a frame never overflows, so the board never draws a scrolled one.
     if (options.scroll !== undefined && !frame.scroll) {
       throw new FrameboardError(
         'usage',
