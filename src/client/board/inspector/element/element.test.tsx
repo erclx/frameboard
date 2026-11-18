@@ -432,6 +432,7 @@ describe('InspectorPanel with an element selected', () => {
       'Position',
       'Layout',
       'Appearance',
+      '3D',
       'Typography',
       'Fill',
       'Text',
