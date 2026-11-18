@@ -381,8 +381,7 @@ async function editInTurn(
       const text = change.kind === 'text' ? change.value : undefined
       const stale =
         error instanceof BoardWriteError && error.code === 'stale-address'
-      // Only a collision that kept the element count leaves the index on this text's element,
-      // and only a whole text is one the Text field can apply.
+      // A kept count leaves the index on this element, and the Text field applies whole texts alone.
       const kept =
         stale &&
         text !== undefined &&

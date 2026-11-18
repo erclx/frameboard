@@ -26,10 +26,9 @@ function collapsesBreaks(element: HTMLElement): boolean {
 }
 
 /**
- * Opens a text-only element for typing, answering its cancel or null. A break
- * is a newline in its one text node, never a `<br>`, which would end its
- * text-only state, and a reload ends the edit with nothing to write. An
- * element holding a child element opens only the run of text at `at`.
+ * Opens an element's text for typing, answering its cancel or null, or only
+ * the run at `at` beside child elements. A break is a newline, never a `<br>`,
+ * and a reload ends the edit with nothing to write.
  */
 export function openTextEdit(
   found: Element,

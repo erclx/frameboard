@@ -32,10 +32,9 @@ export function escapeText(value: string): string {
 }
 
 /**
- * Replaces a text-only element's text, refusing unless its source is exactly
- * one text node, since misnesting can put its end tag past another's markup.
- * A `run` replaces only that text node among the element's text-node
- * children, keeping every child element's bytes.
+ * Replaces a text-only element's text, or only the text node `run` names,
+ * refusing source that does not tile, since misnesting can put an end tag
+ * past another's markup.
  */
 export function setText(
   source: string,

@@ -34,10 +34,9 @@ export interface TextEditArgs extends ElementAddress {
 }
 
 /**
- * How an in-place text edit ends: the text typed, and whether it holds a
- * break its element would collapse, or a close with nothing to write. A
- * `run` names the one text node typed in among the element's text-node
- * children, and its absence the element's whole text.
+ * How an in-place text edit ends: the text typed, the text node it is by
+ * index when a `run`, and whether it holds a break its element would
+ * collapse, or a close with nothing to write.
  */
 export type TextEditEnd =
   | { kind: 'commit'; text: string; breaks: boolean; run?: number }

@@ -625,11 +625,7 @@ export function Canvas({
     toBoard,
   })
 
-  /**
-   * Opens a text element's text for typing, a double-click's or a placed
-   * Text's. A double-click's frame-local `at` picks the run of text beside
-   * a child element.
-   */
+  /** Opens a double-click's or a placed Text's text for typing, at the run `at` picks. */
   const editText = (
     key: ElementKey,
     waits: boolean,

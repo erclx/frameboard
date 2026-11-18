@@ -35,11 +35,9 @@ function shownFrame(
 }
 
 /**
- * Opens an element's text for typing in place, in the frame showing the
- * key's bytes, and writes the text the frame commits. The frame owns the
- * caret and the keys, and a reload there ends the edit with nothing sent.
- * A frame-local `at` opens the run of text under it in an element holding
- * child elements, which opens nowhere without one.
+ * Opens an element's text for typing in the frame showing the key's bytes,
+ * and writes what the frame commits. A frame-local `at` opens the run of
+ * text under it beside child elements, and a reload ends it with nothing sent.
  */
 export function editTextInPlace(
   container: ParentNode,
