@@ -73,9 +73,23 @@ describe('request', () => {
     vi.useFakeTimers()
 
     const answer = request(iframe, 'element-box', { index: 3, hash: HASH })
-    await vi.advanceTimersByTimeAsync(1000)
+    await vi.advanceTimersByTimeAsync(5000)
 
     await expect(answer).resolves.toBeNull()
+  })
+
+  it('answers with a reply a slow frame sends seconds later', async () => {
+    const asked = await mount('')
+    const sent = nextRequestId(asked)
+    vi.useFakeTimers()
+
+    const answer = request(asked, 'element-box', { index: 3, hash: HASH })
+    const id = await sent
+    await vi.advanceTimersByTimeAsync(3000)
+    const value = { left: 0, top: 0, right: 10, bottom: 20 }
+    postFrom(asked, { tag: BRIDGE_TAG, kind: 'reply', id, ok: true, value })
+
+    await expect(answer).resolves.toEqual(value)
   })
 
   it('answers null for a reply its schema refuses', async () => {
@@ -98,7 +112,7 @@ describe('request', () => {
     const answer = request(asked, 'element-box', { index: 3, hash: HASH })
     const id = await sent
     postFrom(other, { tag: BRIDGE_TAG, kind: 'reply', id, ok: true, value: 1 })
-    await vi.advanceTimersByTimeAsync(1000)
+    await vi.advanceTimersByTimeAsync(5000)
 
     await expect(answer).resolves.toBeNull()
   })
@@ -115,7 +129,7 @@ describe('request', () => {
       ok: true,
       value: 1,
     })
-    await vi.advanceTimersByTimeAsync(1000)
+    await vi.advanceTimersByTimeAsync(5000)
 
     await expect(answer).resolves.toBeNull()
   })
