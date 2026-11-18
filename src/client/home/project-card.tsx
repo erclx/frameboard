@@ -438,7 +438,7 @@ function formatAgo(then: number, now: number): string {
   return 'just now'
 }
 
-/** The local day as `2026-09-02`, as `canon/design/home/list` prints it. */
+/** The local day as `YYYY-MM-DD`, as `canon/design/home/list` prints it. */
 function formatDay(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, '0')
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
