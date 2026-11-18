@@ -14,6 +14,7 @@ import {
   renameFrame,
   setFrameDevice,
   setFrameFlag,
+  setFrameKit,
   setFrameSpeakerNotes,
   setFrameTransition,
   setHeightModes,
@@ -166,6 +167,8 @@ const frameTransitionSchema = z.object({
   refs,
   transition: transition.nullable(),
 })
+/** Null clears each frame's kit, so it draws with the project's sheets alone. */
+const frameKitSchema = z.object({ refs, kit: name.nullable() })
 /**
  * Blank text clears the note, and the setter refuses one past its limit.
  * `expected` is the note the edit began from, so one an agent set since is kept.
@@ -569,6 +572,17 @@ export function structureRoutes(
       body.refs,
       (frame, journal) =>
         setFrameTransition(root, frame, body.transition, { cwd, journal }),
+      (records) => records.map((record) => record.ref),
+    )
+    return c.json({ ok: true, data: frames })
+  })
+
+  /** Sets or clears the project kit each frame draws with, in one step, leaving every frame file alone. */
+  app.post('/api/frame/kit', async (c) => {
+    const body = await parseBody(c.req.raw, frameKitSchema)
+    const frames = await eachFrame(
+      body.refs,
+      (frame, journal) => setFrameKit(root, frame, body.kit, { cwd, journal }),
       (records) => records.map((record) => record.ref),
     )
     return c.json({ ok: true, data: frames })
