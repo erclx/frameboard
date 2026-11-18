@@ -80,6 +80,7 @@
     "inspector/export-tab": "design/16-inspector-tabs/export-tab",
     "inspector/export-none": "design/16-inspector-tabs/export-none",
     "inspector/crumb": "design/16-inspector-tabs/crumb",
+    "inspector/tilt": "design/16-inspector-tabs/inspector-tilt",
     "agents/claim-full": "design/13-agents/picked-claim-full",
     "agents/claim-pulse": "design/13-agents/picked-claim-pulse",
     "agents/unseen-one": "design/13-agents/unseen-one",

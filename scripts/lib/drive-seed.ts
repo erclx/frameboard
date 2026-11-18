@@ -118,6 +118,11 @@ const MIXED = { project: 'webapp', page: 'mixed', frame: 'notes' }
 
 const MIXED_PAGE = join(import.meta.dirname, 'drive-mixed.html')
 
+/** The page holding one card its own transform tilts, so a reel shows the 3D section filled and the Rotation row off. */
+const TILT = { project: 'webapp', page: 'tilt', frame: 'card' }
+
+const TILT_PAGE = join(import.meta.dirname, 'drive-tilt.html')
+
 /** The folder home opens on in a reel, holding two projects the fixture lacks. */
 const FOLDER = { name: 'Drives', projects: ['drive-app', 'drive-site'] }
 
@@ -165,6 +170,8 @@ export interface Seeded {
   tuner: 'laid' | 'kept'
   /** Whether the mixed text page was laid now or was already there and kept. */
   mixed: 'laid' | 'kept'
+  /** Whether the tilted card page was laid now or was already there and kept. */
+  tilt: 'laid' | 'kept'
   /** Whether the Drives folder was laid now or was already there and kept. */
   folder: 'laid' | 'kept'
   /** Whether the long sheet path project was laid now or was already there and kept. */
@@ -197,6 +204,7 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     height: 280,
   })
   const mixed = await layOne(root, MIXED, MIXED_PAGE)
+  const tilt = await layOne(root, TILT, TILT_PAGE)
   const device = await layOne(
     root,
     DEVICE,
@@ -225,6 +233,7 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     stacked,
     tuner,
     mixed,
+    tilt,
     folder,
     longPath,
     reserved,

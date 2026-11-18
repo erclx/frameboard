@@ -50,13 +50,20 @@ function laysOutInline(element: Element): boolean {
 }
 
 /**
- * How a live element takes a corner resize, null for a rotated one, whose
- * outline corners are not its own, and for inline content a width cannot size.
+ * How a live element takes a corner resize, null for one its `rotate` turns
+ * or its transform tilts in 3D, whose outline corners are not its own, and
+ * for inline content a width cannot size.
  */
 export function readResize(element: Element): ResizeRead | null {
   const kind = resizeKindOf(element)
   const style = getComputedStyle(element)
-  if (!kind || degreesOf(style.rotate) !== 0) return null
+  if (
+    !kind ||
+    degreesOf(style.rotate) !== 0 ||
+    style.transform.startsWith('matrix3d(')
+  ) {
+    return null
+  }
   if (
     (kind === 'text' || kind === 'container') &&
     (style.display === 'inline' || style.display === 'contents')

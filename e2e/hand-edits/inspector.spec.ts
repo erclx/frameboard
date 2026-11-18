@@ -146,6 +146,35 @@ test.describe('editing a selected element by hand', () => {
     await expect.poll(read).toBe(original)
   })
 
+  test('a tilt set in the 3D section lands in the headline’s transform, survives a reload, and one undo removes it', async ({
+    page,
+  }) => {
+    const headline = original.split('\n').find((line) => line.includes('<h1'))
+    const rotateX = page.getByRole('textbox', { name: 'Rotate X' })
+    await rotateX.fill('20')
+    await rotateX.press('Enter')
+
+    await expect.poll(read).toContain('rotateX(20deg)')
+    expect(changedLines(original, read())).toEqual([
+      headline?.replace(
+        '<h1 data-name="Headline">',
+        '<h1 data-name="Headline" style="transform: perspective(800px) rotateX(20deg)">',
+      ),
+    ])
+
+    await page.reload()
+    await selectHeadline(page)
+    await expect(page.getByRole('textbox', { name: 'Rotate X' })).toHaveValue(
+      '20°',
+    )
+    await expect(
+      page.getByRole('textbox', { name: 'Rotation', exact: true }),
+    ).toBeDisabled()
+
+    await undo(page)
+    await expect.poll(read).toBe(original)
+  })
+
   test('a family and a named weight picked in Typography land in the headline’s span', async ({
     page,
   }) => {

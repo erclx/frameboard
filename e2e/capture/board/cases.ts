@@ -49,6 +49,7 @@ const WRITING_SECTIONS = [
   'inspector-widths',
   'inspector-widths-menu',
   'inspector-widths-hug',
+  'element-tilt',
   'motion-held',
   'motion-ended',
   'export-filmstrip',
