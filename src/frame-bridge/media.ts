@@ -1,4 +1,8 @@
-import type { MediaAct, MediaReading } from '@/shared/frame-bridge/media'
+import type {
+  FileFlag,
+  MediaAct,
+  MediaReading,
+} from '@/shared/frame-bridge/media'
 import { LOOK_MARKER } from '@/shared/theme'
 
 import { addressed, type Handlers } from './handler'
@@ -14,6 +18,8 @@ const EVENTS = [
   'error',
   'emptied',
 ] as const
+
+const FLAGS: readonly FileFlag[] = ['controls', 'autoplay', 'loop', 'muted']
 
 /** The `<video>` or `<audio>` an address names, or null for other bytes or no media there. */
 function mediaAt(address: {
@@ -53,6 +59,10 @@ function act(media: HTMLMediaElement, asked: MediaAct): void {
       return
     case 'toggle-sound':
       media.muted = !media.muted
+      return
+    case 'set-flag':
+      // The attribute alone, which a browser reads at load, so a playing clip keeps its state.
+      media.toggleAttribute(asked.name, asked.on)
   }
 }
 
@@ -81,8 +91,12 @@ export const mediaHandlers: Handlers = {
     if (!media) return null
     const read = () => push(readMedia(media))
     for (const name of EVENTS) media.addEventListener(name, read)
+    // A file attribute changing fires no media event.
+    const flags = new MutationObserver(read)
+    flags.observe(media, { attributeFilter: [...FLAGS] })
     onClose(() => {
       for (const name of EVENTS) media.removeEventListener(name, read)
+      flags.disconnect()
     })
     return readMedia(media)
   },

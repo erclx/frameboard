@@ -247,6 +247,31 @@ describe('SelectionOverlay', () => {
     )
   })
 
+  it('draws several frames a dashed group line set apart, each frame solid', () => {
+    act(() => select(selectionStore, PAGE, [LEFT.ref, RIGHT.ref]))
+
+    const { container } = render(<SelectionOverlay frames={[LEFT, RIGHT]} />)
+
+    const group = container.querySelector<HTMLElement>('[data-selection]')
+    expect(group?.style.outline).toContain('dashed')
+    expect(group?.style.outlineOffset).toContain('6px')
+    for (const outline of container.querySelectorAll<HTMLElement>(
+      '[data-outline]',
+    )) {
+      expect(outline.style.outline).toContain('solid')
+    }
+  })
+
+  it('keeps one selected frame a solid outline on its bounds', () => {
+    act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+    const { container } = render(<SelectionOverlay frames={[LEFT, RIGHT]} />)
+
+    const selection = container.querySelector<HTMLElement>('[data-selection]')
+    expect(selection?.style.outline).toContain('solid')
+    expect(selection?.style.outlineOffset).toBe('')
+  })
+
   it('leaves out a selected frame the page no longer shows', () => {
     act(() => select(selectionStore, PAGE, [LEFT.ref, RIGHT.ref]))
 

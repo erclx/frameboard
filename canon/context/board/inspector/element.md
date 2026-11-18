@@ -25,7 +25,7 @@ Owns an element's sections, from Layout, Size, and Position through type, rotati
 
 ## Gotchas
 
-- A hand edit reloads its frame unless it was `previewed`, as a drop, a corner resize, or Keep values is, and the selection follows the hash the write answers
+- A hand edit reloads its frame unless it was `previewed`, as a drop, a corner resize, Keep values, or a Video file switch is, and the selection follows the hash the write answers
 - A field committing on blur drops a browser undo reaching it unfocused, through `stray-history.ts`, since a press falling through the board undoes the last field edited
 - A place reads the parent's position from the static cascade, which misses a sheet a load cannot read, so a miss writes `relative` anyway and one undo restores it
 - An element whose `rotate` turns it takes no corner resize and draws no marks, and a rotation preview lags the outline until the write reloads the frame

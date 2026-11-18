@@ -17,6 +17,7 @@ import type { TokenRow } from '@/shared/records/tokens'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 import { BRIDGE } from '@/test/frame-bridge'
 
+import { shownHashOf } from '../../bridge/shown'
 import {
   clear,
   selectElement,
@@ -303,6 +304,69 @@ describe('InspectorPanel with several elements selected', () => {
 
     expect(screen.getByRole('textbox', { name: 'Opacity' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Absolute' })).toBeDisabled()
+  })
+})
+
+describe('InspectorPanel with a video selected', () => {
+  const HASH = 'e'.repeat(64)
+  const WRITTEN = 'f'.repeat(64)
+  const CLIP = frameOf('clip', {
+    box: { x: 0, y: 0, width: 400, height: 300 },
+  })
+  let layer: HTMLDivElement | undefined
+
+  beforeEach(() => {
+    receiveBoard(liveStore, boardOf(pageOf([CLIP])))
+    liveStore.setState({ canWrite: true })
+    vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
+      if (String(input).includes('/api/frames/edit')) {
+        return Response.json({
+          ok: true,
+          data: { ref: CLIP.ref, index: 3, indexes: [], hash: WRITTEN },
+        })
+      }
+      return Response.json({ ok: false })
+    })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    act(() => clear(selectionStore))
+    layer?.remove()
+    layer = undefined
+  })
+
+  it('adopts a file switch write on the live page rather than reloading it', async () => {
+    layer = document.createElement('div')
+    const frame = document.createElement('div')
+    frame.dataset.frame = CLIP.ref
+    const iframe = document.createElement('iframe')
+    const loaded = new Promise((resolve) =>
+      iframe.addEventListener('load', resolve, { once: true }),
+    )
+    // Past the skipped injected style: html 0, head 1, body 2, then the video 3.
+    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style>${BRIDGE}</head><body><video></video></body></html>`
+    frame.append(iframe)
+    layer.append(frame)
+    document.body.append(layer)
+    await loaded
+    act(() =>
+      selectElement(selectionStore, 'studio/home', {
+        frame: CLIP.ref,
+        index: 3,
+        hash: HASH,
+      }),
+    )
+    render(
+      <TooltipProvider>
+        <InspectorPanel />
+      </TooltipProvider>,
+    )
+
+    await userEvent.click(await screen.findByRole('switch', { name: 'Loop' }))
+
+    // A write that waits on a reload leaves the page held at the bytes it was sent from.
+    await waitFor(() => expect(shownHashOf(iframe)).toBe(WRITTEN))
   })
 })
 

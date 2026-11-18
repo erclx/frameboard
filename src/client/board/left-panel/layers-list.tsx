@@ -55,6 +55,7 @@ import { DropLine } from './drop-line'
 import { ElementRows } from './element-rows'
 import { reportRefusal } from './page-actions'
 import { useReorderMonitor, useReorderRow } from './reorder'
+import { addsOne, spanTo } from './row-pick'
 import { PanelSection } from './section'
 import { SectionRow } from './section-rows'
 
@@ -121,6 +122,27 @@ export function LayersList({
   )
   useReorderMonitor(inLayers, move)
 
+  const sectionOpen = (group: FrameGroup) =>
+    !group.section ||
+    !collapsed.has(group.section.name) ||
+    group.rows.some(
+      (frame) =>
+        selectedFrames.includes(frame.ref) || element?.frame === frame.ref,
+    )
+  // The rows a Shift range spans, in Layers order, a hidden frame never selecting.
+  const shownRefs = groups
+    .filter(sectionOpen)
+    .flatMap((group) => group.rows)
+    .filter((frame) => !frame.hidden)
+    .map((frame) => frame.ref)
+  // Read at the click, since a click just before may not have rendered yet.
+  const spanFrom = (frame: FrameRecord) => {
+    const { page: current, frames: held } = selectionStore.getState()
+    return current === pageOf(frame)
+      ? spanTo(shownRefs, held.at(-1), frame.ref)
+      : null
+  }
+
   const isOpen = (key: string) => expanded.has(key)
   const toggle = (key: string) =>
     setExpanded((open) => {
@@ -145,6 +167,7 @@ export function LayersList({
         canWrite={canWrite}
         calls={calls}
         tint={frameSelected ? 'bg-primary/26' : undefined}
+        spanFrom={spanFrom}
         chevron={
           <button
             type="button"
@@ -204,17 +227,12 @@ export function LayersList({
             )
             if (!group.section) return rows
             const { section } = group
-            const holdsSelected = group.rows.some(
-              (frame) =>
-                selectedFrames.includes(frame.ref) ||
-                element?.frame === frame.ref,
-            )
             return (
               <SectionRow
                 key={`${SECTION_LIST}${section.name}`}
                 section={section}
                 page={pageOfFrames(frames)}
-                open={!collapsed.has(section.name) || holdsSelected}
+                open={sectionOpen(group)}
                 onToggle={() =>
                   setCollapsed((shut) => {
                     const next = new Set(shut)
@@ -246,6 +264,8 @@ interface FrameRowProps {
   calls: Structure
   /** The selected tint, absent unless the frame itself is selected. */
   tint: string | undefined
+  /** The frames a Shift-click on this row selects, or null to select it alone. */
+  spanFrom: (frame: FrameRecord) => string[] | null
   /** The expand toggle, kept apart from the row's own click. */
   chevron: ReactNode
   /** Its element rows, while open. */
@@ -282,6 +302,7 @@ function FrameRow({
   canWrite,
   calls,
   tint,
+  spanFrom,
   chevron,
   children,
 }: FrameRowProps) {
@@ -304,8 +325,11 @@ function FrameRow({
       enterFrame(frame.ref)
       return
     }
-    if (event.shiftKey) toggleSelected(selectionStore, pageOf(frame), frame.ref)
-    else select(selectionStore, pageOf(frame), [frame.ref])
+    const span = event.shiftKey ? spanFrom(frame) : null
+    if (span) select(selectionStore, pageOf(frame), span)
+    else if (!event.shiftKey && addsOne(event)) {
+      toggleSelected(selectionStore, pageOf(frame), frame.ref)
+    } else select(selectionStore, pageOf(frame), [frame.ref])
     // A preview draws the frame wider than its stored box, so reveal what draws.
     const [drawn] = withDrawn([frame])
     if (drawn && selectionStore.getState().frames.includes(frame.ref)) {

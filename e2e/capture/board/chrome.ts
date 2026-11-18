@@ -68,6 +68,38 @@ function leftTab(name: string): (page: Page) => Promise<void> {
 
 const themeTab = leftTab('Theme')
 
+/**
+ * Names the board sheet at a long absolute path in the token read, filtered
+ * in the page's `fetch`, since a route fetching the real answer waits behind
+ * the held `readyWhen` route.
+ */
+async function longBoardSheet(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const pass = window.fetch.bind(window)
+    window.fetch = async (input, init) => {
+      const response = await pass(input, init)
+      const url = input instanceof Request ? input.url : String(input)
+      if (
+        !/\/api\/projects\/[^/]+\/tokens$/.test(
+          new URL(url, location.href).pathname,
+        )
+      ) {
+        return response
+      }
+      const read = (await response.json()) as {
+        data: { sheets: { kind: string; path: string }[] }
+      }
+      for (const sheet of read.data.sheets) {
+        if (sheet.kind === 'board') {
+          sheet.path =
+            '/home/someone/repositories/a-design-system-workspace/tokens/tokens.css'
+        }
+      }
+      return Response.json(read, { status: response.status })
+    }
+  })
+}
+
 /** The reference's six files, for a preview board whose `assets/` holds none. */
 const REFERENCE_ASSETS = [
   { path: 'hero.png', kind: 'image', size: 1_200_000 },
@@ -615,6 +647,16 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
       setup: themed(both(asWriter, themeTab)),
+    },
+    {
+      // A board sheet outside the board folder at a long path, which wraps inside the note.
+      section: 'theme-tab-long-path',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(both(longBoardSheet, themeTab)),
     },
     {
       section: 'theme-tab-empty',

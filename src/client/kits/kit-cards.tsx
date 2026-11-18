@@ -68,7 +68,7 @@ export function KitCards({
             <span
               key={slot}
               aria-hidden
-              className="h-[118px] animate-pulse rounded-[10px] bg-muted"
+              className="h-[118px] rounded-[10px] bg-muted motion-safe:animate-frame-loading"
             />
           ))
         : kits.map((kit) => (
@@ -151,7 +151,7 @@ function Preview({ kit }: { kit: KitRecord }) {
     <span
       className={cn(
         'relative block h-full',
-        loaded !== src && 'animate-pulse bg-muted',
+        loaded !== src && 'bg-muted motion-safe:animate-frame-loading',
       )}
     >
       <iframe

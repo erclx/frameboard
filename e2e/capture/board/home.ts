@@ -62,6 +62,15 @@ async function aboutAtTabletWidth(page: Page): Promise<void> {
  * Holds the live socket open with no server behind it, so no board ever
  * arrives and the page stays on its loading shell.
  */
+/** Stores the count of entries home drew on its last visit, before the page loads. */
+function rememberedCount(count: number) {
+  return async (page: Page): Promise<void> => {
+    await page.addInitScript((stored) => {
+      localStorage.setItem('frameboard.home.count', String(stored))
+    }, count)
+  }
+}
+
 async function neverConnects(page: Page): Promise<void> {
   await page.routeWebSocket('**/api/live', () => {})
 }
@@ -685,6 +694,19 @@ export function homeCases(): CaptureCase[] {
         evidence: true,
         setup: both(
           chosenTheme(theme),
+          neverConnects,
+          readyWhen('main li[data-placeholder]'),
+        ),
+      },
+      {
+        // Seven entries remembered from the last visit, so seven placeholders pulse.
+        section: 'home-loading-remembered',
+        theme,
+        route: '/',
+        evidence: true,
+        setup: both(
+          chosenTheme(theme),
+          rememberedCount(7),
           neverConnects,
           readyWhen('main li[data-placeholder]'),
         ),

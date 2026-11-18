@@ -18,7 +18,8 @@ const GROUP_TITLES: Record<TokenRow['group'], string> = {
   other: 'Other',
 }
 
-const CODE = 'font-mono text-label font-normal text-foreground'
+const CODE =
+  'font-mono text-label font-normal text-foreground [overflow-wrap:anywhere]'
 
 interface ThemeTabProps {
   project: string

@@ -294,7 +294,13 @@ function ElementDesign({ page, element }: ElementProps) {
   return (
     <>
       {media ? (
-        <VideoSection media={media} disabled={disabled} write={write} />
+        <VideoSection
+          media={media}
+          disabled={disabled}
+          write={(change) =>
+            writeElement(page, element, change, { previewed: true })
+          }
+        />
       ) : null}
       <PositionSection
         placement={live.placement}

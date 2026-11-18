@@ -474,7 +474,8 @@
       }
       .framesel {
         position: absolute;
-        outline: 1.5px solid var(--accent);
+        outline: 1px dashed color-mix(in srgb, var(--accent) 65%, transparent);
+        outline-offset: 6px;
         pointer-events: none;
         z-index: 3;
       }

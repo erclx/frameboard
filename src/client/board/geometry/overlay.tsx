@@ -18,6 +18,9 @@ const CORNERS: readonly Corner[] = ['nw', 'ne', 'sw', 'se']
 
 const PARENT_OUTLINE = `${screen(1)} dashed var(--primary)`
 
+/** Set apart from the frames, so the line never reads as a frame's edge across an unselected one between. */
+const GROUP_OUTLINE = `${screen(1)} dashed color-mix(in srgb, var(--primary) 65%, transparent)`
+
 const NO_SECTIONS: readonly SectionRecord[] = []
 
 /** Above every frame, whose z-index is its stacking order. */
@@ -73,9 +76,9 @@ export function SelectionOverlay({
 }
 
 /**
- * The frame selection. With an element selected inside it, the frame keeps a
- * dashed outline alone, as the parent of what is selected, and the element
- * overlay draws the handles and chip.
+ * The frame selection. A frame holding a selected element keeps a dashed
+ * outline alone, the element overlay drawing its handles and chip, and
+ * several frames keep solid outlines inside a dashed group line.
  */
 function Selection({
   frames,
@@ -114,7 +117,9 @@ function Selection({
         ...place(bounds),
         ...(inside
           ? { outline: PARENT_OUTLINE, outlineOffset: screen(1) }
-          : { outline: OUTLINE }),
+          : several
+            ? { outline: GROUP_OUTLINE, outlineOffset: screen(6) }
+            : { outline: OUTLINE }),
       }}
     >
       {several
