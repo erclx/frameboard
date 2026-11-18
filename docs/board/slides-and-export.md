@@ -9,9 +9,10 @@ The Slides and Export tabs, and the Motion section a moving frame adds.
 
 ## Slides
 
-- The inspector's Slides tab sets the page's transition drawn between slides while presenting, with a direction for Slide and Push and a duration, and a frame's This slide row sets its own
-- Both lists show a transition the project added under `assets/transitions/` after the built-in ones, by its file's name
-- An element's Slides tab sets the step it appears on with an effect and a start, so the arrows reveal a slide's steps in order before moving on, and the bar shows a dot per step, or the count past six
+- The inspector's Slides tab picks the page's transition from a grid of tiles, with a direction for Slide and Push and a duration under it, and a frame's This slide grid sets its own
+- Hovering a tile plays it on the selected slides, and a click saves it. Transitions under `assets/transitions/` follow the built-ins, by file name.
+- An element's Slides tab sets the step it appears on, its effect from the same tiles, and its start as On press, With last, or After last
+- While presenting, the arrows reveal a slide's steps in order before moving on, and the bar shows a dot per step, or the count past six
 - G while presenting, or the bar's grid button, shows every slide with the current one marked. Enter, a click, or a typed number then Enter jumps to a slide at its first step.
 
 ## Speaker notes
