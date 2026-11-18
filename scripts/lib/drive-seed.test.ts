@@ -202,6 +202,7 @@ describe('the raw colors page', () => {
         'stacked',
         'tuner',
         'mixed',
+        'tilt',
         'device',
         'fold',
       ],
@@ -247,6 +248,7 @@ describe('the scroll feed page', () => {
         'stacked',
         'tuner',
         'mixed',
+        'tilt',
         'device',
         'fold',
       ],
@@ -639,6 +641,29 @@ describe('the mixed text page', () => {
     const seeded = await seedDrive(root, new Date())
 
     expect(seeded.mixed).toBe('kept')
+    expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
+  })
+})
+
+describe('the tilted card page', () => {
+  it('lays one card whose own transform tilts it in the order the 3D section reads', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    const html = readFileSync(join(root, 'webapp/tilt/card.html'), 'utf8')
+    expect(seeded.tilt).toBe('laid')
+    expect(html).toContain(
+      'transform: perspective(800px) rotateX(20deg) rotateY(-30deg)',
+    )
+  })
+
+  it('leaves a hand-edited tilted card page alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    const edited = join(root, 'webapp/tilt/card.html')
+    writeFileSync(edited, '<p>edited by a reel</p>')
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.tilt).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })
