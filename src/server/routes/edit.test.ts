@@ -264,6 +264,34 @@ describe('editRoutes', () => {
     })
   })
 
+  it('writes one text run the change names', async () => {
+    const original = read()
+
+    const response = await post({
+      ref: HERO,
+      index: HEADLINE,
+      hash: hash(),
+      change: { kind: 'text', value: 'Welcome', run: 0 },
+    })
+
+    expect(response.status).toBe(200)
+    expect(read()).toBe(original.replace('>hero</h1>', '>Welcome</h1>'))
+  })
+
+  it('refuses a negative text run, writing nothing', async () => {
+    const original = read()
+
+    const response = await post({
+      ref: HERO,
+      index: HEADLINE,
+      hash: hash(),
+      change: { kind: 'text', value: 'Welcome', run: -1 },
+    })
+
+    expect(response.status).toBe(400)
+    expect(read()).toBe(original)
+  })
+
   it('asks for no kept source while the hash still matches the file', async () => {
     await post({
       ref: HERO,

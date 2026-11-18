@@ -32,13 +32,15 @@ export function escapeText(value: string): string {
 }
 
 /**
- * Replaces a text-only element's text, refusing unless its source is exactly
- * one text node, since misnesting can put its end tag past another's markup.
+ * Replaces a text-only element's text, or only the text node `run` names,
+ * refusing source that does not tile, since misnesting can put an end tag
+ * past another's markup.
  */
 export function setText(
   source: string,
   element: Element,
   value: string,
+  run?: number,
 ): TextResult {
   const tag = element.tagName
   const location = element.sourceCodeLocation
@@ -56,6 +58,7 @@ export function setText(
   }
   const from = location.startTag.endOffset
   const to = location.endTag.startOffset
+  if (run !== undefined) return setRun(source, element, value, run, from, to)
   const [only, ...rest] = element.childNodes
   const isTiled =
     only === undefined
@@ -67,12 +70,60 @@ export function setText(
   if (!isTiled) {
     return { ok: false, detail: `<${tag}> holds more than one text node` }
   }
-  const written =
-    LEADING_NEWLINE_DROPPED.has(tag) && value.startsWith('\n')
-      ? `\n${value}`
-      : value
   return {
     ok: true,
-    html: source.slice(0, from) + escapeText(written) + source.slice(to),
+    html:
+      source.slice(0, from) +
+      escapeText(guarded(tag, value)) +
+      source.slice(to),
+  }
+}
+
+/** A value starting right after the start tag, its leading newline doubled where the parser drops one. */
+function guarded(tag: string, value: string): string {
+  return LEADING_NEWLINE_DROPPED.has(tag) && value.startsWith('\n')
+    ? `\n${value}`
+    : value
+}
+
+/**
+ * Splices one text node's source span, refusing one whose span leaves the
+ * element's content or overlaps a sibling, since its bytes would not tile.
+ */
+function setRun(
+  source: string,
+  element: Element,
+  value: string,
+  run: number,
+  from: number,
+  to: number,
+): TextResult {
+  const tag = element.tagName
+  const nodes = element.childNodes
+  const at = nodes.filter((node) => node.nodeName === '#text')[run]
+  if (!at) return { ok: false, detail: `<${tag}> holds no text run ${run}` }
+  const position = nodes.indexOf(at)
+  const start = at.sourceCodeLocation?.startOffset
+  const end = at.sourceCodeLocation?.endOffset
+  const previous = nodes[position - 1]?.sourceCodeLocation?.endOffset ?? from
+  const next = nodes[position + 1]?.sourceCodeLocation?.startOffset ?? to
+  if (
+    start === undefined ||
+    end === undefined ||
+    start < previous ||
+    end > next ||
+    start < from ||
+    end > to
+  ) {
+    return {
+      ok: false,
+      detail: `<${tag}>'s text run ${run} does not tile its source`,
+    }
+  }
+  // Past a dropped newline the parser already reads one, so only a run at the tag doubles it.
+  const written = start === from ? guarded(tag, value) : value
+  return {
+    ok: true,
+    html: source.slice(0, start) + escapeText(written) + source.slice(end),
   }
 }

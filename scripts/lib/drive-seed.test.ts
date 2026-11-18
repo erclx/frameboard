@@ -201,6 +201,7 @@ describe('the raw colors page', () => {
         'shapes',
         'stacked',
         'tuner',
+        'mixed',
       ],
     })
   })
@@ -243,6 +244,7 @@ describe('the scroll feed page', () => {
         'shapes',
         'stacked',
         'tuner',
+        'mixed',
       ],
     })
   })
@@ -545,6 +547,29 @@ describe('the drawn controls page', () => {
     const seeded = await seedDrive(root, new Date())
 
     expect(seeded.tuner).toBe('kept')
+    expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
+  })
+})
+
+describe('the mixed text page', () => {
+  it('lays list items whose text runs sit beside an inline child', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    const html = readFileSync(join(root, 'webapp/mixed/notes.html'), 'utf8')
+    expect(seeded.mixed).toBe('laid')
+    expect(html).toContain(
+      '<li>Wipes in beside it, <code>wipe</code> same press</li>',
+    )
+  })
+
+  it('leaves a hand-edited mixed text page alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    const edited = join(root, 'webapp/mixed/notes.html')
+    writeFileSync(edited, '<p>edited by a reel</p>')
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.mixed).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })

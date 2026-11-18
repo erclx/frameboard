@@ -98,6 +98,11 @@ const TUNER = { project: 'webapp', page: 'tuner', frame: 'photo-tuner' }
 
 const TUNER_PAGE = join(import.meta.dirname, 'drive-tuner.html')
 
+/** The page holding one frame of list items whose text sits beside an inline child, so a double-click edits one run. */
+const MIXED = { project: 'webapp', page: 'mixed', frame: 'notes' }
+
+const MIXED_PAGE = join(import.meta.dirname, 'drive-mixed.html')
+
 /** The folder home opens on in a reel, holding two projects the fixture lacks. */
 const FOLDER = { name: 'Drives', projects: ['drive-app', 'drive-site'] }
 
@@ -133,6 +138,8 @@ export interface Seeded {
   stacked: 'laid' | 'kept'
   /** Whether the drawn controls page was laid now or was already there and kept. */
   tuner: 'laid' | 'kept'
+  /** Whether the mixed text page was laid now or was already there and kept. */
+  mixed: 'laid' | 'kept'
   /** Whether the Drives folder was laid now or was already there and kept. */
   folder: 'laid' | 'kept'
   /** The frame refs the reservation holds. */
@@ -162,6 +169,7 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     width: 640,
     height: 280,
   })
+  const mixed = await layOne(root, MIXED, MIXED_PAGE)
   const folder = await layFolder(root)
   const reserved = await reserveSettings(root, now)
   return {
@@ -174,6 +182,7 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     shapes,
     stacked,
     tuner,
+    mixed,
     folder,
     reserved,
   }

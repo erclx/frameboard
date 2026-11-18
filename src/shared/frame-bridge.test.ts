@@ -4,6 +4,7 @@ import {
   BRIDGE_TAG,
   isElementAddress,
   isElementBox,
+  isTextEditArgs,
   isTextEditEnd,
   readBridgeMessage,
 } from './frame-bridge'
@@ -152,6 +153,10 @@ describe('isElementBox', () => {
 describe('isTextEditEnd', () => {
   it.each([
     ['a commit', { kind: 'commit', text: 'Hi', breaks: false }],
+    [
+      'a commit of one run',
+      { kind: 'commit', text: 'Hi', breaks: false, run: 1 },
+    ],
     ['a close', { kind: 'closed' }],
   ])('accepts %s', (_case, value) => {
     expect(isTextEditEnd(value)).toBe(true)
@@ -161,7 +166,33 @@ describe('isTextEditEnd', () => {
     ['a commit with no text', { kind: 'commit', breaks: false }],
     ['a commit with no breaks flag', { kind: 'commit', text: 'Hi' }],
     ['an unknown kind', { kind: 'open' }],
+    ['a negative run', { kind: 'commit', text: 'Hi', breaks: false, run: -1 }],
+    [
+      'a fractional run',
+      { kind: 'commit', text: 'Hi', breaks: false, run: 0.5 },
+    ],
   ])('refuses %s', (_case, value) => {
     expect(isTextEditEnd(value)).toBe(false)
+  })
+})
+
+describe('isTextEditArgs', () => {
+  it.each([
+    ['an address alone', { index: 2, hash: 'a' }],
+    ['an address with a point', { index: 2, hash: 'a', at: { x: 4, y: -1.5 } }],
+  ])('accepts %s', (_case, value) => {
+    expect(isTextEditArgs(value)).toBe(true)
+  })
+
+  it.each([
+    ['a point with no y', { index: 2, hash: 'a', at: { x: 4 } }],
+    [
+      'a point that is not finite',
+      { index: 2, hash: 'a', at: { x: NaN, y: 0 } },
+    ],
+    ['a point that is not a record', { index: 2, hash: 'a', at: 4 }],
+    ['a bad address', { index: -1, hash: 'a', at: { x: 0, y: 0 } }],
+  ])('refuses %s', (_case, value) => {
+    expect(isTextEditArgs(value)).toBe(false)
   })
 })

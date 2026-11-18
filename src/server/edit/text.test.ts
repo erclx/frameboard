@@ -82,4 +82,68 @@ describe('setText', () => {
       ok: false,
     })
   })
+
+  describe('a run', () => {
+    it('should replace one text node beside a child element, keeping the child and the other run', () => {
+      const source = '<li>Wipes in &amp; beside it, <code>wipe</code> same</li>'
+
+      expect(setText(source, first(source, 'li'), 'A <b> & c ', 0)).toEqual({
+        ok: true,
+        html: '<li>A &lt;b&gt; &amp; c <code>wipe</code> same</li>',
+      })
+    })
+
+    it('should replace the run after the child', () => {
+      const source = '<p>One <code>x</code> two</p>'
+
+      expect(setText(source, first(source, 'p'), ' three', 1)).toEqual({
+        ok: true,
+        html: '<p>One <code>x</code> three</p>',
+      })
+    })
+
+    it('should count only text nodes, past a comment between runs', () => {
+      const source = '<p>a<!-- c -->b<i>i</i>c</p>'
+
+      expect(setText(source, first(source, 'p'), 'z', 2)).toEqual({
+        ok: true,
+        html: '<p>a<!-- c -->b<i>i</i>z</p>',
+      })
+    })
+
+    it('should double a leading newline in a pre run the parser would drop', () => {
+      const source = '<pre>a<b>x</b></pre>'
+
+      expect(setText(source, first(source, 'pre'), '\nb', 0)).toEqual({
+        ok: true,
+        html: '<pre>\n\nb<b>x</b></pre>',
+      })
+    })
+
+    it('should keep the newline the parser already dropped before a pre run', () => {
+      const source = '<pre>\na<b>x</b></pre>'
+
+      expect(setText(source, first(source, 'pre'), '\nb', 0)).toEqual({
+        ok: true,
+        html: '<pre>\n\nb<b>x</b></pre>',
+      })
+    })
+
+    it('should refuse a run past the last text node', () => {
+      const source = '<p>One <code>x</code></p>'
+
+      expect(setText(source, first(source, 'p'), 'z', 1)).toEqual({
+        ok: false,
+        detail: '<p> holds no text run 1',
+      })
+    })
+
+    it('should refuse a run inside raw content', () => {
+      const source = '<style>a{}</style>'
+
+      expect(setText(source, first(source, 'style'), 'z', 0)).toMatchObject({
+        ok: false,
+      })
+    })
+  })
 })

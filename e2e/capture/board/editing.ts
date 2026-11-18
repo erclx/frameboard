@@ -335,6 +335,103 @@ function textLinesHeld(ref: string): (page: Page) => Promise<void> {
 }
 
 /**
+ * Serves hero with words around its caption's `code`, rewriting the bytes in
+ * flight, which adds text nodes alone so every tree index holds.
+ */
+async function wordsAroundCommandOnHero(page: Page): Promise<void> {
+  await page.route('**/frames/webapp/home/hero.html*', async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({
+      response,
+      body: (await response.text())
+        .replace(
+          '<p data-name="Caption"><code',
+          '<p data-name="Caption">Run <code',
+        )
+        .replace(
+          'frameboard serve</code></p>',
+          'frameboard serve</code> to start a board</p>',
+        ),
+    })
+  })
+}
+
+/**
+ * Double-clicks the words after `ref`'s caption command, holding the write
+ * back so the edit stays open on that run with its words selected.
+ */
+function textRunHeld(ref: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ owner, frames }) => {
+        let left = frames
+        const sent = window.fetch.bind(window)
+        window.fetch = (...args) =>
+          String(args[0]).includes('/api/frames/edit')
+            ? new Promise<Response>(() => {})
+            : sent(...args)
+        const iframe = () =>
+          document.querySelector<HTMLIFrameElement>(
+            `[data-frame="${owner}"] iframe`,
+          )
+        const doubleClick = (run: Node) => {
+          const frame = iframe()
+          const hit = document.querySelector('[data-hit-layer]')
+          const shown = frame?.contentDocument
+          if (!frame || !hit || !shown) return
+          const words = shown.createRange()
+          words.selectNodeContents(run)
+          const own = words.getBoundingClientRect()
+          const box = frame.getBoundingClientRect()
+          const k = box.width / (frame.contentWindow?.innerWidth || box.width)
+          const clientX = box.left + (own.left + own.width / 2) * k
+          const clientY = box.top + (own.top + own.height / 2) * k
+          const send = (type: string, detail: number) =>
+            (type === 'mouseup' ? window : hit).dispatchEvent(
+              new MouseEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX,
+                clientY,
+                detail,
+              }),
+            )
+          for (const detail of [1, 2]) {
+            send('mousedown', detail)
+            send('mouseup', detail)
+            send('click', detail)
+          }
+          send('dblclick', 2)
+        }
+        let asked = 0
+        const run = () => {
+          const frame = iframe()
+          const caption = frame?.contentDocument?.querySelector(
+            '[data-name="Caption"]',
+          )
+          const after = caption?.lastChild
+          if (frame?.dataset.renderedAt && caption && after) {
+            if (caption.hasAttribute('data-frameboard-editing')) {
+              document.documentElement.setAttribute('data-text-run-held', '')
+              return
+            }
+            // The pick waits on the frame's tree, so the press repeats slowly.
+            if (asked++ % 60 === 0) doubleClick(after)
+          }
+          if (--left > 0) requestAnimationFrame(run)
+          else console.error(`No caption run in ${owner} opened for typing`)
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(run),
+        )
+      },
+      { owner: ref, frames: PRESS_FRAMES },
+    )
+  }
+}
+
+/**
  * Serves hero with its headline placed Free, rewriting the bytes in flight so
  * the headline keeps its tree index and a pick still selects it.
  */
@@ -687,6 +784,23 @@ export function editingCases(theme: 'light' | 'dark'): CaptureCase[] {
           asWriter,
           textLinesHeld('webapp/home/hero'),
           readyWhen('[data-text-lines-held]'),
+        ),
+      ),
+    },
+    {
+      // The words after the caption's command opened by one double-click, the command left shut.
+      section: 'text-edit-run',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          wordsAroundCommandOnHero,
+          textRunHeld('webapp/home/hero'),
+          readyWhen('[data-text-run-held]'),
         ),
       ),
     },

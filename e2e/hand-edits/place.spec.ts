@@ -435,6 +435,37 @@ test.describe('placing text and shapes into a frame', () => {
       )
   })
 
+  test('a double-click on bare text beside a code edits that run in place, keeping the code', async ({
+    page,
+  }) => {
+    writeFileSync(
+      path(),
+      read().replace(
+        '</h1>',
+        '</h1>\n    <ul><li>Wipes in beside it, <code>wipe</code> same press</li></ul>',
+      ),
+    )
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const code = await hero(page).locator('li code').boundingBox()
+    if (!code) throw new Error('The code has no box on screen')
+
+    // Past the code's right edge, on the run after it.
+    await page.mouse.dblclick(
+      code.x + code.width + 24,
+      code.y + code.height / 2,
+    )
+    await expect(hero(page).locator('li')).toBeFocused()
+    await page.keyboard.type(' same key')
+    await page.keyboard.press('Escape')
+
+    await expect
+      .poll(read)
+      .toContain(
+        '<ul><li>Wipes in beside it, <code>wipe</code> same key</li></ul>',
+      )
+  })
+
   test('a placed Text set Absolute writes no size, so its box stays as wide as its words', async ({
     page,
   }) => {

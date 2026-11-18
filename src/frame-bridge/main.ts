@@ -6,6 +6,7 @@ import {
   type ElementAddress,
   type ElementBox,
   isElementAddress,
+  isTextEditArgs,
   readBridgeMessage,
 } from '@/shared/frame-bridge'
 
@@ -47,15 +48,19 @@ const editing = new Map<string, () => void>()
 const committed = new Map<string, () => void>()
 
 function textEdit(args: unknown, id: string): boolean {
-  if (!isElementAddress(args)) throw new Error('not an element address')
+  if (!isTextEditArgs(args)) throw new Error('not a text edit')
   const element = addressed(args)
   const cancel =
     element &&
-    openTextEdit(element, (end, restore) => {
-      editing.delete(id)
-      if (end.kind === 'commit') committed.set(id, restore)
-      send({ tag: BRIDGE_TAG, kind: 'push', id, value: end })
-    })
+    openTextEdit(
+      element,
+      (end, restore) => {
+        editing.delete(id)
+        if (end.kind === 'commit') committed.set(id, restore)
+        send({ tag: BRIDGE_TAG, kind: 'push', id, value: end })
+      },
+      args.at,
+    )
   if (!cancel) return false
   editing.set(id, cancel)
   return true

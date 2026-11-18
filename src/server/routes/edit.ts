@@ -70,7 +70,11 @@ const changeSchema = z.union([
     name,
     remove: z.literal(true),
   }),
-  z.object({ kind: z.literal('text'), value }),
+  z.object({
+    kind: z.literal('text'),
+    value,
+    run: z.int().min(0).optional(),
+  }),
   z.object({
     kind: z.literal('styles'),
     declarations: z.array(z.object({ property: name, value })).max(16),

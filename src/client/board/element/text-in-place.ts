@@ -1,4 +1,8 @@
-import { isElementBox, isTextEditEnd } from '@/shared/frame-bridge'
+import {
+  type FramePoint,
+  isElementBox,
+  isTextEditEnd,
+} from '@/shared/frame-bridge'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { request, subscribe } from '../bridge/channel'
@@ -31,14 +35,15 @@ function shownFrame(
 }
 
 /**
- * Opens an element's text for typing in place, in the frame showing the
- * key's bytes, and writes the text the frame commits. The frame owns the
- * caret and the keys, and a reload there ends the edit with nothing sent.
+ * Opens an element's text for typing in the frame showing the key's bytes,
+ * and writes what the frame commits. A frame-local `at` opens the run of
+ * text under it beside child elements, and a reload ends it with nothing sent.
  */
 export function editTextInPlace(
   container: ParentNode,
   key: ElementKey,
   write: WriteText,
+  at?: FramePoint,
 ): TextEdit {
   const iframe = shownFrame(container, key.frame)
   if (!iframe) return { opened: Promise.resolve(false), cancel: () => {} }
@@ -48,12 +53,16 @@ export function editTextInPlace(
   const edit = subscribe(
     iframe,
     'text-edit',
-    { index: key.index, hash: key.hash },
+    { index: key.index, hash: key.hash, ...(at ? { at } : {}) },
     (end) => {
       if (!isTextEditEnd(end)) return
       edit.close()
       if (end.kind === 'closed') return
-      const changes: ElementChange[] = [{ kind: 'text', value: end.text }]
+      const changes: ElementChange[] = [
+        end.run === undefined
+          ? { kind: 'text', value: end.text }
+          : { kind: 'text', value: end.text, run: end.run },
+      ]
       if (end.breaks) {
         changes.push({
           kind: 'style',
@@ -89,17 +98,26 @@ export async function overElement(
   key: ElementKey,
   at: BoardPoint,
 ): Promise<boolean> {
-  const frame = frames.find((candidate) => candidate.ref === key.frame)
-  const iframe = frame && shownFrame(container, frame.ref)
-  if (!frame || !iframe) return false
+  const point = framePoint(frames, key.frame, at)
+  const iframe = shownFrame(container, key.frame)
+  if (!point || !iframe) return false
   const box = await request(iframe, 'element-box', {
     index: key.index,
     hash: key.hash,
   })
   if (!isElementBox(box)) return false
-  const x = at.x - frame.box.x
-  const y = at.y - frame.box.y
+  const { x, y } = point
   return x >= box.left && x < box.right && y >= box.top && y < box.bottom
+}
+
+/** A board point in the viewport of the frame `ref` names, or null for a frame not drawn. */
+export function framePoint(
+  frames: readonly FrameRecord[],
+  ref: string,
+  at: BoardPoint,
+): FramePoint | null {
+  const frame = frames.find((candidate) => candidate.ref === ref)
+  return frame ? { x: at.x - frame.box.x, y: at.y - frame.box.y } : null
 }
 
 /**

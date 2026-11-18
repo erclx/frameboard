@@ -27,7 +27,8 @@ export type ElementChange =
   | { kind: 'attribute'; name: string; value: string }
   /** Drops the attribute, since an empty value still states a boolean one. */
   | { kind: 'attribute'; name: string; remove: true }
-  | { kind: 'text'; value: string }
+  /** A `run` writes one text node among the element's text-node children, the rest kept. */
+  | { kind: 'text'; value: string; run?: number }
   /** Several declarations written as one edit, which one undo puts back. */
   | {
       kind: 'styles'
@@ -380,8 +381,13 @@ async function editInTurn(
       const text = change.kind === 'text' ? change.value : undefined
       const stale =
         error instanceof BoardWriteError && error.code === 'stale-address'
-      // Only a collision that kept the element count leaves the index on this text's element.
-      const kept = stale && text !== undefined && error.details.moved === false
+      // A kept count leaves the index on this element, and the Text field applies whole texts alone.
+      const kept =
+        stale &&
+        text !== undefined &&
+        change.kind === 'text' &&
+        change.run === undefined &&
+        error.details.moved === false
       if (kept) keptTexts.set(textKey(key), text)
       notify({
         title: 'Edit not saved',

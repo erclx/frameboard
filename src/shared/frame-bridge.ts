@@ -22,12 +22,24 @@ export interface ElementBox {
   bottom: number
 }
 
+/** A point in a frame's viewport, in CSS pixels. */
+export interface FramePoint {
+  x: number
+  y: number
+}
+
+/** The element a text edit opens, and the point double-clicked in it, which picks a run of text beside a child element. */
+export interface TextEditArgs extends ElementAddress {
+  at?: FramePoint
+}
+
 /**
- * How an in-place text edit ends: the text typed, and whether it holds a
- * break its element would collapse, or a close with nothing to write.
+ * How an in-place text edit ends: the text typed, the text node it is by
+ * index when a `run`, and whether it holds a break its element would
+ * collapse, or a close with nothing to write.
  */
 export type TextEditEnd =
-  | { kind: 'commit'; text: string; breaks: boolean }
+  | { kind: 'commit'; text: string; breaks: boolean; run?: number }
   | { kind: 'closed' }
 
 /** Each op's arguments, its reply value, and what it pushes, `never` for an op that pushes nothing. */
@@ -35,7 +47,7 @@ export interface BridgeOps {
   /** The element's live box, or null when the frame shows other bytes or no element there. */
   'element-box': { args: ElementAddress; value: ElementBox | null; push: never }
   /** Opens the element's text for typing, answering whether it opened, and pushes how the edit ends. */
-  'text-edit': { args: ElementAddress; value: boolean; push: TextEditEnd }
+  'text-edit': { args: TextEditArgs; value: boolean; push: TextEditEnd }
   /** Tells a committed edit, by its request id, whether the text was written, so a refusal shows the old text. */
   'text-written': {
     args: { edit: string; written: boolean }
@@ -139,6 +151,16 @@ export function isElementAddress(value: unknown): value is ElementAddress {
   )
 }
 
+/** Whether a value is what `text-edit` takes, an address with an optional point. */
+export function isTextEditArgs(value: unknown): value is TextEditArgs {
+  if (!isElementAddress(value)) return false
+  const { at } = value as { at?: unknown }
+  return (
+    at === undefined ||
+    (isRecord(at) && Number.isFinite(at.x) && Number.isFinite(at.y))
+  )
+}
+
 /** Whether a value is an element box, the value `element-box` replies with. */
 export function isElementBox(value: unknown): value is ElementBox {
   return (
@@ -154,7 +176,9 @@ export function isTextEditEnd(value: unknown): value is TextEditEnd {
   return (
     value.kind === 'commit' &&
     typeof value.text === 'string' &&
-    typeof value.breaks === 'boolean'
+    typeof value.breaks === 'boolean' &&
+    (value.run === undefined ||
+      (Number.isInteger(value.run) && (value.run as number) >= 0))
   )
 }
 

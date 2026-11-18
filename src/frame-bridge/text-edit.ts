@@ -1,4 +1,8 @@
-import { EDITING, type TextEditEnd } from '@/shared/frame-bridge'
+import {
+  EDITING,
+  type FramePoint,
+  type TextEditEnd,
+} from '@/shared/frame-bridge'
 
 /** A line break in a platform's two-character or old Mac form. */
 const BREAKS = /\r\n|\r/g
@@ -22,21 +26,21 @@ function collapsesBreaks(element: HTMLElement): boolean {
 }
 
 /**
- * Opens a text-only element for typing, answering its cancel or null. A break
- * is a newline in its one text node, never a `<br>`, which would end its
- * text-only state, and a reload ends the edit with nothing to write.
+ * Opens an element's text for typing, answering its cancel or null, or only
+ * the run at `at` beside child elements. A break is a newline, never a `<br>`,
+ * and a reload ends the edit with nothing to write.
  */
 export function openTextEdit(
   found: Element,
   end: EndTextEdit,
+  at?: FramePoint,
 ): (() => void) | null {
-  if (
-    !(found instanceof HTMLElement) ||
-    found.childElementCount > 0 ||
-    (found.textContent ?? '').trim() === ''
-  ) {
-    return null
+  if (!(found instanceof HTMLElement)) return null
+  if (found.childElementCount > 0) {
+    const run = at && runAt(found, at)
+    return run ? openRunEdit(found, run, end) : null
   }
+  if ((found.textContent ?? '').trim() === '') return null
   const element: HTMLElement = found
   const source = element.textContent ?? ''
   const collapses = collapsesBreaks(element)
@@ -146,6 +150,179 @@ export function openTextEdit(
   element.focus()
   const range = document.createRange()
   range.selectNodeContents(element)
+  const selection = getSelection()
+  selection?.removeAllRanges()
+  selection?.addRange(range)
+  return cancel
+}
+
+/** The text node of the element's own under a point, or null for a child's text, bare white space, or none. */
+function runAt(element: HTMLElement, { x, y }: FramePoint): Text | null {
+  const node =
+    document.caretPositionFromPoint?.(x, y)?.offsetNode ??
+    // WebKit before caretPositionFromPoint names the point by a range.
+    document.caretRangeFromPoint?.(x, y)?.startContainer
+  return node instanceof Text &&
+    node.parentNode === element &&
+    node.data.trim() !== ''
+    ? node
+    : null
+}
+
+/**
+ * Opens one run of text beside child elements for typing. Each child is
+ * shut to the caret and every input is spliced into the run by hand, so no
+ * keystroke reaches a child or splits, merges, or removes the run.
+ */
+function openRunEdit(
+  element: HTMLElement,
+  node: Text,
+  end: EndTextEdit,
+): () => void {
+  const index = [...element.childNodes]
+    .filter((child) => child instanceof Text)
+    .indexOf(node)
+  const source = node.data
+  const collapses = collapsesBreaks(element)
+  // Only runs of white space collapse, since an edge space beside a child shows.
+  const before = collapses ? source.replace(SPACES, ' ') : source
+  if (before !== source) node.data = before
+  const children = [...element.children].map((child) => ({
+    child,
+    editable: child.getAttribute('contenteditable'),
+  }))
+  const nodes = [...element.childNodes]
+  const texts = nodes.map((child) => (child instanceof Text ? child.data : ''))
+  let open = true
+
+  // A composition the browser would not cancel writes wherever the caret sat, so every node but the run goes back.
+  const putBack = () => {
+    for (const stray of [...element.childNodes]) {
+      if (!nodes.includes(stray)) stray.remove()
+    }
+    for (let at = nodes.length - 1; at >= 0; at--) {
+      const child = nodes[at]
+      if (child !== node && child instanceof Text) child.data = texts[at] ?? ''
+      const next = nodes[at + 1]
+      if (child && child.parentNode !== element) {
+        element.insertBefore(child, next?.parentNode === element ? next : null)
+      }
+    }
+  }
+  const close = () => {
+    open = false
+    putBack()
+    element.removeAttribute('contenteditable')
+    element.removeAttribute(EDITING)
+    for (const { child, editable } of children) {
+      if (editable === null) child.removeAttribute('contenteditable')
+      else child.setAttribute('contenteditable', editable)
+    }
+    element.removeEventListener('keydown', keydown)
+    element.removeEventListener('paste', paste)
+    element.removeEventListener('beforeinput', beforeinput)
+    element.removeEventListener('blur', commit)
+    window.removeEventListener('pagehide', unload)
+  }
+  const restore = () => {
+    node.data = source
+  }
+  const restoreShown = () => {
+    if (node.isConnected) restore()
+  }
+  const cancel = () => {
+    if (!open) return
+    close()
+    restore()
+  }
+  function unload() {
+    close()
+    end({ kind: 'closed' }, restoreShown)
+  }
+  function commit() {
+    if (!open) return
+    close()
+    const value = node.data.replace(BREAKS, '\n')
+    if (value === before) {
+      restore()
+      end({ kind: 'closed' }, restoreShown)
+      return
+    }
+    end(
+      { kind: 'commit', text: value, breaks: false, run: index },
+      restoreShown,
+    )
+  }
+  // A break in a collapsing element would need pre-line, which would show every sibling run's source newlines.
+  const typed = (text: string) =>
+    collapses ? text.replace(SPACES, ' ') : text.replace(BREAKS, '\n')
+  function keydown(event: KeyboardEvent) {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      if (!collapses) splice(selected(), '\n')
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      commit()
+    }
+  }
+  function paste(event: ClipboardEvent) {
+    event.preventDefault()
+    splice(selected(), typed(event.clipboardData?.getData('text/plain') ?? ''))
+  }
+  function beforeinput(event: InputEvent) {
+    // A composition the browser will not let go of edits the run natively, so splicing it too would type it twice.
+    if (!event.cancelable) return
+    event.preventDefault()
+    const [range = selected()] = event.getTargetRanges()
+    if (event.inputType.startsWith('delete')) splice(range, '')
+    else if (event.inputType.startsWith('insert')) {
+      splice(
+        range,
+        typed(event.data ?? event.dataTransfer?.getData('text/plain') ?? ''),
+      )
+    }
+  }
+  const selected = () => {
+    const selection = getSelection()
+    return selection && selection.rangeCount > 0
+      ? selection.getRangeAt(0)
+      : undefined
+  }
+  // A caret beside the run may name it from the element, so that edge counts as the run's.
+  const offsetIn = (container: Node, offset: number): number | undefined => {
+    if (container === node) return offset
+    if (container !== element) return undefined
+    const at = [...element.childNodes].indexOf(node)
+    if (offset === at) return 0
+    return offset === at + 1 ? node.length : undefined
+  }
+  // A range reaching past the run, into a child or another run, writes nothing.
+  const splice = (range: AbstractRange | undefined, text: string) => {
+    const start = range && offsetIn(range.startContainer, range.startOffset)
+    const end = range && offsetIn(range.endContainer, range.endOffset)
+    if (start === undefined || end === undefined) return
+    node.replaceData(start, end - start, text)
+    const caret = document.createRange()
+    caret.setStart(node, start + text.length)
+    caret.collapse(true)
+    getSelection()?.removeAllRanges()
+    getSelection()?.addRange(caret)
+  }
+
+  for (const { child } of children)
+    child.setAttribute('contenteditable', 'false')
+  element.setAttribute('contenteditable', 'plaintext-only')
+  element.setAttribute(EDITING, '')
+  element.addEventListener('keydown', keydown)
+  element.addEventListener('paste', paste)
+  element.addEventListener('beforeinput', beforeinput)
+  element.addEventListener('blur', commit)
+  window.addEventListener('pagehide', unload)
+  element.focus()
+  const range = document.createRange()
+  range.selectNodeContents(node)
   const selection = getSelection()
   selection?.removeAllRanges()
   selection?.addRange(range)
