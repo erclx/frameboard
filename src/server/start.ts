@@ -562,8 +562,8 @@ async function listen({
 }
 
 /**
- * One rescan per batch pushed in a fixed order, an agent's changes waiting out
- * the grace before the board hears of them.
+ * One rescan per batch, pushing the board, then reloads, then findings, then
+ * notes, an agent's changes waiting out the grace before the board hears.
  */
 async function pushBatch(
   root: string,

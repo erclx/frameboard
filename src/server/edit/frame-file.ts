@@ -358,7 +358,7 @@ export type FrameFileRemoveAll =
 
 /**
  * Takes several elements out as one write, last in the file first, so the
- * indices ahead of each hold.
+ * indices ahead of each hold, a nested named element going with its outer one.
  */
 export function removeFrameFileAll(
   path: string,
@@ -590,7 +590,8 @@ export type FrameFileRecolor =
 
 /**
  * Replaces a raw color with a token across a subtree, refused as stale on a
- * moved hash, so a retried replace lands once.
+ * moved hash, so a retried replace lands once, and writing nothing when no
+ * inline color is stated.
  */
 export function recolorFrameFile(
   path: string,
