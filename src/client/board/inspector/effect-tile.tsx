@@ -95,10 +95,10 @@ export function EffectTile({
         </>
       ) : picture.kind === 'step' ? (
         <>
-          <span className="absolute inset-x-2.5 top-1.5 h-1 rounded-full bg-faint" />
+          <span className="absolute inset-x-1.5 top-1.5 h-1 rounded-full bg-faint" />
           <span
             data-tile-layer="enter"
-            className="absolute inset-x-2.5 top-3.5 bottom-1.5 rounded-[2px] bg-foreground/80"
+            className="absolute inset-x-1.5 top-3.5 bottom-1.5 rounded-[2px] bg-foreground/80"
             style={stepLayer(picture.effect, playing)}
             onAnimationEnd={(event) => {
               if (event.target === event.currentTarget) onPlayed()
