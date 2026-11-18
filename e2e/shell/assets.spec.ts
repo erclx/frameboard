@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
@@ -99,5 +99,83 @@ test.describe('assets tab', () => {
     expect(findings.filter((f) => (f.rule ?? f.id) === 'missing-file')).toEqual(
       [],
     )
+  })
+})
+
+test.describe('assets tab Find', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  test.beforeEach(async () => {
+    board = copyFixtureBoard('basic')
+    server = await serveBoard(board.root, [], {
+      NODE_OPTIONS: `--import=${resolve('e2e/support/openverse-stub.mjs')}`,
+    })
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('journey: a found image saves with its license, and another drags into a frame', async ({
+    page,
+  }) => {
+    const assets = join(board.root, 'webapp/assets')
+    const hero = join(board.root, 'webapp/home/hero.html')
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    await page.getByRole('tab', { name: 'Assets' }).click()
+    await page.getByRole('tab', { name: 'Find' }).click()
+    await page
+      .getByRole('searchbox', { name: 'Search free images' })
+      .fill('house')
+    await page
+      .getByRole('searchbox', { name: 'Search free images' })
+      .press('Enter')
+    const results = page.getByRole('list', { name: 'Results' })
+    await expect(results.getByRole('listitem')).toHaveCount(4)
+
+    await results
+      .getByRole('listitem')
+      .filter({ hasText: 'Glass house' })
+      .hover()
+    await page.getByRole('button', { name: 'Save Glass house' }).click()
+
+    await expect(
+      page.getByRole('button', { name: 'Saved Glass house' }),
+    ).toBeVisible()
+    expect(readFileSync(join(assets, 'house.png')).byteLength).toBeGreaterThan(
+      0,
+    )
+    expect(
+      JSON.parse(readFileSync(join(assets, 'house.png.license.json'), 'utf8')),
+    ).toMatchObject({ origin: 'found', id: 'glass', license: 'cc0' })
+
+    const frame = await page
+      .locator('[data-frame="webapp/home/hero"]')
+      .boundingBox()
+    if (!frame) throw new Error('The hero frame draws no box')
+    await results
+      .getByRole('listitem')
+      .filter({ hasText: 'Cabin house' })
+      .hover()
+    await page.mouse.down()
+    await page.mouse.move(
+      frame.x + frame.width / 2 - 20,
+      frame.y + frame.height / 2,
+      { steps: 5 },
+    )
+    await page.mouse.move(
+      frame.x + frame.width / 2,
+      frame.y + frame.height / 2,
+      { steps: 5 },
+    )
+    await page.mouse.up()
+
+    await expect
+      .poll(() => readFileSync(hero, 'utf8'), { timeout: 10_000 })
+      .toContain('src="../assets/house-2.png"')
+    expect(existsSync(join(assets, 'house-2.png.license.json'))).toBe(true)
   })
 })

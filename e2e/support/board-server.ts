@@ -20,18 +20,24 @@ export interface BoardServer {
 export function serveBoard(
   root: string,
   flags: readonly string[] = [],
+  /** Added to the server's environment, such as a `NODE_OPTIONS` preload standing in for the network. */
+  env: Record<string, string> = {},
 ): Promise<BoardServer> {
-  const child = spawn('node', [
-    CLI,
-    'serve',
-    '--root',
-    root,
-    '--port',
-    '0',
-    '--no-open',
-    '--json',
-    ...flags,
-  ])
+  const child = spawn(
+    'node',
+    [
+      CLI,
+      'serve',
+      '--root',
+      root,
+      '--port',
+      '0',
+      '--no-open',
+      '--json',
+      ...flags,
+    ],
+    { env: { ...process.env, ...env } },
+  )
   return new Promise((done, fail) => {
     let stdout = ''
     let stderr = ''
