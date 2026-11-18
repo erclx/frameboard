@@ -532,6 +532,16 @@
       .insp .itabs {
         margin: -4px -4px 10px;
       }
+      .flab {
+        color: var(--muted);
+        font-size: 11px;
+        margin: 4px 0 2px;
+      }
+      .fgrid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        column-gap: 12px;
+      }
     </style>
   </head>
   <body>
@@ -575,19 +585,13 @@
           <span class="on">Design</span><span>Slides</span><span>Export</span>
         </div>
         <h4>Video</h4>
-        <div class="row">
-          Controls<span class="new">new</span><span style="flex: 1"></span
-          ><span class="sw on"></span>
+        <p class="flab">In the file</p>
+        <div class="fgrid">
+          <div class="row">Controls<span class="sw on"></span></div>
+          <div class="row">Autoplay<span class="sw"></span></div>
+          <div class="row">Loop<span class="sw"></span></div>
+          <div class="row">Muted<span class="sw"></span></div>
         </div>
-        <div class="row">
-          Autoplay<span class="new">new</span><span style="flex: 1"></span
-          ><span class="sw"></span>
-        </div>
-        <div class="row">
-          Loop<span class="new">new</span><span style="flex: 1"></span
-          ><span class="sw"></span>
-        </div>
-        <div class="row">Muted in the file<span class="sw"></span></div>
       </div>
     </div>
   </body>
