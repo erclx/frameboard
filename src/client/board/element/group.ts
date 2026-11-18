@@ -1,8 +1,9 @@
+import type { ElementSize } from '@/shared/frame-bridge/live-element'
+
 import { boundsOf, type Box } from '../geometry/box'
 import { type Corner, resizeBox, scaleBoxes } from '../geometry/resize'
 import type { Margins } from '../place/flow-guess'
 import {
-  type ElementSize,
   type PlacedOffsets,
   resizeDeclarations,
   type ResizeTarget,

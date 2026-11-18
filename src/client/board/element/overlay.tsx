@@ -1,12 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 
-import { elementAt, renderedHash } from '@/shared/frame-bridge/elements'
 import type { FrameRecord } from '@/shared/records/list'
 import { LOOK_MARKER } from '@/shared/theme'
 
-import { RESTAMPED } from '../frame-dom'
 import type { Box } from '../geometry/box'
 import { OUTLINE, screen, sizeLabel } from '../geometry/draw'
 import { CHIP, OVERLAY_Z } from '../geometry/overlay'
@@ -15,10 +13,9 @@ import { useMode } from '../mode'
 import { type ElementKey, useSelection } from '../selection'
 import { groupBounds, type GroupMember, scalesAsGroup } from './group'
 import { heldStore, holdOutline } from './held'
+import { useGhosts, useMeasures } from './measures'
 import { useLiveMedia } from './media'
 import { MediaBar } from './media-bar'
-import { overflowing } from './overflow'
-import { placedIn, readResize, type ResizeRead } from './resize'
 
 const CORNERS = [
   { left: 0, top: 0 },
@@ -73,7 +70,16 @@ function ElementGhosts({ frames, container }: ElementOverlayProps) {
         (ref) => !frames.some((frame) => frame.ref === ref && frame.scroll),
       )
     : []
-  const ghosts = useGhosts(container, walked)
+  const held = useGhosts(container, walked)
+  const ghosts = walked.flatMap((ref): Ghost[] => {
+    const overflow = held.get(ref)
+    return overflow
+      ? overflow.ghosts.map(({ index, box }) => ({
+          key: { frame: ref, index, hash: overflow.hash },
+          box,
+        }))
+      : []
+  })
   return ghosts.map(({ key, box }) => {
     const frame = drawn.find(({ ref }) => ref === key.frame)
     if (!frame) return null
@@ -116,82 +122,6 @@ function outsideOf(box: Box, frame: Box): string {
   return `polygon(evenodd, ${near} ${near}, ${far} ${near}, ${far} ${far}, ${near} ${far}, ${near} ${near}, ${x0} ${y0}, ${x0} ${y1}, ${x1} ${y1}, ${x1} ${y0}, ${x0} ${y0})`
 }
 
-/**
- * The elements past each named frame's edge, re-read on a load, resize, inline
- * style change, or restamp, coalesced to one read an animation frame.
- */
-function useGhosts(
-  container: HTMLElement | null,
-  refs: readonly string[],
-): Ghost[] {
-  const [read, setRead] = useState<{
-    key: string
-    ghosts: Ghost[]
-  } | null>(null)
-  const key = refs.join('\n')
-  useEffect(() => {
-    if (!container || key === '') return
-    const wanted = key.split('\n')
-    const iframeOf = (ref: string) =>
-      container.querySelector<HTMLIFrameElement>(
-        `[data-frame="${CSS.escape(ref)}"] iframe`,
-      )
-    // Observed once, its first callback skipped, since it repeats the read already taken.
-    const sized = new WeakSet<Element>()
-    const seen = new WeakSet<Element>()
-    const styled = new WeakSet<Node>()
-    let pending = 0
-    const later = () => {
-      if (pending === 0) pending = requestAnimationFrame(measure)
-    }
-    const resizes = new ResizeObserver((entries) => {
-      const fresh = entries.filter(({ target }) => !seen.has(target))
-      for (const { target } of fresh) seen.add(target)
-      if (fresh.length < entries.length) later()
-    })
-    const styles = new MutationObserver(later)
-    const measure = () => {
-      pending = 0
-      const ghosts = wanted.flatMap((ref) => {
-        const iframe = iframeOf(ref)
-        if (!iframe) return []
-        if (!sized.has(iframe)) {
-          sized.add(iframe)
-          resizes.observe(iframe)
-        }
-        const shown = iframe.contentDocument
-        const hash = shown ? renderedHash(shown) : null
-        if (!shown || hash === null) return []
-        if (!styled.has(shown)) {
-          styled.add(shown)
-          styles.observe(shown, {
-            attributes: true,
-            attributeFilter: ['style'],
-            subtree: true,
-          })
-        }
-        return overflowing(shown).map(({ index, box }) => ({
-          key: { frame: ref, index, hash },
-          box,
-        }))
-      })
-      setRead({ key, ghosts })
-    }
-    measure()
-    // A load does not bubble, so a frame mounting or reloading is caught on the way down.
-    container.addEventListener('load', measure, true)
-    container.addEventListener(RESTAMPED, measure, true)
-    return () => {
-      container.removeEventListener('load', measure, true)
-      container.removeEventListener(RESTAMPED, measure, true)
-      cancelAnimationFrame(pending)
-      resizes.disconnect()
-      styles.disconnect()
-    }
-  }, [container, key])
-  return read?.key === key ? read.ghosts : []
-}
-
 /** The selected element's outline, or several's group box around their outlines. */
 function ElementOutlines({ frames, container }: ElementOverlayProps) {
   const element = useSelection((state) => state.element ?? null)
@@ -218,15 +148,17 @@ interface GroupOutlineProps extends ElementOverlayProps {
 function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
   const frame = frames.find((candidate) => candidate.ref === elements[0]?.frame)
   const pending = usePendingBox(frame?.ref ?? '')
-  const measured = useElementMeasures(container, elements)
+  const measured = useMeasures(container, elements)
   const at = pending ?? frame?.box
   if (!at || !measured) return null
-  const members: GroupMember[] = measured.map(({ index, box, read, free }) => ({
-    index,
-    box,
-    placed: free ? { left: 0, top: 0 } : null,
-    read,
-  }))
+  const members: GroupMember[] = measured.map(
+    ({ index, box, read, placed, nested }) => ({
+      index,
+      box,
+      placed: placed && !nested ? placed : null,
+      read,
+    }),
+  )
   const bounds = groupBounds(members)
   if (!bounds) return null
   const group = (
@@ -294,7 +226,7 @@ interface ElementOutlineProps extends ElementOverlayProps {
 function ElementOutline({ element, frames, container }: ElementOutlineProps) {
   const frame = frames.find((candidate) => candidate.ref === element?.frame)
   const pending = usePendingBox(frame?.ref ?? '')
-  const measure = useElementMeasure(container, element)
+  const [measure] = useMeasures(container, element ? [element] : []) ?? []
   const rect = measure?.box ?? null
   const held = useStore(heldStore, (state) => state.held)
   const at = pending ?? frame?.box
@@ -419,170 +351,6 @@ function CanvasMediaBar({ element, box, container }: CanvasMediaBarProps) {
     </div>,
     layer,
   )
-}
-
-/** A measured member of a group: its box in its frame, how it resizes, and whether it is placed freely. */
-interface MemberMeasure {
-  index: number
-  box: Box
-  read: ResizeRead | null
-  free: boolean
-}
-
-/**
- * Every named element's box, re-measured on an inline style change too, since
- * a group drag previews offsets no `ResizeObserver` sees.
- */
-function useElementMeasures(
-  container: HTMLElement | null,
-  elements: readonly ElementKey[],
-): MemberMeasure[] | null {
-  const [measured, setMeasured] = useState<{
-    key: string
-    at: MemberMeasure[] | null
-  } | null>(null)
-  const frame = elements[0]?.frame
-  const hash = elements[0]?.hash
-  const indexes = elements.map(({ index }) => index).join(',')
-  const key = frame === undefined ? null : `${frame}:${indexes}:${hash}`
-  useEffect(() => {
-    if (!container || key === null || frame === undefined) return
-    const wanted = indexes.split(',').map(Number)
-    let stopWatching = () => {}
-    const measure = () => {
-      stopWatching()
-      const document = container.querySelector<HTMLIFrameElement>(
-        `[data-frame="${CSS.escape(frame)}"] iframe`,
-      )?.contentDocument
-      const view = document?.defaultView
-      const targets =
-        document && view && renderedHash(document) === hash
-          ? wanted.flatMap((index) => {
-              const target = elementAt(document, index)
-              return target ? [{ index, target }] : []
-            })
-          : []
-      if (!document || !view || targets.length !== wanted.length) {
-        setMeasured({ key, at: null })
-        return
-      }
-      const read = () => {
-        setMeasured({
-          key,
-          at: targets.map(({ index, target }) => {
-            const rect = target.getBoundingClientRect()
-            const group = targets.map((member) => member.target)
-            return {
-              index,
-              box: {
-                x: Math.round(rect.left),
-                y: Math.round(rect.top),
-                width: Math.round(rect.width),
-                height: Math.round(rect.height),
-              },
-              read: readResize(target),
-              free: placedIn(target, group) !== null,
-            }
-          }),
-        })
-      }
-      read()
-      // Observers from the frame's own window, since the elements live there.
-      const observer = new view.ResizeObserver(read)
-      const styles = new view.MutationObserver(read)
-      for (const { target } of targets) {
-        observer.observe(target)
-        styles.observe(target, { attributes: true, attributeFilter: ['style'] })
-      }
-      observer.observe(document.documentElement)
-      view.addEventListener('scroll', read, true)
-      stopWatching = () => {
-        observer.disconnect()
-        styles.disconnect()
-        view.removeEventListener('scroll', read, true)
-      }
-    }
-    measure()
-    // A load does not bubble, so a frame mounting or reloading is caught on the way down.
-    container.addEventListener('load', measure, true)
-    return () => {
-      container.removeEventListener('load', measure, true)
-      stopWatching()
-    }
-  }, [container, key, frame, indexes, hash])
-  return measured?.key === key ? measured.at : null
-}
-
-/**
- * The element's box in frame pixels and its corner resize kind, null while no
- * live iframe shows the bytes the key was read from.
- */
-function useElementMeasure(
-  container: HTMLElement | null,
-  element: ElementKey | null,
-): { box: Box; read: ResizeRead | null } | null {
-  // Held with the key it was measured for, so one element's box never draws on the next.
-  const [measured, setMeasured] = useState<{
-    key: string
-    at: { box: Box; read: ResizeRead | null } | null
-  } | null>(null)
-  const frame = element?.frame
-  const index = element?.index
-  const hash = element?.hash
-  const key = element ? `${frame}:${index}:${hash}` : null
-  useEffect(() => {
-    if (!container || key === null) return
-    if (frame === undefined || index === undefined) return
-    let stopWatching = () => {}
-    const measure = () => {
-      stopWatching()
-      const document = container.querySelector<HTMLIFrameElement>(
-        `[data-frame="${CSS.escape(frame)}"] iframe`,
-      )?.contentDocument
-      const target =
-        document && renderedHash(document) === hash
-          ? elementAt(document, index)
-          : null
-      const view = document?.defaultView
-      if (!target || !view) {
-        setMeasured({ key, at: null })
-        return
-      }
-      const read = () => {
-        const rect = target.getBoundingClientRect()
-        setMeasured({
-          key,
-          at: {
-            box: {
-              x: Math.round(rect.left),
-              y: Math.round(rect.top),
-              width: Math.round(rect.width),
-              height: Math.round(rect.height),
-            },
-            read: readResize(target),
-          },
-        })
-      }
-      read()
-      // An observer from the frame's own window, since the element lives there.
-      const observer = new view.ResizeObserver(read)
-      observer.observe(target)
-      observer.observe(target.ownerDocument.documentElement)
-      view.addEventListener('scroll', read, true)
-      stopWatching = () => {
-        observer.disconnect()
-        view.removeEventListener('scroll', read, true)
-      }
-    }
-    measure()
-    // A load does not bubble, so a frame mounting or reloading is caught on the way down.
-    container.addEventListener('load', measure, true)
-    return () => {
-      container.removeEventListener('load', measure, true)
-      stopWatching()
-    }
-  }, [container, key, frame, index, hash])
-  return measured?.key === key ? measured.at : null
 }
 
 function sameKey(a: ElementKey, b: ElementKey | null): boolean {

@@ -14,7 +14,7 @@ import type { BoardNote } from '@/shared/records/notes'
 import { HANDLE_REACH } from '../geometry/hit'
 import { useDrawnFrames } from '../geometry/write'
 import { useMode } from '../mode'
-import { cornerOf } from '../pin-corner'
+import { cornerOf, usePinCorners } from '../pin-corner'
 import { canvasView } from '../view'
 import { Composer } from './composer'
 import type { BoardPoint } from './pick'
@@ -40,13 +40,13 @@ export function NotesLayer({ page, frames, container }: NotesLayerProps) {
   const open = useNotesUi((state) => state.open)
   // The spot whose count pin has its list open.
   const [listed, setListed] = useState<string | null>(null)
-  // Markers read live boxes, so a frame load renders the layer again.
-  useFrameLoads(container)
   useCloseOnEscape(open !== null)
   // On the drawn frame, so a pin a drag shifted stays where the drag left it.
   const shown = useDrawnFrames(frames)
 
   const framesByName = new Map(shown.map((frame) => [frame.name, frame]))
+  // Markers read the corners each frame pushes, so a pushed one renders the layer again.
+  usePinCorners(container, pinnedElements(notes ?? [], framesByName))
   const place = (note: BoardNote): BoardPoint | null => {
     const frame = framesByName.get(note.frame)
     return frame ? cornerOf(frame, note.element, container) : null
@@ -517,17 +517,17 @@ function useCloseOnEscape(active: boolean): void {
   }, [active])
 }
 
-/**
- * Counts frame loads under the canvas, so markers placed on elements move
- * once a frame reloads. A load does not bubble, so it is caught on the way
- * down.
- */
-function useFrameLoads(container: HTMLElement | null): void {
-  const [, setLoads] = useState(0)
-  useEffect(() => {
-    if (!container) return
-    const bump = () => setLoads((count) => count + 1)
-    container.addEventListener('load', bump, true)
-    return () => container.removeEventListener('load', bump, true)
-  }, [container])
+/** Each frame's elements an open root note pins, by the frame's ref, which their corners are read for. */
+function pinnedElements(
+  notes: readonly BoardNote[],
+  framesByName: ReadonlyMap<string, FrameRecord>,
+): Map<string, number[]> {
+  const pinned = new Map<string, number[]>()
+  for (const note of notes) {
+    const ref = framesByName.get(note.frame)?.ref
+    if (!ref || note.element === null) continue
+    if (note.thread !== null || note.state === 'done') continue
+    pinned.set(ref, [...(pinned.get(ref) ?? []), note.element])
+  }
+  return pinned
 }

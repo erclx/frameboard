@@ -1,16 +1,17 @@
 import { act, render } from '@testing-library/react'
 import { Profiler } from 'react'
 
-import type { FrameRecord, SectionRecord } from '@/shared/records/list'
-import { frameOf } from '@/test/board'
-
-import type { GroupMember, MemberEdit } from '../element/group'
 import type {
   ElementSize,
-  PlacedOffsets,
   ResizeKind,
   ResizeRead,
-} from '../element/resize'
+} from '@/shared/frame-bridge/live-element'
+import type { FrameRecord, SectionRecord } from '@/shared/records/list'
+import { frameOf } from '@/test/board'
+import { BRIDGE } from '@/test/frame-bridge'
+
+import type { GroupMember, MemberEdit } from '../element/group'
+import type { PlacedOffsets } from '../element/resize'
 import { createModeStore } from '../mode'
 import { SectionBoxes } from '../sections/box'
 import { type ElementKey, selectionStore } from '../selection'
@@ -185,7 +186,7 @@ export function setup(
                 <iframe
                   title={frame.ref}
                   className="size-full border-0"
-                  srcDoc={`<!doctype html><html><head></head><body style="margin:0">${live}</body></html>`}
+                  srcDoc={`<!doctype html><html><head>${BRIDGE}</head><body style="margin:0">${live}</body></html>`}
                 />
               ) : null}
             </div>

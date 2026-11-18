@@ -1,13 +1,18 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { renderHook } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
 
-import CLIP from '../../../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
-import type { LiveLayout } from '../inspector/element/styles'
+import type { LiveLayout } from '@/shared/frame-bridge/live-element'
+import { BRIDGE } from '@/test/frame-bridge'
+
+import { request } from '../bridge/channel'
+import { shownHashOf } from '../bridge/shown'
+import type { ElementKey } from '../selection'
+import { useGhosts, useMeasures } from './measures'
 import {
   cornerSize,
   dragSize,
   placedOffsets,
   resizeDeclarations,
-  resizeKindOf,
   shownGroup,
   shownResize,
   startElementResize,
@@ -142,61 +147,6 @@ describe('dragSize', () => {
   })
 })
 
-describe('resizeKindOf', () => {
-  let host: HTMLDivElement | undefined
-
-  // Attached, so a child's computed display reads as the page lays it out.
-  const parse = (markup: string) => {
-    host = document.createElement('div')
-    host.innerHTML = markup
-    document.body.append(host)
-    return host.firstElementChild
-  }
-
-  afterEach(() => {
-    host?.remove()
-    host = undefined
-  })
-
-  it.each([
-    ['a placed rectangle', '<div data-name="Rectangle"></div>', 'box'],
-    ['text', '<p>Text</p>', 'text'],
-    ['a box holding only text', '<div>Hi</div>', 'text'],
-    ['an image', '<img alt="">', 'media'],
-    ['a video', '<video></video>', 'media'],
-    ['a video holding its sources', '<video><source></video>', 'media'],
-    ['a box holding an element', '<div><span></span></div>', 'container'],
-    ['text holding an inline element', '<p>Some <b>bold</b> words</p>', 'text'],
-    ['a paragraph holding inline code', '<p><code>serve</code></p>', 'text'],
-    [
-      'a box holding words and a block element',
-      '<div>Hi <p>there</p></div>',
-      'container',
-    ],
-    [
-      'a box holding a flex row',
-      '<div><div style="display: flex"><span>a</span></div></div>',
-      'container',
-    ],
-  ])('reads %s by what its corners write', (_name, markup, kind) => {
-    expect(resizeKindOf(parse(markup))).toBe(kind)
-  })
-
-  it.each([
-    ['a divider', '<hr>'],
-    ['an empty paragraph', '<p></p>'],
-  ])('reads %s as nothing its corners resize', (_name, markup) => {
-    expect(resizeKindOf(parse(markup))).toBeNull()
-  })
-
-  it('reads the body as nothing its corners resize, though it holds elements', () => {
-    const body = document.implementation.createHTMLDocument('').body
-    body.append(document.createElement('div'))
-
-    expect(resizeKindOf(body)).toBeNull()
-  })
-})
-
 describe('resizeDeclarations', () => {
   const SIZE = { width: 240, height: 90 }
   const NO_INSET = { width: 0, height: 0 }
@@ -326,40 +276,49 @@ describe('resizeDeclarations', () => {
 describe('a live element', () => {
   const HASH = 'd'.repeat(64)
   const KEY = { frame: 'studio/home/hero', index: 3, hash: HASH }
-  /** A 2 by 1 PNG, whose natural size no box in these tests shares. */
-  const WIDE_PNG =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAAD0lEQVR4nGP4z8DA8J8BAAf/Af8Bf4mnAAAAAElFTkSuQmCC'
+  const at = (index: number) => ({ ...KEY, index })
   let container: HTMLDivElement | undefined
+  let stop = () => {}
 
-  // Indices past the skipped injected style: html 0, head 1, body 2, then the body's children.
+  // Indices past the injected style and script, which are skipped: html 0, head 1, body 2, then the body's children.
   async function mount(body: string): Promise<HTMLDivElement> {
     container = document.createElement('div')
     const frame = document.createElement('div')
     frame.dataset.frame = KEY.frame
     const iframe = document.createElement('iframe')
-    const loaded = new Promise((resolve) =>
-      iframe.addEventListener('load', resolve, { once: true }),
-    )
-    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body>${body}</body></html>`
     frame.append(iframe)
     container.append(frame)
     document.body.append(container)
-    await loaded
+    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style>${BRIDGE}</head><body>${body}</body></html>`
+    await expect.poll(() => shownHashOf(iframe)).toBe(HASH)
     return container
   }
 
+  /** Follows the named elements' measures as the overlay does, resolved once the frame answered. */
+  async function measure(
+    shown: HTMLDivElement,
+    keys: readonly ElementKey[],
+  ): Promise<void> {
+    const { unmount } = renderHook(() => useMeasures(shown, keys))
+    stop = unmount
+    const iframe = shown.querySelector('iframe')
+    // The frame answers a later request after the measure it was sent first.
+    if (iframe) await request(iframe, 'element-box', { index: 0, hash: '' })
+  }
+
   afterEach(() => {
+    stop()
+    stop = () => {}
     container?.remove()
     container = undefined
   })
 
   describe('shownGroup', () => {
-    const at = (index: number) => ({ ...KEY, index })
-
     it('reads each free member with its offsets and box', async () => {
       const shown = await mount(
         '<div style="position: absolute; left: 10px; top: 20px; width: 30px; height: 40px"></div><div style="position: absolute; left: 100px; top: 5px; width: 10px; height: 10px"></div>',
       )
+      await measure(shown, [at(3), at(4)])
 
       expect(shownGroup(shown, [at(3), at(4)])).toMatchObject([
         {
@@ -375,6 +334,7 @@ describe('a live element', () => {
       const shown = await mount(
         '<div style="position: absolute; left: 0; top: 0; width: 200px; height: 200px"><div style="position: absolute; left: 10px; top: 10px; width: 20px; height: 20px"></div></div>',
       )
+      await measure(shown, [at(3), at(4)])
 
       expect(
         shownGroup(shown, [at(3), at(4)])?.map(({ placed }) => placed),
@@ -385,6 +345,7 @@ describe('a live element', () => {
       const shown = await mount(
         '<p>Words</p><div style="position: absolute; left: 0; top: 0; width: 20px; height: 20px"></div>',
       )
+      await measure(shown, [at(3), at(4)])
 
       expect(
         shownGroup(shown, [at(3), at(4)])?.map(({ placed }) => placed),
@@ -393,160 +354,69 @@ describe('a live element', () => {
 
     it('answers null for keys read from other bytes', async () => {
       const shown = await mount('<div></div><div></div>')
+      const stale = [
+        { ...at(3), hash: 'e'.repeat(64) },
+        { ...at(4), hash: 'e'.repeat(64) },
+      ]
+      await measure(shown, stale)
 
-      expect(
-        shownGroup(shown, [
-          { ...at(3), hash: 'e'.repeat(64) },
-          { ...at(4), hash: 'e'.repeat(64) },
-        ]),
-      ).toBeNull()
+      expect(shownGroup(shown, stale)).toBeNull()
+    })
+
+    it('answers null for elements nothing measured', async () => {
+      const shown = await mount('<div></div><div></div>')
+
+      expect(shownGroup(shown, [at(3), at(4)])).toBeNull()
     })
   })
 
   describe('shownResize', () => {
-    it('reads an upright shape as one a corner resizes', async () => {
+    it('reads how the measured element takes a corner drag', async () => {
       const shown = await mount('<div style="width: 40px; height: 40px"></div>')
+      await measure(shown, [KEY])
 
       expect(shownResize(shown, KEY)?.kind).toBe('box')
-    })
-
-    it('reads a shape whose rotate states 0deg as upright', async () => {
-      const shown = await mount(
-        '<div style="width: 40px; height: 40px; rotate: 0deg"></div>',
-      )
-
-      expect(shownResize(shown, KEY)?.kind).toBe('box')
-    })
-
-    it('refuses a shape its rotate turns', async () => {
-      const shown = await mount(
-        '<div style="width: 40px; height: 40px; rotate: 30deg"></div>',
-      )
-
-      expect(shownResize(shown, KEY)).toBeNull()
-    })
-
-    it('refuses text its rotate turns', async () => {
-      const shown = await mount('<p style="rotate: 30deg">Turned</p>')
-
-      expect(shownResize(shown, KEY)).toBeNull()
-    })
-
-    it('refuses inline text, which a width does not size', async () => {
-      const shown = await mount('<span>Inline</span>')
-
-      expect(shownResize(shown, KEY)).toBeNull()
-    })
-
-    it('reads text with no stated height as hugging it', async () => {
-      const shown = await mount('<p style="width: 240px">Words</p>')
-
-      expect(shownResize(shown, KEY)).toMatchObject({
-        kind: 'text',
-        hugsHeight: true,
-        inset: { width: 0, height: 0 },
-      })
-    })
-
-    it('reads text with a stated height as not hugging it', async () => {
-      const shown = await mount('<p style="height: 80px">Words</p>')
-
-      expect(shownResize(shown, KEY)).toMatchObject({
-        kind: 'text',
-        hugsHeight: false,
-        inset: { width: 0, height: 0 },
-      })
-    })
-
-    it('reads an image with no size in the file at its natural size', async () => {
-      const shown = await mount(`<img alt="" src="${WIDE_PNG}">`)
-
-      await vi.waitFor(() =>
-        expect(shownResize(shown, KEY)?.natural).toEqual({
-          width: 2,
-          height: 1,
-        }),
-      )
-    })
-
-    it('reads a decoded video at the size it decodes to', async () => {
-      const shown = await mount(
-        `<video muted preload="auto" src="${new URL(CLIP, location.href).href}"></video>`,
-      )
-
-      await vi.waitFor(() =>
-        expect(shownResize(shown, KEY)?.natural).toEqual({
-          width: 160,
-          height: 90,
-        }),
-      )
-    })
-
-    it('reads the padding and border a content box width leaves out', async () => {
-      const shown = await mount(
-        '<p style="padding: 12px 24px; border: 2px solid">Tag</p>',
-      )
-
-      expect(shownResize(shown, KEY)?.inset).toEqual({ width: 52, height: 28 })
-    })
-
-    it('reads no inset on a border box, whose width holds its padding', async () => {
-      const shown = await mount(
-        '<p style="box-sizing: border-box; padding: 12px 24px">Tag</p>',
-      )
-
-      expect(shownResize(shown, KEY)?.inset).toEqual({ width: 0, height: 0 })
-    })
-
-    it('reads an image that has not decoded as having no natural size', async () => {
-      const shown = await mount('<img alt="">')
-
-      expect(shownResize(shown, KEY)).toMatchObject({
-        kind: 'media',
-        natural: null,
-      })
-    })
-
-    it('reads a container as one whose drag writes what it changed', async () => {
-      const shown = await mount(
-        '<div style="display: flex; gap: 8px"><span>a</span><span>b</span></div>',
-      )
-
-      expect(shownResize(shown, KEY)).toMatchObject({
-        kind: 'container',
-        sizing: { layout: { parent: 'block' }, fills: false },
-      })
-    })
-
-    it('reads a container growing along its row parent as filling it', async () => {
-      const shown = await mount(
-        '<div style="display: flex; width: 400px"><div style="flex: 1 1 0"><p>a</p></div><span>b</span></div>',
-      )
-
-      expect(shownResize(shown, { ...KEY, index: 4 })).toMatchObject({
-        kind: 'container',
-        sizing: { layout: { parent: 'horizontal' }, fills: true },
-      })
-    })
-
-    it('refuses an inline container, which a width does not size', async () => {
-      const shown = await mount('<span><b>bold</b> words</span>')
-
-      expect(shownResize(shown, KEY)).toBeNull()
-    })
-
-    it('refuses a container its rotate turns', async () => {
-      const shown = await mount(
-        '<div style="rotate: 30deg"><span>a</span></div>',
-      )
-
-      expect(shownResize(shown, KEY)).toBeNull()
     })
 
     it('reads nothing from a frame showing other bytes', async () => {
       const shown = await mount('<p>Words</p>')
+      const stale = { ...KEY, hash: 'f'.repeat(64) }
+      await measure(shown, [stale])
 
-      expect(shownResize(shown, { ...KEY, hash: 'f'.repeat(64) })).toBeNull()
+      expect(shownResize(shown, stale)).toBeNull()
+    })
+  })
+
+  describe('placedOffsets', () => {
+    it('reads the offsets a placed element holds', async () => {
+      const shown = await mount(
+        '<div style="position: absolute; left: 12px; top: 34px"></div>',
+      )
+      await measure(shown, [KEY])
+
+      expect(placedOffsets(shown, KEY)).toEqual({ left: 12, top: 34 })
+    })
+
+    it('reads an element in the flow as unplaced', async () => {
+      const shown = await mount(
+        '<div style="position: relative; left: 12px"></div>',
+      )
+      await measure(shown, [KEY])
+
+      expect(placedOffsets(shown, KEY)).toBeNull()
+    })
+
+    it("reads a ghost's offsets, which a press on it drags before any measure", async () => {
+      const shown = await mount(
+        '<div style="position: absolute; left: 900px; top: 34px; width: 10px; height: 10px"></div>',
+      )
+      const { result, unmount } = renderHook(() =>
+        useGhosts(shown, [KEY.frame]),
+      )
+      stop = unmount
+      await expect.poll(() => result.current.size).toBe(1)
+
+      expect(placedOffsets(shown, KEY)).toEqual({ left: 900, top: 34 })
     })
   })
 
@@ -605,6 +475,14 @@ describe('a live element', () => {
       return element
     }
 
+    /** How the element takes a corner drag, once the frame measured it. */
+    async function readOf(shown: HTMLDivElement, key: ElementKey) {
+      await measure(shown, [key])
+      const read = shownResize(shown, key)
+      if (!read) throw new Error('The element reads no resize')
+      return read
+    }
+
     it('previews only the width of text, whose height keeps hugging', async () => {
       const shown = await mount('<p>Words</p>')
       const resize = startElementResize('studio/home', KEY, {
@@ -636,8 +514,7 @@ describe('a live element', () => {
         '<div style="display: flex; width: 400px"><div style="flex: 1 1 0"><p>a</p></div></div>',
       )
       const key = { ...KEY, index: 4 }
-      const read = shownResize(shown, key)
-      if (!read) throw new Error('The container reads no resize')
+      const read = await readOf(shown, key)
       const resize = startElementResize('studio/home', key, read)
       const child = shown
         .querySelector('iframe')
@@ -655,8 +532,7 @@ describe('a live element', () => {
       const shown = await mount(
         '<div style="display: flex; gap: 8px"><p>a</p><p>b</p></div>',
       )
-      const read = shownResize(shown, KEY)
-      if (!read) throw new Error('The container reads no resize')
+      const read = await readOf(shown, KEY)
       const resize = startElementResize('studio/home', KEY, read)
       const container = shown
         .querySelector('iframe')
@@ -673,8 +549,7 @@ describe('a live element', () => {
         '<style>.grow { flex: 1 }</style><div style="display: flex; width: 400px"><div class="grow" style="width: 100px"><p>a</p></div></div>',
       )
       const key = { ...KEY, index: 5 }
-      const read = shownResize(shown, key)
-      if (!read) throw new Error('The container reads no resize')
+      const read = await readOf(shown, key)
       const resize = startElementResize('studio/home', key, read)
       const child = shown
         .querySelector('iframe')
@@ -688,53 +563,5 @@ describe('a live element', () => {
 
       expect(child?.getAttribute('style')).toBe('width: 100px;')
     })
-  })
-})
-
-describe('placedOffsets', () => {
-  const HASH = 'e'.repeat(64)
-  const KEY = { frame: 'studio/home/hero', index: 3, hash: HASH }
-  let container: HTMLDivElement | undefined
-
-  // Indices past the skipped injected style: html 0, head 1, body 2, then the body's children.
-  async function mountElement(style: string): Promise<HTMLDivElement> {
-    container = document.createElement('div')
-    const frame = document.createElement('div')
-    frame.dataset.frame = KEY.frame
-    const iframe = document.createElement('iframe')
-    const loaded = new Promise((resolve) =>
-      iframe.addEventListener('load', resolve, { once: true }),
-    )
-    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body><div style="${style}"></div></body></html>`
-    frame.append(iframe)
-    container.append(frame)
-    document.body.append(container)
-    await loaded
-    return container
-  }
-
-  afterEach(() => {
-    container?.remove()
-    container = undefined
-  })
-
-  it('reads the offsets a placed element holds', async () => {
-    const shown = await mountElement(
-      'position: absolute; left: 12px; top: 34px',
-    )
-
-    expect(placedOffsets(shown, KEY)).toEqual({ left: 12, top: 34 })
-  })
-
-  it('reads an element in the flow as unplaced', async () => {
-    const shown = await mountElement('position: relative; left: 12px')
-
-    expect(placedOffsets(shown, KEY)).toBeNull()
-  })
-
-  it('reads nothing from a frame showing other bytes', async () => {
-    const shown = await mountElement('position: absolute; left: 0; top: 0')
-
-    expect(placedOffsets(shown, { ...KEY, hash: 'f'.repeat(64) })).toBeNull()
   })
 })

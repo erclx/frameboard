@@ -4,6 +4,10 @@ import { zoomTransform } from 'd3-zoom'
 
 import { liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
+import type {
+  ElementSize,
+  ResizeRead,
+} from '@/shared/frame-bridge/live-element'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
 import { splitAt } from '../changes/compare'
@@ -27,12 +31,10 @@ import {
   cornerSize,
   dragSize,
   type ElementResize,
-  type ElementSize,
   type GroupEdit,
   type PlacedMove,
   type PlacedOffsets,
   placedOffsets,
-  type ResizeRead,
   shownGroup,
   shownResize,
   startElementResize,
@@ -43,7 +45,7 @@ import { readTree, treeOf } from '../element/tree'
 import { openFindings } from '../findings/open'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
-import { cornerOf } from '../pin-corner'
+import { cornerOf, subscribeCorners } from '../pin-corner'
 import { carriedStore } from '../place/tool'
 import { moveElement } from '../place/write'
 import { endPreview } from '../preview/store'
@@ -368,6 +370,8 @@ export function attachGestures(
       pin.style.translate = dx !== 0 || dy !== 0 ? `${dx}px ${dy}px` : ''
     }
   }
+  /** The boxes a frame resize last drew, which a corner the frame pushes after reflowing places the pins in again. */
+  let reflowing: Readonly<Record<string, Box>> | null = null
   // A pin moves by `cornerOf`'s gap, so it follows its element as the frame reflows.
   const followPins = (boxes: Readonly<Record<string, Box>>) => {
     const pins =
@@ -516,6 +520,7 @@ export function attachGestures(
     const point = toCanvas(event)
     from = point
     presses += 1
+    reflowing = null
     pressed = { x: event.clientX, y: event.clientY }
     moved = false
     last = event
@@ -869,6 +874,7 @@ export function attachGestures(
           })
         }
         followPins(next)
+        reflowing = next
         drawResize(root, next)
         drawGuides(root, snap.guides, snap.gaps)
         return
@@ -1348,11 +1354,17 @@ export function attachGestures(
     if (event.ctrlKey && event.button === 0) event.preventDefault()
   }
 
+  // A corner lands once the frame reflows, a frame after the drag drew its box.
+  const stopCorners = subscribeCorners(() => {
+    if (gesture.kind === 'resize' && reflowing) followPins(reflowing)
+  })
+
   const selectionOfHit = d3Select(hit)
   selectionOfHit.call(behavior)
   hit.addEventListener('contextmenu', noMenu)
   return {
     detach: () => {
+      stopCorners()
       clearTimeout(revealing)
       markCarrying(false)
       selectionOfHit.on('.drag', null)

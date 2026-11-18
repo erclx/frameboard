@@ -1,5 +1,14 @@
 import { z } from 'zod'
 
+import {
+  type FrameOverflow,
+  frameOverflowSchema,
+  type MemberMeasure,
+  memberMeasuresSchema,
+  type PinCorner,
+  pinCornersSchema,
+} from './live-element'
+
 // The board and a frame's bridge talk over `postMessage`, whatever the frame's
 // origin. A request's id comes back on its one reply, and on every push a
 // subscribing op sends until either side closes it.
@@ -76,8 +85,22 @@ export interface BridgeOps {
     value: { index: number; box: FrameBox }[] | null
     push: never
   }
+  /** Measures the named elements, pushing again on every resize, style change, or scroll until closed, null when the frame shows other bytes or misses one. */
+  measure: {
+    args: { hash: string; indexes: number[] }
+    value: MemberMeasure[] | null
+    push: MemberMeasure[] | null
+  }
+  /** The elements past the frame's viewport, pushed again on a resize or style change until closed. */
+  overflow: {
+    args: Record<string, never>
+    value: FrameOverflow | null
+    push: FrameOverflow | null
+  }
   /** What sits under a frame point, hit-tested as the page draws. */
   'pick-at': { args: { at: FramePoint }; value: PickAt; push: never }
+  /** The named elements' pin corners, pushed again on every resize or scroll until closed, leaving out one the page holds none at. */
+  pins: { args: { indexes: number[] }; value: PinCorner[]; push: PinCorner[] }
   /** Moves the frame's stamp to a hash whose bytes it already shows, answering whether it held one to move. */
   restamp: { args: { hash: string }; value: boolean; push: never }
   /** Opens the element's text for typing, answering whether it opened, and pushes how the edit ends. */
@@ -131,7 +154,10 @@ export type BridgeMessage =
 const OPS: readonly string[] = [
   'element-box',
   'element-boxes',
+  'measure',
+  'overflow',
   'pick-at',
+  'pins',
   'restamp',
   'text-edit',
   'text-written',
@@ -239,6 +265,21 @@ const SCHEMAS: {
     value: z
       .array(z.object({ index: indexSchema, box: frameBoxSchema }))
       .nullable(),
+  },
+  measure: {
+    args: z.object({ hash: z.string(), indexes: z.array(indexSchema) }),
+    value: memberMeasuresSchema,
+    push: memberMeasuresSchema,
+  },
+  overflow: {
+    args: z.object({}).strict() as z.ZodType<Record<string, never>>,
+    value: frameOverflowSchema,
+    push: frameOverflowSchema,
+  },
+  pins: {
+    args: z.object({ indexes: z.array(indexSchema) }),
+    value: pinCornersSchema,
+    push: pinCornersSchema,
   },
   'pick-at': {
     args: z.object({ at: pointSchema }),

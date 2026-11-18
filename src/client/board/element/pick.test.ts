@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { ElementTree } from '@/shared/records/elements'
 import { frameOf } from '@/test/board'
 
+import { request } from '../bridge/channel'
 import { elementsIn, onBareFrame, pickElement, pickElementRead } from './pick'
 
 const HASH = 'c'.repeat(64)
@@ -76,6 +77,8 @@ async function mount(zoom: number, source = SOURCE): Promise<HTMLDivElement> {
   layer.append(frame)
   document.body.append(layer)
   await loaded
+  // Its reply follows the hash the bridge announced as it started.
+  await request(iframe, 'element-box', { index: 0, hash: '' })
   iframe.dataset.renderedAt = HERO.modifiedAt
   return layer
 }

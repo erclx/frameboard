@@ -1,12 +1,13 @@
 import '../../styles.css'
 
-import { act } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { bindKeys, registerActions } from '@/client/actions/registry'
 
 import { holdOutline } from '../element/held'
+import { usePinCorners } from '../pin-corner'
 import { endPreview, previewOf, setPreview } from '../preview/store'
 import { clear, select, selectionStore } from '../selection'
 import {
@@ -557,6 +558,13 @@ describe('attachGestures', () => {
         detach = canvas.detach
         const iframe = canvas.part('iframe')
         await new Promise((resolve) => iframe.addEventListener('load', resolve))
+        // Follows the pinned element's corner, as the notes layer does.
+        const pins = renderHook(() =>
+          usePinCorners(
+            canvas.part('[data-layer]'),
+            new Map([[LEFT.ref, [3]]]),
+          ),
+        )
         // The board draws an element's pin at its corner, 20 px in from LEFT's right edge.
         Object.assign(pin(canvas, LEFT.ref).style, {
           left: '280px',
@@ -567,8 +575,12 @@ describe('attachGestures', () => {
         canvas.pointer.down(300, 100)
         canvas.pointer.move(340, 80)
 
-        expect(pin(canvas, LEFT.ref).style.translate).toBe('40px -20px')
+        // The frame pushes the corner once it reflows, a frame after the drag drew.
+        await expect
+          .poll(() => pin(canvas, LEFT.ref).style.translate)
+          .toBe('40px -20px')
         canvas.pointer.up(340, 80)
+        pins.unmount()
       })
 
       it("follows the frame's corner once its element is lost", async () => {

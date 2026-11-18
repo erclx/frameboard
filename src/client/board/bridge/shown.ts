@@ -43,3 +43,43 @@ export function subscribeShown(listener: Listener): () => void {
   listeners.add(listener)
   return () => listeners.delete(listener)
 }
+
+/** The live iframe of a frame in a canvas layer, null for a placeholder. */
+function iframeIn(
+  container: ParentNode,
+  ref: string,
+): HTMLIFrameElement | null {
+  return container.querySelector<HTMLIFrameElement>(
+    `[data-frame="${CSS.escape(ref)}"] iframe`,
+  )
+}
+
+/**
+ * Keeps a subscription open on a frame's iframe while `open` answers one,
+ * opening it again for each page and restamp, since each subscription lives
+ * in one document and reads one hash.
+ */
+export function followFrame(
+  container: HTMLElement,
+  ref: string,
+  open: (iframe: HTMLIFrameElement) => (() => void) | null,
+  none: () => void,
+): () => void {
+  let close: (() => void) | null = null
+  let watched: HTMLIFrameElement | null = null
+  const reopen = () => {
+    close?.()
+    watched = iframeIn(container, ref)
+    close = watched ? open(watched) : null
+    if (!close) none()
+  }
+  reopen()
+  // A swap mounts a new iframe, which announces itself on the way in.
+  const stop = subscribeShown((iframe) => {
+    if (iframe === watched || iframe === iframeIn(container, ref)) reopen()
+  })
+  return () => {
+    stop()
+    close?.()
+  }
+}

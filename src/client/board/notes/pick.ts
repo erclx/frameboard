@@ -2,6 +2,7 @@ import type { PickAt } from '@/shared/frame-bridge/messages'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { request } from '../bridge/channel'
+import { shownHashOf } from '../bridge/shown'
 
 /** A point on the board, in the canvas layer's own pixels. */
 export interface BoardPoint {
@@ -52,11 +53,13 @@ export async function readPick(
   const iframe = container.querySelector<HTMLIFrameElement>(
     `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
   )
-  const shown = iframe
-    ? await request(iframe, 'pick-at', {
-        at: { x: at.x - frame.box.x, y: at.y - frame.box.y },
-      })
-    : null
+  // A page that announced nothing has no bridge to wait on, so it takes a frame note at once.
+  const shown =
+    iframe && shownHashOf(iframe) !== null
+      ? await request(iframe, 'pick-at', {
+          at: { x: at.x - frame.box.x, y: at.y - frame.box.y },
+        })
+      : null
   // An unloaded iframe names no file, so its click makes a frame note.
   const renderedAt = iframe?.dataset.renderedAt ?? null
   const element = renderedAt ? (shown?.chain[0]?.index ?? null) : null
