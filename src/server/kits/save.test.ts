@@ -84,6 +84,23 @@ describe('saveKit', () => {
     expect(read(board, '.kits/teal/kit.md')).toContain('Saved from the acme')
   })
 
+  it('leaves out a hand-built assets/kit folder holding no kit.json, since no frame route imports it', async () => {
+    board = writeBoard({
+      ...TWO_PROJECTS,
+      'acme/tokens.css': ':root { --accent: teal }\n',
+      'acme/assets/kit/kit.css': '.mine { color: red }\n',
+      'acme/assets/kit/logo.svg': '<svg />\n',
+    })
+
+    await saveKit(board.root, 'acme', 'teal')
+
+    expect(readdirSync(join(board.root, '.kits/teal')).sort()).toEqual([
+      'kit.json',
+      'kit.md',
+      'tokens.css',
+    ])
+  })
+
   it('saves the board sheet where the project has none of its own', async () => {
     board = writeBoard({
       ...TWO_PROJECTS,

@@ -70,7 +70,8 @@ export async function saveKit(
   await mkdir(staging, { recursive: true })
   try {
     const assets = join(project.path, ASSETS_FOLDER, KIT_ASSETS)
-    if (existsSync(assets)) {
+    // A folder holding no kit.json is hand-built and reaches no frame, so it is no part of the look.
+    if (existsSync(join(assets, KIT_FILE))) {
       await cp(assets, staging, {
         recursive: true,
         filter: (from) => isCopied(basename(from)),
