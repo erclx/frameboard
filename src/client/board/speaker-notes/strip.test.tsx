@@ -113,6 +113,24 @@ describe('the speaker notes strip', () => {
     ])
   })
 
+  it('bases a second edit on the note this tab just wrote', async () => {
+    const posted = mount([frameOf('slide', { speakerNotes: 'Stored.' })])
+
+    await userEvent.type(notes(), ' Typed.')
+    await userEvent.tab()
+    await userEvent.type(notes(), ' More.')
+    await userEvent.tab()
+
+    expect(posted).toEqual([
+      { ref: SLIDE, speakerNotes: 'Stored. Typed.', expected: 'Stored.' },
+      {
+        ref: SLIDE,
+        speakerNotes: 'Stored. Typed. More.',
+        expected: 'Stored. Typed.',
+      },
+    ])
+  })
+
   it('keeps the draft in the field when the write is refused as stale', async () => {
     render(
       <SpeakerNotesStrip

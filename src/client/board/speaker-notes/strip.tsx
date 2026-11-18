@@ -178,7 +178,7 @@ function StripAt({
             aria-invalid={over || undefined}
             onFocus={() => {
               if (readOnly) return
-              base.current = stored
+              base.current = saved ?? stored
               setDraft(shown)
             }}
             onChange={(event) => setDraft(event.target.value)}
