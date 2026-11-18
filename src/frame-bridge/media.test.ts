@@ -75,6 +75,36 @@ describe('media-act', () => {
     expect(video?.hasAttribute('muted')).toBe(true)
   })
 
+  it('sets a file flag on the live node and pushes the reading', async () => {
+    const frame = await frameOf('<video></video>')
+    const reading = await ask(frame, 'media', VIDEO)
+
+    const asked = await ask(frame, 'media-act', {
+      ...VIDEO,
+      act: { kind: 'set-flag', name: 'loop', on: true },
+    })
+
+    expect(asked.reply).toEqual({ value: true })
+    expect(
+      frame.contentDocument?.querySelector('video')?.hasAttribute('loop'),
+    ).toBe(true)
+    await expect.poll(() => reading.pushes.at(-1)).toMatchObject({ loop: true })
+    reading.close()
+  })
+
+  it('drops a file flag from the live node', async () => {
+    const frame = await frameOf('<video muted></video>')
+
+    await ask(frame, 'media-act', {
+      ...VIDEO,
+      act: { kind: 'set-flag', name: 'muted', on: false },
+    })
+
+    expect(
+      frame.contentDocument?.querySelector('video')?.hasAttribute('muted'),
+    ).toBe(false)
+  })
+
   it('reaches no node at bytes the page no longer shows', async () => {
     const frame = await frameOf('<video muted></video>')
 
