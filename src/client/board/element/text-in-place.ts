@@ -100,17 +100,26 @@ export async function overElement(
   key: ElementKey,
   at: BoardPoint,
 ): Promise<boolean> {
-  const frame = frames.find((candidate) => candidate.ref === key.frame)
-  const iframe = frame && shownFrame(container, frame.ref)
-  if (!frame || !iframe) return false
+  const point = framePoint(frames, key.frame, at)
+  const iframe = shownFrame(container, key.frame)
+  if (!point || !iframe) return false
   const box = await request(iframe, 'element-box', {
     index: key.index,
     hash: key.hash,
   })
   if (!isElementBox(box)) return false
-  const x = at.x - frame.box.x
-  const y = at.y - frame.box.y
+  const { x, y } = point
   return x >= box.left && x < box.right && y >= box.top && y < box.bottom
+}
+
+/** A board point in the viewport of the frame `ref` names, or null for a frame not drawn. */
+export function framePoint(
+  frames: readonly FrameRecord[],
+  ref: string,
+  at: BoardPoint,
+): FramePoint | null {
+  const frame = frames.find((candidate) => candidate.ref === ref)
+  return frame ? { x: at.x - frame.box.x, y: at.y - frame.box.y } : null
 }
 
 /**

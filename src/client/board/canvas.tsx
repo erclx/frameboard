@@ -19,6 +19,7 @@ import { identityOf, liveStore, useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
 import { writeBoard } from '@/client/live/write'
+import type { FramePoint } from '@/shared/frame-bridge'
 import { drawnExtent } from '@/shared/frame-widths'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
@@ -44,6 +45,7 @@ import { followReports } from './element/report'
 import {
   editTextInPlace,
   editTextWhenShown,
+  framePoint,
   overElement,
   type WriteText,
 } from './element/text-in-place'
@@ -623,8 +625,16 @@ export function Canvas({
     toBoard,
   })
 
-  /** Opens a text element's text for typing, a double-click's or a placed Text's. */
-  const editText = (key: ElementKey, waits: boolean): Promise<boolean> => {
+  /**
+   * Opens a text element's text for typing, a double-click's or a placed
+   * Text's. A double-click's frame-local `at` picks the run of text beside
+   * a child element.
+   */
+  const editText = (
+    key: ElementKey,
+    waits: boolean,
+    at?: FramePoint,
+  ): Promise<boolean> => {
     if (!layer) return Promise.resolve(false)
     // A text with a break carries its white-space beside it, as one undo step.
     const write: WriteText = ([change, ...rest]) =>
@@ -643,7 +653,7 @@ export function Canvas({
       return Promise.resolve(true)
     }
     selectElement(selectionStore, page.ref, key)
-    const edit = editTextInPlace(layer, key, write)
+    const edit = editTextInPlace(layer, key, write, at)
     stopEditing.current = edit.cancel
     return edit.opened
   }
@@ -660,8 +670,9 @@ export function Canvas({
     ) {
       const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
       const drawn = withDrawn(frames)
+      const at = framePoint(drawn, held.frame, { x, y }) ?? undefined
       void overElement(layer, drawn, held, { x, y })
-        .then((over) => over && editText(held, false))
+        .then((over) => over && editText(held, false, at))
         .then((opened) => {
           if (!opened) pickInside(event, true)
         })
@@ -687,14 +698,15 @@ export function Canvas({
     const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
     // A pick waiting on its frame's tree yields to any click made after it.
     const turn = ++picks.current
-    void pickElementRead(layer, withDrawn(frames), { x, y }, readTree).then(
-      (element) => {
-        if (!element || turn !== picks.current) return
-        // Opening an edit selects the element first, text or not.
-        if (edit) void editText(element, false)
-        else selectElement(selectionStore, page.ref, element)
-      },
-    )
+    const drawn = withDrawn(frames)
+    void pickElementRead(layer, drawn, { x, y }, readTree).then((element) => {
+      if (!element || turn !== picks.current) return
+      // Opening an edit selects the element first, text or not.
+      if (edit) {
+        const at = framePoint(drawn, element.frame, { x, y }) ?? undefined
+        void editText(element, false, at)
+      } else selectElement(selectionStore, page.ref, element)
+    })
   }
 
   // Off the label's controls, which click on release and would click twice.
