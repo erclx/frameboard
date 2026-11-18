@@ -20,6 +20,13 @@ import { listenerSchema, notesFileSchema } from './notes'
 import { previewStartSchema, previewStopSchema } from './preview'
 import { referencesCheckSchema, referencesSyncSchema } from './references'
 import { selectionResultSchema } from './selection'
+import {
+  imageDoctorSchema,
+  imageFindSchema,
+  imageGenerateSchema,
+  licenseFileSchema,
+  savedImageSchema,
+} from './sourcing'
 import { tokenTableSchema } from './tokens'
 
 /** Every record by name, the one place a later row registers a record for `docs`. */
@@ -51,4 +58,9 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   referencesCheck: referencesCheckSchema,
   previewStart: previewStartSchema,
   previewStop: previewStopSchema,
+  imageFind: imageFindSchema,
+  savedImage: savedImageSchema,
+  licenseFile: licenseFileSchema,
+  imageGenerate: imageGenerateSchema,
+  imageDoctor: imageDoctorSchema,
 }

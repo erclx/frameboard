@@ -92,6 +92,14 @@ export const EXIT_CODES = {
   'kit-not-found': 3,
   // A kit whose `kit.json` does not read, or that lacks its token sheet.
   'kit-invalid': 5,
+  // An image search result or id that is not there to save, writing nothing.
+  'result-not-found': 3,
+  // No image provider is ready, since no key is set or the one named has none.
+  'no-provider': 3,
+  // The image source refused or failed a search or a download, with its status in the details.
+  'source-failed': 13,
+  // An image provider refused or failed a generation, with its status in the details and never the key.
+  'provider-failed': 13,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES

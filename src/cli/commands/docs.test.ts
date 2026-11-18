@@ -110,6 +110,23 @@ describe('docs', () => {
     expect(records.layout?.type).toBe('object')
   })
 
+  it('prints the image records and the codes their verbs refuse with', async () => {
+    const run = await cli(['docs', '--json'], { cwd })
+    const data = run.json().data as {
+      records: Record<string, { type?: string; oneOf?: unknown[] }>
+      exitCodes: Record<string, number>
+    }
+
+    expect(data.records.imageFind?.type).toBe('object')
+    expect(data.records.licenseFile?.oneOf).toHaveLength(2)
+    expect(data.exitCodes).toMatchObject({
+      'result-not-found': 3,
+      'no-provider': 3,
+      'source-failed': 13,
+      'provider-failed': 13,
+    })
+  })
+
   it('appends the social and video sizes after every earlier size, unchanged', async () => {
     const { contentFormat } = await docs()
 
