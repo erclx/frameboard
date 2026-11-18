@@ -70,11 +70,8 @@ export function inspectorTab(name: string): (page: Page) => Promise<void> {
 export const PRESS_FRAMES = 600
 
 /**
- * Drawn by the live board in every mode, Play included, and never by the
- * `BoardLoading` view a board route shows first, whose avatar, zoom, and
- * Shapes menus are live and close when the board replaces them. A load script
- * acting on a board route waits for it, and init scripts share no code, so
- * each restates the check beside its own match.
+ * Drawn by the live board in every mode and never by `BoardLoading`, whose live
+ * menus close when the board replaces them, so a board-route load script waits.
  */
 export const LIVE_BOARD = '[data-layer]'
 
@@ -479,10 +476,9 @@ const PIXEL = Buffer.from(
 )
 
 /**
- * Holds the shot until `selector` draws, `absent` matches nothing, every SVG
- * image decodes, and two frames paint, which the harness's own wait skips. A
- * selector that never draws keeps the load held, since any answer would shoot
- * the wrong state as a pass, and is named on stderr ahead of the timeout.
+ * Holds the load until `selector` draws, `absent` matches nothing, SVG images
+ * decode, and two frames paint. A miss stays held, since any answer shoots the
+ * wrong state as a pass, and is named on stderr ahead of the timeout.
  */
 export function readyWhen(
   selector: string,
