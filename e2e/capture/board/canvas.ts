@@ -13,6 +13,7 @@ import {
   asWriter,
   AVATAR,
   both,
+  elementInFrame,
   inspectorTab,
   noAgentChanges,
   onCanvas,
@@ -221,7 +222,7 @@ async function heroHoldsNote(page: Page): Promise<void> {
 
 /**
  * Gives webapp a `wipe` transition of its own and sets it on the home page,
- * so the Page section's list shows a project's name after the built-ins,
+ * so the Page section's grid shows a project's tile after the built-ins,
  * taking the file and the layout back when the page closes.
  */
 async function homeWipes(page: Page): Promise<void> {
@@ -240,28 +241,6 @@ async function homeWipes(page: Page): Promise<void> {
     writeFileSync(layoutPath, originalLayout)
     rmSync(join(SERVED_BOARD, 'webapp/assets'), { recursive: true })
   })
-}
-
-/**
- * Opens the Page section's Slide transition menu once it reads `wipe` and
- * write access lights it, waiting in an init script as `pressOnLoad` does.
- */
-async function transitionMenuOnLoad(page: Page): Promise<void> {
-  await page.addInitScript(
-    ({ frames }) => {
-      let left = frames
-      const press = () => {
-        const trigger = document.querySelector<HTMLButtonElement>(
-          '[aria-labelledby="inspector-page"] button[aria-label="Slide transition"]:not(:disabled)',
-        )
-        if (trigger?.textContent?.includes('wipe')) trigger.click()
-        else if (--left > 0) requestAnimationFrame(press)
-        else console.error('The Slide transition menu never read wipe')
-      }
-      document.addEventListener('DOMContentLoaded', press)
-    },
-    { frames: ROW_FRAMES },
-  )
 }
 
 /**
@@ -738,7 +717,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
-      // The list a project's own transition joins, open on the one the page holds.
+      // The grid a project's own transition joins, marked on the one the page holds.
       section: 'page-transition-own',
       theme,
       route: '/p/webapp/home',
@@ -751,8 +730,30 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           noAgentChanges,
           asWriter,
           inspectorTab('Slides'),
-          transitionMenuOnLoad,
-          readyWhen('[data-slot="dropdown-menu-content"]'),
+          readyWhen(
+            '[aria-labelledby="inspector-page-transition"] [data-tile="wipe"][aria-checked="true"]:not(:disabled)',
+          ),
+        ),
+      ),
+    },
+    {
+      // A stepped element's effect tiles and its start buttons.
+      section: 'step-effect',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          aboutStepped,
+          noAgentChanges,
+          asWriter,
+          elementInFrame('webapp/home/about', '[data-step="2"]'),
+          inspectorTab('Slides'),
+          readyWhen(
+            '[aria-labelledby="inspector-step-effect"] [aria-checked="true"]:not(:disabled)',
+          ),
         ),
       ),
     },
