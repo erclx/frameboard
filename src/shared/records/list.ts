@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { DEVICES } from '../frame-device'
+import { DEVICES, POSES } from '../frame-device'
 import { DIRECTIONS } from '../present-transition'
 
 const recordErrorSchema = z
@@ -39,8 +39,13 @@ export const frameRecordSchema = z.object({
   widths: z.array(z.object({ width: z.number(), height: z.number() })),
   /** Whether the board draws the frame inside a device, absent when it does not. */
   showDevice: z.boolean().optional(),
-  /** The device the frame's width names while it shows one, absent when off or under 320 wide. */
+  /**
+   * The device the frame draws inside while it shows one: `foldable` when the
+   * frame names it, else the one its width picks, absent when off or under 320 wide.
+   */
   device: z.enum(DEVICES).optional(),
+  /** The pose a frame naming the foldable is folded to, shown or not, absent on every other frame. */
+  pose: z.enum(POSES).optional(),
   /** The transition the frame arrives with in present mode, over its page's, absent when it holds none. */
   transition: transitionRecordSchema.optional(),
   /** What the presenter means to say over the slide, plain text with its line breaks, absent when it holds none. */

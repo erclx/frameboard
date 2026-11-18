@@ -95,6 +95,10 @@ describe('readResize', () => {
       'a shape whose rotate states 0deg',
       '<div style="width: 40px; height: 40px; rotate: 0deg"></div>',
     ],
+    [
+      'a shape a flat transform turns',
+      '<div style="width: 40px; height: 40px; transform: rotate(30deg)"></div>',
+    ],
   ])('reads %s as one a corner resizes', (_name, markup) => {
     expect(read(markup)?.kind).toBe('box')
   })
@@ -113,6 +117,10 @@ describe('readResize', () => {
     [
       'a container its rotate turns',
       '<div style="rotate: 30deg"><span>a</span></div>',
+    ],
+    [
+      'a shape its transform tilts in 3D',
+      '<div style="width: 40px; height: 40px; transform: perspective(800px) rotateX(20deg)"></div>',
     ],
   ])('refuses %s', (_name, markup) => {
     expect(read(markup)).toBeNull()

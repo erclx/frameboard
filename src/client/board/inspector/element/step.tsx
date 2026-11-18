@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { type KeyboardEvent, useRef, useState } from 'react'
 
 import { Input } from '@/client/components/ui/input'
+import { cn } from '@/client/lib/cn'
 import type { LiveStep } from '@/shared/frame-bridge/live-element'
 import {
   STEP_ATTRIBUTES,
@@ -12,14 +13,18 @@ import {
   type StepStart,
 } from '@/shared/present-transition'
 
+import { EditKeyframes } from '../../present/transition'
+import { EffectTiles } from '../effect-tiles'
 import { LabelTip } from '../label-tip'
-import { TypePicker } from './typography'
 import type { WriteElement } from './write'
 
 interface StepSectionProps {
   step: LiveStep
   disabled: boolean
   write: WriteElement
+  /** Plays an effect once on the element, on a tile's hover or focus. */
+  onPreview?: (effect: StepEffect) => void
+  onPreviewEnd?: () => void
 }
 
 /** A typed step number, null for an empty field, undefined for anything else a field can hold. */
@@ -35,7 +40,13 @@ function parseStep(value: string): number | null | undefined {
  * Which press of its slide reveals the element. An empty step drops
  * `data-step`, which takes the element out of the steps whatever else it holds.
  */
-export function StepSection({ step, disabled, write }: StepSectionProps) {
+export function StepSection({
+  step,
+  disabled,
+  write,
+  onPreview,
+  onPreviewEnd,
+}: StepSectionProps) {
   const effect: StepEffect =
     STEP_EFFECTS.find((candidate) => candidate === step.effect) ?? 'appear'
   const start: StepStart =
@@ -65,15 +76,23 @@ export function StepSection({ step, disabled, write }: StepSectionProps) {
         }
       />
       {step.step === null ? null : (
-        <div className="mt-2 grid grid-cols-2 gap-1.5">
-          <TypePicker
-            label="Effect"
-            shown={STEP_EFFECT_LABELS[effect]}
-            current={effect}
+        <>
+          <span
+            id="inspector-step-effect"
+            className="mt-2 mb-1 block text-caption text-muted-foreground"
+          >
+            Effect
+          </span>
+          <EditKeyframes project={undefined} />
+          <EffectTiles
+            labelledBy="inspector-step-effect"
             options={STEP_EFFECTS.map((value) => ({
               value,
-              name: STEP_EFFECT_LABELS[value],
+              label: STEP_EFFECT_LABELS[value],
+              picture: { kind: 'step', effect: value },
             }))}
+            current={effect}
+            columns={5}
             disabled={disabled}
             onPick={(value) =>
               void write({
@@ -82,15 +101,22 @@ export function StepSection({ step, disabled, write }: StepSectionProps) {
                 value,
               })
             }
+            onPreview={(value) => {
+              const picked = STEP_EFFECTS.find(
+                (candidate) => candidate === value,
+              )
+              if (picked) onPreview?.(picked)
+            }}
+            onPreviewEnd={onPreviewEnd}
           />
-          <TypePicker
-            label="Start"
-            shown={STEP_START_LABELS[start]}
+          <span
+            id="inspector-step-start"
+            className="mt-2 mb-1 block text-caption text-muted-foreground"
+          >
+            Starts
+          </span>
+          <StartButtons
             current={start}
-            options={STEP_STARTS.map((value) => ({
-              value,
-              name: STEP_START_LABELS[value],
-            }))}
             disabled={disabled}
             onPick={(value) =>
               void write({
@@ -100,7 +126,7 @@ export function StepSection({ step, disabled, write }: StepSectionProps) {
               })
             }
           />
-        </div>
+        </>
       )}
     </section>
   )
@@ -159,6 +185,70 @@ function StepField({
           if (event.key === 'Escape') setTyped(stored)
         }}
       />
+    </div>
+  )
+}
+
+/** The radio group's arrow keys, each moving one button along and picking it. */
+const ARROW_STEPS: Readonly<Record<string, number>> = {
+  ArrowRight: 1,
+  ArrowDown: 1,
+  ArrowLeft: -1,
+  ArrowUp: -1,
+}
+
+/** When the step starts, as three buttons picked like a radio group. */
+function StartButtons({
+  current,
+  disabled,
+  onPick,
+}: {
+  current: StepStart
+  disabled: boolean
+  onPick: (value: StepStart) => void
+}) {
+  const buttons = useRef<(HTMLButtonElement | null)[]>([])
+  const pick = (value: StepStart) => {
+    if (value !== current) onPick(value)
+  }
+  const step = (event: KeyboardEvent, index: number) => {
+    const by = ARROW_STEPS[event.key]
+    if (by === undefined) return
+    event.preventDefault()
+    const next = (index + by + STEP_STARTS.length) % STEP_STARTS.length
+    const target = STEP_STARTS[next]
+    if (!target) return
+    buttons.current[next]?.focus()
+    pick(target)
+  }
+  return (
+    <div
+      role="radiogroup"
+      aria-labelledby="inspector-step-start"
+      className="flex h-[26px] gap-0.5 rounded-md bg-input p-0.5"
+    >
+      {STEP_STARTS.map((value, index) => (
+        <button
+          key={value}
+          ref={(button) => {
+            buttons.current[index] = button
+          }}
+          type="button"
+          role="radio"
+          aria-checked={value === current}
+          tabIndex={value === current ? 0 : -1}
+          disabled={disabled}
+          onClick={() => pick(value)}
+          onKeyDown={(event) => step(event, index)}
+          className={cn(
+            'grid min-w-0 flex-1 place-items-center truncate rounded-[5px] text-caption text-muted-foreground outline-none hover:bg-sidebar hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:bg-sidebar disabled:pointer-events-none disabled:opacity-40',
+            value === current &&
+              'bg-sidebar font-semibold text-foreground shadow-xs',
+          )}
+        >
+          {STEP_START_LABELS[value]}
+        </button>
+      ))}
     </div>
   )
 }

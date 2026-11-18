@@ -29,6 +29,7 @@ import type { HomeLayout } from './layout'
 import { folderPin, usePins } from './pins'
 import { ProjectCard, ProjectRow, ROW_COLUMNS } from './project-card'
 import { roveFocus } from './rove'
+import { writeShownCount } from './shown-count'
 import { SortMenu } from './sort-menu'
 
 interface ProjectsProps {
@@ -86,6 +87,10 @@ export function Projects({
   const entries: HomeEntry[] = filtering
     ? shown.map((project) => ({ kind: 'project', project }))
     : homeEntries(shown, pins)
+  // A filtered list is not what the next visit draws first.
+  useEffect(() => {
+    if (!filtering && entries.length > 0) writeShownCount(entries.length)
+  }, [filtering, entries.length])
   // Held as one string, so the effect runs when the set of folders changes rather than on every render.
   const shownFolders = JSON.stringify(
     entries.flatMap((entry) =>

@@ -3,6 +3,7 @@ import { join } from 'node:path'
 
 import { type Page } from '@playwright/test'
 
+import { type Pose, POSE_SIZES, POSES } from '@/shared/frame-device'
 import type { ServerMessage } from '@/shared/live-messages'
 import type { Finding } from '@/shared/records/check'
 
@@ -12,6 +13,7 @@ import {
   asWriter,
   AVATAR,
   both,
+  elementInFrame,
   inspectorTab,
   noAgentChanges,
   onCanvas,
@@ -113,6 +115,28 @@ async function devicesShown(page: Page): Promise<void> {
 }
 
 /**
+ * Names the about frame a foldable in `pose`, at that pose's screen size,
+ * putting the layout back when the page closes.
+ */
+function foldableShown(pose: Pose): (page: Page) => Promise<void> {
+  return async (page) => {
+    const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+    const originalLayout = readFileSync(layoutPath, 'utf8')
+    const layout = JSON.parse(originalLayout)
+    Object.assign(layout.frames.about, {
+      ...POSE_SIZES[pose],
+      showDevice: true,
+      foldable: true,
+      pose,
+    })
+    writeFileSync(layoutPath, JSON.stringify(layout))
+    page.once('close', () => {
+      writeFileSync(layoutPath, originalLayout)
+    })
+  }
+}
+
+/**
  * Presses `selector` with a whole pointer sequence once it renders, since a
  * menu trigger opens on the press, which a bare `click()` never sends.
  */
@@ -198,7 +222,7 @@ async function heroHoldsNote(page: Page): Promise<void> {
 
 /**
  * Gives webapp a `wipe` transition of its own and sets it on the home page,
- * so the Page section's list shows a project's name after the built-ins,
+ * so the Page section's grid shows a project's tile after the built-ins,
  * taking the file and the layout back when the page closes.
  */
 async function homeWipes(page: Page): Promise<void> {
@@ -220,28 +244,6 @@ async function homeWipes(page: Page): Promise<void> {
 }
 
 /**
- * Opens the Page section's Slide transition menu once it reads `wipe` and
- * write access lights it, waiting in an init script as `pressOnLoad` does.
- */
-async function transitionMenuOnLoad(page: Page): Promise<void> {
-  await page.addInitScript(
-    ({ frames }) => {
-      let left = frames
-      const press = () => {
-        const trigger = document.querySelector<HTMLButtonElement>(
-          '[aria-labelledby="inspector-page"] button[aria-label="Slide transition"]:not(:disabled)',
-        )
-        if (trigger?.textContent?.includes('wipe')) trigger.click()
-        else if (--left > 0) requestAnimationFrame(press)
-        else console.error('The Slide transition menu never read wipe')
-      }
-      document.addEventListener('DOMContentLoaded', press)
-    },
-    { frames: ROW_FRAMES },
-  )
-}
-
-/**
  * Marks three steps on `about`, so presenting it draws the bar's step dots
  * with none revealed yet, putting the file back when the page closes.
  */
@@ -254,6 +256,41 @@ async function aboutStepped(page: Page): Promise<void> {
       '<p data-step="1">One</p><p data-step="2">Two</p><p data-step="3">Three</p>',
   )
   page.once('close', () => writeFileSync(path, original))
+}
+
+/** Gives `hero` a speaker note, so the presenter view has notes to draw. */
+async function heroNoted(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const original = readFileSync(path, 'utf8')
+  const layout = JSON.parse(original)
+  layout.frames.hero.speakerNotes =
+    'Start with the problem: two frames for one phone. Then fold it live.'
+  writeFileSync(path, JSON.stringify(layout))
+  page.once('close', () => writeFileSync(path, original))
+}
+
+/** The presentation the presenter view case joins, which its own page answers. */
+const PRESENTER_ID = 'capture'
+
+/**
+ * Answers the presenter window's hello from inside its own page, as a tab
+ * presenting `hero` four minutes in would, since a capture drives one page.
+ */
+async function presenterFedOnLoad(page: Page): Promise<void> {
+  await page.addInitScript((id) => {
+    const channel = new BroadcastChannel(`frameboard.present.${id}`)
+    const state = {
+      type: 'state',
+      page: 'webapp/home',
+      frame: 'webapp/home/hero',
+      step: 0,
+      startedAt: Date.now() - 252_000,
+      themes: {},
+    }
+    channel.addEventListener('message', (event) => {
+      if (event.data?.type === 'hello') channel.postMessage(state)
+    })
+  }, PRESENTER_ID)
 }
 
 /**
@@ -545,6 +582,23 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
         ),
       ),
     },
+    // A selected foldable in each pose, with its buttons under the body.
+    ...POSES.map((pose) => ({
+      section: `device-foldable-${pose}`,
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          foldableShown(pose),
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          readyWhen('body:has([data-bezel="foldable"]):has([data-poses])'),
+        ),
+      ),
+    })),
     {
       section: 'inspector-widths',
       theme,
@@ -635,6 +689,22 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
+      section: 'present-device',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      setup: themed(
+        both(
+          devicesShown,
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          presentOnLoad,
+          readyWhen('[data-presenting] [data-bezel="phone"]'),
+        ),
+      ),
+    },
+    {
       section: 'present-focus',
       theme,
       route: '/p/webapp/home',
@@ -679,6 +749,27 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
+      section: 'presenter-view',
+      theme,
+      route: `/p/webapp/home/presenter?id=${PRESENTER_ID}`,
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      // The timer and the clock read the time of the run.
+      mask: ['[data-presenter] header button', '[data-presenter] time'],
+      setup: themed(
+        both(
+          aboutStepped,
+          heroNoted,
+          noAgentChanges,
+          presenterFedOnLoad,
+          readyWhen(
+            '[data-presenter] iframe[title="about"]',
+            '[data-presenter] iframe.invisible',
+          ),
+        ),
+      ),
+    },
+    {
       section: 'page-transition',
       theme,
       route: '/p/webapp/home',
@@ -698,7 +789,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
-      // The list a project's own transition joins, open on the one the page holds.
+      // The grid a project's own transition joins, marked on the one the page holds.
       section: 'page-transition-own',
       theme,
       route: '/p/webapp/home',
@@ -711,8 +802,30 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           noAgentChanges,
           asWriter,
           inspectorTab('Slides'),
-          transitionMenuOnLoad,
-          readyWhen('[data-slot="dropdown-menu-content"]'),
+          readyWhen(
+            '[aria-labelledby="inspector-page-transition"] [data-tile="wipe"][aria-checked="true"]:not(:disabled)',
+          ),
+        ),
+      ),
+    },
+    {
+      // A stepped element's effect tiles and its start buttons.
+      section: 'step-effect',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          aboutStepped,
+          noAgentChanges,
+          asWriter,
+          elementInFrame('webapp/home/about', '[data-step="2"]'),
+          inspectorTab('Slides'),
+          readyWhen(
+            '[aria-labelledby="inspector-step-effect"] [aria-checked="true"]:not(:disabled)',
+          ),
         ),
       ),
     },

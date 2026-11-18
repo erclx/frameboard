@@ -267,6 +267,86 @@ describe('Frame', () => {
       )
     })
 
+    describe('a foldable', () => {
+      const inbox: FrameRecord = {
+        ...frame('inbox'),
+        box: { x: 0, y: 0, width: 890, height: 626 },
+        showDevice: true,
+        device: 'foldable',
+        pose: 'half',
+      }
+      const posesOf = (container: HTMLElement) =>
+        container.querySelector('[data-poses]')
+
+      afterEach(() => {
+        act(() => clear(selectionStore))
+        act(() => modeStore.setState({ mode: 'edit' }))
+      })
+
+      it('draws its body in the pose it holds', () => {
+        const { container } = render(<Frame frame={inbox} live version={0} />)
+
+        expect(
+          container.querySelector('[data-bezel="foldable"] [data-bezel-fold]'),
+        ).toHaveAttribute('data-bezel-fold', 'half')
+      })
+
+      it('shows the pose buttons under its body once selected alone', () => {
+        const { container } = render(<Frame frame={inbox} live version={0} />)
+        expect(posesOf(container)).toBeNull()
+
+        act(() => select(selectionStore, 'studio/home', [inbox.ref]))
+
+        const body = container
+          .querySelector('[data-frame]')
+          ?.getBoundingClientRect()
+        expect(posesOf(container)?.getBoundingClientRect().top).toBeGreaterThan(
+          (body?.bottom ?? 0) + 20,
+        )
+      })
+
+      it('shows no buttons while another frame is selected with it', () => {
+        const { container } = render(<Frame frame={inbox} live version={0} />)
+
+        act(() =>
+          select(selectionStore, 'studio/home', [inbox.ref, 'studio/home/a']),
+        )
+
+        expect(posesOf(container)).toBeNull()
+      })
+
+      it('shows no buttons in Play', () => {
+        const { container } = render(<Frame frame={inbox} live version={0} />)
+        act(() => select(selectionStore, 'studio/home', [inbox.ref]))
+
+        act(() => modeStore.setState({ mode: 'play' }))
+
+        expect(posesOf(container)).toBeNull()
+      })
+
+      it('shows no buttons with its device switched off', () => {
+        const { showDevice: _shown, device: _device, ...plain } = inbox
+        const { container } = render(<Frame frame={plain} live version={0} />)
+
+        act(() => select(selectionStore, 'studio/home', [inbox.ref]))
+
+        expect(posesOf(container)).toBeNull()
+      })
+
+      it('turns the buttons off on a locked frame, naming the lock', () => {
+        const { container } = render(
+          <Frame frame={{ ...inbox, locked: true }} live version={0} />,
+        )
+
+        act(() => select(selectionStore, 'studio/home', [inbox.ref]))
+
+        expect(posesOf(container)?.querySelector('button')).toHaveAttribute(
+          'title',
+          'Unlock inbox to fold it',
+        )
+      })
+    })
+
     it('draws no bezel with no device', () => {
       const { container } = render(
         <Frame frame={frame('a')} live version={0} />,

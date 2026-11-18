@@ -77,6 +77,11 @@ export const layoutEntrySchema = z.looseObject({
   // The key before showDevice, naming a device. Any string reads as shown,
   // and the next write of the entry replaces it with showDevice.
   device: z.unknown().optional(),
+  // Whether the frame names the foldable over the device its width picks,
+  // and the pose it is folded to. Only true names it, a pose no reader knows
+  // reads as closed, and either value of another kind parses as written.
+  foldable: z.unknown().optional(),
+  pose: z.unknown().optional(),
   // The transition the frame arrives with in present mode, over its page's.
   // A value no reader knows parses as written and reads as none.
   transition: z.unknown().optional(),

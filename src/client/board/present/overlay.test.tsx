@@ -12,10 +12,11 @@ import { emulateReducedMotion } from '@/test/motion'
 
 import { useBoardActions } from '../board-actions'
 import { selectionStore } from '../selection'
-import { fitScale } from './fit'
+import { fitScale, presentScale } from './fit'
 import { PresentOverlay } from './overlay'
 import type { LoadTransitions } from './own-transitions'
 import { presentStore, startPresenting, stepPresenting } from './store'
+import { type AudienceMessage, joinAudience, presentationIdOf } from './sync'
 
 /** One row on the canvas, laid left to right in the order named, so reading order follows it. */
 function framesOf(...names: string[]): FrameRecord[] {
@@ -105,6 +106,29 @@ describe('the scale a frame presents at', () => {
       fitScale({ width: 390, height: 264 }, { width: 1280, height: 800 }),
     ).toBe(2)
   })
+
+  it('fits a phone by its shadow, two borders above and four below, around a centered body', () => {
+    const phone = { box: { width: 390, height: 844 }, device: 'phone' as const }
+    expect(presentScale(phone, { width: 1280, height: 800 })).toBeCloseTo(
+      800 / 972,
+    )
+  })
+
+  it('fits a laptop by its base aside and its shadow below', () => {
+    const laptop = {
+      box: { width: 1440, height: 900 },
+      device: 'laptop' as const,
+    }
+    expect(presentScale(laptop, { width: 1660, height: 2000 })).toBeCloseTo(1)
+    expect(presentScale(laptop, { width: 4000, height: 1038 })).toBeCloseTo(1)
+  })
+
+  it('fits a frame with no device by its box', () => {
+    const bare = { box: { width: 390, height: 844 }, device: null }
+    expect(presentScale(bare, { width: 1280, height: 800 })).toBeCloseTo(
+      800 / 844,
+    )
+  })
 })
 
 describe('presenting a page', () => {
@@ -135,7 +159,7 @@ describe('presenting a page', () => {
     expect(box?.left).toBeCloseTo((window.innerWidth - 780) / 2)
   })
 
-  it('fits a frame in a device with its body inside the window', () => {
+  it('fits a phone with its edge and drop shadow inside a short window', () => {
     present([
       frameOf('phone', {
         box: { x: 0, y: 0, width: 390, height: 844 },
@@ -143,15 +167,15 @@ describe('presenting a page', () => {
       }),
     ])
 
-    const body = document.querySelector('[data-bezel]')?.getBoundingClientRect()
-    const scale = Math.min(
-      window.innerWidth / (390 + 32),
-      window.innerHeight / (844 + 32),
-    )
-    const top = (body?.top ?? 0) - 16 * scale
-    const bottom = (body?.bottom ?? 0) + 16 * scale
+    const screen = document
+      .querySelector('[data-bezel]')
+      ?.getBoundingClientRect()
+    const scale = (screen?.height ?? 0) / 844
+    // The shadow reaches two borders above the screen and four below.
+    const top = (screen?.top ?? 0) - 32 * scale
+    const bottom = (screen?.bottom ?? 0) + 64 * scale
 
-    expect(body?.height).toBeCloseTo(844 * scale)
+    expect(scale).toBeLessThan(window.innerHeight / (844 + 32))
     expect(top).toBeGreaterThanOrEqual(-0.5)
     expect(bottom).toBeLessThanOrEqual(window.innerHeight + 0.5)
   })
@@ -282,6 +306,169 @@ describe('presenting a page', () => {
     )
 
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})
+
+describe('the presenter window', () => {
+  /** A window as `window.open` answers, closed by its own `close` or by hand. */
+  function fakeWindow(): Window & { closed: boolean } {
+    const opened = { closed: false, focus: vi.fn() }
+    return Object.assign(opened, {
+      close: () => {
+        opened.closed = true
+      },
+    }) as unknown as Window & { closed: boolean }
+  }
+
+  /** Puts the document in or out of full screen as the browser reports it. */
+  function setFullscreen(on: boolean) {
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => (on ? document.documentElement : null),
+    })
+    act(() => {
+      document.dispatchEvent(new Event('fullscreenchange'))
+    })
+  }
+
+  const press = (name: string) =>
+    userEvent.click(screen.getByRole('button', { name }))
+
+  afterEach(() => {
+    Reflect.deleteProperty(document, 'fullscreenElement')
+    vi.restoreAllMocks()
+  })
+
+  it('opens from the bar at the address under the presented page', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(fakeWindow())
+    present(framesOf('first'))
+
+    await press('Presenter view')
+
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(open.mock.calls[0]?.[0]).toMatch(
+      /^\/p\/studio\/home\/presenter\?id=[a-z0-9-]+$/,
+    )
+  })
+
+  it('keeps presenting when full screen ends while it is open', async () => {
+    vi.spyOn(window, 'open').mockReturnValue(fakeWindow())
+    present(framesOf('first'))
+    setFullscreen(true)
+
+    await press('Presenter view')
+    setFullscreen(false)
+
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('lets leaving full screen end presenting once it is closed by hand', async () => {
+    const opened = fakeWindow()
+    vi.spyOn(window, 'open').mockReturnValue(opened)
+    present(framesOf('first'))
+    await press('Presenter view')
+    setFullscreen(true)
+
+    opened.closed = true
+    setFullscreen(false)
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('says the browser blocked it and presents on', async () => {
+    vi.spyOn(window, 'open').mockReturnValue(null)
+    present(framesOf('first'))
+
+    await press('Presenter view')
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'The browser blocked the presenter view',
+    )
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
+  it('brings an open one forward rather than opening a second', async () => {
+    const opened = fakeWindow()
+    const open = vi.spyOn(window, 'open').mockReturnValue(opened)
+    present(framesOf('first'))
+
+    await press('Presenter view')
+    await press('Presenter view')
+
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(opened.focus).toHaveBeenCalledTimes(1)
+  })
+
+  it('closes with presenting', async () => {
+    const opened = fakeWindow()
+    vi.spyOn(window, 'open').mockReturnValue(opened)
+    present(framesOf('first'))
+    await press('Presenter view')
+
+    await press('Leave presenting')
+
+    expect(opened.closed).toBe(true)
+  })
+
+  it('takes the window full screen from the bar and on F', async () => {
+    const request = vi
+      .spyOn(document.documentElement, 'requestFullscreen')
+      .mockResolvedValue(undefined)
+    present(framesOf('first'))
+    request.mockClear()
+
+    await press('Full screen')
+    await userEvent.keyboard('f')
+
+    expect(request).toHaveBeenCalledTimes(2)
+  })
+
+  /** Opens the presenter view from the bar and joins its channel as the presenter window would. */
+  async function joined() {
+    const open = vi.spyOn(window, 'open').mockReturnValue(fakeWindow())
+    await press('Presenter view')
+    const url = String(open.mock.calls[0]?.[0])
+    const id = presentationIdOf(url.slice(url.indexOf('?')))
+    const received: AudienceMessage[] = []
+    const link = joinAudience(id ?? '', (message) => received.push(message))
+    return { received, link }
+  }
+
+  const lastFrame = (received: AudienceMessage[]) => {
+    const last = received.at(-1)
+    return last?.type === 'state' ? last.frame : last?.type
+  }
+
+  it('tells it each slide the audience moves to', async () => {
+    present(framesOf('first', 'second'))
+    const { received, link } = await joined()
+    await expect.poll(() => lastFrame(received)).toBe('studio/home/first')
+
+    await userEvent.keyboard('{ArrowRight}')
+
+    await expect.poll(() => lastFrame(received)).toBe('studio/home/second')
+    link.close()
+  })
+
+  it('steps the audience on its command', async () => {
+    present(framesOf('first', 'second'))
+    const { link } = await joined()
+
+    link.step(1)
+
+    await expect.poll(() => shownFrame()?.getAttribute('title')).toBe('second')
+    link.close()
+  })
+
+  it('shows Full screen pressed while the window is full screen', () => {
+    present(framesOf('first'))
+
+    setFullscreen(true)
+
+    expect(screen.getByRole('button', { name: 'Full screen' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   })
 })
 
@@ -878,6 +1065,21 @@ describe('a presented frame in a device', () => {
     const shown = shownFrame()
 
     expect(shown && getComputedStyle(shown).borderBottomLeftRadius).toBe('62px')
+  })
+
+  it('presents a foldable in the pose it holds, with no pose buttons', () => {
+    present([
+      frameOf('a', {
+        box: { x: 0, y: 0, width: 890, height: 626 },
+        device: 'foldable',
+        pose: 'half',
+      }),
+    ])
+
+    expect(
+      document.querySelector('[data-bezel="foldable"] [data-bezel-fold]'),
+    ).toHaveAttribute('data-bezel-fold', 'half')
+    expect(document.querySelector('[data-poses]')).toBeNull()
   })
 
   it('leaves a page with no device square', () => {

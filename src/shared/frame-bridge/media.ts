@@ -22,16 +22,29 @@ export interface MediaReading {
   loop: boolean
 }
 
-/** What the board asks of a live media element, each moving the page alone and writing nothing. */
+/** A boolean attribute the Video section's switches write to the file. */
+export type FileFlag = 'controls' | 'autoplay' | 'loop' | 'muted'
+
+/**
+ * What the board asks of a live media element, each moving the page alone
+ * and writing nothing. A `set-flag` shows a switch's write on the live node
+ * ahead of the save, so the clip keeps playing through it.
+ */
 export type MediaAct =
   | { kind: 'toggle-play' }
   | { kind: 'seek'; seconds: number }
   | { kind: 'toggle-sound' }
+  | { kind: 'set-flag'; name: FileFlag; on: boolean }
 
 export const mediaActSchema: z.ZodType<MediaAct> = z.union([
   z.object({ kind: z.literal('toggle-play') }),
   z.object({ kind: z.literal('seek'), seconds: z.number().finite() }),
   z.object({ kind: z.literal('toggle-sound') }),
+  z.object({
+    kind: z.literal('set-flag'),
+    name: z.enum(['controls', 'autoplay', 'loop', 'muted']),
+    on: z.boolean(),
+  }),
 ])
 
 export const mediaReadingSchema: z.ZodType<MediaReading | null> = z

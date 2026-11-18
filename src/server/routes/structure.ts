@@ -58,6 +58,7 @@ import { writeStarterSheet } from '@/server/look/starter'
 import type { PlaceableKind } from '@/shared/asset-kinds'
 import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
+import { POSES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES, referenceHeight } from '@/shared/frame-sizes'
 import type { LinkedWidth } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
@@ -129,7 +130,10 @@ const pasteSchema = z.object({
 })
 const frameDeviceSchema = z.object({
   refs,
-  show: z.boolean(),
+  /** Absent leaves the device as it stands, but for naming a foldable, which shows it. */
+  show: z.boolean().optional(),
+  foldable: z.boolean().optional(),
+  pose: z.enum(POSES).optional(),
 })
 const linkedWidth = z.int().min(1)
 /** More widths than any device list offers, so a body cannot grow without bound. */
@@ -518,13 +522,18 @@ export function structureRoutes(
     return c.json({ ok: true, data: frames })
   })
 
-  /** Shows or hides the device each frame's width names, in one step, leaving every frame file alone. */
+  /** Shows or hides each frame's device, names the foldable, or folds it, in one step, leaving every frame file alone. */
   app.post('/api/frame/device', async (c) => {
     const body = await parseBody(c.req.raw, frameDeviceSchema)
     const frames = await eachFrame(
       body.refs,
       (frame, journal) =>
-        setFrameDevice(root, frame, body.show, { cwd, journal }),
+        setFrameDevice(root, frame, body.show, {
+          cwd,
+          journal,
+          foldable: body.foldable,
+          pose: body.pose,
+        }),
       (records) => records.map((record) => record.ref),
     )
     return c.json({ ok: true, data: frames })

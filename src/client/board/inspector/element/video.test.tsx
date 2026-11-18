@@ -63,9 +63,12 @@ function liveVideo(iframe: HTMLIFrameElement): HTMLVideoElement {
 function Section({
   write,
   element = VIDEO,
+  written = true,
 }: {
   write: (change: ElementChange) => void
   element?: ElementKey
+  /** The board's answer to each write, saved unless it says otherwise. */
+  written?: boolean | (() => Promise<boolean>)
 }) {
   const media = useLiveMedia(element)
   return media ? (
@@ -74,7 +77,7 @@ function Section({
       disabled={false}
       write={async (change) => {
         write(change)
-        return true
+        return typeof written === 'boolean' ? written : written()
       }}
     />
   ) : null
@@ -197,6 +200,64 @@ describe('VideoSection', () => {
       ])
     },
   )
+
+  it('turns Loop on in the live clip at once, keeping it playing', async () => {
+    const iframe = await mountFrame(`<video src="${CLIP}" muted></video>`)
+    const write = vi.fn()
+    render(<Section write={write} />)
+    const loop = await screen.findByRole('switch', { name: 'Loop' })
+    await liveVideo(iframe).play()
+    await waitFor(() =>
+      expect(liveVideo(iframe).currentTime).toBeGreaterThan(0.1),
+    )
+    const before = liveVideo(iframe).currentTime
+
+    await userEvent.click(loop)
+
+    await waitFor(() =>
+      expect(liveVideo(iframe).hasAttribute('loop')).toBe(true),
+    )
+    expect(liveVideo(iframe).paused).toBe(false)
+    expect(liveVideo(iframe).currentTime).toBeGreaterThanOrEqual(before)
+    await waitFor(() => expect(loop).toBeChecked())
+    expect(write.mock.calls).toEqual([
+      [{ kind: 'attribute', name: 'loop', value: '' }],
+    ])
+  })
+
+  it('puts the live attribute back when the write is refused', async () => {
+    const iframe = await mountFrame(`<video src="${CLIP}" loop></video>`)
+    let droppedLive = false
+    // Refused only once the page showed the switch's change, as an agent's write between would.
+    const refuse = async () => {
+      await waitFor(() =>
+        expect(liveVideo(iframe).hasAttribute('loop')).toBe(false),
+      )
+      droppedLive = true
+      return false
+    }
+    render(<Section write={vi.fn()} written={refuse} />)
+    const loop = await screen.findByRole('switch', { name: 'Loop' })
+
+    await userEvent.click(loop)
+
+    await waitFor(() => expect(droppedLive).toBe(true))
+    await waitFor(() =>
+      expect(liveVideo(iframe).hasAttribute('loop')).toBe(true),
+    )
+    await waitFor(() => expect(loop).toBeChecked())
+  })
+
+  it('labels the file switches under In the file, Muted named in full', async () => {
+    await mountFrame(`<video src="${CLIP}"></video>`)
+    render(<Section write={vi.fn()} />)
+
+    expect(await screen.findByText('In the file')).toBeInTheDocument()
+    expect(screen.getByText('Muted')).toBeInTheDocument()
+    expect(
+      screen.getByRole('switch', { name: 'Muted in the file' }),
+    ).toBeInTheDocument()
+  })
 
   it('shows each switch as the file states its attribute', async () => {
     await mountFrame(`<video src="${CLIP}" controls loop></video>`)

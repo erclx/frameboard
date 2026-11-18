@@ -31,6 +31,17 @@ export function widthsOf(value: unknown): LinkedWidth[] {
   return widths
 }
 
+/**
+ * The widths a layout entry draws: none for a frame naming the foldable,
+ * whose poses are its sizes, whatever its `widths` lists.
+ */
+export function drawnWidths(entry: {
+  widths?: unknown
+  foldable?: unknown
+}): LinkedWidth[] {
+  return entry.foldable === true ? [] : widthsOf(entry.widths)
+}
+
 function isSize(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1
 }

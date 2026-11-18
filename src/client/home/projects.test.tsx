@@ -161,6 +161,24 @@ function markUnseen(...refs: string[]): void {
 }
 
 describe('Projects', () => {
+  it('remembers how many entries it drew for the next visit', () => {
+    renderProjects('grid')
+
+    expect(localStorage.getItem('frameboard.home.count')).toBe('2')
+  })
+
+  it('leaves the remembered count alone while a filter is typed', () => {
+    localStorage.setItem('frameboard.home.count', '7')
+
+    render(
+      <Router hook={memoryLocation({ path: '/' }).hook}>
+        <Projects projects={PROJECTS} layout="grid" now={NOW} filter="web" />
+      </Router>,
+    )
+
+    expect(localStorage.getItem('frameboard.home.count')).toBe('7')
+  })
+
   it('shows each project as a card with when it was last edited', () => {
     renderProjects('grid')
 

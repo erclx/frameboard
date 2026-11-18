@@ -22,6 +22,7 @@ import {
 import { fitFrame } from '@/server/capture/fit'
 import { withFrameHost } from '@/server/capture/host'
 import { FrameboardError } from '@/shared/errors'
+import { type Pose, POSES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
 import { SAME_AS_PAGE_WORD, transitionLabel } from '@/shared/present-transition'
 import { SPEAKER_NOTES_MAX } from '@/shared/records/board'
@@ -68,13 +69,26 @@ const DEVICE_SWITCH = {
 
 const DEVICE_ON = ['on', 'phone', 'tablet'] as const
 
-/** What `frame device` did, naming the device the frame's width gave it. */
-function deviceHeadline({ ref, box, showDevice, device }: FrameRecord): string {
-  if (!showDevice) return `Hid the device on ${ref}`
+/** What `frame device` did, naming the device the frame draws inside and a foldable's pose. */
+function deviceHeadline({
+  ref,
+  box,
+  showDevice,
+  device,
+  pose,
+}: FrameRecord): string {
+  const folded = pose ? `, folded ${pose} at ${box.width} by ${box.height}` : ''
+  if (!showDevice) return `Hid the device on ${ref}${folded}`
   if (!device) {
     return `Showed the device on ${ref}, though no device fits its ${box.width} px width`
   }
-  return `Showed the ${device} on ${ref}`
+  return `Showed the ${device} on ${ref}${folded}`
+}
+
+interface FoldFlags {
+  /** Commander sets this true for --foldable, false for --no-foldable, and leaves it absent for neither. */
+  foldable?: boolean
+  pose?: Pose
 }
 
 const WIDTHS_HELP =
@@ -281,26 +295,52 @@ export function registerFrame(
     },
   )
 
-  act<CommonOptions>(
+  act<CommonOptions & FoldFlags>(
     verb(
       'device',
-      'Show or hide the device the board draws around a frame, the phone, tablet, or laptop its width names, leaving the frame file and its size as they are',
-    ).addArgument(
-      new Argument(
-        '<on|off>',
-        'on to show the device, off to hide it, with phone and tablet taken as on and none as off',
-      ).choices(Object.keys(DEVICE_SWITCH)),
-    ),
+      'Show or hide the device the board draws around a frame, the phone, tablet, or laptop its width names or the foldable the frame names, and fold a foldable, leaving the frame file as it is',
+    )
+      .addArgument(
+        new Argument(
+          '[on|off]',
+          'on to show the device, off to hide it, with phone and tablet taken as on and none as off, and absent to leave it, which --foldable takes as on',
+        ).choices(Object.keys(DEVICE_SWITCH)),
+      )
+      .addOption(
+        new Option(
+          '--foldable',
+          'name the foldable over the device the width picks, setting the box to the pose nearest its width',
+        ),
+      )
+      .addOption(
+        new Option(
+          '--no-foldable',
+          'hand the pick back to the width, leaving the box at its size',
+        ),
+      )
+      .addOption(
+        new Option(
+          '--pose <pose>',
+          'fold a foldable, setting its box to 466 by 678 closed and 890 by 626 half or open',
+        ).choices(POSES),
+      ),
     context,
-    async ([ref = '', value = ''], options) => {
-      const show = Object.hasOwn(DEVICE_SWITCH, value)
-        ? DEVICE_SWITCH[value as keyof typeof DEVICE_SWITCH]
-        : false
+    async ([ref = '', value], { foldable, pose, ...options }) => {
+      if (value === undefined && foldable === undefined && pose === undefined) {
+        throw new FrameboardError(
+          'usage',
+          'frame device takes on or off, --foldable, --no-foldable, or --pose.',
+        )
+      }
+      const show =
+        value !== undefined && Object.hasOwn(DEVICE_SWITCH, value)
+          ? DEVICE_SWITCH[value as keyof typeof DEVICE_SWITCH]
+          : undefined
       const record = await setFrameDevice(
         await boardOf(options, io),
         ref,
         show,
-        { ...options, cwd: io.cwd },
+        { ...options, cwd: io.cwd, foldable, pose },
       )
       return { data: record, human: deviceHeadline(record) }
     },

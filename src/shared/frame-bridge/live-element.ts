@@ -58,7 +58,10 @@ export interface Placement {
   wordsLeft: number | null
 }
 
-/** What the Rotation row reads off the element, apart from its `transform`, which it never writes. */
+/**
+ * What the Rotation row reads off the element, and the own `transform` the 3D
+ * section writes, which the Rotation row never does.
+ */
 export interface Rotation {
   /** The `rotate` property in degrees, clockwise, null for a 3D rotation the field cannot show. */
   degrees: number | null
@@ -75,6 +78,17 @@ export interface Rotation {
   }
   /** Whether the computed `transform` moves the element, which a `rotate` composed before it would swing around. */
   translated: boolean
+  transform: {
+    /** As the element's own `style` states it, empty where it sets none. */
+    own: string
+    /** Whether a rule gives it a transform, which an own one would override. */
+    ruled: boolean
+    /**
+     * Whether a transform would make it the containing block of an absolute
+     * or fixed descendant anchored above it today, which would then move.
+     */
+    reanchors: boolean
+  }
 }
 
 /** What the inspector reads off the live element, as the browser computed it. */
@@ -376,6 +390,11 @@ const liveElementSchema: z.ZodType<LiveElement> = z.object({
       scale: xySchema.nullable().optional(),
     }),
     translated: z.boolean(),
+    transform: z.object({
+      own: z.string(),
+      ruled: z.boolean(),
+      reanchors: z.boolean(),
+    }),
   }),
   placement: z.object({
     free: z.boolean(),

@@ -32,6 +32,7 @@ import { CompareControl, CompareView } from './changes/compare-view'
 import { UnseenDot } from './changes/dot'
 import { ClaimTag } from './claims/tag'
 import { Bezel } from './device/bezel'
+import { PoseButtons } from './device/poses'
 import { FINDINGS_MARK, severityOf } from './findings/level'
 import { FindingsList } from './findings/list'
 import { FindingsCount } from './findings/mark'
@@ -91,6 +92,9 @@ export const Frame = memo(function Frame({
   const hold = useMotionHold(frame.ref)
   const renaming = useRenamingFrame('canvas') === frame.ref
   const selected = useSelection((state) => state.frames.includes(frame.ref))
+  const selectedAlone = useSelection(
+    (state) => state.frames.length === 1 && state.frames[0] === frame.ref,
+  )
   const iframe = useRef<HTMLIFrameElement>(null)
   const playing = useMode((state) => state.mode === 'play')
   const entered = useEntered(frame.ref) && playing
@@ -308,7 +312,24 @@ export const Frame = memo(function Frame({
       )}
       {waiting ? <LoadingBlock theme={theme} corners={corners} /> : null}
       {frame.device ? (
-        <Bezel device={frame.device} width={width} height={height} />
+        <Bezel
+          device={frame.device}
+          width={width}
+          height={height}
+          pose={frame.pose}
+        />
+      ) : null}
+      {frame.device === 'foldable' &&
+      frame.pose &&
+      selectedAlone &&
+      !playing ? (
+        <PoseButtons
+          frameRef={frame.ref}
+          name={frame.name}
+          pose={frame.pose}
+          below={below}
+          off={frame.locked ? `Unlock ${frame.name} to fold it` : undefined}
+        />
       ) : null}
       {frame.scroll && live && !playing ? (
         <ScrollRail

@@ -841,6 +841,40 @@ describe('Canvas', () => {
     )
   })
 
+  it('fits a foldable with room under its body for the pose buttons and the chip', () => {
+    const { container } = renderCanvas(
+      page('studio/fold-fit', [
+        {
+          ...frame('inbox', { x: 0, y: 0, width: 466, height: 678 }),
+          showDevice: true,
+          device: 'foldable',
+          pose: 'closed',
+        },
+      ]),
+    )
+
+    const { y, k } = viewOf(container)
+
+    // 600 tall less 64 of padding and 64 for the buttons and the chip.
+    expect(y + 698 * k).toBeCloseTo(472)
+  })
+
+  it('fits a phone to the padding alone, with no room kept under it', () => {
+    const { container } = renderCanvas(
+      page('studio/phone-fit', [
+        {
+          ...frame('about', { x: 0, y: 0, width: 466, height: 678 }),
+          showDevice: true,
+          device: 'phone',
+        },
+      ]),
+    )
+
+    const { y, k } = viewOf(container)
+
+    expect(y + 694 * k).toBeCloseTo(536)
+  })
+
   it('pans the layer on a wheel without a React commit', async () => {
     let commits = 0
     const { container } = renderCanvas(

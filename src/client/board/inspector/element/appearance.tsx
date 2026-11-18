@@ -2,6 +2,7 @@ import type { Rotation } from '@/shared/frame-bridge/live-element'
 
 import { NumberField } from '../number-field'
 import { RotationRow } from './rotation'
+import { TiltSection } from './tilt'
 import { type PreviewStyle, styleNumber, type WriteElement } from './write'
 
 const PERCENT: Intl.NumberFormatOptions = {
@@ -59,9 +60,9 @@ interface AppearanceSectionProps {
 }
 
 /**
- * The Appearance section of `inspector/text`: the opacity as a percent and
- * the corner radius in px, each captioned, stepping, and scrubbing, over the
- * Rotation row. The layer name is renamed in Layers rather than here.
+ * The Appearance section of `inspector/text`, its opacity and corner radius
+ * over the Rotation row, with the 3D section under it. The layer name is
+ * renamed in Layers rather than here.
  */
 export function AppearanceSection({
   opacity,
@@ -73,56 +74,64 @@ export function AppearanceSection({
 }: AppearanceSectionProps) {
   const percent = Math.round(opacity * 100)
   return (
-    <section
-      aria-labelledby="inspector-appearance"
-      className="border-b border-sidebar-border px-3 pt-2.5 pb-3"
-    >
-      <h2 id="inspector-appearance" className="mb-2 text-xs font-semibold">
-        Appearance
-      </h2>
-      <div className="grid grid-cols-2 gap-1.5">
-        <NumberField
-          label="Opacity"
-          caption="Opacity"
-          prefix={<OpacityIcon />}
-          inset="pl-[28px]"
-          value={percent}
-          min={0}
-          max={100}
-          format={PERCENT}
+    <>
+      <section
+        aria-labelledby="inspector-appearance"
+        className="border-b border-sidebar-border px-3 pt-2.5 pb-3"
+      >
+        <h2 id="inspector-appearance" className="mb-2 text-xs font-semibold">
+          Appearance
+        </h2>
+        <div className="grid grid-cols-2 gap-1.5">
+          <NumberField
+            label="Opacity"
+            caption="Opacity"
+            prefix={<OpacityIcon />}
+            inset="pl-[28px]"
+            value={percent}
+            min={0}
+            max={100}
+            format={PERCENT}
+            disabled={disabled}
+            {...styleNumber(
+              'opacity',
+              percent,
+              (value) => String(value / 100),
+              write,
+              preview,
+            )}
+          />
+          <NumberField
+            label="Corner radius"
+            caption="Corner radius"
+            prefix={<RadiusIcon />}
+            inset="pl-[28px]"
+            value={radius}
+            min={0}
+            format={WHOLE}
+            disabled={disabled}
+            {...styleNumber(
+              'border-radius',
+              radius,
+              (value) => `${value}px`,
+              write,
+              preview,
+            )}
+          />
+        </div>
+        <RotationRow
+          rotation={rotation}
           disabled={disabled}
-          {...styleNumber(
-            'opacity',
-            percent,
-            (value) => String(value / 100),
-            write,
-            preview,
-          )}
+          write={write}
+          preview={preview}
         />
-        <NumberField
-          label="Corner radius"
-          caption="Corner radius"
-          prefix={<RadiusIcon />}
-          inset="pl-[28px]"
-          value={radius}
-          min={0}
-          format={WHOLE}
-          disabled={disabled}
-          {...styleNumber(
-            'border-radius',
-            radius,
-            (value) => `${value}px`,
-            write,
-            preview,
-          )}
-        />
-      </div>
-      <RotationRow
+      </section>
+      <TiltSection
         rotation={rotation}
         disabled={disabled}
         write={write}
         preview={preview}
       />
-    </section>
+    </>
   )
 }

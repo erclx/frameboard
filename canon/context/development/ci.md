@@ -7,7 +7,7 @@ description: GitHub Actions workflow triggers and checks
 
 ## Overview
 
-Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `main` run the checks and all must pass, a push to `main` runs the release workflow and Verify, and `workflow_dispatch` runs any workflow. The checks call package scripts, covered in `canon/context/development/local.md`.
+Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `main` run the checks and all but macOS must pass, a push to `main` runs the release workflow, Verify, and every check in `frameboard-checks.yml`, and `workflow_dispatch` runs any workflow. The checks call package scripts, covered in `canon/context/development/local.md`.
 
 ## Layout
 
@@ -33,7 +33,7 @@ The workflows the table leaves out own releases, labels, and the landing page.
 - `deploy.yml` publishes `web/dist` to the `frameboard` Pages project under the branch's name, skips with a notice until the Cloudflare secrets exist, and deletes a closed pull request's previews
 - `phase-label-gate.yml` fails a pull request carrying a phase label, board reference, or session link, and `pr-local-preview.yml` owns the evidence preview
 - `canon/config/config.json` records `verify.yml` and `deploy.yml` as customized, so a sync keeps the trigger and the `web/` build, and a push or dispatch run keys its group on `github.run_id`
-- The macOS job runs no browser or E2E layer, so macOS-only rendering drift reaches CI only through a local run
+- `frameboard-checks.yml` also runs on a push to `main`. Its macOS job runs there and on dispatch only, with no browser or E2E layer, so a macOS-only break shows after the merge
 
 ### `canon/config/`
 

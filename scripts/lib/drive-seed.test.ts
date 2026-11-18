@@ -202,7 +202,9 @@ describe('the raw colors page', () => {
         'stacked',
         'tuner',
         'mixed',
+        'tilt',
         'device',
+        'fold',
       ],
     })
   })
@@ -246,7 +248,9 @@ describe('the scroll feed page', () => {
         'stacked',
         'tuner',
         'mixed',
+        'tilt',
         'device',
+        'fold',
       ],
     })
   })
@@ -270,6 +274,25 @@ describe('the device page', () => {
     expect(seeded.device).toBe('laid')
     expect(readJson('webapp/device/layout.json')).toMatchObject({
       frames: { phone: { width: 390, showDevice: true } },
+    })
+  })
+})
+
+describe('the foldable page', () => {
+  it('lays one frame naming the foldable, closed at the cover screen', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.fold).toBe('laid')
+    expect(readJson('webapp/fold/layout.json')).toMatchObject({
+      frames: {
+        inbox: {
+          width: 466,
+          height: 678,
+          showDevice: true,
+          foldable: true,
+          pose: 'closed',
+        },
+      },
     })
   })
 })
@@ -490,6 +513,30 @@ describe('the Drives folder', () => {
   })
 })
 
+describe('the long sheet path project', () => {
+  it('lays one page and a token sheet under a folder name with no break in it', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.longPath).toBe('laid')
+    const project = 'northwindbrandsystemworkspacedesigntokens'
+    expect(readJson(`${project}/project.json`)).toEqual({
+      version: 1,
+      pages: ['home'],
+    })
+    expect(readFileSync(join(root, project, 'tokens.css'), 'utf8')).toContain(
+      '--brand',
+    )
+  })
+
+  it('leaves the project alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.longPath).toBe('kept')
+  })
+})
+
 describe('the settings reservation', () => {
   it('holds three boxes on webapp/settings live at the real clock', async () => {
     await seedDrive(root, new Date())
@@ -594,6 +641,29 @@ describe('the mixed text page', () => {
     const seeded = await seedDrive(root, new Date())
 
     expect(seeded.mixed).toBe('kept')
+    expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
+  })
+})
+
+describe('the tilted card page', () => {
+  it('lays one card whose own transform tilts it in the order the 3D section reads', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    const html = readFileSync(join(root, 'webapp/tilt/card.html'), 'utf8')
+    expect(seeded.tilt).toBe('laid')
+    expect(html).toContain(
+      'transform: perspective(800px) rotateX(20deg) rotateY(-30deg)',
+    )
+  })
+
+  it('leaves a hand-edited tilted card page alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+    const edited = join(root, 'webapp/tilt/card.html')
+    writeFileSync(edited, '<p>edited by a reel</p>')
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.tilt).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })

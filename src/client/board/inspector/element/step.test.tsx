@@ -1,6 +1,6 @@
 import '../../../styles.css'
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
@@ -12,7 +12,7 @@ import type { ElementChange } from './write'
 const NO_STEP: LiveStep = { step: null, effect: null, start: null }
 
 /** Renders the section over `step`, answering the changes it writes. */
-function mount(step: LiveStep) {
+function mount(step: LiveStep, previews: string[] = []) {
   const written: ElementChange[] = []
   render(
     <StepSection
@@ -22,6 +22,8 @@ function mount(step: LiveStep) {
         written.push(change)
         return true
       }}
+      onPreview={(effect) => previews.push(effect)}
+      onPreviewEnd={() => previews.push('end')}
     />,
   )
   return written
@@ -77,19 +79,17 @@ describe('the step field', () => {
     expect(field()).toHaveValue('2')
   })
 
-  it('offers Effect and Start only once the element holds a step', () => {
+  it('offers Effect and Starts only once the element holds a step', () => {
     mount(NO_STEP)
 
-    expect(screen.queryByRole('button', { name: 'Effect' })).toBeNull()
+    expect(screen.queryAllByRole('radiogroup')).toEqual([])
   })
 
-  it('writes data-step-effect from the Effect menu', async () => {
+  it('writes data-step-effect from the Effect tiles', async () => {
     const written = mount({ step: '1', effect: null, start: null })
+    const effects = screen.getByRole('radiogroup', { name: 'Effect' })
 
-    await userEvent.click(screen.getByRole('button', { name: 'Effect' }))
-    await userEvent.click(
-      await screen.findByRole('menuitemradio', { name: 'Fly in' }),
-    )
+    await userEvent.click(within(effects).getByRole('radio', { name: 'Fly' }))
 
     expect(written).toEqual([
       { kind: 'attribute', name: 'data-step-effect', value: 'fly' },
@@ -98,9 +98,45 @@ describe('the step field', () => {
 
   it('reads an unknown effect as Appear', () => {
     mount({ step: '1', effect: 'spin', start: null })
+    const effects = screen.getByRole('radiogroup', { name: 'Effect' })
 
-    expect(screen.getByRole('button', { name: 'Effect' })).toHaveTextContent(
-      'Appear',
+    expect(
+      within(effects).getByRole('radio', { checked: true }),
+    ).toHaveAccessibleName('Appear')
+  })
+
+  it('previews a hovered effect on the element, writing nothing', async () => {
+    const previews: string[] = []
+    const written = mount({ step: '1', effect: null, start: null }, previews)
+    const effects = screen.getByRole('radiogroup', { name: 'Effect' })
+
+    await userEvent.hover(within(effects).getByRole('radio', { name: 'Wipe' }))
+
+    expect([previews, written]).toEqual([['wipe'], []])
+  })
+
+  it('writes data-step-start from the Starts buttons', async () => {
+    const written = mount({ step: '2', effect: null, start: null })
+    const starts = screen.getByRole('radiogroup', { name: 'Starts' })
+
+    await userEvent.click(
+      within(starts).getByRole('radio', { name: 'With last' }),
     )
+
+    expect(written).toEqual([
+      { kind: 'attribute', name: 'data-step-start', value: 'with' },
+    ])
+  })
+
+  it('moves the start with an arrow key', async () => {
+    const written = mount({ step: '2', effect: null, start: 'with' })
+    const starts = screen.getByRole('radiogroup', { name: 'Starts' })
+    within(starts).getByRole('radio', { name: 'With last' }).focus()
+
+    await userEvent.keyboard('{ArrowRight}')
+
+    expect(written).toEqual([
+      { kind: 'attribute', name: 'data-step-start', value: 'after' },
+    ])
   })
 })

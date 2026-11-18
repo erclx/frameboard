@@ -241,6 +241,57 @@ test.describe('frame geometry by hand', () => {
     expect(await mobile.boundingBox()).toEqual(before)
   })
 
+  test('a frame named a foldable folds from the buttons under it, keeps its pose over a reload, and unfolds on undo', async ({
+    page,
+  }) => {
+    server = await serveBoard(board.root)
+    await openAsWriter(page, server)
+    const mobile = page.locator(MOBILE)
+    const bytes = readFileSync(join(board.root, 'studio/home/mobile.html'))
+    const at = await center(mobile)
+    await page.mouse.click(at.x, at.y)
+    await page.getByRole('switch', { name: 'Show device' }).click()
+    await page.getByRole('button', { name: 'Phone device' }).click()
+    await page.getByRole('menuitemradio', { name: 'Foldable' }).click()
+    await expect
+      .poll(() => layout().frames.mobile)
+      .toMatchObject({ foldable: true, pose: 'closed', width: 466 })
+    const poses = page.getByRole('group', { name: 'Pose of mobile' })
+
+    // Pressed through the hit layer, as a hand reaches the button.
+    const open = await center(poses.getByRole('button', { name: 'Open' }))
+    await page.mouse.click(open.x, open.y)
+
+    await expect
+      .poll(() => layout().frames.mobile)
+      .toMatchObject({ pose: 'open', width: 890, height: 626 })
+    await expect(
+      mobile.locator('[data-bezel="foldable"] [data-bezel-fold="open"]'),
+    ).toBeAttached()
+
+    await page.reload()
+    const reloaded = await center(mobile)
+    await page.mouse.click(reloaded.x, reloaded.y)
+
+    await expect(poses.getByRole('button', { name: 'Open' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    await undo(page)
+
+    await expect
+      .poll(() => layout().frames.mobile)
+      .toMatchObject({ pose: 'closed', width: 466, height: 678 })
+    await expect(poses.getByRole('button', { name: 'Closed' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(readFileSync(join(board.root, 'studio/home/mobile.html'))).toEqual(
+      bytes,
+    )
+  })
+
   test('Cmd+Z puts a dragged frame back at once', async ({ page }) => {
     server = await serveBoard(board.root)
     await openAsWriter(page, server)

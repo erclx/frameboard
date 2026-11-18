@@ -59,7 +59,7 @@ The chrome is a quiet grey workbench that steps back so the frames carry the col
 
 ## Motion
 
-- Two motions loop, the claim pulse on a claimed frame's outline, tag tint, and initial, and the loading pulse on a frame's waiting grey block.
+- Two motions loop, the claim pulse on a claimed frame's outline, tag tint, and initial, and the loading pulse on frame, home, and kit placeholders.
 - Neither pulse dims text or the initial, and under reduced motion both hold still at full strength.
 - No marching ants, animated guides, or panel entrance motion, and under reduced motion kit popups open and close unanimated.
 

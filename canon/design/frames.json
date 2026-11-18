@@ -30,6 +30,8 @@
     "canvas/guide-kit": "design/12-canvas/guide-kit",
     "canvas/guide-agent": "design/12-canvas/guide-agent",
     "canvas/device": "drive-32/22-device-mockup/device-mock-phone-measured-720",
+    "canvas/foldable-buttons": "drive-47/06-fold-device/fold-device-canvas-buttons-720",
+    "canvas/foldable-poses": "drive-47/06-fold-device/fold-device-poses-720",
     "home/grid": "design/07-home/arm-2",
     "home/list": "design/07-home/home-list",
     "home/empty": "design/07-home/home-empty",
@@ -66,8 +68,10 @@
     "inspector/layout": "design/16-inspector-tabs/inspector-layout",
     "inspector/height-mode": "design/16-inspector-tabs/height-mode",
     "inspector/device": "design/16-inspector-tabs/device",
+    "inspector/device-foldable": "drive-47/06-fold-device/fold-device-canvas-buttons-720",
     "inspector/widths": "design/16-inspector-tabs/widths",
     "inspector/page-transition": "design/16-inspector-tabs/page-transition",
+    "inspector/step-effect": "design/16-inspector-tabs/step-effect",
     "inspector/motion": "design/16-inspector-tabs/motion-held",
     "inspector/media": "design/16-inspector-tabs/media",
     "inspector/phone-link": "design/16-inspector-tabs/frame-phone-link",
@@ -76,6 +80,7 @@
     "inspector/export-tab": "design/16-inspector-tabs/export-tab",
     "inspector/export-none": "design/16-inspector-tabs/export-none",
     "inspector/crumb": "design/16-inspector-tabs/crumb",
+    "inspector/tilt": "design/16-inspector-tabs/inspector-tilt",
     "agents/claim-full": "design/13-agents/picked-claim-full",
     "agents/claim-pulse": "design/13-agents/picked-claim-pulse",
     "agents/unseen-one": "design/13-agents/unseen-one",
@@ -119,8 +124,9 @@
     "canvas/controls-play": "groundwork-40/concept/controls-play-720",
     "canvas/speaker-notes": "drive-47/12-slide-features/speaker-notes-strip-720",
     "toolbar/present": "drive-30/04-present-enter/present-enter-button-900",
-    "present/bar": "drive-30/05-present-step/present-step-hover-bar-960",
+    "present/bar": "drive-47/12-slide-features/present-bar-presenter-960",
     "present/steps": "drive-32/28-present-steps/present-steps-marked-720",
-    "present/overview": "drive-47/12-slide-features/slide-overview-720"
+    "present/overview": "drive-47/12-slide-features/slide-overview-720",
+    "present/presenter/view": "drive-47/12-slide-features/presenter-view-720"
   }
 }

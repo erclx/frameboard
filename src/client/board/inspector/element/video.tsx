@@ -1,4 +1,5 @@
 import { cn } from '@/client/lib/cn'
+import type { FileFlag } from '@/shared/frame-bridge/media'
 
 import type { LiveMedia } from '../../element/media'
 import {
@@ -17,13 +18,14 @@ interface VideoSectionProps {
 }
 
 /**
- * The Video or Audio section. Playback acts on the live page and writes
- * nothing, and an audio shows no Controls switch, since one without
- * `controls` draws nothing to pick on the canvas.
+ * The Video or Audio section. Playback writes nothing, an audio shows no
+ * Controls switch since it would draw nothing to pick, and `write` should
+ * skip the reload so a switch keeps the clip playing.
  */
 export function VideoSection({ media, disabled, write }: VideoSectionProps) {
   const { reading } = media
   const title = reading.tag === 'video' ? 'Video' : 'Audio'
+  const switchProps = { media, disabled, write }
   return (
     <section
       aria-labelledby="inspector-media"
@@ -44,56 +46,74 @@ export function VideoSection({ media, disabled, write }: VideoSectionProps) {
       ) : (
         <Unplayable />
       )}
-      <div className="mt-2.5 flex flex-col gap-2">
+      <p className="mt-3 mb-1.5 text-[11px] text-muted-foreground">
+        In the file
+      </p>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2">
         {reading.tag === 'video' ? (
           <FileSwitch
             label="Controls"
             attribute="controls"
             on={reading.controls}
-            disabled={disabled}
-            write={write}
+            {...switchProps}
           />
         ) : null}
         <FileSwitch
           label="Autoplay"
           attribute="autoplay"
           on={reading.autoplay}
-          disabled={disabled}
-          write={write}
+          {...switchProps}
         />
         <FileSwitch
           label="Loop"
           attribute="loop"
           on={reading.loop}
-          disabled={disabled}
-          write={write}
+          {...switchProps}
         />
         <FileSwitch
-          label="Muted in the file"
+          label="Muted"
+          name="Muted in the file"
           attribute="muted"
           on={reading.mutedInFile}
-          disabled={disabled}
-          write={write}
+          {...switchProps}
         />
       </div>
     </section>
   )
 }
 
-/** A switch that sets a boolean attribute on the element when turned on and drops it when turned off. */
+/**
+ * A switch that sets a boolean attribute on the element when turned on and
+ * drops it when turned off. It sets the live node first and puts it back when
+ * the write is refused, so the page shows the file's state either way.
+ */
 function FileSwitch({
   label,
+  name,
   attribute,
   on,
+  media,
   disabled,
   write,
 }: {
   label: string
-  attribute: 'controls' | 'autoplay' | 'loop' | 'muted'
+  /** The accessible name, when the group label already says what `label` leaves out. */
+  name?: string
+  attribute: FileFlag
   on: boolean
+  media: LiveMedia
   disabled: boolean
   write: WriteElement
 }) {
+  const turn = async () => {
+    media.setFileFlag(attribute, !on)
+    const written = await write(
+      on
+        ? { kind: 'attribute', name: attribute, remove: true }
+        : { kind: 'attribute', name: attribute, value: '' },
+    )
+    if (!written) media.setFileFlag(attribute, on)
+  }
   return (
     <label className="flex items-center justify-between gap-2">
       <span>{label}</span>
@@ -101,14 +121,9 @@ function FileSwitch({
         type="button"
         role="switch"
         aria-checked={on}
+        aria-label={name}
         disabled={disabled}
-        onClick={() =>
-          void write(
-            on
-              ? { kind: 'attribute', name: attribute, remove: true }
-              : { kind: 'attribute', name: attribute, value: '' },
-          )
-        }
+        onClick={() => void turn()}
         className={cn(
           'relative h-3.5 w-[26px] shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-50',
           on ? 'bg-primary' : 'bg-input',

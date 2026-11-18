@@ -14,7 +14,12 @@ import {
 } from '@/shared/present-transition'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
+import { liveIframe } from '../frame-dom'
 import { reportRefusal } from '../left-panel/page-actions'
+import { playPreview, previewTransition, stopPreview } from '../present/preview'
+import { EditKeyframes } from '../present/transition'
+import type { TileOption } from './effect-tiles'
+import { EffectTiles } from './effect-tiles'
 import { TypePicker } from './element/typography'
 import { LabelTip } from './label-tip'
 import { useTransitionNames } from './transition-names'
@@ -33,15 +38,78 @@ const DIRECTION_LABELS = {
 export const TRANSITION_TIP =
   'Drawn by the board while presenting. Slide files are unchanged.'
 
+/** One tile per transition name, each playing that transition's arrival at `ms`. */
+function transitionTiles(
+  names: readonly string[],
+  project: string,
+  direction: Direction,
+  ms: number,
+): TileOption[] {
+  return names.map((value) => ({
+    value,
+    label: transitionLabel(value),
+    picture:
+      value === 'none'
+        ? { kind: 'still' }
+        : {
+            kind: 'transition',
+            travel: {
+              transition: {
+                name: value,
+                direction: takesDirection(value) ? direction : null,
+                ms,
+              },
+              back: false,
+            },
+            project,
+          },
+  }))
+}
+
+/**
+ * Plays `transition` on each of `refs` as its slide would arrive, one
+ * preview at a time, and on the tile alone when no slide is selected.
+ */
+function previewOn(
+  refs: readonly string[],
+  transition: Transition,
+  project: string,
+): void {
+  if (refs.length === 0) return
+  const travel = {
+    transition: {
+      name: transition.name,
+      direction: takesDirection(transition.name)
+        ? (transition.direction ?? DEFAULT_DIRECTION)
+        : null,
+      ms: transition.ms ?? DEFAULT_TRANSITION_MS,
+    },
+    back: false,
+  }
+  playPreview(() => {
+    const ends = refs.flatMap((ref) => {
+      const iframe = liveIframe(ref)
+      return iframe ? [previewTransition(iframe, travel, project)] : []
+    })
+    return () => {
+      for (const end of ends) end()
+    }
+  })
+}
+
 /**
  * The open page's transition, direction, and length, each pick writing the
- * page's `layout.json` in one undo step and keeping the other two.
+ * page's `layout.json` in one undo step and keeping the other two. Hovering
+ * a tile plays it on the selected slides, and on the tile alone with none.
  */
 export function PageSection({
   page,
+  selected = [],
   calls = structure,
 }: {
   page: PageRecord
+  /** The selected slides a hovered tile plays on. */
+  selected?: readonly string[]
   calls?: Structure
 }) {
   const canWrite = useLive((state) => state.canWrite)
@@ -51,6 +119,7 @@ export function PageSection({
   const direction = held?.direction ?? DEFAULT_DIRECTION
   const ms = held?.ms ?? DEFAULT_TRANSITION_MS
   const durations = [...new Set([...DURATIONS, ms])].sort((a, b) => a - b)
+  const shownMs = name === 'none' ? DEFAULT_TRANSITION_MS : ms
 
   const write = (next: Transition | null) => {
     calls
@@ -81,25 +150,48 @@ export function PageSection({
           Page
         </h2>
       </LabelTip>
-      <Setting title="Slide transition">
-        <TypePicker
-          label="Slide transition"
-          describedBy="inspector-page-tip"
-          shown={transitionLabel(name)}
-          current={name}
-          options={names.map((value) => ({
-            value,
-            name: transitionLabel(value),
-          }))}
-          disabled={!canWrite}
-          onPick={(value) => {
-            const picked = names.find((candidate) => candidate === value)
-            if (!picked) return
-            write(picked === 'none' ? null : withChange({ name: picked }))
-          }}
-          className="w-full"
-        />
-      </Setting>
+      <span
+        id="inspector-page-transition"
+        className="mb-1 block text-caption text-muted-foreground"
+      >
+        Slide transition
+      </span>
+      <EditKeyframes project={page.project} />
+      <EffectTiles
+        labelledBy="inspector-page-transition"
+        describedBy="inspector-page-tip"
+        options={transitionTiles(names, page.project, direction, shownMs)}
+        current={name}
+        columns={4}
+        disabled={!canWrite}
+        onPick={(value) => {
+          const picked = names.find((candidate) => candidate === value)
+          if (!picked) return
+          write(picked === 'none' ? null : withChange({ name: picked }))
+        }}
+        onPreview={(value) =>
+          value === 'none'
+            ? stopPreview()
+            : previewOn(selected, withChange({ name: value }), page.project)
+        }
+        onPreviewEnd={stopPreview}
+      />
+      {name === 'none' ? null : (
+        <Setting title="Duration">
+          <TypePicker
+            label="Duration"
+            shown={`${ms} ms`}
+            current={String(ms)}
+            options={durations.map((value) => ({
+              value: String(value),
+              name: `${value} ms`,
+            }))}
+            disabled={!canWrite}
+            onPick={(value) => write(withChange({ ms: Number(value) }))}
+            className="min-w-0 flex-1"
+          />
+        </Setting>
+      )}
       {takesDirection(name) ? (
         <Setting title="Direction">
           <TypePicker
@@ -115,36 +207,20 @@ export function PageSection({
               const picked = DIRECTIONS.find((candidate) => candidate === value)
               if (picked) write(withChange({ direction: picked }))
             }}
-            className="w-full"
+            className="min-w-0 flex-1"
           />
         </Setting>
       ) : null}
-      {name === 'none' ? null : (
-        <Setting title="Duration">
-          <TypePicker
-            label="Duration"
-            shown={`${ms} ms`}
-            current={String(ms)}
-            options={durations.map((value) => ({
-              value: String(value),
-              name: `${value} ms`,
-            }))}
-            disabled={!canWrite}
-            onPick={(value) => write(withChange({ ms: Number(value) }))}
-            className="w-full"
-          />
-        </Setting>
-      )}
     </section>
   )
 }
 
 function Setting({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="mt-2 first-of-type:mt-0">
+    <div className="mt-2 flex items-center gap-1.5">
       <span
         aria-hidden
-        className="mb-1 block text-caption text-muted-foreground"
+        className="w-[58px] shrink-0 text-caption text-muted-foreground"
       >
         {title}
       </span>
@@ -156,9 +232,8 @@ function Setting({ title, children }: { title: string; children: ReactNode }) {
 const SAME_AS_PAGE = SAME_AS_PAGE_WORD
 
 /**
- * The transition each selected frame arrives with while presenting, Same as
- * page or a named one over its page's, reading Mixed where the frames
- * differ. A pick writes every frame's `layout.json` entry in one undo step.
+ * Each selected frame's own transition, marking no tile where they differ.
+ * A pick writes every frame's `layout.json` entry in one undo step.
  */
 export function SlideSection({
   frames,
@@ -168,13 +243,12 @@ export function SlideSection({
   calls?: Structure
 }) {
   const canWrite = useLive((state) => state.canWrite)
-  const names = useTransitionNames(frames[0]?.project)
+  const project = frames[0]?.project ?? ''
+  const names = useTransitionNames(project)
   const values = frames.map((frame) => frame.transition?.name ?? SAME_AS_PAGE)
   const current = values.every((value) => value === values[0])
     ? (values[0] ?? null)
     : null
-  const label = (value: string) =>
-    value === SAME_AS_PAGE ? 'Same as page' : transitionLabel(value)
   return (
     <section
       aria-labelledby="inspector-slide"
@@ -190,15 +264,26 @@ export function SlideSection({
           This slide
         </h2>
       </LabelTip>
-      <TypePicker
-        label="This slide"
+      <EditKeyframes project={project} />
+      <EffectTiles
+        labelledBy="inspector-slide"
         describedBy="inspector-slide-tip"
-        shown={current === null ? 'Mixed' : label(current)}
-        current={current}
         options={[
-          { value: SAME_AS_PAGE, name: label(SAME_AS_PAGE) },
-          ...names.map((value) => ({ value, name: label(value) })),
+          {
+            value: SAME_AS_PAGE,
+            label: 'Page',
+            name: 'Same as page',
+            picture: { kind: 'still' },
+          },
+          ...transitionTiles(
+            names,
+            project,
+            DEFAULT_DIRECTION,
+            DEFAULT_TRANSITION_MS,
+          ),
         ]}
+        current={current}
+        columns={4}
         disabled={!canWrite}
         onPick={(value) => {
           const name = names.find((candidate) => candidate === value)
@@ -209,7 +294,16 @@ export function SlideSection({
             )
             .catch(reportRefusal('Couldn’t set the slide transition'))
         }}
-        className="w-full"
+        onPreview={(value) =>
+          value === SAME_AS_PAGE || value === 'none'
+            ? stopPreview()
+            : previewOn(
+                frames.map((frame) => frame.ref),
+                { name: value },
+                project,
+              )
+        }
+        onPreviewEnd={stopPreview}
       />
     </section>
   )

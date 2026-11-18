@@ -8,10 +8,17 @@ import { FilterField } from './filter-field'
 import { HomeHeader } from './header'
 import { readLayout } from './layout'
 import { ROW_COLUMNS } from './project-card'
+import { MOST_PLACEHOLDERS, readShownCount } from './shown-count'
 import { type HomeSort, readOrder } from './sort'
 
-/** No storage holds the last visit's project count, so the shell draws a row's worth. */
-const PLACEHOLDERS = ['one', 'two', 'three', 'four'] as const
+/** Each placeholder's key, a fixed name per slot, since the slots never reorder. */
+const SLOTS = Array.from(
+  { length: MOST_PLACEHOLDERS },
+  (_, at) => `slot-${at + 1}`,
+)
+
+/** The frame's loading pulse, the one looped motion a waiting block takes. */
+const PULSE = 'motion-safe:animate-frame-loading'
 
 const SORT_LABELS: Readonly<Record<HomeSort, string>> = {
   edited: 'Last edited',
@@ -26,6 +33,7 @@ const SORT_LABELS: Readonly<Record<HomeSort, string>> = {
 export function HomeLoading() {
   const [layout] = useState(readLayout)
   const [order] = useState(readOrder)
+  const [slots] = useState(() => SLOTS.slice(0, readShownCount()))
   return (
     <div className="flex min-h-full flex-col text-body">
       <HomeHeader hasProjects />
@@ -46,7 +54,11 @@ export function HomeLoading() {
             <ChevronDown aria-hidden className="size-3 text-muted-foreground" />
           </button>
         </div>
-        {layout === 'grid' ? <GridLoading /> : <ListLoading />}
+        {layout === 'grid' ? (
+          <GridLoading slots={slots} />
+        ) : (
+          <ListLoading slots={slots} />
+        )}
       </main>
       <p role="status" className="sr-only">
         Connecting to the board
@@ -55,26 +67,26 @@ export function HomeLoading() {
   )
 }
 
-function GridLoading() {
+function GridLoading({ slots }: { slots: readonly string[] }) {
   return (
     <ul
       aria-hidden
       className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5"
     >
-      {PLACEHOLDERS.map((key) => (
+      {slots.map((key) => (
         <li
           key={key}
           data-placeholder
           className="rounded-xl border border-border bg-card"
         >
-          <Skeleton className="m-1.5 h-[150px] rounded-lg" />
+          <Skeleton className={cn('m-1.5 h-[150px] rounded-lg', PULSE)} />
           {/* Each bar sits in a row one line of the real card's type tall, so the card lands at the shell's height. */}
           <span className="flex flex-col px-3 pt-1.5 pb-3">
             <span className="flex h-lh items-center text-panel">
-              <Skeleton className="h-3 w-1/2 rounded-sm" />
+              <Skeleton className={cn('h-3 w-1/2 rounded-sm', PULSE)} />
             </span>
             <span className="flex h-lh items-center text-body">
-              <Skeleton className="h-2.5 w-1/3 rounded-sm" />
+              <Skeleton className={cn('h-2.5 w-1/3 rounded-sm', PULSE)} />
             </span>
           </span>
         </li>
@@ -83,7 +95,7 @@ function GridLoading() {
   )
 }
 
-function ListLoading() {
+function ListLoading({ slots }: { slots: readonly string[] }) {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card text-card-foreground">
       <div
@@ -99,7 +111,7 @@ function ListLoading() {
         <span className="hidden sm:block">Created</span>
       </div>
       <ul aria-hidden>
-        {PLACEHOLDERS.map((key) => (
+        {slots.map((key) => (
           <li
             key={key}
             data-placeholder
@@ -108,10 +120,14 @@ function ListLoading() {
               ROW_COLUMNS,
             )}
           >
-            <Skeleton className="h-7 w-9 rounded-sm" />
-            <Skeleton className="h-3 w-40 max-w-full rounded-sm" />
-            <Skeleton className="hidden h-2.5 w-20 rounded-sm sm:block" />
-            <Skeleton className="hidden h-2.5 w-20 rounded-sm sm:block" />
+            <Skeleton className={cn('h-7 w-9 rounded-sm', PULSE)} />
+            <Skeleton className={cn('h-3 w-40 max-w-full rounded-sm', PULSE)} />
+            <Skeleton
+              className={cn('hidden h-2.5 w-20 rounded-sm sm:block', PULSE)}
+            />
+            <Skeleton
+              className={cn('hidden h-2.5 w-20 rounded-sm sm:block', PULSE)}
+            />
           </li>
         ))}
       </ul>

@@ -9,17 +9,19 @@ The Slides and Export tabs, and the Motion section a moving frame adds.
 
 ## Slides
 
-- The inspector's Slides tab sets the page's transition drawn between slides while presenting, with a direction for Slide and Push and a duration, and a frame's This slide row sets its own
-- Both lists show a transition the project added under `assets/transitions/` after the built-in ones, by its file's name
-- An element's Slides tab sets the step it appears on with an effect and a start, so the arrows reveal a slide's steps in order before moving on, and the bar shows a dot per step, or the count past six
+- The inspector's Slides tab picks the page's transition from a grid of tiles, with a direction for Slide and Push and a duration under it, and a frame's This slide grid sets its own
+- Hovering a tile plays it on the selected slides, and a click saves it. Transitions under `assets/transitions/` follow the built-ins, by file name.
+- An element's Slides tab sets the step it appears on, its effect from the same tiles, and its start as On press, With last, or After last
+- While presenting, the arrows reveal a slide's steps in order before moving on, and the bar shows a dot per step, or the count past six
 - G while presenting, or the bar's grid button, shows every slide with the current one marked. Enter, a click, or a typed number then Enter jumps to a slide at its first step.
+- Alt+Shift+P or the bar's Presenter view button opens a second window with the slide now, the next one, the note, a timer, and the clock, and F then takes the audience full screen
 
 ## Speaker notes
 
 - A slide selected while the Slides tab is open shows a Speaker notes strip under it, where you write what you mean to say over that slide
 - The note saves when you click away or press Ctrl+Enter, and Esc puts back what was there before you started typing
 - A slide holding a note shows its strip on any tab, and a note never enters the frame's file, so an agent rewriting the slide keeps it
-- Presenting shows no note, since the audience sees that window
+- The audience's window shows no note, and the presenter view shows it under the next slide, scrolling a long one
 
 ## Export
 

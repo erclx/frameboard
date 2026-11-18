@@ -6,6 +6,7 @@ import { findAction } from '@/client/actions/registry'
 import { bezelBox } from '@/shared/frame-device'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
+import { POSE_BAR_ROOM } from '../device/poses'
 import { stepOrder } from '../frame-order'
 import { useSelection } from '../selection'
 import { useStripRoom } from '../speaker-notes/room'
@@ -17,6 +18,9 @@ import { useDrawnFrames } from './write'
 const CORNERS: readonly Corner[] = ['nw', 'ne', 'sw', 'se']
 
 const PARENT_OUTLINE = `${screen(1)} dashed var(--primary)`
+
+/** Set apart from the frames, so the line never reads as a frame's edge across an unselected one between. */
+const GROUP_OUTLINE = `${screen(1)} dashed color-mix(in srgb, var(--primary) 65%, transparent)`
 
 const NO_SECTIONS: readonly SectionRecord[] = []
 
@@ -73,9 +77,9 @@ export function SelectionOverlay({
 }
 
 /**
- * The frame selection. With an element selected inside it, the frame keeps a
- * dashed outline alone, as the parent of what is selected, and the element
- * overlay draws the handles and chip.
+ * The frame selection. A frame holding a selected element keeps a dashed
+ * outline alone, the element overlay drawing its handles and chip, and
+ * several frames keep solid outlines inside a dashed group line.
  */
 function Selection({
   frames,
@@ -101,9 +105,14 @@ function Selection({
   )
   // A shown speaker notes strip sits between the frame and its chips, at screen size.
   const strip = useStripRoom(only && !several ? only.ref : null)
+  // A foldable's pose buttons sit under its body, ahead of the strip, at screen size too.
+  const poses =
+    only && !several && only.device === 'foldable' ? POSE_BAR_ROOM : 0
   const chipAt =
-    below || strip
-      ? { top: `calc(100% + ${below}px + ${strip}px / var(--zoom, 1))` }
+    below || strip || poses
+      ? {
+          top: `calc(100% + ${below}px + ${poses + strip}px / var(--zoom, 1))`,
+        }
       : undefined
   return (
     <div
@@ -114,7 +123,9 @@ function Selection({
         ...place(bounds),
         ...(inside
           ? { outline: PARENT_OUTLINE, outlineOffset: screen(1) }
-          : { outline: OUTLINE }),
+          : several
+            ? { outline: GROUP_OUTLINE, outlineOffset: screen(6) }
+            : { outline: OUTLINE }),
       }}
     >
       {several

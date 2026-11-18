@@ -3,6 +3,7 @@ import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { reserve } from '@/server/claims/store'
+import { type Pose, POSE_SIZES } from '@/shared/frame-device'
 import { FRAME_GAP, FRAME_SIZES } from '@/shared/frame-sizes'
 
 /** The page a reel pans across, which no committed board carries. */
@@ -36,6 +37,14 @@ const FEED_PAGE = join(import.meta.dirname, 'drive-feed.html')
 
 /** One phone frame drawn inside its device, so the strip under a device body has a frame to select. */
 const DEVICE = { project: 'webapp', page: 'device', frame: 'phone' }
+
+/**
+ * One frame naming the foldable, closed, holding a page that goes from one
+ * column to two as it opens, so the pose buttons have a frame to fold.
+ */
+const FOLD = { project: 'webapp', page: 'fold', frame: 'inbox' }
+
+const FOLD_PAGE = join(import.meta.dirname, 'drive-fold.html')
 
 /**
  * Three slides in a row under a Push transition, the middle one marking three
@@ -109,8 +118,19 @@ const MIXED = { project: 'webapp', page: 'mixed', frame: 'notes' }
 
 const MIXED_PAGE = join(import.meta.dirname, 'drive-mixed.html')
 
+/** The page holding one card its own transform tilts, so a reel shows the 3D section filled and the Rotation row off. */
+const TILT = { project: 'webapp', page: 'tilt', frame: 'card' }
+
+const TILT_PAGE = join(import.meta.dirname, 'drive-tilt.html')
+
 /** The folder home opens on in a reel, holding two projects the fixture lacks. */
 const FOLDER = { name: 'Drives', projects: ['drive-app', 'drive-site'] }
+
+/**
+ * A project whose folder name is one run no line break rescues, with its own
+ * token sheet, so the Theme tab's note has a sheet path wider than itself.
+ */
+const LONG_PATH = 'northwindbrandsystemworkspacedesigntokens'
 
 /** The frames reserved beside `webapp/settings/profile`, which ends at x 834. */
 const RESERVED = ['billing', 'security', 'team']
@@ -138,6 +158,8 @@ export interface Seeded {
   deck: 'laid' | 'kept'
   /** Whether the device page was laid now or was already there and kept. */
   device: 'laid' | 'kept'
+  /** Whether the foldable page was laid now or was already there and kept. */
+  fold: 'laid' | 'kept'
   /** Whether webapp's own transition was laid now or was already there and kept. */
   transition: 'laid' | 'kept'
   /** Whether the free shapes page was laid now or was already there and kept. */
@@ -148,8 +170,12 @@ export interface Seeded {
   tuner: 'laid' | 'kept'
   /** Whether the mixed text page was laid now or was already there and kept. */
   mixed: 'laid' | 'kept'
+  /** Whether the tilted card page was laid now or was already there and kept. */
+  tilt: 'laid' | 'kept'
   /** Whether the Drives folder was laid now or was already there and kept. */
   folder: 'laid' | 'kept'
+  /** Whether the long sheet path project was laid now or was already there and kept. */
+  longPath: 'laid' | 'kept'
   /** The frame refs the reservation holds. */
   reserved: string[]
 }
@@ -178,13 +204,21 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     height: 280,
   })
   const mixed = await layOne(root, MIXED, MIXED_PAGE)
+  const tilt = await layOne(root, TILT, TILT_PAGE)
   const device = await layOne(
     root,
     DEVICE,
     join(DECK_PAGES, `${DECK.slides[0]}.html`),
     { ...FRAME_SIZES.phone, showDevice: true },
   )
+  const fold = await layOne(root, FOLD, FOLD_PAGE, {
+    ...POSE_SIZES.closed,
+    showDevice: true,
+    foldable: true,
+    pose: 'closed',
+  })
   const folder = await layFolder(root)
+  const longPath = await layLongPath(root)
   const reserved = await reserveSettings(root, now)
   return {
     crowd,
@@ -193,14 +227,38 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     feed,
     deck,
     device,
+    fold,
     transition,
     shapes,
     stacked,
     tuner,
     mixed,
+    tilt,
     folder,
+    longPath,
     reserved,
   }
+}
+
+/** Lays the long sheet path project, one empty page and a token sheet stating one color. */
+async function layLongPath(root: string): Promise<'laid' | 'kept'> {
+  if (existsSync(join(root, LONG_PATH))) return 'kept'
+  await mkdir(join(root, LONG_PATH, 'home'), { recursive: true })
+  await Promise.all([
+    writeFile(
+      join(root, LONG_PATH, 'home', 'layout.json'),
+      `${JSON.stringify({ version: 1, frames: {} }, null, 2)}\n`,
+    ),
+    writeFile(
+      join(root, LONG_PATH, 'project.json'),
+      `${JSON.stringify({ version: 1, pages: ['home'] }, null, 2)}\n`,
+    ),
+    writeFile(
+      join(root, LONG_PATH, 'tokens.css'),
+      ':root {\n  --brand: #0f766e;\n}\n',
+    ),
+  ])
+  return 'laid'
 }
 
 /**
@@ -277,6 +335,8 @@ async function layOne(
     height: number
     scroll?: boolean
     showDevice?: boolean
+    foldable?: boolean
+    pose?: Pose
   } = FRAME_SIZES.desktop,
 ): Promise<'laid' | 'kept'> {
   const folder = join(root, project, page)

@@ -33,13 +33,23 @@ Owns Play's state and surfaces, being the frame `entered.ts` holds, the `shield.
 
 ### `src/client/board/present/`
 
-Owns present mode, a page's frames one at a time over the window on black through the Fullscreen API, each fit to at most twice its size and recording no undo step. `order.ts` reads rows, `store.ts` holds the page, frame, and step, `overlay.tsx` takes the keys, `overview.tsx` is the slide grid, and transitions and steps are the board's own drawing.
+Owns present mode, a page's frames one at a time over the window on black through the Fullscreen API, each fit to at most twice its size and recording no undo step. `store.ts` holds the page, frame, step, and presenter window, `sync.ts` is the channel to that window, `overlay.tsx` takes the keys, and `overview.tsx` is the slide grid.
 
-- It asks for full screen inside the starting press, since the browser grants it only then, and a refusal presents in the window
+- It asks for full screen or the presenter window inside the starting press, since the browser grants either only then and never both, and a refusal presents in the window
 - Tab on the board and the Layers panel keep Layers order, so the two orders differ on one page
 - Leaving returns focus to what opened presenting, or to the Present button once that is gone, with the frame shown selected
 - Reduced motion makes every transition a cut, a step taken before own keyframes arrive cuts, and a transition with no `leave` keeps its leaving slide still
 - Only present mode hides a step, so Edit, Play, a capture, and an export show every one
+
+### `src/client/board/present/presenter/`
+
+Owns the presenter view, a second copy of the app at `/p/:project/:page/presenter?id=` kept in step over a BroadcastChannel named for the presentation. It draws the slide now at its step, the next slide at its first, the speaker note, a timer, and the clock, and sends its presses back.
+
+- Only the audience holds the state, and the window mirrors what it hears into its own present store, which its slide counts steps into
+- Opening it takes the audience out of full screen in every engine, so leaving full screen ends presenting only once the window is closed
+- It mounts no canvas and follows no `show`, and swallows every key so the board's bindings never run against a board it does not draw
+- A flip lives in one tab's memory, so the audience sends each frame's theme and the window flips its own copy to match
+- Leaving presenting closes the window, a reload of the audience tells it presenting ended, and closing it by hand leaves the audience presenting
 
 ### `src/client/board/speaker-notes/`
 

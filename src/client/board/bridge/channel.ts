@@ -10,10 +10,10 @@ import {
 } from '@/shared/frame-bridge/messages'
 
 /**
- * How long a request waits on a frame that never answers, such as one
- * reloading or showing no bridge. A bridged reply takes under a millisecond.
+ * How long a request waits on a frame that never answers, such as one reloading
+ * or showing no bridge. A loaded machine can take past a second to reply.
  */
-const REPLY_WAIT_MS = 1000
+const REPLY_WAIT_MS = 5000
 
 /** A request awaiting its reply, and after it, a subscription awaiting pushes. */
 interface Open {

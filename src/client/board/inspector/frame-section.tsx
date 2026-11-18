@@ -17,7 +17,7 @@ import {
   type Structure,
   structure,
 } from '@/client/live/structure'
-import { type Device, deviceForWidth } from '@/shared/frame-device'
+import { type Device, deviceForWidth, type Pose } from '@/shared/frame-device'
 import type { FrameSizeName } from '@/shared/frame-sizes'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -393,14 +393,28 @@ const DEVICE_NAMES = {
   phone: 'Phone',
   tablet: 'Tablet',
   laptop: 'Laptop',
+  foldable: 'Foldable',
 } as const satisfies Record<Device, string>
 
 const DEVICE_TIP =
   'Drawn by the board around the frame, a phone from 320 wide, a tablet from 480, and a laptop from 1024. The file is unchanged, and export can include it.'
 
+const POSE_NAMES = {
+  closed: 'Closed',
+  half: 'Half open',
+  open: 'Open',
+} as const satisfies Record<Pose, string>
+
+/** The device a frame's width picks, as the row names it. */
+function widthDeviceName({ box }: FrameRecord): string {
+  const device = deviceForWidth(box.width)
+  return device ? DEVICE_NAMES[device] : 'No device fits'
+}
+
 /**
- * Whether the board draws each frame inside its width's device, leaving the
- * file and its size as they are. A press on `Mixed` turns it on for all.
+ * Whether the board draws each frame inside its device, and which: the one
+ * its width picks or the foldable it names, whose pose is set on the canvas
+ * as `canon/design/inspector/device-foldable` draws. `Mixed` turns it on for all.
  */
 function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
   const id = 'inspector-device'
@@ -410,52 +424,116 @@ function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
     refusal: 'Couldn’t set the device',
     write: (refs, show) => calls.setDevice(refs, show),
   })
-  const names = frames.map(({ box }) => {
-    const device = deviceForWidth(box.width)
-    return device ? DEVICE_NAMES[device] : 'No device fits'
+  const { shown: foldable, pick: pickFoldable } = usePick({
+    frames,
+    valueOf: (frame) => frame.pose !== undefined,
+    refusal: 'Couldn’t set the device',
+    write: (refs, named) => calls.setFoldable(refs, named),
   })
+  const names = frames.map((frame) =>
+    frame.pose ? DEVICE_NAMES.foldable : widthDeviceName(frame),
+  )
   const named = names.every((name) => name === names[0]) ? names[0] : 'Mixed'
   const value = shown === null ? 'Mixed' : shown ? named : undefined
+  const byWidth = frames.map(widthDeviceName)
+  const picked = byWidth.every((name) => name === byWidth[0])
+    ? byWidth[0]
+    : 'Mixed'
+  const [first] = frames
+  const pose =
+    shown && first?.pose && frames.every((frame) => frame.pose === first.pose)
+      ? first.pose
+      : undefined
 
   return (
-    <div className="mt-2.5 flex h-4 items-center justify-between gap-2">
-      <LabelTip label="Show device" tip={DEVICE_TIP} tipId={`${id}-tip`}>
-        <label htmlFor={id} className="text-xs">
-          Show device
-        </label>
-      </LabelTip>
-      <span className="flex min-w-0 items-center gap-2">
-        {value ? (
-          <span
-            id={`${id}-value`}
-            className="truncate text-caption text-muted-foreground"
-          >
-            {value}
-          </span>
-        ) : null}
-        <button
-          id={id}
-          type="button"
-          role="switch"
-          aria-checked={shown === true}
-          aria-describedby={value ? `${id}-value ${id}-tip` : `${id}-tip`}
-          disabled={disabled}
-          onClick={() => pick(shown !== true)}
-          className={cn(
-            'relative h-3.5 w-[26px] shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40',
-            shown === true ? 'bg-primary' : 'bg-input',
-          )}
-        >
-          <span
-            aria-hidden
+    <>
+      <div className="mt-2.5 flex h-4 items-center justify-between gap-2">
+        <LabelTip label="Show device" tip={DEVICE_TIP} tipId={`${id}-tip`}>
+          <label htmlFor={id} className="text-xs">
+            Show device
+          </label>
+        </LabelTip>
+        <span className="flex min-w-0 items-center gap-2">
+          {value && shown && !disabled ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                id={`${id}-value`}
+                className="flex h-4 min-w-0 items-center gap-0.5 rounded-[4px] px-0.5 text-caption text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:text-foreground"
+              >
+                <span className="truncate">{value}</span>
+                <span className="sr-only"> device</span>
+                <ChevronDown aria-hidden className="size-2.5 shrink-0" />
+              </DropdownMenuTrigger>
+              <ChromeMenuContent
+                align="end"
+                sideOffset={4}
+                className="w-auto min-w-[180px]"
+              >
+                <DropdownMenuRadioGroup
+                  value={
+                    foldable === null ? null : foldable ? 'foldable' : 'width'
+                  }
+                  onValueChange={(device: 'width' | 'foldable') =>
+                    pickFoldable(device === 'foldable')
+                  }
+                >
+                  <DropdownMenuRadioItem
+                    value="width"
+                    closeOnClick
+                    className={cn(MENU_ROW, 'pr-8 whitespace-nowrap')}
+                  >
+                    By width
+                    <span className="ml-auto pl-2 text-muted-foreground">
+                      {picked}
+                    </span>
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem
+                    value="foldable"
+                    closeOnClick
+                    className={cn(MENU_ROW, 'pr-8 whitespace-nowrap')}
+                  >
+                    {DEVICE_NAMES.foldable}
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </ChromeMenuContent>
+            </DropdownMenu>
+          ) : value ? (
+            <span
+              id={`${id}-value`}
+              className="truncate text-caption text-muted-foreground"
+            >
+              {value}
+            </span>
+          ) : null}
+          <button
+            id={id}
+            type="button"
+            role="switch"
+            aria-checked={shown === true}
+            aria-describedby={value ? `${id}-value ${id}-tip` : `${id}-tip`}
+            disabled={disabled}
+            onClick={() => pick(shown !== true)}
             className={cn(
-              'absolute top-0.5 size-2.5 rounded-full bg-white transition-[left] motion-reduce:transition-none',
-              shown === true ? 'left-[14px]' : 'left-0.5',
+              'relative h-3.5 w-[26px] shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40',
+              shown === true ? 'bg-primary' : 'bg-input',
             )}
-          />
-        </button>
-      </span>
-    </div>
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'absolute top-0.5 size-2.5 rounded-full bg-white transition-[left] motion-reduce:transition-none',
+                shown === true ? 'left-[14px]' : 'left-0.5',
+              )}
+            />
+          </button>
+        </span>
+      </div>
+      {pose ? (
+        <p className="mt-1.5 text-caption text-muted-foreground">
+          {POSE_NAMES[pose]}. The pose is set on the canvas.
+        </p>
+      ) : null}
+    </>
   )
 }
 

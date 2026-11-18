@@ -5,6 +5,7 @@ import {
   type StepEffect,
   type StepStart,
 } from '@/shared/present-transition'
+import { LOOK_MARKER } from '@/shared/theme'
 
 /** One element a press reveals, with its entrance and how long after the press it starts. */
 export interface StepItem {
@@ -24,19 +25,23 @@ const SHOWN = 'data-frameboard-step'
 const DELAY = '--frameboard-step-delay'
 const STYLE_ID = 'frameboard-present-steps'
 
-/**
- * The style hiding a step not yet revealed and playing each effect as one
- * is. It keeps the hidden step's room, so revealing one moves nothing else,
- * and under reduced motion every step appears with no movement.
- */
-// canon-allow-embedded: interpolates the step attribute, length, and delay names, and is injected into the presented document as text
-const STEP_STYLE = `
-[${SHOWN}='hidden'] { visibility: hidden !important }
+/** Each effect's keyframes, which the inspector's tiles also mount in the board's document. */
+export const STEP_KEYFRAMES = `
 @keyframes frameboard-step-appear { from { visibility: hidden } to { visibility: visible } }
 @keyframes frameboard-step-fade { from { opacity: 0 } to { opacity: 1 } }
 @keyframes frameboard-step-fly { from { opacity: 0; translate: 0 40px } to { opacity: 1; translate: 0 0 } }
 @keyframes frameboard-step-wipe { from { clip-path: inset(0 100% 0 0) } to { clip-path: inset(0 0 0 0) } }
 @keyframes frameboard-step-zoom { from { opacity: 0; scale: 0.6 } to { opacity: 1; scale: 1 } }
+`
+
+/**
+ * The style hiding a step not yet revealed and playing each effect as one
+ * is, keeping its room. Under reduced motion every step appears unmoved.
+ */
+// canon-allow-embedded: interpolates the step attribute, length, and delay names, and is injected into the presented document as text
+const STEP_STYLE = `
+[${SHOWN}='hidden'] { visibility: hidden !important }
+${STEP_KEYFRAMES}
 @media (prefers-reduced-motion: no-preference) {
   [${SHOWN}='enter'] {
     animation-duration: ${STEP_MS}ms;
@@ -150,12 +155,7 @@ export function showSteps(
   shown: number,
   entering: number | null = null,
 ): void {
-  if (!doc.getElementById(STYLE_ID)) {
-    const style = doc.createElement('style')
-    style.id = STYLE_ID
-    style.textContent = STEP_STYLE
-    doc.head?.append(style)
-  }
+  holdStepStyle(doc)
   for (const [index, group] of groups.entries()) {
     for (const { element, effect, delayMs } of group) {
       const state =
@@ -165,6 +165,42 @@ export function showSteps(
       inlineStyleOf(element)?.setProperty(DELAY, `${delayMs}ms`)
     }
   }
+}
+
+/** Marked as injected and appended last, so an element index and the rendered hash read past it. */
+function holdStepStyle(doc: Document): void {
+  if (doc.getElementById(STYLE_ID)) return
+  const style = doc.createElement('style')
+  style.id = STYLE_ID
+  style.setAttribute(LOOK_MARKER, '')
+  style.textContent = STEP_STYLE
+  doc.head?.append(style)
+}
+
+/** Appear's own entrance runs 1 ms and would show nothing, so its preview blinks the element. */
+const APPEAR_PREVIEW_MS = STEP_MS / 2
+
+/**
+ * Plays `effect` once on an element in Edit and takes its marks back off,
+ * writing no delay so no empty `style` is left. The returned call ends it.
+ */
+export function previewStep(element: Element, effect: StepEffect): () => void {
+  const doc = element.ownerDocument
+  holdStepStyle(doc)
+  const appear = effect === 'appear'
+  element.setAttribute(SHOWN, appear ? 'hidden' : 'enter')
+  element.setAttribute(`${SHOWN}-effect`, effect)
+  let done = false
+  const end = () => {
+    if (done) return
+    done = true
+    clearTimeout(timer)
+    element.removeAttribute(SHOWN)
+    element.removeAttribute(`${SHOWN}-effect`)
+    if (!doc.querySelector(`[${SHOWN}]`)) doc.getElementById(STYLE_ID)?.remove()
+  }
+  const timer = setTimeout(end, appear ? APPEAR_PREVIEW_MS : STEP_MS)
+  return end
 }
 
 /** Takes every mark the board wrote out of `doc`, so it shows each step as the file does. */

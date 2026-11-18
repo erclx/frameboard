@@ -233,6 +233,24 @@ describe('SelectionOverlay', () => {
     )
   })
 
+  it('stands the chip past the pose buttons under a selected foldable', () => {
+    const inbox = frameOf('inbox', {
+      box: { x: 100, y: 100, width: 890, height: 626 },
+      device: 'foldable',
+      pose: 'open',
+    })
+    act(() => select(selectionStore, PAGE, [inbox.ref]))
+
+    const { container } = render(<SelectionOverlay frames={[inbox]} />)
+
+    const selection = container.querySelector('[data-selection]')
+    const chip = container.querySelector('[data-chip]')
+    const bottom = selection?.getBoundingClientRect().bottom ?? 0
+    expect(chip?.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      bottom + 20 + 40,
+    )
+  })
+
   it('bounds several frames, outlines each, and counts them', () => {
     act(() => select(selectionStore, PAGE, [LEFT.ref, RIGHT.ref]))
 
@@ -245,6 +263,31 @@ describe('SelectionOverlay', () => {
     expect(container.querySelector('[data-chip]')).toHaveTextContent(
       /^2 frames$/,
     )
+  })
+
+  it('draws several frames a dashed group line set apart, each frame solid', () => {
+    act(() => select(selectionStore, PAGE, [LEFT.ref, RIGHT.ref]))
+
+    const { container } = render(<SelectionOverlay frames={[LEFT, RIGHT]} />)
+
+    const group = container.querySelector<HTMLElement>('[data-selection]')
+    expect(group?.style.outline).toContain('dashed')
+    expect(group?.style.outlineOffset).toContain('6px')
+    for (const outline of container.querySelectorAll<HTMLElement>(
+      '[data-outline]',
+    )) {
+      expect(outline.style.outline).toContain('solid')
+    }
+  })
+
+  it('keeps one selected frame a solid outline on its bounds', () => {
+    act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+    const { container } = render(<SelectionOverlay frames={[LEFT, RIGHT]} />)
+
+    const selection = container.querySelector<HTMLElement>('[data-selection]')
+    expect(selection?.style.outline).toContain('solid')
+    expect(selection?.style.outlineOffset).toBe('')
   })
 
   it('leaves out a selected frame the page no longer shows', () => {
