@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest'
 import {
   bezelBox,
   deviceForWidth,
+  foldBand,
+  islandCenter,
   laptopParts,
+  nearestPose,
+  POSE_SIZES,
+  poseOf,
   screenCorners,
 } from './frame-device'
 import { drawnExtent } from './frame-widths'
@@ -53,6 +58,16 @@ describe('bezelBox', () => {
     })
   })
 
+  it('grows a foldable frame by 20 points on every side', () => {
+    const open = { x: 0, y: 0, width: 890, height: 626 }
+    expect(bezelBox(open, 'foldable')).toEqual({
+      x: -20,
+      y: -20,
+      width: 930,
+      height: 666,
+    })
+  })
+
   it('keeps the box with no device', () => {
     expect(bezelBox(frame, null)).toEqual(frame)
   })
@@ -96,7 +111,61 @@ describe('screenCorners', () => {
     ['phone', '62px'],
     ['tablet', '18px'],
     ['laptop', '10px 10px 0 0'],
+    ['foldable', '48px'],
   ] as const)('rounds a %s screen to %s', (device, corners) => {
     expect(screenCorners(device)).toBe(corners)
+  })
+})
+
+describe('a foldable pose', () => {
+  it.each([
+    ['closed', 466, 678],
+    ['half', 890, 626],
+    ['open', 890, 626],
+  ] as const)('sizes the %s screen %i by %i', (pose, width, height) => {
+    expect(POSE_SIZES[pose]).toEqual({ width, height })
+  })
+
+  it.each([
+    ['open', 'open'],
+    ['half', 'half'],
+    ['closed', 'closed'],
+    ['tent', 'closed'],
+    [undefined, 'closed'],
+    [2, 'closed'],
+  ] as const)('reads a stored %s as %s', (stored, pose) => {
+    expect(poseOf(stored)).toBe(pose)
+  })
+
+  it.each([
+    [390, 'closed'],
+    [466, 'closed'],
+    [678, 'closed'],
+    [679, 'open'],
+    [1440, 'open'],
+  ] as const)('starts a %i wide frame %s', (width, pose) => {
+    expect(nearestPose(width)).toBe(pose)
+  })
+
+  it('never picks a width-named device at a pose width', () => {
+    expect(deviceForWidth(POSE_SIZES.open.width)).not.toBe('foldable')
+  })
+
+  it.each([
+    ['closed', 0.5],
+    ['half', 0.75],
+    ['open', 0.75],
+  ] as const)('centers the %s island at %f of the screen', (pose, center) => {
+    expect(islandCenter(pose)).toBe(center)
+  })
+
+  it('draws no fold on the cover screen', () => {
+    expect(foldBand('closed')).toBeNull()
+  })
+
+  it('shades the half open fold wider than the open crease', () => {
+    expect(foldBand('half')?.width).toBeGreaterThan(
+      foldBand('open')?.width ?? 0,
+    )
   })
 })

@@ -393,6 +393,7 @@ const DEVICE_NAMES = {
   phone: 'Phone',
   tablet: 'Tablet',
   laptop: 'Laptop',
+  foldable: 'Foldable',
 } as const satisfies Record<Device, string>
 
 const DEVICE_TIP =

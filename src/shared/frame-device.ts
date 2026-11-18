@@ -5,8 +5,11 @@ interface Box {
   height: number
 }
 
-/** The devices the board can draw around a frame, the frame's width picking one. */
-export const DEVICES = ['phone', 'tablet', 'laptop'] as const
+/**
+ * The devices the board can draw around a frame. A frame's width picks the
+ * first three, and a frame names a foldable.
+ */
+export const DEVICES = ['phone', 'tablet', 'laptop', 'foldable'] as const
 
 export type Device = (typeof DEVICES)[number]
 
@@ -30,7 +33,9 @@ export const LAPTOP_BASE = { height: 14, reach: 0.06, radius: 10 } as const
 
 /**
  * Bezels measured off a current Pro phone and 13-inch tablet, the tablet's
- * screen radius a guess, and the laptop scaled off the picked mock.
+ * screen radius a guess, and the laptop scaled off the picked mock. The
+ * foldable's border is its body's published size less its glass, and its
+ * screen radius is an estimate no source gives.
  */
 export const BEZELS = {
   phone: { border: 16, bottom: 16, screenRadius: 62, bodyRadius: 78 },
@@ -41,6 +46,7 @@ export const BEZELS = {
     screenRadius: 10,
     bodyRadius: 30,
   },
+  foldable: { border: 20, bottom: 20, screenRadius: 48, bodyRadius: 68 },
 } as const satisfies Record<Device, Bezel>
 
 /**
@@ -88,6 +94,67 @@ export const BEZEL_COLORS = {
  */
 export const PHONE_ISLAND = { width: 81, height: 30, top: 14 } as const
 export const HOME_BAR = { width: 140, height: 5, bottom: 8 } as const
+
+/** The ways a foldable is held, each a screen the frame's box takes the size of. */
+export const POSES = ['closed', 'half', 'open'] as const
+
+export type Pose = (typeof POSES)[number]
+
+/**
+ * Each pose's screen in points, the cover display closed and the inner one
+ * half open and open. The published pixel counts at three pixels to a point,
+ * a scale no source states for this device.
+ */
+export const POSE_SIZES = {
+  closed: { width: 466, height: 678 },
+  half: { width: 890, height: 626 },
+  open: { width: 890, height: 626 },
+} as const satisfies Record<Pose, { width: number; height: number }>
+
+/** A layout entry's `pose` as a pose, closed for none or a value no reader knows. */
+export function poseOf(value: unknown): Pose {
+  return POSES.find((pose) => pose === value) ?? 'closed'
+}
+
+/** The pose a frame this wide starts in, closed or open, whichever moves its box least. */
+export function nearestPose(width: number): Pose {
+  const closed = Math.abs(width - POSE_SIZES.closed.width)
+  const open = Math.abs(width - POSE_SIZES.open.width)
+  return closed <= open ? 'closed' : 'open'
+}
+
+/**
+ * The foldable's island, a generic pill, centered on the cover screen and on
+ * the right half of the inner one, a place no source gives.
+ */
+export const FOLDABLE_ISLAND = { width: 100, height: 30, top: 14 } as const
+
+/** Where the island's center sits across a pose's screen, as a share of its width. */
+export function islandCenter(pose: Pose): number {
+  return pose === 'closed' ? 0.5 : 0.75
+}
+
+/**
+ * The band drawn down the middle of the inner screen, a faint crease open
+ * and a shaded fold half open, null on the cover screen, which has no fold.
+ */
+export function foldBand(
+  pose: Pose,
+): { width: number; background: string } | null {
+  if (pose === 'closed') return null
+  if (pose === 'open') {
+    return {
+      width: 26,
+      background:
+        'linear-gradient(90deg, transparent, rgba(0,0,0,.05) 35%, rgba(0,0,0,.11) 50%, rgba(255,255,255,.5) 56%, transparent)',
+    }
+  }
+  return {
+    width: 150,
+    background:
+      'linear-gradient(90deg, transparent, rgba(0,0,0,.10) 30%, rgba(0,0,0,.34) 49%, rgba(0,0,0,.34) 51%, rgba(0,0,0,.08) 70%, transparent)',
+  }
+}
 
 interface Rect {
   x: number
