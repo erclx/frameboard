@@ -202,6 +202,7 @@ describe('the raw colors page', () => {
         'stacked',
         'tuner',
         'mixed',
+        'device',
       ],
     })
   })
@@ -245,6 +246,7 @@ describe('the scroll feed page', () => {
         'stacked',
         'tuner',
         'mixed',
+        'device',
       ],
     })
   })
@@ -258,6 +260,17 @@ describe('the scroll feed page', () => {
 
     expect(seeded.feed).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
+  })
+})
+
+describe('the device page', () => {
+  it('lays one phone frame drawn inside its device', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.device).toBe('laid')
+    expect(readJson('webapp/device/layout.json')).toMatchObject({
+      frames: { phone: { width: 390, showDevice: true } },
+    })
   })
 })
 

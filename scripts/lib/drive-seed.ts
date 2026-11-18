@@ -34,6 +34,9 @@ const FEED = { project: 'webapp', page: 'feed', frame: 'feed-scroll' }
 
 const FEED_PAGE = join(import.meta.dirname, 'drive-feed.html')
 
+/** One phone frame drawn inside its device, so the strip under a device body has a frame to select. */
+const DEVICE = { project: 'webapp', page: 'device', frame: 'phone' }
+
 /**
  * Three slides in a row under a Push transition, the middle one marking three
  * steps and holding a speaker note, so present mode has a transition and steps
@@ -133,6 +136,8 @@ export interface Seeded {
   feed: 'laid' | 'kept'
   /** Whether the deck page was laid now or was already there and kept. */
   deck: 'laid' | 'kept'
+  /** Whether the device page was laid now or was already there and kept. */
+  device: 'laid' | 'kept'
   /** Whether webapp's own transition was laid now or was already there and kept. */
   transition: 'laid' | 'kept'
   /** Whether the free shapes page was laid now or was already there and kept. */
@@ -173,6 +178,12 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     height: 280,
   })
   const mixed = await layOne(root, MIXED, MIXED_PAGE)
+  const device = await layOne(
+    root,
+    DEVICE,
+    join(DECK_PAGES, `${DECK.slides[0]}.html`),
+    { ...FRAME_SIZES.phone, showDevice: true },
+  )
   const folder = await layFolder(root)
   const reserved = await reserveSettings(root, now)
   return {
@@ -181,6 +192,7 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     raw,
     feed,
     deck,
+    device,
     transition,
     shapes,
     stacked,
@@ -264,6 +276,7 @@ async function layOne(
     width: number
     height: number
     scroll?: boolean
+    showDevice?: boolean
   } = FRAME_SIZES.desktop,
 ): Promise<'laid' | 'kept'> {
   const folder = join(root, project, page)
