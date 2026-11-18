@@ -16,11 +16,9 @@ export function liveIframe(ref: string): HTMLIFrameElement | null {
 export const RESTAMPED = 'frameboard:restamped'
 
 /**
- * Stamps a live frame as rendering the file `hash` names, as its reload
- * would have, for a page that already shows those bytes, and dispatches
- * `RESTAMPED` on the iframe. The board holds the hash at once, ahead of the
- * frame's word, so a read the event wakes sees it. A page announcing no
- * stamp is left alone.
+ * Stamps a live frame as rendering `hash`, held on the board at once so a
+ * read `RESTAMPED` wakes sees it, for a page already showing those bytes.
+ * A page announcing no stamp is left alone.
  */
 export function stampRenderedHash(
   iframe: HTMLIFrameElement,
