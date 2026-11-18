@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { drawnExtent, linkedBoxes, widthsOf } from './frame-widths'
+import { drawnExtent, linkedBoxes, widthsOf, xPast } from './frame-widths'
 
 const frame = { x: 100, y: 40, width: 1440, height: 900 }
 
@@ -77,5 +77,16 @@ describe('drawnExtent', () => {
 
   it('is the frame box when it lists no width', () => {
     expect(drawnExtent(frame, [])).toEqual(frame)
+  })
+})
+
+describe('xPast', () => {
+  it.each([
+    ['a laptop, past its base', 1440, 'laptop', 1709],
+    ['a tablet, past its border', 834, 'tablet', 1644],
+    ['a phone, past its border', 390, 'phone', 1616],
+    ['no device, at the frame', 1440, null, 1600],
+  ] as const)('places %s 80 clear of the edge', (_, width, device, x) => {
+    expect(xPast(1520, width, device)).toBe(x)
   })
 })

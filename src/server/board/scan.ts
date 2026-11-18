@@ -11,12 +11,13 @@ import {
 } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 import { type Device, deviceForWidth } from '@/shared/frame-device'
+import { DEFAULT_FRAME_SIZE, FRAME_SIZES } from '@/shared/frame-sizes'
 import {
-  DEFAULT_FRAME_SIZE,
-  FRAME_GAP,
-  FRAME_SIZES,
-} from '@/shared/frame-sizes'
-import { drawnExtent, type LinkedWidth, widthsOf } from '@/shared/frame-widths'
+  drawnExtent,
+  type LinkedWidth,
+  widthsOf,
+  xPast,
+} from '@/shared/frame-widths'
 import {
   storedTransitionOf,
   type Transition,
@@ -249,14 +250,21 @@ export function showsDevice(entry: LayoutEntry | undefined): boolean {
 }
 
 /**
- * Where an unplaced frame sits, desktop size 80 past the right edge of every
- * placed frame and its linked widths, the box `frame add` persists.
+ * Where an unplaced frame sits, desktop size with its body 80 past the right
+ * edge of every placed frame and its linked widths, the box `frame add`
+ * persists. The body is the one the frame will draw, none for a bare file.
  */
-export function placeNext(placed: Placement[]): Placement {
+export function placeNext(
+  placed: Placement[],
+  body: { width: number; device: Device | null } = {
+    width: FRAME_SIZES[DEFAULT_FRAME_SIZE].width,
+    device: null,
+  },
+): Placement {
   const right = Math.max(
     ...placed.map(({ box, widths, device }) => {
       const extent = drawnExtent(box, widths, device)
-      return extent.x + extent.width + FRAME_GAP
+      return xPast(extent.x + extent.width, body.width, body.device)
     }),
     0,
   )

@@ -680,6 +680,31 @@ describe('frames', () => {
         })
       })
 
+      it('add over an entry left by a missing file takes the reference height of its width', async () => {
+        const root = open()
+        const page = layout('webapp/home')
+        page.frames.card = {
+          x: 4000,
+          y: 0,
+          width: 390,
+          height: 500,
+          order: 2,
+          hidden: false,
+          locked: false,
+        }
+        writeFileSync(
+          join(root, 'webapp/home/layout.json'),
+          JSON.stringify(page),
+        )
+
+        const added = await addFrame(root, 'webapp/home/card', {
+          cwd: root,
+          scroll: true,
+        })
+
+        expect(added.box).toMatchObject({ x: 4000, width: 390, height: 844 })
+      })
+
       it('add with a width alone takes the reference height', async () => {
         const root = open()
 
@@ -959,6 +984,31 @@ describe('frames', () => {
         })
       })
 
+      it('add lands a laptop frame with its body 80 past the frames before it', async () => {
+        const root = open()
+
+        const added = await addFrame(root, 'webapp/home/card', {
+          cwd: root,
+          size: 'desktop',
+          showDevice: true,
+        })
+
+        expect(added.box.x).toBe(1520 + 390 + 80 + 109)
+      })
+
+      it('add keeps a given x beside a frame in a device', async () => {
+        const root = open()
+
+        const added = await addFrame(root, 'webapp/home/card', {
+          cwd: root,
+          size: 'desktop',
+          showDevice: true,
+          x: 1950,
+        })
+
+        expect(added.box.x).toBe(1950)
+      })
+
       it('duplicate lands 80 past the body of a frame in a device', async () => {
         const root = open()
         await setFrameDevice(root, 'webapp/home/about', true, { cwd: root })
@@ -967,7 +1017,33 @@ describe('frames', () => {
           cwd: root,
         })
 
-        expect(copy.box.x).toBe(1520 + 390 + 16 + 80)
+        expect(copy.box.x).toBe(1520 + 390 + 16 + 80 + 16)
+      })
+
+      it('duplicate stands a laptop copy 80 clear of its source, base to body', async () => {
+        const root = open()
+        await setFrameDevice(root, 'webapp/home/hero', true, { cwd: root })
+
+        const copy = await duplicateFrame(root, 'webapp/home/hero', {
+          cwd: root,
+        })
+
+        expect(copy.box.x).toBe(1440 + 109 + 80 + 109)
+      })
+
+      it('turning the device on moves no frame', async () => {
+        const root = open()
+        const before = layout('webapp/home').frames
+
+        await setFrameDevice(root, 'webapp/home/hero', true, { cwd: root })
+        await setFrameDevice(root, 'webapp/home/about', true, { cwd: root })
+
+        const after = layout('webapp/home').frames
+        expect(after.hero).toMatchObject({ x: before.hero.x, y: before.hero.y })
+        expect(after.about).toMatchObject({
+          x: before.about.x,
+          y: before.about.y,
+        })
       })
     })
 

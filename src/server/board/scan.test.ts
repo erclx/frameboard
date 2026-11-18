@@ -468,4 +468,22 @@ describe('placeNext', () => {
 
     expect(placeNext([placed]).box.x).toBe(1990)
   })
+
+  it('stands two laptop frames placed in turn 80 apart body to body', () => {
+    const laptop = { width: 1440, device: 'laptop' } as const
+    const first = {
+      ...placeNext([], laptop),
+      showDevice: true as const,
+      device: 'laptop' as const,
+    }
+
+    // The first base ends at 1440 + 109, so the second body starts at 1629.
+    expect(placeNext([first], laptop).box.x).toBe(1738)
+  })
+
+  it('places a bare file past a laptop frame at the gap, with no body of its own', () => {
+    const laptop = { ...placeNext([]), device: 'laptop' as const }
+
+    expect(placeNext([laptop]).box.x).toBe(1629)
+  })
 })
