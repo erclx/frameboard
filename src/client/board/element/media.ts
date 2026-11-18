@@ -18,10 +18,9 @@ export interface LiveMedia {
 }
 
 /**
- * The selected media as its frame's page pushes it, read again on every
- * playback change and held while the frame shows older bytes than the key's
- * hash, so the Video section keeps its place between a hand edit and its
- * reload.
+ * The selected media as its frame's page pushes it on every playback change,
+ * held while the page shows older bytes than the key's hash, so the Video
+ * section keeps its place between a hand edit and its reload.
  */
 export function useLiveMedia(key: ElementKey | null): LiveMedia | null {
   const [held, setHeld] = useState<{
