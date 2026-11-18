@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
   type AudienceMessage,
+  isPresenterPath,
   joinAudience,
   presentationIdOf,
   type PresentedState,
@@ -167,6 +168,12 @@ describe('the presenter address', () => {
     expect(presenterUrl('web app', 'home', 'ab-12')).toBe(
       '/p/web%20app/home/presenter?id=ab-12',
     )
+  })
+
+  it('is told apart from the page it sits under', () => {
+    expect(isPresenterPath('/p/web%20app/home/presenter')).toBe(true)
+    expect(isPresenterPath('/p/web%20app/home')).toBe(false)
+    expect(isPresenterPath('/p/presenter/presenter')).toBe(false)
   })
 
   it('reads the presentation back', () => {

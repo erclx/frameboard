@@ -61,6 +61,11 @@ export function presenterUrl(
   return `${boardUrl(project, page)}/presenter?id=${encodeURIComponent(id)}`
 }
 
+/** Whether `pathname` is a presenter window's, as `presenterUrl` builds it. */
+export function isPresenterPath(pathname: string): boolean {
+  return /^\/p\/[^/]+\/[^/]+\/presenter\/?$/.test(pathname)
+}
+
 /** The presentation a presenter window's query names, null when it names none or a malformed one. */
 export function presentationIdOf(search: string): string | null {
   const parsed = presentationIdSchema.safeParse(
