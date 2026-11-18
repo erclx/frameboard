@@ -915,6 +915,63 @@ describe('structureRoutes', () => {
       expect(layout().hero).not.toHaveProperty('transition')
     })
 
+    it('sets a speaker note as one step and undoes it, leaving the file alone', async () => {
+      const bytes = readFileSync(frameFile('hero'))
+
+      const response = await post('/api/frame/speaker-notes', {
+        ref: 'studio/home/hero',
+        speakerNotes: 'Open on the price.\nThen the demo.',
+        expected: '',
+      })
+      expect(await response.json()).toMatchObject({
+        ok: true,
+        data: { speakerNotes: 'Open on the price.\nThen the demo.' },
+      })
+      expect(layout().hero.speakerNotes).toBe(
+        'Open on the price.\nThen the demo.',
+      )
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(layout().hero).not.toHaveProperty('speakerNotes')
+      expect(readFileSync(frameFile('hero'))).toEqual(bytes)
+    })
+
+    it('refuses a speaker note with 409 when the note moved since the edit began', async () => {
+      await post('/api/frame/speaker-notes', {
+        ref: 'studio/home/hero',
+        speakerNotes: 'Set by an agent.',
+        expected: '',
+      })
+
+      const response = await post('/api/frame/speaker-notes', {
+        ref: 'studio/home/hero',
+        speakerNotes: 'Typed by hand.',
+        expected: '',
+      })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'stale-layout' },
+      })
+      expect(layout().hero.speakerNotes).toBe('Set by an agent.')
+    })
+
+    it('refuses a speaker note with no writer and writes nothing', async () => {
+      const response = await post(
+        '/api/frame/speaker-notes',
+        {
+          ref: 'studio/home/hero',
+          speakerNotes: 'Open on the price.',
+          expected: '',
+        },
+        {},
+      )
+
+      expect(response.status).toBe(401)
+      expect(layout().hero).not.toHaveProperty('speakerNotes')
+    })
+
     it('sets a page transition as one step and undoes it', async () => {
       await post('/api/page/transition', {
         ref: 'studio/home',
@@ -1541,6 +1598,15 @@ describe('structureRoutes', () => {
         { refs: ['studio/home/mobile', 'studio/home/hero'] },
       ],
       ['a cut', '/api/clipboard/cut', { refs: ['studio/home/hero'] }],
+      [
+        'a speaker note',
+        '/api/frame/speaker-notes',
+        {
+          ref: 'studio/home/hero',
+          speakerNotes: 'Open on the price.',
+          expected: '',
+        },
+      ],
       [
         'a project rename',
         '/api/project/rename',

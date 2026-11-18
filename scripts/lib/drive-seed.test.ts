@@ -202,6 +202,7 @@ describe('the raw colors page', () => {
         'stacked',
         'tuner',
         'mixed',
+        'device',
       ],
     })
   })
@@ -245,6 +246,7 @@ describe('the scroll feed page', () => {
         'stacked',
         'tuner',
         'mixed',
+        'device',
       ],
     })
   })
@@ -261,6 +263,17 @@ describe('the scroll feed page', () => {
   })
 })
 
+describe('the device page', () => {
+  it('lays one phone frame drawn inside its device', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.device).toBe('laid')
+    expect(readJson('webapp/device/layout.json')).toMatchObject({
+      frames: { phone: { width: 390, showDevice: true } },
+    })
+  })
+})
+
 describe('the deck page', () => {
   it('lays three slides in a row with a page transition', async () => {
     const seeded = await seedDrive(root, new Date())
@@ -274,6 +287,17 @@ describe('the deck page', () => {
         '03-closing': { x: 2720, order: 2 },
       },
     })
+  })
+
+  it('gives the middle slide a speaker note and no other slide one', async () => {
+    await seedDrive(root, new Date())
+
+    const layout = readJson('webapp/deck/layout.json')
+    expect(layout).toMatchObject({
+      frames: { '02-build': { speakerNotes: expect.any(String) } },
+    })
+    expect(layout).not.toHaveProperty(['frames', '01-intro', 'speakerNotes'])
+    expect(layout).not.toHaveProperty(['frames', '03-closing', 'speakerNotes'])
   })
 
   it("brings the closing slide in with a transition the board lists as webapp's own", async () => {

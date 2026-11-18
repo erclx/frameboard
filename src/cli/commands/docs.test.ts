@@ -82,6 +82,7 @@ describe('docs', () => {
       'frame delete',
       'frame device',
       'frame transition',
+      'frame speaker-notes',
       'frame hide',
       'frame lock',
       'edit',

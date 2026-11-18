@@ -43,6 +43,8 @@ export const frameRecordSchema = z.object({
   device: z.enum(DEVICES).optional(),
   /** The transition the frame arrives with in present mode, over its page's, absent when it holds none. */
   transition: transitionRecordSchema.optional(),
+  /** What the presenter means to say over the slide, plain text with its line breaks, absent when it holds none. */
+  speakerNotes: z.string().optional(),
   placed: z.boolean(),
   modifiedAt: z.string(),
 })

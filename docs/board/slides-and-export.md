@@ -1,6 +1,6 @@
 ---
 title: Slides and export
-description: Slide transitions and steps, motion, PNG and filmstrip export, and opening a project on a phone
+description: Slide transitions and steps, speaker notes, motion, PNG and filmstrip export, and opening a project on a phone
 ---
 
 # Slides and export
@@ -13,6 +13,13 @@ The Slides and Export tabs, and the Motion section a moving frame adds.
 - Both lists show a transition the project added under `assets/transitions/` after the built-in ones, by its file's name
 - An element's Slides tab sets the step it appears on with an effect and a start, so the arrows reveal a slide's steps in order before moving on, and the bar shows a dot per step, or the count past six
 - G while presenting, or the bar's grid button, shows every slide with the current one marked. Enter, a click, or a typed number then Enter jumps to a slide at its first step.
+
+## Speaker notes
+
+- A slide selected while the Slides tab is open shows a Speaker notes strip under it, where you write what you mean to say over that slide
+- The note saves when you click away or press Ctrl+Enter, and Esc puts back what was there before you started typing
+- A slide holding a note shows its strip on any tab, and a note never enters the frame's file, so an agent rewriting the slide keeps it
+- Presenting shows no note, since the audience sees that window
 
 ## Export
 

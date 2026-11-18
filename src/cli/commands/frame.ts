@@ -14,14 +14,17 @@ import {
   type ScrollOptions,
   setFrameDevice,
   setFrameFlag,
+  setFrameSpeakerNotes,
   setFrameTransition,
   type SizeOptions,
   type WidthsOptions,
 } from '@/server/board/frames'
 import { fitFrame } from '@/server/capture/fit'
 import { withFrameHost } from '@/server/capture/host'
+import { FrameboardError } from '@/shared/errors'
 import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
 import { SAME_AS_PAGE_WORD, transitionLabel } from '@/shared/present-transition'
+import { SPEAKER_NOTES_MAX } from '@/shared/records/board'
 import type { FrameRecord } from '@/shared/records/list'
 
 import {
@@ -328,6 +331,45 @@ export function registerFrame(
         record.transition
           ? `Set ${transitionLabel(record.transition.name)} on`
           : 'Cleared the transition on',
+      )
+    },
+  )
+
+  act<CommonOptions & { clear?: boolean }>(
+    verb(
+      'speaker-notes',
+      `Print a slide's speaker note, set it to the text given, or remove it with --clear, writing only layout.json and never the frame file. Plain text up to ${SPEAKER_NOTES_MAX} characters with its line breaks kept, and blank text clears it.`,
+    )
+      .argument('[text]', 'the note to set, in place of the one it holds')
+      .option('--clear', 'remove the note'),
+    context,
+    async ([ref = '', text], { clear, ...options }) => {
+      if (clear && text !== undefined) {
+        throw new FrameboardError(
+          'usage',
+          'Pass the text or --clear, not both.',
+        )
+      }
+      const root = await boardOf(options, io)
+      const refOptions = { ...options, cwd: io.cwd }
+      if (!clear && text === undefined) {
+        const record = await readFrame(root, ref, refOptions)
+        return {
+          data: record,
+          human: record.speakerNotes ?? `No speaker notes on ${record.ref}`,
+        }
+      }
+      const record = await setFrameSpeakerNotes(
+        root,
+        ref,
+        clear ? null : (text ?? null),
+        refOptions,
+      )
+      return done(
+        record,
+        record.speakerNotes
+          ? 'Set the speaker notes on'
+          : 'Cleared the speaker notes on',
       )
     },
   )
