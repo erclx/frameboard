@@ -59,7 +59,7 @@ async function noColorTokens(page: Page): Promise<void> {
 /** A box sliding 800 px right over 4 s, so a hold names the moment by where it stands. */
 const SLIDE_FRAME = join(
   import.meta.dirname,
-  '../../test/fixtures/frames/slide.html',
+  '../../../test/fixtures/frames/slide.html',
 )
 
 /**
