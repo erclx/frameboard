@@ -23,7 +23,7 @@ Owns the types and schemas for the layout file and every record the CLI and serv
 
 ### `src/server/board/`
 
-Owns reading, watching, and writing the board folder: `.frameboard/` where a first `serve` ran, a folder holding `board.json`, or any `--root`. A project is a folder, a page a folder in it, and a frame one `.html` file, each page's `layout.json` holding boxes, sections, a transition, and each frame's hug, scroll, widths, and device keys.
+Owns reading, watching, and writing the board folder: `.frameboard/` where a first `serve` ran, a folder holding `board.json`, or any `--root`. A project is a folder, a page a folder in it, and a frame one `.html` file, each page's `layout.json` holding boxes, sections, a transition, and each frame's own keys up to its speaker note.
 
 - Each page's `notes.json` sits beside its frames, since writing a note into a frame would shift every element address after it
 - Frame order is stacking order, so a reorder in the layers panel changes what draws on top and leaves positions alone
