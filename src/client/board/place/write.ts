@@ -181,10 +181,8 @@ export async function placeFile(
 }
 
 /**
- * Saves a found result dropped on the canvas through the save Save sends,
- * then hands the landed file to `place`, which lands it as a dropped tile's
- * file: in the frame under the point, or in a frame of its own. A refused
- * save places nothing.
+ * Saves a dropped found result through the save Save sends, then hands the
+ * landed file to `place` as a tile's drop would. A refused save places nothing.
  */
 export async function placeResult(
   dropped: DraggedResult,
