@@ -40,7 +40,7 @@ import {
 import type { FrameRecord } from '@/shared/records/list'
 
 import { reservedBox } from '../claims/store'
-import { projectKitNames } from '../kits/project'
+import { heldKit } from '../kits/project'
 import type { Journal, JournalOptions } from './journal'
 import { readRecord, withLocks, writeRecord } from './json-record'
 import {
@@ -1008,27 +1008,17 @@ export async function setFrameKit(
   options: RefOptions & JournalOptions,
 ): Promise<FrameRecord> {
   const frame = await resolveFrameRef(root, ref, options)
-  const held = kit === null ? null : await heldKit(root, frame.project, kit)
+  const held =
+    kit === null
+      ? null
+      : await heldKit(
+          { name: frame.project, path: join(root, frame.project) },
+          kit,
+        )
   return updatePlacement(root, ref, options, (placement) => {
     const { kit: _held, ...rest } = placement
     return held ? { ...rest, kit: held } : rest
   })
-}
-
-/** The project's kit `name` answers to, refusing `kit-not-found` with the kits it holds. */
-async function heldKit(
-  root: string,
-  project: string,
-  name: string,
-): Promise<string> {
-  const known = await projectKitNames(join(root, project))
-  const found = matchName(known, name)
-  if (found) return found
-  throw new FrameboardError(
-    'kit-not-found',
-    `${project} holds no kit named ${name}. Add one with \`frameboard kit add ${project} <kit>\`.`,
-    { kit: name, project, known },
-  )
 }
 
 /**

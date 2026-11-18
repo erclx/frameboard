@@ -1,7 +1,9 @@
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
+import { matchName } from '@/server/board/refs'
 import { ASSETS_FOLDER } from '@/shared/board-files'
+import { FrameboardError } from '@/shared/errors'
 import { KIT_FILE, PROJECT_KITS } from '@/shared/kits'
 import { isValidName } from '@/shared/names'
 import type { PageRecord, ProjectKitRecord } from '@/shared/records/list'
@@ -29,6 +31,21 @@ export async function projectKitNames(projectDir: string): Promise<string[]> {
     .filter((entry) => entry.isDirectory() && isValidName(entry.name))
     .map((entry) => entry.name)
     .sort()
+}
+
+/** The project's kit `name` answers to, refusing `kit-not-found` with the kits it holds. */
+export async function heldKit(
+  project: { name: string; path: string },
+  name: string,
+): Promise<string> {
+  const known = await projectKitNames(project.path)
+  const found = matchName(known, name)
+  if (found) return found
+  throw new FrameboardError(
+    'kit-not-found',
+    `${project.name} holds no kit named ${name}. Add one with \`frameboard kit add ${project.name} <kit>\`.`,
+    { kit: name, project: project.name, known },
+  )
 }
 
 /**
