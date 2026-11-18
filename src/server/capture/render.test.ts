@@ -325,8 +325,7 @@ describe.skipIf(shell === null)(
         },
         'light',
       )
-      // One pixel inside the screen's square corner at 16, 16, past the
-      // body's 78 outer arc, so only a square page could paint it.
+      // Inside the screen's square corner yet past the body's outer arc.
       const [, , , alpha] = await pixelAt(requireShell(shell), bytes, 17, 17)
 
       expect(alpha).toBe(0)
