@@ -18,7 +18,7 @@ Holds the script that runs in each frame's own realm, built to `dist/frame-bridg
 - The script removes its own `<script>` as it starts, so the live element indices the board reads match the file
 - It answers only `window.parent` at the frame's own origin, and a frame with no parent, as capture and the phone link show one, never listens
 - `main.ts` checks each request's arguments against its op's schema and hands them to one area's handlers, being `measure.ts`, `live-element.ts`, `preview.ts`, `gap.ts`, `media.ts`, or `text-edit.ts`
-- It announces the hash it shows in a `shown` message as it starts, on a restamp, and as its page goes, naming the page by an id since a page going posts with no window to tell it by
+- It announces its hash in a `shown` message once its body parses, on a restamp, and as its page goes, naming the page by an id, since a page going posts with no window
 - Text in place owns `contenteditable` and the keys, opens only the run at the point beside a child, and keeps the old text until the board says whether the write landed
 
 ### `src/client/board/bridge/`
