@@ -20,6 +20,8 @@ import { frameThemeUrl, LOOK_MARKER, setFrameTheme } from '@/shared/theme'
 import { focusWithoutTooltip } from '../chrome/quiet-focus'
 import { PRESENT } from '../chrome/toolbar-tools'
 import { Bezel } from '../device/bezel'
+import { useWaitingOnFirstLoad } from '../frame-loading'
+import { LoadingBlock } from '../loading-block'
 import { PresentBar } from './bar'
 import { fitScale } from './fit'
 import {
@@ -503,6 +505,8 @@ function PresentedFrame({
 }: { frame: { ref: string; name: string } } & LiveProps) {
   const iframe = useRef<HTMLIFrameElement>(null)
   const loaded = useStepsWhileLive(iframe, live)
+  // The iframe stays mounted across slides, so only its first page waits.
+  const waiting = useWaitingOnFirstLoad(iframe, true)
   const theme = useFrameTheme(frame.ref)
   const version = useLive((state) => state.reloads[frame.ref] ?? 0)
   // Read at load, since a later flip rewrites the root rather than restart the page.
@@ -550,13 +554,17 @@ function PresentedFrame({
     [live, wake],
   )
   return (
-    <iframe
-      ref={iframe}
-      title={frame.name}
-      src={src}
-      style={{ colorScheme: theme }}
-      // Hidden until its steps are hidden, so a stepped slide never flashes whole.
-      className={`block size-full border-0 bg-[color:Canvas] ${loaded ? '' : 'invisible'}`}
-    />
+    <>
+      <iframe
+        ref={iframe}
+        title={frame.name}
+        src={src}
+        aria-busy={waiting || undefined}
+        style={{ colorScheme: theme }}
+        // Hidden until its steps are hidden, so a stepped slide never flashes whole.
+        className={`block size-full border-0 bg-[color:Canvas] ${loaded ? '' : 'invisible'}`}
+      />
+      {waiting ? <LoadingBlock theme={theme} /> : null}
+    </>
   )
 }

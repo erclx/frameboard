@@ -25,6 +25,14 @@
   --animate-claim-dot: claim-dot 2.4s ease-in-out infinite;
   /* An agent's change glows for 2s and fades over its last 600ms, per agents/claim-full. */
   --animate-change-glow: change-glow 2s linear forwards;
+  /* A frame still waiting on its first page pulses its grey block, per frame-load-grey-pulse-720. */
+  --animate-frame-loading: frame-loading 1.6s ease-in-out infinite;
+
+  @keyframes frame-loading {
+    50% {
+      opacity: 0.55;
+    }
+  }
 
   @keyframes change-glow {
     0%,
@@ -113,7 +121,9 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
+/* `.light` scopes these back inside a dark board, as a flipped frame's chrome needs. */
+:root,
+.light {
   --background: #ececec;
   --foreground: #1a1a1a;
   --card: #ffffff;

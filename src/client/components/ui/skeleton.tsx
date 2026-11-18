@@ -2,8 +2,8 @@ import { cn } from '@/client/lib/cn'
 
 /**
  * A grey block standing where content will draw once it loads. It holds
- * still, since `canon/DESIGN.md` keeps the claim pulse the one looped motion,
- * and a screen reader skips it for the live status beside it.
+ * still unless a caller adds the loading pulse, the one looped motion
+ * `canon/DESIGN.md` allows a block, and a screen reader skips it.
  */
 function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
   return (

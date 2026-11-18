@@ -36,8 +36,10 @@ import { FindingsList } from './findings/list'
 import { FindingsCount } from './findings/mark'
 import { openFindings, useFindingsOpen } from './findings/open'
 import { renderedHash, RESTAMPED } from './frame-dom'
+import { useWaitingOnFirstLoad } from './frame-loading'
 import { useDrawnBox, usePendingBox } from './geometry/write'
 import { useHiddenScrollbar } from './hidden-scrollbar'
+import { LoadingBlock } from './loading-block'
 import { useMode } from './mode'
 import { useMotionDriver } from './motion/seek'
 import { formatMoment, releaseMotion, useMotionHold } from './motion/store'
@@ -176,6 +178,7 @@ export const Frame = memo(function Frame({
     }
   }, [live, previewWidth, hugHeight, frame.ref])
 
+  const waiting = useWaitingOnFirstLoad(iframe, live)
   useHiddenScrollbar(iframe, live, frame.scroll)
   useMotionDriver(iframe, frame.ref, live, playing)
 
@@ -288,6 +291,7 @@ export const Frame = memo(function Frame({
           ref={iframe}
           title={frame.name}
           src={src ?? undefined}
+          aria-busy={waiting || undefined}
           // A flipped frame with no background paints its own theme's color.
           style={{ colorScheme: theme }}
           className="block size-full border-0 bg-[color:Canvas]"
@@ -298,6 +302,7 @@ export const Frame = memo(function Frame({
           className="size-full border border-border bg-card"
         />
       )}
+      {waiting ? <LoadingBlock theme={theme} /> : null}
       {frame.device ? (
         <Bezel device={frame.device} width={width} height={height} />
       ) : null}

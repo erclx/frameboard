@@ -797,3 +797,57 @@ describe('the bar', () => {
     })
   })
 })
+
+describe('a presented frame still loading', () => {
+  const block = () =>
+    screen.getByRole('dialog').querySelector('[data-loading-block]')
+
+  function loaded(iframe: HTMLIFrameElement | null): Promise<void> {
+    return new Promise((resolve) =>
+      iframe?.addEventListener('load', () => resolve(), { once: true }),
+    )
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  })
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+  })
+
+  it('draws the block over a page still loading after a second', () => {
+    present(framesOf('a'))
+
+    act(() => vi.advanceTimersByTime(1000))
+
+    expect(block()).not.toBeNull()
+  })
+
+  it('drops the block once the page loads', async () => {
+    present(framesOf('a'))
+    const load = loaded(shownFrame())
+    act(() => vi.advanceTimersByTime(1000))
+
+    await act(() => load)
+
+    expect(block()).toBeNull()
+  })
+
+  it('draws the block under the device bezel', () => {
+    present([
+      frameOf('a', {
+        box: { x: 0, y: 0, width: 390, height: 844 },
+        device: 'phone',
+      }),
+    ])
+
+    act(() => vi.advanceTimersByTime(1000))
+
+    const bezel = screen.getByRole('dialog').querySelector('[data-bezel]')
+    expect(bezel && block()?.compareDocumentPosition(bezel)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
+})
