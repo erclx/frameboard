@@ -959,6 +959,31 @@ describe('frames', () => {
         })
       })
 
+      it('add lands a laptop frame with its body 80 past the frames before it', async () => {
+        const root = open()
+
+        const added = await addFrame(root, 'webapp/home/card', {
+          cwd: root,
+          size: 'desktop',
+          showDevice: true,
+        })
+
+        expect(added.box.x).toBe(1520 + 390 + 80 + 109)
+      })
+
+      it('add keeps a given x beside a frame in a device', async () => {
+        const root = open()
+
+        const added = await addFrame(root, 'webapp/home/card', {
+          cwd: root,
+          size: 'desktop',
+          showDevice: true,
+          x: 1950,
+        })
+
+        expect(added.box.x).toBe(1950)
+      })
+
       it('duplicate lands 80 past the body of a frame in a device', async () => {
         const root = open()
         await setFrameDevice(root, 'webapp/home/about', true, { cwd: root })

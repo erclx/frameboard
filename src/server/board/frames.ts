@@ -4,8 +4,11 @@ import { join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
+import { deviceForWidth } from '@/shared/frame-device'
 import {
+  DEFAULT_FRAME_SIZE,
   FRAME_GAP,
+  FRAME_SIZES,
   type FrameSizeName,
   frameSizeOf,
   referenceHeight,
@@ -42,6 +45,7 @@ import {
   listFrames,
   placeFrames,
   type Placement,
+  placeNext,
   readPageOrder,
   scanPage,
 } from './scan'
@@ -150,12 +154,18 @@ export async function addFrame(
       }
       const names = exists ? layout.names : [...layout.names, frame.name].sort()
       // Lands past the placed frames alone, ignoring other unplaced files.
-      const slot = names.filter(
-        (name) => name === frame.name || layout.hasEntry(name),
+      const placed = placeFrames(
+        layout.file.frames,
+        names.filter((name) => layout.hasEntry(name)),
       )
-      const computed = placeFrames(layout.file.frames, slot).get(frame.name)
-      if (!computed) throw new Error(`No placement computed for ${frame.name}.`)
-      const width = size.width ?? computed.box.width
+      const width = size.width ?? FRAME_SIZES[DEFAULT_FRAME_SIZE].width
+      // An entry left by a missing file keeps its box.
+      const computed =
+        placed.get(frame.name) ??
+        placeNext([...placed.values()], {
+          width,
+          device: options.showDevice ? deviceForWidth(width) : null,
+        })
       // Refused ahead of the skeleton, so a refusal leaves no file behind.
       const widths = linkedWidths(refOf(frame), options.widths, {
         width,
