@@ -15,6 +15,7 @@ import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore, receiveBoard } from '@/client/live/store'
 import type { TokenRow } from '@/shared/records/tokens'
 import { boardOf, frameOf, pageOf } from '@/test/board'
+import { BRIDGE } from '@/test/frame-bridge'
 
 import {
   clear,
@@ -72,7 +73,7 @@ describe('InspectorPanel with several elements selected', () => {
     const loaded = new Promise((resolve) =>
       iframe.addEventListener('load', resolve, { once: true }),
     )
-    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body>${BODY}</body></html>`
+    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style>${BRIDGE}</head><body>${BODY}</body></html>`
     frame.append(iframe)
     layer.append(frame)
     document.body.append(layer)
@@ -321,7 +322,7 @@ describe('InspectorPanel with an element selected', () => {
     const loaded = new Promise((resolve) =>
       iframe.addEventListener('load', resolve, { once: true }),
     )
-    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body>${body}</body></html>`
+    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style>${BRIDGE}</head><body>${body}</body></html>`
     frame.append(iframe)
     layer.append(frame)
     document.body.append(layer)
@@ -359,6 +360,8 @@ describe('InspectorPanel with an element selected', () => {
 
     renderWith(3)
 
+    // The sections draw once the frame answers the element's live reading.
+    await screen.findByRole('region', { name: 'Position' })
     const headings = await screen.findAllByRole('heading')
     expect(headings.map((heading) => heading.textContent)).toEqual([
       'Frame',

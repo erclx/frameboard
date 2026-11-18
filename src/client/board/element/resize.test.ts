@@ -313,6 +313,12 @@ describe('a live element', () => {
     container = undefined
   })
 
+  /** Resolves once the frame ran every preview sent before now, since it answers a later request after them. */
+  async function settled(shown: HTMLDivElement): Promise<void> {
+    const iframe = shown.querySelector('iframe')
+    if (iframe) await request(iframe, 'element-box', { index: 0, hash: '' })
+  }
+
   describe('shownGroup', () => {
     it('reads each free member with its offsets and box', async () => {
       const shown = await mount(
@@ -437,6 +443,7 @@ describe('a live element', () => {
         { index: 4, declarations: [{ property: 'top', value: '5px' }] },
       ])
 
+      await settled(shown)
       expect(container?.style.width).toBe('')
       expect(container?.style.top).toBe('5px')
     })
@@ -462,6 +469,7 @@ describe('a live element', () => {
       ])
       edit?.cancel()
 
+      await settled(shown)
       expect(member?.getAttribute('style')).toBe('position: absolute')
     })
   })
@@ -492,6 +500,7 @@ describe('a live element', () => {
 
       resize?.preview({ width: 240, height: 90 })
 
+      await settled(shown)
       expect(paragraph(shown).style.width).toBe('240px')
       expect(paragraph(shown).style.height).toBe('')
     })
@@ -506,6 +515,7 @@ describe('a live element', () => {
       resize?.preview({ width: 240, height: 90 })
       resize?.cancel()
 
+      await settled(shown)
       expect(paragraph(shown).style.width).toBe('fit-content')
     })
 
@@ -521,8 +531,10 @@ describe('a live element', () => {
         ?.contentDocument?.querySelector<HTMLElement>('div > div')
 
       resize?.preview({ width: 120, height: read.sizing?.layout.height ?? 0 })
+      await settled(shown)
       expect(child?.style.flex).toBe('0 1 auto')
       resize?.cancel()
+      await settled(shown)
 
       expect(child?.style.flex).toBe('1 1 0px')
       expect(child?.style.width).toBe('')
@@ -541,6 +553,7 @@ describe('a live element', () => {
       resize?.preview({ width: 300, height: 200 })
       resize?.cancel()
 
+      await settled(shown)
       expect(container?.getAttribute('style')).toBe('display: flex; gap: 8px')
     })
 
@@ -561,6 +574,7 @@ describe('a live element', () => {
       })
       resize?.cancel()
 
+      await settled(shown)
       expect(child?.getAttribute('style')).toBe('width: 100px;')
     })
   })

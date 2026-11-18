@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { Input } from '@/client/components/ui/input'
+import type { LiveStep } from '@/shared/frame-bridge/live-element'
 import {
   STEP_ATTRIBUTES,
   STEP_EFFECT_LABELS,
@@ -14,13 +15,6 @@ import {
 import { LabelTip } from '../label-tip'
 import { TypePicker } from './typography'
 import type { WriteElement } from './write'
-
-/** The element's step attributes as its file holds them, each null where absent. */
-export interface LiveStep {
-  step: string | null
-  effect: string | null
-  start: string | null
-}
 
 interface StepSectionProps {
   step: LiveStep

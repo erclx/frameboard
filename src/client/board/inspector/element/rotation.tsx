@@ -6,10 +6,10 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/client/lib/cn'
+import type { Rotation } from '@/shared/frame-bridge/live-element'
 
 import { ActionTooltip } from '../../chrome/action-tooltip'
 import { NumberField } from '../number-field'
-import type { Rotation } from './styles'
 import type { PreviewStyle, WriteElement } from './write'
 
 const DEGREES: Intl.NumberFormatOptions = {

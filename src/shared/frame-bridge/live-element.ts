@@ -31,6 +31,105 @@ export interface LiveLayout {
   height: number
 }
 
+/** The step attributes present mode reads, each as the file holds it, null where absent. */
+export interface LiveStep {
+  step: string | null
+  effect: string | null
+  start: string | null
+}
+
+/**
+ * Where the element sits, its offsets counted from the box a placement would
+ * anchor it to, being any parent but `body`, else the nearest positioned
+ * ancestor, else the frame.
+ */
+export interface Placement {
+  /** Whether it is out of the flow, as `position: absolute` or `fixed`. */
+  free: boolean
+  /** The `left` and `top` that hold it where it renders, in px. */
+  left: number
+  top: number
+  /** The width and height it renders at, null where `auto` resolves to no length, as on an inline box. */
+  width: number | null
+  height: number | null
+  /** Its own `width` and `height` as its style attribute states them, empty when unset. */
+  inline: { width: string; height: string }
+  /** The `left` a box shrunk to its words would take, for text alone in the flow, else null. */
+  wordsLeft: number | null
+}
+
+/** What the Rotation row reads off the element, apart from its `transform`, which it never writes. */
+export interface Rotation {
+  /** The `rotate` property in degrees, clockwise, null for a 3D rotation the field cannot show. */
+  degrees: number | null
+  /** The `scale` property's x and y, null for a 3D scale. */
+  scale: { x: number; y: number } | null
+  /**
+   * For each the element's own `style` sets, the value a rule gives under it,
+   * so a write landing there drops the element's declaration rather than
+   * restating the rule. Absent where the style sets none.
+   */
+  own: {
+    rotate?: number | null
+    scale?: { x: number; y: number } | null
+  }
+  /** Whether the computed `transform` moves the element, which a `rotate` composed before it would swing around. */
+  translated: boolean
+}
+
+/** What the inspector reads off the live element, as the browser computed it. */
+export interface LiveElement {
+  /** From 0 to 1. */
+  opacity: number
+  /** The top-left corner's radius in px. */
+  radius: number
+  /** The computed stack, which names the families and never the token behind them. */
+  fontFamily: string
+  fontSize: number
+  fontWeight: number
+  /** In px, null for `normal`, whose height the font decides. */
+  lineHeight: number | null
+  /** In px, 0 for `normal`. */
+  letterSpacing: number
+  textAlign: string
+  /** The computed `text-decoration-line`, such as `none` or `underline`. */
+  textDecorationLine: string
+  /** The computed `text-transform`, such as `none` or `uppercase`. */
+  textTransform: string
+  /** The computed `text-wrap-style`, `auto` unless balanced or pretty. */
+  textWrapStyle: string
+  /** Whether it clips to one line with an ellipsis, which takes three declarations together. */
+  truncated: boolean
+  /** The computed `display`, where `inline` is a box nothing clips. */
+  display: string
+  /** The computed text color, which a `currentcolor` paint shows. */
+  color: string
+  /** Whether any side draws a border. */
+  bordered: boolean
+  /** The border width in px, null where the sides differ. */
+  borderWidth: number | null
+  /** Whether the element or anything in it shows text. */
+  holdsText: boolean
+  /** Whether it holds text and no element, so its text is edited as a whole. */
+  textOnly: boolean
+  text: string
+  /** Whether its computed `white-space` shows a newline in its text as a line. */
+  keepsBreaks: boolean
+  rotation: Rotation
+  placement: Placement
+  layout: LiveLayout
+  /** Which paints the element's own `style` attribute sets, which a remove drops rather than overrides. */
+  inline: {
+    color: boolean
+    backgroundColor: boolean
+    /** Whether the `background` shorthand states it, which a remove has to drop whole. */
+    background: boolean
+    border: boolean
+  }
+  /** The step attributes present mode reads, as the file writes them. */
+  step: LiveStep
+}
+
 /** An element's size in its frame's CSS pixels. */
 export interface ElementSize {
   width: number
@@ -245,3 +344,65 @@ export const frameOverflowSchema: z.ZodType<FrameOverflow | null> = z
 export const pinCornersSchema: z.ZodType<PinCorner[]> = z.array(
   z.object({ index, right: finite, top: finite }),
 )
+
+const xySchema = z.object({ x: finite, y: finite })
+
+const liveElementSchema: z.ZodType<LiveElement> = z.object({
+  opacity: finite,
+  radius: finite,
+  fontFamily: z.string(),
+  fontSize: finite,
+  fontWeight: finite,
+  lineHeight: finite.nullable(),
+  letterSpacing: finite,
+  textAlign: z.string(),
+  textDecorationLine: z.string(),
+  textTransform: z.string(),
+  textWrapStyle: z.string(),
+  truncated: z.boolean(),
+  display: z.string(),
+  color: z.string(),
+  bordered: z.boolean(),
+  borderWidth: finite.nullable(),
+  holdsText: z.boolean(),
+  textOnly: z.boolean(),
+  text: z.string(),
+  keepsBreaks: z.boolean(),
+  rotation: z.object({
+    degrees: finite.nullable(),
+    scale: xySchema.nullable(),
+    own: z.object({
+      rotate: finite.nullable().optional(),
+      scale: xySchema.nullable().optional(),
+    }),
+    translated: z.boolean(),
+  }),
+  placement: z.object({
+    free: z.boolean(),
+    left: finite,
+    top: finite,
+    width: finite.nullable(),
+    height: finite.nullable(),
+    inline: z.object({ width: z.string(), height: z.string() }),
+    wordsLeft: finite.nullable(),
+  }),
+  layout: liveLayoutSchema,
+  inline: z.object({
+    color: z.boolean(),
+    backgroundColor: z.boolean(),
+    background: z.boolean(),
+    border: z.boolean(),
+  }),
+  step: z.object({
+    step: z.string().nullable(),
+    effect: z.string().nullable(),
+    start: z.string().nullable(),
+  }),
+})
+
+export const liveElementsSchema: z.ZodType<LiveElement[] | null> = z
+  .array(liveElementSchema)
+  .nullable()
+
+export const liveBodySchema: z.ZodType<{ index: number; hash: string } | null> =
+  z.object({ index, hash: z.string() }).nullable()

@@ -3,6 +3,9 @@ import { z } from 'zod'
 import {
   type FrameOverflow,
   frameOverflowSchema,
+  liveBodySchema,
+  type LiveElement,
+  liveElementsSchema,
   type MemberMeasure,
   memberMeasuresSchema,
   type PinCorner,
@@ -85,6 +88,18 @@ export interface BridgeOps {
     value: { index: number; box: FrameBox }[] | null
     push: never
   }
+  /** A frame's `body` as an element address at the bytes it shows, null for a page the route never stamped. */
+  'live-body': {
+    args: Record<string, never>
+    value: ElementAddress | null
+    push: never
+  }
+  /** The named elements as the page computes them, null when it shows other bytes or misses one. */
+  'live-element': {
+    args: { hash: string; indexes: number[] }
+    value: LiveElement[] | null
+    push: never
+  }
   /** Measures the named elements, pushing again on every resize, style change, or scroll until closed, null when the frame shows other bytes or misses one. */
   measure: {
     args: { hash: string; indexes: number[] }
@@ -101,6 +116,14 @@ export interface BridgeOps {
   'pick-at': { args: { at: FramePoint }; value: PickAt; push: never }
   /** The named elements' pin corners, pushed again on every resize or scroll until closed, leaving out one the page holds none at. */
   pins: { args: { indexes: number[] }; value: PinCorner[]; push: PinCorner[] }
+  /** Forgets the frame's previews once a write of what they show landed with no reload. */
+  'keep-previews': { args: Record<string, never>; value: null; push: never }
+  /** Previews one inline declaration on the element at an index, or puts the one it replaced back on a null value, checking no hash. */
+  'preview-style': {
+    args: { index: number; property: string; value: string | null }
+    value: null
+    push: never
+  }
   /** Moves the frame's stamp to a hash whose bytes it already shows, answering whether it held one to move. */
   restamp: { args: { hash: string }; value: boolean; push: never }
   /** Opens the element's text for typing, answering whether it opened, and pushes how the edit ends. */
@@ -154,10 +177,14 @@ export type BridgeMessage =
 const OPS: readonly string[] = [
   'element-box',
   'element-boxes',
+  'keep-previews',
+  'live-body',
+  'live-element',
   'measure',
   'overflow',
   'pick-at',
   'pins',
+  'preview-style',
   'restamp',
   'text-edit',
   'text-written',
@@ -220,6 +247,8 @@ export function readBridgeMessage(
 
 const indexSchema = z.number().int().nonnegative()
 
+const noArgsSchema = z.object({}).strict() as z.ZodType<Record<string, never>>
+
 const addressSchema = z.object({ index: indexSchema, hash: z.string() })
 
 const pointSchema = z.object({ x: z.number().finite(), y: z.number().finite() })
@@ -266,13 +295,18 @@ const SCHEMAS: {
       .array(z.object({ index: indexSchema, box: frameBoxSchema }))
       .nullable(),
   },
+  'live-body': { args: noArgsSchema, value: liveBodySchema },
+  'live-element': {
+    args: z.object({ hash: z.string(), indexes: z.array(indexSchema) }),
+    value: liveElementsSchema,
+  },
   measure: {
     args: z.object({ hash: z.string(), indexes: z.array(indexSchema) }),
     value: memberMeasuresSchema,
     push: memberMeasuresSchema,
   },
   overflow: {
-    args: z.object({}).strict() as z.ZodType<Record<string, never>>,
+    args: noArgsSchema,
     value: frameOverflowSchema,
     push: frameOverflowSchema,
   },
@@ -287,6 +321,15 @@ const SCHEMAS: {
       hash: z.string().nullable(),
       chain: z.array(z.object({ index: indexSchema, tag: z.string() })),
     }),
+  },
+  'keep-previews': { args: noArgsSchema, value: z.null() },
+  'preview-style': {
+    args: z.object({
+      index: indexSchema,
+      property: z.string(),
+      value: z.string().nullable(),
+    }),
+    value: z.null(),
   },
   restamp: { args: z.object({ hash: z.string() }), value: z.boolean() },
   'text-edit': {

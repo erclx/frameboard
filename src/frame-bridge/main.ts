@@ -8,11 +8,12 @@ import {
   REFUSED,
   requestArgs,
 } from '@/shared/frame-bridge/messages'
-import { LOOK_MARKER, RENDERED_HASH } from '@/shared/theme'
 
 import { gapHandlers } from './gap'
 import { addressed, type Handler, type Handlers } from './handler'
+import { liveElementHandlers } from './live-element'
 import { measureHandlers } from './measure'
+import { previewHandlers } from './preview'
 import { openTextEdit } from './text-edit'
 
 // The frame route injects this as a script, which leaves no element behind,
@@ -34,6 +35,7 @@ const committed = new Map<string, () => void>()
 
 const handlers: Handlers = {
   ...gapHandlers,
+  ...liveElementHandlers,
   ...measureHandlers,
   'element-box': (address) => {
     const element = addressed(address)
@@ -67,14 +69,7 @@ const handlers: Handlers = {
     if (!written) restore?.()
     return null
   },
-  // Moves the frame route's stamp to a hash whose bytes the page already shows.
-  restamp: ({ hash }) => {
-    const stamp = document.querySelector(`style[${LOOK_MARKER}]`)
-    if (!stamp) return false
-    stamp.setAttribute(RENDERED_HASH, hash)
-    announce()
-    return true
-  },
+  ...previewHandlers(() => announce()),
 }
 
 function send(message: BridgeMessage): void {

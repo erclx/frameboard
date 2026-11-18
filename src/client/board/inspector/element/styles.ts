@@ -1,90 +1,13 @@
 import { useEffect, useState } from 'react'
 
-import {
-  elementAt,
-  elementIndex,
-  renderedHash,
-} from '@/shared/frame-bridge/elements'
-import { STEP_ATTRIBUTES } from '@/shared/present-transition'
+import type { LiveElement, Placement } from '@/shared/frame-bridge/live-element'
 import type { FrameStyles, UsedColor } from '@/shared/records/elements'
 
-import { RESTAMPED } from '../../frame-dom'
+import { request } from '../../bridge/channel'
+import { followFrame, shownHashOf } from '../../bridge/shown'
+import { liveIframe } from '../../frame-dom'
 import type { FreeSpot } from '../../place/write'
 import type { ElementKey } from '../../selection'
-import type { LiveStep } from './step'
-
-/** What the inspector reads off the live element, as the browser computed it. */
-export interface LiveElement {
-  /** From 0 to 1. */
-  opacity: number
-  /** The top-left corner's radius in px. */
-  radius: number
-  /** The computed stack, which names the families and never the token behind them. */
-  fontFamily: string
-  fontSize: number
-  fontWeight: number
-  /** In px, null for `normal`, whose height the font decides. */
-  lineHeight: number | null
-  /** In px, 0 for `normal`. */
-  letterSpacing: number
-  textAlign: string
-  /** The computed `text-decoration-line`, such as `none` or `underline`. */
-  textDecorationLine: string
-  /** The computed `text-transform`, such as `none` or `uppercase`. */
-  textTransform: string
-  /** The computed `text-wrap-style`, `auto` unless balanced or pretty. */
-  textWrapStyle: string
-  /** Whether it clips to one line with an ellipsis, which takes three declarations together. */
-  truncated: boolean
-  /** The computed `display`, where `inline` is a box nothing clips. */
-  display: string
-  /** The computed text color, which a `currentcolor` paint shows. */
-  color: string
-  /** Whether any side draws a border. */
-  bordered: boolean
-  /** The border width in px, null where the sides differ. */
-  borderWidth: number | null
-  /** Whether the element or anything in it shows text. */
-  holdsText: boolean
-  /** Whether it holds text and no element, so its text is edited as a whole. */
-  textOnly: boolean
-  text: string
-  /** Whether its computed `white-space` shows a newline in its text as a line. */
-  keepsBreaks: boolean
-  rotation: Rotation
-  placement: Placement
-  layout: LiveLayout
-  /** Which paints the element's own `style` attribute sets, which a remove drops rather than overrides. */
-  inline: {
-    color: boolean
-    backgroundColor: boolean
-    /** Whether the `background` shorthand states it, which a remove has to drop whole. */
-    background: boolean
-    border: boolean
-  }
-  /** The step attributes present mode reads, as the file writes them. */
-  step: LiveStep
-}
-
-/**
- * Where the element sits, its offsets counted from the box a placement would
- * anchor it to, being any parent but `body`, else the nearest positioned
- * ancestor, else the frame.
- */
-export interface Placement {
-  /** Whether it is out of the flow, as `position: absolute` or `fixed`. */
-  free: boolean
-  /** The `left` and `top` that hold it where it renders, in px. */
-  left: number
-  top: number
-  /** The width and height it renders at, null where `auto` resolves to no length, as on an inline box. */
-  width: number | null
-  height: number | null
-  /** Its own `width` and `height` as its style attribute states them, empty when unset. */
-  inline: { width: string; height: string }
-  /** The `left` a box shrunk to its words would take, for text alone in the flow, else null. */
-  wordsLeft: number | null
-}
 
 /**
  * The spot Free places an element at, where it renders at the size it renders
@@ -102,59 +25,37 @@ export function freeSpot(
   }
 }
 
-/** How a container lays out what it holds, as the Layout section names it. */
-export type Flow = 'block' | 'vertical' | 'horizontal' | 'wrap' | 'grid'
-
-/** What the Layout section reads off the element and its parent, as the browser computed them. */
-export interface LiveLayout {
-  flow: Flow
-  /** Whether it flows inline, as `inline-flex` or `inline-grid`, which a flow pick keeps. */
-  inline: boolean
-  /** The computed `flex-direction`, `flex-wrap`, `justify-content`, and `align-items`. */
-  direction: string
-  wrap: string
-  justify: string
-  alignItems: string
-  /** Whether its own `style` sets `justify-content`, which turning Auto gap off drops. */
-  ownJustify: boolean
-  /** In px, 0 for `normal`. */
-  rowGap: number
-  columnGap: number
-  padding: { top: number; right: number; bottom: number; left: number }
-  /** The parent's flow, which decides whether Fill is offered. */
-  parent: Flow
-  /** The parent's computed `align-items`, which decides how a child hugs across it. */
-  parentAlignItems: string
-  /** The rendered box in px, before any rotation. */
-  width: number
-  height: number
-}
-
-/** A computed `display`, `flex-direction`, and `flex-wrap` as one flow. */
-export function flowOf(display: string, direction: string, wrap: string): Flow {
-  if (display === 'grid' || display === 'inline-grid') return 'grid'
-  if (display !== 'flex' && display !== 'inline-flex') return 'block'
-  if (wrap !== 'nowrap') return 'wrap'
-  return direction.startsWith('column') ? 'vertical' : 'horizontal'
-}
-
-/** What the Rotation row reads off the element, apart from its `transform`, which it never writes. */
-export interface Rotation {
-  /** The `rotate` property in degrees, clockwise, null for a 3D rotation the field cannot show. */
-  degrees: number | null
-  /** The `scale` property's x and y, null for a 3D scale. */
-  scale: { x: number; y: number } | null
-  /**
-   * For each the element's own `style` sets, the value a rule gives under it,
-   * so a write landing there drops the element's declaration rather than
-   * restating the rule. Absent where the style sets none.
-   */
-  own: {
-    rotate?: number | null
-    scale?: { x: number; y: number } | null
+/**
+ * Asks the frame for the named elements each time it shows a page or a
+ * restamp at `hash`, handing each answer to `read` until the answer is
+ * called. A page at other bytes is left alone, so the last answer holds.
+ */
+function readShown(
+  frame: string,
+  hash: string,
+  indexes: readonly number[],
+  read: (live: LiveElement[]) => void,
+): () => void {
+  let current = true
+  const stop = followFrame(
+    document.body,
+    frame,
+    (iframe) => {
+      if (shownHashOf(iframe) !== hash) return null
+      void request(iframe, 'live-element', {
+        hash,
+        indexes: [...indexes],
+      }).then((live) => {
+        if (current && live) read(live)
+      })
+      return () => {}
+    },
+    () => {},
+  )
+  return () => {
+    current = false
+    stop()
   }
-  /** Whether the computed `transform` moves the element, which a `rotate` composed before it would swing around. */
-  translated: boolean
 }
 
 /**
@@ -173,22 +74,13 @@ export function useLiveElement(key: ElementKey | null): LiveElement | null {
   const at = key ? `${frame}:${index}` : null
 
   useEffect(() => {
-    if (frame === undefined || index === undefined || at === null) return
-    const iframe = document.querySelector<HTMLIFrameElement>(
-      `[data-frame="${CSS.escape(frame)}"] iframe`,
-    )
-    if (!iframe) return
-    const read = () => {
-      const doc = iframe.contentDocument
-      if (!doc || renderedHash(doc) !== hash) return
-      const target = elementAt(doc, index)
-      const view = doc.defaultView
-      if (!target || !view) return
-      setHeld({ at, live: readLive(target, view) })
+    if (frame === undefined || index === undefined || hash === undefined) {
+      return
     }
-    read()
-    iframe.addEventListener('load', read)
-    return () => iframe.removeEventListener('load', read)
+    if (at === null) return
+    return readShown(frame, hash, [index], ([live]) => {
+      if (live) setHeld({ at, live })
+    })
   }, [frame, index, hash, at])
 
   return held?.at === at ? held.live : null
@@ -222,32 +114,18 @@ export function useElementMembers(
   } | null>(null)
 
   useEffect(() => {
-    if (frame === undefined) return
+    if (frame === undefined || hash === undefined) return
     const indexes = at
       .slice(at.lastIndexOf(':') + 1)
       .split(',')
       .map(Number)
-    const iframe = document.querySelector<HTMLIFrameElement>(
-      `[data-frame="${CSS.escape(frame)}"] iframe`,
-    )
-    if (!iframe) return
-    const read = () => {
-      const doc = iframe.contentDocument
-      const view = doc?.defaultView
-      if (!doc || !view || hash === undefined || renderedHash(doc) !== hash) {
-        return
-      }
-      const members = indexes.flatMap((index) => {
-        const target = elementAt(doc, index)
-        return target
-          ? [{ key: { frame, index, hash }, live: readLive(target, view) }]
-          : []
-      })
+    return readShown(frame, hash, indexes, (live) => {
+      const members = live.map((reading, order) => ({
+        key: { frame, index: indexes[order] ?? 0, hash },
+        live: reading,
+      }))
       if (members.length === indexes.length) setHeld({ at, members })
-    }
-    read()
-    iframe.addEventListener('load', read)
-    return () => iframe.removeEventListener('load', read)
+    })
   }, [frame, hash, at])
 
   useEffect(() => {
@@ -312,322 +190,34 @@ export function mergeColors(
 }
 
 /**
- * A frame's `body` as an element key read off its live iframe, so a frame
- * Fill writes through the element edit from the bytes the page shows.
+ * A frame's `body` as an element key its live iframe answers, asked again on
+ * each page and restamp, so a frame Fill writes through the element edit from
+ * the bytes the page shows.
  */
 export function useLiveBody(frame: string): ElementKey | null {
   const [held, setHeld] = useState<ElementKey | null>(null)
 
   useEffect(() => {
-    const scope = `[data-frame="${CSS.escape(frame)}"]`
-    const read = (iframe: HTMLIFrameElement | null) => {
-      const doc = iframe?.contentDocument
-      const hash = doc ? renderedHash(doc) : null
-      const index = doc?.body ? elementIndex(doc, doc.body) : null
-      if (hash !== null && index !== null) setHeld({ frame, index, hash })
-    }
-    // Caught wherever it lands, since the canvas swaps a distant frame's iframe out.
-    const loaded = (event: Event) => {
-      const target = event.target
-      if (target instanceof HTMLIFrameElement && target.closest(scope)) {
-        read(target)
-      }
-    }
-    read(document.querySelector<HTMLIFrameElement>(`${scope} iframe`))
-    document.addEventListener('load', loaded, true)
-    document.addEventListener(RESTAMPED, loaded, true)
+    let current = true
+    // Watched wherever it lands, since the canvas swaps a distant frame's iframe out.
+    const stop = followFrame(
+      document.body,
+      frame,
+      (iframe) => {
+        void request(iframe, 'live-body', {}).then((body) => {
+          if (current && body) setHeld({ frame, ...body })
+        })
+        return () => {}
+      },
+      () => {},
+    )
     return () => {
-      document.removeEventListener('load', loaded, true)
-      document.removeEventListener(RESTAMPED, loaded, true)
+      current = false
+      stop()
     }
   }, [frame])
 
   return held?.frame === frame ? held : null
-}
-
-function readLive(element: Element, view: Window): LiveElement {
-  const style = view.getComputedStyle(element)
-  const text = element.textContent ?? ''
-  const sides = [
-    style.borderTopWidth,
-    style.borderRightWidth,
-    style.borderBottomWidth,
-    style.borderLeftWidth,
-  ]
-  return {
-    opacity: Number(style.opacity),
-    radius: Math.round(parseFloat(style.borderTopLeftRadius) || 0),
-    fontFamily: style.fontFamily,
-    fontSize: hundredths(style.fontSize),
-    fontWeight: Number(style.fontWeight),
-    lineHeight:
-      style.lineHeight === 'normal' ? null : hundredths(style.lineHeight),
-    letterSpacing:
-      style.letterSpacing === 'normal' ? 0 : hundredths(style.letterSpacing),
-    textAlign: alignOf(style.textAlign, style.direction),
-    textDecorationLine: style.textDecorationLine,
-    textTransform: style.textTransform,
-    textWrapStyle: style.getPropertyValue('text-wrap-style') || 'auto',
-    truncated:
-      style.textOverflow === 'ellipsis' &&
-      style.overflowX !== 'visible' &&
-      style.getPropertyValue('text-wrap-mode') === 'nowrap',
-    display: style.display,
-    color: style.color,
-    bordered: sides.some((width) => parseFloat(width) > 0),
-    borderWidth: sides.every((width) => width === sides[0])
-      ? hundredths(style.borderTopWidth)
-      : null,
-    holdsText: text.trim() !== '',
-    textOnly: element.childElementCount === 0 && text.trim() !== '',
-    text,
-    keepsBreaks: style.whiteSpace !== 'normal' && style.whiteSpace !== 'nowrap',
-    rotation: {
-      degrees: degreesOf(style.rotate),
-      scale: scaleOf(style.scale),
-      own: beneathOwn(element, view),
-      translated: translates(style.transform),
-    },
-    placement: placementOf(element, style, view),
-    layout: readLayout(element, style, view),
-    inline: inlinePaints(element),
-    step: {
-      step: element.getAttribute(STEP_ATTRIBUTES.step),
-      effect: element.getAttribute(STEP_ATTRIBUTES.effect),
-      start: element.getAttribute(STEP_ATTRIBUTES.start),
-    },
-  }
-}
-
-function placementOf(
-  element: Element,
-  style: CSSStyleDeclaration,
-  view: Window,
-): Placement {
-  const free = style.position === 'absolute' || style.position === 'fixed'
-  const size = (length: string) => {
-    const value = parseFloat(length)
-    return Number.isNaN(value) ? null : Math.round(value)
-  }
-  const width = size(style.width)
-  const height = size(style.height)
-  // The node is from the frame's realm, where this window's HTMLElement is not its class.
-  const own = 'style' in element ? (element as HTMLElement).style : null
-  const inline = {
-    width: own?.getPropertyValue('width') ?? '',
-    height: own?.getPropertyValue('height') ?? '',
-  }
-  // A placed element's computed offsets are the ones it holds, unswung by a rotation.
-  if (free && style.left.endsWith('px') && style.top.endsWith('px')) {
-    return {
-      free,
-      left: Math.round(parseFloat(style.left)),
-      top: Math.round(parseFloat(style.top)),
-      width,
-      height,
-      inline,
-      wordsLeft: null,
-    }
-  }
-  const doc = element.ownerDocument
-  const parent = element.parentElement
-  const anchors = (node: Element) => {
-    const computed = view.getComputedStyle(node)
-    return computed.position !== 'static' || computed.transform !== 'none'
-  }
-  let anchor: Element | null = null
-  if (style.position !== 'fixed') {
-    if (
-      !free &&
-      parent &&
-      parent !== doc.body &&
-      parent !== doc.documentElement
-    ) {
-      anchor = parent
-    } else {
-      for (let node = parent; node && !anchor; node = node.parentElement) {
-        if (anchors(node)) anchor = node
-      }
-    }
-  }
-  // The padding box an anchor's offsets count from, or the frame's own origin.
-  let originX = style.position === 'fixed' ? 0 : -view.scrollX
-  let originY = style.position === 'fixed' ? 0 : -view.scrollY
-  if (anchor) {
-    const box = anchor.getBoundingClientRect()
-    originX = box.left + anchor.clientLeft - anchor.scrollLeft
-    originY = box.top + anchor.clientTop - anchor.scrollTop
-  }
-  const box = element.getBoundingClientRect()
-  const marginLeft = parseFloat(style.marginLeft) || 0
-  const words = wordsLeft(element, style)
-  return {
-    free,
-    left: Math.round(box.left - originX - marginLeft),
-    top: Math.round(box.top - originY - (parseFloat(style.marginTop) || 0)),
-    width,
-    height,
-    inline,
-    wordsLeft: words === null ? null : Math.round(words - originX - marginLeft),
-  }
-}
-
-/** `Node.TEXT_NODE`, read as a number since the node is from the frame's realm. */
-const TEXT_NODE = 3
-
-/**
- * Where a text-only box shrunk to its words would start, or null, since a
- * placement writes no width there and the box's own left would move aligned
- * words to the edge.
- */
-function wordsLeft(
-  element: Element,
-  style: CSSStyleDeclaration,
-): number | null {
-  // Text alone as the server's `ownText` reads it, so a comment child keeps its box.
-  const textAlone =
-    element.childNodes.length > 0 &&
-    [...element.childNodes].every((node) => node.nodeType === TEXT_NODE) &&
-    !!element.textContent?.trim()
-  if (!textAlone) return null
-  const words = element.ownerDocument.createRange()
-  words.selectNodeContents(element)
-  const inset =
-    (parseFloat(style.borderLeftWidth) || 0) +
-    (parseFloat(style.paddingLeft) || 0)
-  return words.getBoundingClientRect().left - inset
-}
-
-/** The flow `element` lays out and its parent lays it in, as its frame's window computes them. */
-export function readLayout(
-  element: Element,
-  style: CSSStyleDeclaration,
-  view: Window,
-): LiveLayout {
-  const parent = element.parentElement
-  const above = parent ? view.getComputedStyle(parent) : null
-  // The node is from the frame's realm, where this window's HTMLElement is not its class.
-  const node = 'offsetWidth' in element ? (element as HTMLElement) : null
-  const px = (length: string) => hundredths(length) || 0
-  return {
-    flow: flowOf(style.display, style.flexDirection, style.flexWrap),
-    inline: style.display.startsWith('inline-'),
-    direction: style.flexDirection,
-    wrap: style.flexWrap,
-    justify: style.justifyContent,
-    alignItems: style.alignItems,
-    ownJustify: !!node?.style.getPropertyValue('justify-content'),
-    rowGap: style.rowGap === 'normal' ? 0 : px(style.rowGap),
-    columnGap: style.columnGap === 'normal' ? 0 : px(style.columnGap),
-    padding: {
-      top: px(style.paddingTop),
-      right: px(style.paddingRight),
-      bottom: px(style.paddingBottom),
-      left: px(style.paddingLeft),
-    },
-    parent: above
-      ? flowOf(above.display, above.flexDirection, above.flexWrap)
-      : 'block',
-    parentAlignItems: above?.alignItems ?? 'normal',
-    width: Math.round(node?.offsetWidth ?? 0),
-    height: Math.round(node?.offsetHeight ?? 0),
-  }
-}
-
-const TO_DEGREES: Record<string, number> = {
-  deg: 1,
-  grad: 0.9,
-  rad: 180 / Math.PI,
-  turn: 360,
-}
-
-/** A computed `rotate` in degrees, 0 for `none`, null for one about another axis. */
-export function degreesOf(rotate: string): number | null {
-  if (rotate === 'none' || rotate === '') return 0
-  const angle = /^(-?[\d.]+(?:e[+-]?\d+)?)(deg|grad|rad|turn)$/.exec(rotate)
-  const unit = angle?.[2] ? TO_DEGREES[angle[2]] : undefined
-  if (!angle || unit === undefined) return null
-  return Math.round(Number(angle[1]) * unit * 100) / 100
-}
-
-/** A computed `scale` as its x and y, 1 and 1 for `none`, null for a 3D scale. */
-export function scaleOf(scale: string): { x: number; y: number } | null {
-  if (scale === 'none' || scale === '') return { x: 1, y: 1 }
-  const factors = scale
-    .split(/\s+/)
-    .map((factor) =>
-      factor.endsWith('%') ? parseFloat(factor) / 100 : Number(factor),
-    )
-  const [x, y = x, z = 1] = factors
-  if (x === undefined || y === undefined || factors.some(Number.isNaN)) {
-    return null
-  }
-  return factors.length > 3 || z !== 1 ? null : { x, y }
-}
-
-/** Whether a computed `transform` matrix moves the element, reading any other value as one that may. */
-export function translates(transform: string): boolean {
-  if (transform === 'none' || transform === '') return false
-  const matrix = /^matrix(3d)?\(([^)]*)\)$/.exec(transform)
-  if (!matrix?.[2]) return true
-  const values = matrix[2].split(',').map(Number)
-  const offsets = matrix[1] ? values.slice(12, 15) : values.slice(4, 6)
-  return offsets.some((offset) => offset !== 0)
-}
-
-/**
- * The `rotate` and `scale` a rule gives the element under its own `style`,
- * read with those declarations lifted off the live node and the attribute
- * put back as it was, so nothing paints between.
- */
-function beneathOwn(element: Element, view: Window): Rotation['own'] {
-  // The node is from the frame's realm, where this window's HTMLElement is not its class.
-  const node = 'style' in element ? (element as HTMLElement) : null
-  const rotate = !!node?.style.getPropertyValue('rotate')
-  const scale = !!node?.style.getPropertyValue('scale')
-  if (!node || (!rotate && !scale)) return {}
-  const attribute = node.getAttribute('style')
-  node.style.removeProperty('rotate')
-  node.style.removeProperty('scale')
-  const style = view.getComputedStyle(node)
-  const own: Rotation['own'] = {
-    ...(rotate ? { rotate: degreesOf(style.rotate) } : {}),
-    ...(scale ? { scale: scaleOf(style.scale) } : {}),
-  }
-  if (attribute === null) node.removeAttribute('style')
-  else node.setAttribute('style', attribute)
-  return own
-}
-
-/** A computed px length to two places. */
-function hundredths(length: string): number {
-  return Math.round(parseFloat(length) * 100) / 100
-}
-
-/** Which paints an element's `style` attribute sets, read off its parsed declarations, where a shorthand shows as its longhands. */
-function inlinePaints(element: Element): LiveElement['inline'] {
-  const own = 'style' in element ? (element as HTMLElement).style : null
-  const names = own
-    ? Array.from({ length: own.length }, (_, at) => own.item(at))
-    : []
-  return {
-    color: names.includes('color'),
-    backgroundColor: names.includes('background-color'),
-    // The parsed declarations show a shorthand only as its longhands, so the attribute is read for it.
-    background: /(?:^|;)\s*background\s*:/i.test(
-      element.getAttribute('style') ?? '',
-    ),
-    border: names.some(
-      (name) => name.startsWith('border-') && !name.endsWith('-radius'),
-    ),
-  }
-}
-
-/** `start` and `end` as the side they fall on, so one of four buttons lights. */
-function alignOf(align: string, direction: string): string {
-  if (align === 'start') return direction === 'rtl' ? 'right' : 'left'
-  if (align === 'end') return direction === 'rtl' ? 'left' : 'right'
-  return align
 }
 
 /**
@@ -676,62 +266,20 @@ export async function fetchStyles(
   return body.ok ? body.data : null
 }
 
-/** An inline declaration a preview replaced, kept so it can be put back. */
-interface Replaced {
-  element: HTMLElement
-  value: string
-  priority: string
-  /**
-   * The whole `style` attribute before the preview. A longhand of a shorthand
-   * holding `var()` reads as empty, so removing it would strip the shorthand.
-   */
-  attribute: string | null
-}
-
-/** Each previewed declaration by element and property, until it is put back or written. */
-const previews = new Map<string, Replaced>()
-
 /**
  * Previews one inline declaration on the live node, or puts the replaced one
- * back on null. A written step needs no putting back, since the frame reloads
- * with the written bytes.
+ * back on null, the frame holding what each preview replaced. A written step
+ * needs no putting back, since the frame reloads with the written bytes.
  */
 export function previewStyle(
   key: ElementKey,
   property: string,
   value: string | null,
 ): void {
-  const at = `${key.frame}:${key.index}:${property}`
-  const doc = document.querySelector<HTMLIFrameElement>(
-    `[data-frame="${CSS.escape(key.frame)}"] iframe`,
-  )?.contentDocument
-  const target = doc ? elementAt(doc, key.index) : null
-  // The node is from the frame's realm, where this window's HTMLElement is not its class.
-  const node = target && 'style' in target ? (target as HTMLElement) : null
-  const replaced = previews.get(at)
-  if (value === null) {
-    previews.delete(at)
-    if (!replaced || replaced.element !== node || !node) return
-    if (replaced.value !== '') {
-      node.style.setProperty(property, replaced.value, replaced.priority)
-    } else if (replaced.attribute === null) {
-      node.removeAttribute('style')
-    } else {
-      node.setAttribute('style', replaced.attribute)
-    }
-    if (node.getAttribute('style') === '') node.removeAttribute('style')
-    return
+  const iframe = liveIframe(key.frame)
+  if (iframe) {
+    void request(iframe, 'preview-style', { index: key.index, property, value })
   }
-  if (!node) return
-  if (replaced?.element !== node) {
-    previews.set(at, {
-      element: node,
-      value: node.style.getPropertyValue(property),
-      priority: node.style.getPropertyPriority(property),
-      attribute: node.getAttribute('style'),
-    })
-  }
-  node.style.setProperty(property, value, 'important')
 }
 
 /**
@@ -739,7 +287,6 @@ export function previewStyle(
  * without a reload, so a later cancel restores the written value.
  */
 export function keepPreviews(frame: string): void {
-  for (const at of previews.keys()) {
-    if (at.startsWith(`${frame}:`)) previews.delete(at)
-  }
+  const iframe = liveIframe(frame)
+  if (iframe) void request(iframe, 'keep-previews', {})
 }

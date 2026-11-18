@@ -6,12 +6,12 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/client/components/ui/dropdown-menu'
+import type { LiveLayout } from '@/shared/frame-bridge/live-element'
 import type { ElementFlow, SizeMode } from '@/shared/records/elements'
 
 import { ChromeMenuContent, MENU_ROW } from '../../chrome/menu'
 import { NumberField } from '../number-field'
 import { type Axis, sizeDeclarations } from './size-declarations'
-import type { LiveLayout } from './styles'
 import type { PreviewStyle, WriteElement } from './write'
 
 const WHOLE: Intl.NumberFormatOptions = { maximumFractionDigits: 0 }

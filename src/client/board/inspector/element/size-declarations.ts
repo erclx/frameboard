@@ -1,6 +1,5 @@
+import type { LiveLayout } from '@/shared/frame-bridge/live-element'
 import type { SizeMode } from '@/shared/records/elements'
-
-import type { LiveLayout } from './styles'
 
 export type Axis = 'width' | 'height'
 

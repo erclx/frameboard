@@ -5,10 +5,10 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import { TooltipProvider } from '@/client/components/ui/tooltip'
+import type { Rotation } from '@/shared/frame-bridge/live-element'
 
 import { recorder, rotationOf, scrubBy } from './fixtures'
 import { RotationRow } from './rotation'
-import { type Rotation } from './styles'
 import { type WriteElement } from './write'
 
 describe('RotationRow', () => {

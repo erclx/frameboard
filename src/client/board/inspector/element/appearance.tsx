@@ -1,6 +1,7 @@
+import type { Rotation } from '@/shared/frame-bridge/live-element'
+
 import { NumberField } from '../number-field'
 import { RotationRow } from './rotation'
-import type { Rotation } from './styles'
 import { type PreviewStyle, styleNumber, type WriteElement } from './write'
 
 const PERCENT: Intl.NumberFormatOptions = {
