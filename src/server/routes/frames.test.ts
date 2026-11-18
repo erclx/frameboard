@@ -86,9 +86,10 @@ describe('frameRoutes', () => {
       const response = await get('/frames/studio/home/hero.html')
 
       const served = await response.text()
-      const head = /<style data-frameboard[^>]*>.*?<\/script>/s.exec(
-        served,
-      )?.[0]
+      const head =
+        /<style data-frameboard[^>]*>.*?<\/script><script data-frameboard src="[^"]+"><\/script>/s.exec(
+          served,
+        )?.[0]
       expect(head).toBeDefined()
       expect(served.indexOf(head ?? '')).toBe(
         served.indexOf('<head>') + '<head>'.length,

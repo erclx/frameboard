@@ -4,6 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { BRIDGE_URL } from '@/server/look/inject'
 import { HIDE_CONTROLS_CSS } from '@/shared/bindings'
 import { version } from '@/shared/version'
 
@@ -53,6 +54,17 @@ describe('previewApp', () => {
       expect(html).toContain(
         `@import url("/v/${TOKEN}/frameboard/faces/v${version}/geist/index.css")`,
       )
+    })
+
+    it('serves a frame loading the bridge from under the link', async () => {
+      const html = await (
+        await request(`/v/${TOKEN}/frames/studio/home/hero.html`)
+      ).text()
+      const response = await request(`/v/${TOKEN}${BRIDGE_URL}`)
+
+      expect(html).toContain(`src="/v/${TOKEN}${BRIDGE_URL}"`)
+      expect(response.status).toBe(200)
+      expect(await response.text()).toContain('frameboard-bridge')
     })
 
     it('serves a frame with its drawn controls hidden', async () => {

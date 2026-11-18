@@ -1,9 +1,11 @@
 import { readFile, realpath, stat } from 'node:fs/promises'
 import { extname, join, sep } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import { Hono } from 'hono'
 
 import { boardSheetPath, tokenSheetPaths } from '@/server/checks/tokens'
+import { BRIDGE_URL } from '@/server/look/inject'
 import { FACES_URL } from '@/shared/faces'
 import { version } from '@/shared/version'
 
@@ -23,6 +25,7 @@ const RELEASE_SEGMENT = /^v\d+\.\d+\.\d+/
 
 const CONTENT_TYPES: Record<string, string> = {
   '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
   '.woff2': 'font/woff2',
 }
 
@@ -88,6 +91,15 @@ export function lookRoutes({ facesDir, boardSheet }: LookOptions): Hono {
     })
   })
 
+  app.get(BRIDGE_URL, async (c) => {
+    const script = await bridgeScript()
+    if (script === null) return c.notFound()
+    return c.body(script, 200, {
+      'Content-Type': CONTENT_TYPES['.js'] ?? '',
+      'Cache-Control': fromSource ? 'no-store' : IMMUTABLE,
+    })
+  })
+
   app.get(`${FACES_URL}/*`, async (c) => {
     const raw = new URL(c.req.url).pathname.slice(FACES_URL.length + 1)
     const segments = raw.split('/')
@@ -124,6 +136,43 @@ async function resolveFace(
   } catch {
     return null
   }
+}
+
+/** Whether this module runs from source, where no bundle sits beside it. */
+const fromSource = import.meta.url.endsWith('.ts')
+
+let bridge: Promise<string | null> | undefined
+
+/**
+ * The frame bridge's script, read once from beside the bundle, or built from
+ * source on a source run, so a dev server or a test serves the code as it
+ * stands. A missing bundle answers null, and a failed build is tried again.
+ */
+function bridgeScript(): Promise<string | null> {
+  bridge ??= fromSource
+    ? buildBridge().catch((error: unknown) => {
+        bridge = undefined
+        throw error
+      })
+    : readFile(
+        fileURLToPath(new URL('./frame-bridge.js', import.meta.url)),
+        'utf8',
+      ).catch(() => null)
+  return bridge
+}
+
+/** Bundles the bridge the way `rolldown.config.ts` does, in memory. */
+async function buildBridge(): Promise<string> {
+  const { build } = await import('rolldown')
+  const src = fileURLToPath(new URL('../..', import.meta.url))
+  const { output } = await build({
+    input: join(src, 'frame-bridge', 'main.ts'),
+    platform: 'browser',
+    resolve: { alias: { '@': src } },
+    write: false,
+    output: { format: 'iife' },
+  })
+  return output[0].code
 }
 
 async function readOrNull(

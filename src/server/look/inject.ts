@@ -6,6 +6,7 @@ import {
   setFrameTheme,
   THEME_QUERY,
 } from '@/shared/theme'
+import { version } from '@/shared/version'
 
 type ChildNode = DefaultTreeAdapterMap['childNode']
 type Element = DefaultTreeAdapterMap['element']
@@ -19,13 +20,26 @@ const BOM = [0xef, 0xbb, 0xbf]
  */
 export const THEME_SCRIPT = `(function(s,t){if(t==='light'||t==='dark')(${setFrameTheme.toString()})(document.documentElement,t);s.remove()})(document.currentScript,new URLSearchParams(location.search).get(${JSON.stringify(THEME_QUERY)}))`
 
+/** Where the look route serves the frame bridge's script, under the running release. */
+export const BRIDGE_URL = `/frameboard/bridge/v${version}/frame-bridge.js`
+
 /**
  * The frame route's injected `head`, one stylesheet carrying `hash` as its one
- * other attribute, since another element would shift every live index.
+ * other attribute, since another element would shift every live index. The
+ * bridge script at `bridge` removes itself as the theme script does, and a
+ * head given none loads no bridge.
  */
-export function frameHead(sheets: readonly string[], hash: string): string {
+export function frameHead(
+  sheets: readonly string[],
+  hash: string,
+  bridge?: string,
+): string {
   const imports = sheets.map((url) => `@import url(${JSON.stringify(url)});`)
-  return `<style ${LOOK_MARKER} ${RENDERED_HASH}="${hash}">${imports.join('')}</style><script ${LOOK_MARKER}>${THEME_SCRIPT}</script>`
+  const script =
+    bridge === undefined
+      ? ''
+      : `<script ${LOOK_MARKER} src=${JSON.stringify(bridge)}></script>`
+  return `<style ${LOOK_MARKER} ${RENDERED_HASH}="${hash}">${imports.join('')}</style><script ${LOOK_MARKER}>${THEME_SCRIPT}</script>${script}`
 }
 
 /**
