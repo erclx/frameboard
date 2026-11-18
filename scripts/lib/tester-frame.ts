@@ -24,11 +24,9 @@ export interface TesterPage {
 const SHARED = '__vitest_all__'
 
 /**
- * The tester frame a command from `testPath` runs in. Vitest names every
- * tester iframe alike, so the iframe id each one's URL carries tells them
- * apart. Playwright's frame list can still hold the previous file's frame, or
- * not yet hold this one, so a frame missing from it is reached through its
- * iframe element, whose `src` keeps the id after a test rewrites its URL.
+ * The tester frame for `testPath`, told apart by the iframe id its URL carries.
+ * Playwright's frame list can lag an iframe swap, so a frame missing from it
+ * is reached through the iframe element, whose `src` keeps the id.
  */
 export async function testerFrame(
   page: TesterPage,
@@ -75,11 +73,9 @@ function isTesterPage(value: unknown): value is TesterPage {
 }
 
 /**
- * Wraps a Playwright provider option so each provider it builds answers a
- * command's `frame()` through `testerFrame`. The provider's own `frame()`
- * takes the first frame named `vitest-iframe` from Playwright's frame list,
- * which can be a file's removed predecessor. It throws on the first command
- * once the provider stops handing out a `frame()` and a `page` to replace.
+ * Answers each command's `frame()` through `testerFrame`, since the provider's
+ * own takes the first frame by name, which can be the file before. It throws
+ * on the first command once the provider stops handing out `frame()` and `page`.
  */
 export function ownTesterFrame<Options extends object>(
   option: BrowserProviderOption<Options>,
