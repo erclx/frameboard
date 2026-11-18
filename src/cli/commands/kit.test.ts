@@ -115,6 +115,26 @@ describe('kit', () => {
     ])
   })
 
+  it('remove takes the kit out of the project and answers the frames it cleared', async () => {
+    await run('kit', 'add', 'acme', 'clean')
+
+    const result = await run('kit', 'remove', 'acme', 'clean')
+
+    expect(result.exitCode).toBe(0)
+    expect(result.json()).toEqual({
+      ok: true,
+      data: { project: 'acme', kit: 'clean', frames: [] },
+    })
+    expect(existsSync(join(board.root, 'acme/assets/kits/clean'))).toBe(false)
+  })
+
+  it('remove fails kit-not-found with exit 3 on a kit the project lacks', async () => {
+    const result = await run('kit', 'remove', 'acme', 'clean')
+
+    expect(result.exitCode).toBe(3)
+    expect(result.json().error?.code).toBe('kit-not-found')
+  })
+
   it('save makes a kit another project then adds by name', async () => {
     writeFileSync(join(board.root, 'acme/tokens.css'), ':root { --a: 1 }\n')
 

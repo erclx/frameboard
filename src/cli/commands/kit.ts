@@ -4,6 +4,7 @@ import { type Command, Option } from 'commander'
 
 import { installKit } from '@/server/kits/install'
 import { findKit, listKits } from '@/server/kits/list'
+import { removeKit } from '@/server/kits/remove'
 import { saveKit } from '@/server/kits/save'
 import { FrameboardError } from '@/shared/errors'
 
@@ -75,6 +76,25 @@ export function registerKit(program: Command, context: ProgramContext): void {
       return {
         data: record,
         human: `Added ${record.kit} to ${record.project}`,
+      }
+    },
+  )
+
+  act<CommonOptions>(
+    addVerb(
+      kit,
+      'remove',
+      'Take a kit out of a project, deleting its folder under assets/kits/ and clearing it from every frame naming it, so each draws with the project’s sheets alone. Refuses kit-not-found for a kit the project holds none under',
+    )
+      .argument('<project>', 'the project')
+      .argument('<kit>', 'a kit the project holds'),
+    context,
+    async ([project = '', name = ''], options) => {
+      const record = await removeKit(await boardOf(options, io), project, name)
+      const count = record.frames.length
+      return {
+        data: record,
+        human: `Removed ${record.kit} from ${record.project}, clearing it from ${count} ${count === 1 ? 'frame' : 'frames'}`,
       }
     },
   )

@@ -62,6 +62,7 @@ describe('docs', () => {
       'project tokens',
       'kit list',
       'kit add',
+      'kit remove',
       'kit save',
       'image find',
       'image generate',
