@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 
-import type { MediaAct, MediaReading } from '@/shared/frame-bridge/media'
+import type {
+  FileFlag,
+  MediaAct,
+  MediaReading,
+} from '@/shared/frame-bridge/media'
 
 import { request, subscribe } from '../bridge/channel'
 import { followFrame, shownHashOf } from '../bridge/shown'
@@ -15,6 +19,8 @@ export interface LiveMedia {
   togglePlay: () => void
   seek: (seconds: number) => void
   toggleSound: () => void
+  /** Shows a file switch's write on the live node, which the write then saves. */
+  setFileFlag: (name: FileFlag, on: boolean) => void
 }
 
 /**
@@ -72,5 +78,6 @@ export function useLiveMedia(key: ElementKey | null): LiveMedia | null {
     togglePlay: () => send({ kind: 'toggle-play' }),
     seek: (seconds) => send({ kind: 'seek', seconds }),
     toggleSound: () => send({ kind: 'toggle-sound' }),
+    setFileFlag: (name, on) => send({ kind: 'set-flag', name, on }),
   }
 }
