@@ -456,6 +456,88 @@ describe('frame', () => {
       },
     )
 
+    it('names a foldable and folds it, writing the layout entry alone', async () => {
+      const run = on('basic')
+      const frame = join(board.root, 'webapp/home/hero.html')
+      const bytes = readFileSync(frame, 'utf8')
+
+      const result = await run(
+        'frame',
+        'device',
+        'webapp/home/hero',
+        '--foldable',
+        '--pose',
+        'open',
+      )
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).toMatchObject({
+        showDevice: true,
+        device: 'foldable',
+        pose: 'open',
+        box: { width: 890, height: 626 },
+      })
+      expect(readFileSync(frame, 'utf8')).toBe(bytes)
+    })
+
+    it('folds a named foldable with --pose alone', async () => {
+      const run = on('basic')
+      await run('frame', 'device', 'webapp/home/hero', '--foldable')
+
+      const result = await run(
+        'frame',
+        'device',
+        'webapp/home/hero',
+        '--pose',
+        'closed',
+      )
+
+      expect(result.json().data).toMatchObject({
+        device: 'foldable',
+        pose: 'closed',
+        box: { width: 466, height: 678 },
+      })
+    })
+
+    it('hands the pick back to the width with --no-foldable', async () => {
+      const run = on('basic')
+      await run('frame', 'device', 'webapp/home/hero', '--foldable')
+
+      const result = await run(
+        'frame',
+        'device',
+        'webapp/home/hero',
+        '--no-foldable',
+      )
+
+      expect(result.json().data).toMatchObject({ device: 'tablet' })
+      expect(result.json().data).not.toHaveProperty('pose')
+    })
+
+    it.each([
+      ['a pose on a frame naming no foldable', ['--pose', 'open']],
+      ['a pose no device has', ['--foldable', '--pose', 'tent']],
+      ['neither a value nor a flag', []],
+    ])(
+      'refuses %s with usage, exit 2, writing nothing',
+      async (_label, flags) => {
+        const run = on('basic')
+        const layout = join(board.root, 'webapp/home/layout.json')
+        const bytes = readFileSync(layout, 'utf8')
+
+        const result = await run(
+          'frame',
+          'device',
+          'webapp/home/hero',
+          ...flags,
+        )
+
+        expect(result.exitCode).toBe(2)
+        expect(result.json().error?.code).toBe('usage')
+        expect(readFileSync(layout, 'utf8')).toBe(bytes)
+      },
+    )
+
     it('refuses an unknown value with usage, exit 2, writing nothing', async () => {
       const run = on('basic')
       const layout = join(board.root, 'webapp/home/layout.json')
