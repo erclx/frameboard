@@ -1,13 +1,8 @@
 #!/usr/bin/env bash
 
-# Compares the installed frameboard with this plugin at session start and
-# prints a note when they differ, which Claude Code hands the agent as
-# context. A hook compares deterministically, where a skill line would leave
-# the agent to find plugin.json itself.
-#
-# Every path exits 0 and a match prints nothing, since the note is only
-# worth a line of context when the two disagree. The note informs and never
-# orders a halt, since the hook cannot tell whether the task touches the CLI.
+# Notes a mismatch between the installed frameboard and this plugin, a hook
+# since it compares deterministically. It exits 0 and never orders a halt,
+# since it cannot tell whether the task touches the CLI.
 
 # shellcheck source=SCRIPTDIR/../lib/resolve.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/resolve.sh"

@@ -1,8 +1,6 @@
 /**
- * The transitions present mode draws between slides, in the order the
- * inspector lists them. The list is the board's own. A project adds its
- * own as stylesheets under `assets/transitions/`, each named by its stem,
- * and a name in neither reads as no transition.
+ * The board's own present transitions in inspector order, beside a project's
+ * own under `assets/transitions/`.
  */
 export const TRANSITIONS = [
   'none',
@@ -104,10 +102,8 @@ export function isOwnTransitionName(name: string): boolean {
 }
 
 /**
- * The name the board gives one of a project's keyframes in its own document.
- * It carries the project, with every character outside letters, digits, and
- * dashes spelled as its code, so two projects holding the same file never
- * share a name. An own name holds no doubled dash, which keeps the pair apart.
+ * A project keyframe's name in the board's document, carrying the project
+ * escaped, so two projects holding the same file never share a name.
  */
 export function ownKeyframesName(
   project: string,
@@ -126,11 +122,8 @@ export function transitionNameOf(value: unknown): TransitionName | null {
 }
 
 /**
- * A stored transition as a reader takes it, or null for anything but an
- * object naming a built-in transition or one of `own`, the names the
- * project holds. A direction or a duration no reader understands reads as
- * absent, so it falls to the default rather than hiding the transition, and
- * so does a direction on a transition taking none of the project's own.
+ * A stored transition as a reader takes it, an unknown direction or duration
+ * falling to the default rather than hiding the transition.
  */
 export function transitionOf(
   value: unknown,
@@ -140,10 +133,8 @@ export function transitionOf(
 }
 
 /**
- * A stored transition as a writer keeps it: `transitionOf`, counting any
- * name shaped like a project's own whether or not its file is there. A
- * layout write never drops an entry's transition because its file is
- * missing or refused for now.
+ * A stored transition as a writer keeps it, so a layout write never drops one
+ * whose file is missing or refused for now.
  */
 export function storedTransitionOf(value: unknown): Transition | null {
   return readTransition(value, isOwnTransitionName)

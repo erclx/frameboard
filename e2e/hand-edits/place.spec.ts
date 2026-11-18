@@ -550,8 +550,7 @@ test.describe('placing text and shapes into a frame', () => {
     )
 
     test.beforeEach(() => {
-      // The basic fixture holds no assets, so the copy gets an image and a
-      // video whose bytes decode as none, which places at the fallback size.
+      // An undecodable video places at the fallback size.
       const assets = join(board.root, 'webapp/assets')
       mkdirSync(assets, { recursive: true })
       writeFileSync(join(assets, 'hero.png'), PNG)
@@ -636,11 +635,7 @@ test.describe('placing text and shapes into a frame', () => {
     const WRAPPED =
       '<div data-name="Group" style="display: flex; flex-direction: row; gap: 8px; position: absolute; left: 20px; top: 300px"><div data-name="A" style="width: 40px; height: 20px; background: var(--muted)"></div><div data-name="B" style="width: 40px; height: 20px; background: var(--muted)"></div></div>'
 
-    /**
-     * Adds `markup` to the hero, selects the element named `name`, and drags
-     * its south-east corner by a screen offset. Answers the bytes it started
-     * from, the element's height then, and the canvas zoom.
-     */
+    // Drags an added element's south-east corner, answering its start state and the zoom.
     async function dragCorner(
       page: Page,
       markup: string,
@@ -865,8 +860,7 @@ test.describe('placing text and shapes into a frame', () => {
       await expect
         .poll(() => shownHash(page))
         .toBe(createHash('sha256').update(read()).digest('hex'))
-      // The skipped reload stamps the file time its load would have, which
-      // a reload would stamp too, so the src is what tells the two apart.
+      // The src tells a skipped reload apart, since both stamp the same file time.
       await expect(iframe).not.toHaveAttribute(
         'data-rendered-at',
         renderedAt ?? '',

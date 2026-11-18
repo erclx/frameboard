@@ -213,8 +213,7 @@ test.describe('what an agent changed', () => {
     await page.getByRole('textbox', { name: /Rename page/ }).fill('start')
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/\/p\/studio\/start$/)
-    // An agent write after the rename is the sentinel: its mark lands after
-    // any the rename's batch would have made.
+    // A sentinel write, whose mark lands after any the rename's batch would make.
     writeAsAgent('studio/pricing/plans.html', 'Plans for teams')
 
     await expect(
@@ -283,9 +282,7 @@ test.describe('what an agent changed', () => {
     test('steps through several shown frames and keeps them across a restart', async ({
       page,
     }) => {
-      // Shown in another project, so neither frame is looked at by the jump.
-      // Copied ahead of a fresh start, so the copy is the start scan's
-      // baseline rather than three created frames a batch logs.
+      // Copied before a fresh start, so the copy is the baseline, not three created frames.
       await server.stop()
       cpSync(at('studio'), at('shop'), { recursive: true })
       server = await serveBoard(board.root)

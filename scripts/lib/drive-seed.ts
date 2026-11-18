@@ -18,11 +18,8 @@ const MOTION = { project: 'marketing', page: 'motion', frame: 'slide' }
 const SLIDE_PAGE = join(import.meta.dirname, 'drive-slide.html')
 
 /**
- * The page holding one frame whose text states raw colors, one equal to
- * webapp's own accent in light and one equal to no token, so the
- * inspector's `Use <token>` swap has a row to offer it on and a row to
- * leave plain. Webapp's own sheet sets that accent, so the swap still
- * offers on a board served with a `--tokens` sheet holding no color.
+ * A frame stating one raw color matching a token and one matching none, so the
+ * `Use <token>` swap has a row to offer and a row to leave plain.
  */
 const RAW = { project: 'webapp', page: 'raw', frame: 'swatches' }
 
@@ -109,11 +106,8 @@ const RESERVED = ['billing', 'security', 'team']
 const SETTINGS_RIGHT = 834
 
 /**
- * How far ahead of the real clock the reservation is stamped. `reserve` takes
- * its `now` as the base of a five-minute `expiresAt`, so a day's lead keeps the
- * claim live across a whole drive without a write that bypasses the store.
- * The same `now` is `reserve`'s live cutoff, so a five-minute claim another
- * session holds when the seed runs reads as lapsed and is dropped.
+ * The reservation's lead on the clock, keeping it live across a drive without
+ * bypassing the store, which also lapses another session's claim.
  */
 export const HOLD_AHEAD_MS = 24 * 60 * 60_000
 
@@ -146,14 +140,8 @@ export interface Seeded {
 }
 
 /**
- * Lays the states a drive films that the committed `basic` board lacks: a
- * 40-frame `marketing/crowd` page, a `marketing/motion` page whose one frame
- * animates, a `webapp/raw` page stating raw colors, a `webapp/feed` page
- * whose phone frame scrolls, a `webapp/deck` page of three slides under a
- * transition with one stepped and one arriving with webapp's own `wipe`, a `webapp/shapes` page of free elements, a `webapp/stacked` page of three frames whose lower two hide their labels, a `webapp/tuner` page of a photo and three drawn controls, a Drives folder of two projects, and a live
- * reservation of three boxes on `webapp/settings`. A
- * page already present is left as a reel edited it, and the reservation
- * replaces the seed's own earlier set.
+ * Lays the drive's states the committed board lacks, leaving a page already
+ * present as a reel edited it.
  */
 export async function seedDrive(root: string, now: Date): Promise<Seeded> {
   // In turn, since both pages append to one project.json.

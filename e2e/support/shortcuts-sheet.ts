@@ -30,8 +30,7 @@ export async function openSheetAtDesktop(page: Page): Promise<{
   )
   expect(wrapped.map((cell) => cell.text)).toEqual([])
 
-  // With the label and chips unable to wrap, a row too wide for its column
-  // keeps one line and spills past it, which no height reads.
+  // Reads spill, since an unwrappable row overflows without growing taller.
   const spilled = await sheet
     .locator('li')
     .evaluateAll((rows) =>

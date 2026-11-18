@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Checks that the newest GitHub release reached npm. Takes no arguments and
-# reads GH_TOKEN and GH_REPO from the environment for gh. A release younger
-# than the publish job's window passes without asking npm. Uses GNU date, so it
-# runs on ubuntu and not on macOS.
+# Checks that the newest GitHub release reached npm, reading GH_TOKEN and
+# GH_REPO, a release younger than the publish window passing unasked. Uses GNU
+# date, so it runs on ubuntu and not on macOS.
 
 if ! count=$(gh release list --limit 1 --json tagName --jq length); then
   echo "::error::Could not list the GitHub releases, so whether the newest reached npm is unknown."

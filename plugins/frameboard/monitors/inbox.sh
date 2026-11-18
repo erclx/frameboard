@@ -1,12 +1,8 @@
 #!/usr/bin/env bash
 
-# Follows this session's board inbox for the whole session, so each note the
-# developer sends from the board reaches it as one line. Claude Code sets
-# CLAUDE_CODE_SESSION_ID in a monitor's environment, which `inbox` reads.
-#
-# A monitor that exits is not started again, and every line it prints wakes
-# the session, so with no install or no session id it stays alive and
-# silent rather than exiting or printing an error.
+# Follows this session's board inbox, one line per note. A monitor that exits
+# never restarts and each line wakes the session, so with no install or no
+# session id it stays alive and silent.
 
 # shellcheck source=SCRIPTDIR/../lib/resolve.sh
 source "$(dirname "${BASH_SOURCE[0]}")/../lib/resolve.sh"

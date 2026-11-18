@@ -12,11 +12,8 @@ const LINE_TOKEN = '--border'
 export const RAW_GREY = '#d9d9d9'
 
 /**
- * A shape's fill, being the first of the muted, secondary, and accent tokens
- * the project sets, else its first color token, and its line, being the
- * border token else that first color token. With no color token at all, both
- * are a raw grey. The server writes it on a placed shape, and the board
- * draws a dragged shape's preview in it.
+ * A shape's fill and line from the project's tokens, shared so the server's
+ * placed shape and the board's drag preview match.
  */
 export function shapePaint(tokens: readonly TokenRow[]): ShapePaint {
   const names = new Set(tokens.map((row) => row.name))

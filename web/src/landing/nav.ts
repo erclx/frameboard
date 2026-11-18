@@ -51,10 +51,8 @@ function storedTheme(root: HTMLElement): Theme | undefined {
 }
 
 /**
- * A `<source>` media query reads the system theme and never `data-theme`, so
- * each source marked `data-dark-media` is pointed at the stored choice: its
- * dark-only query when dark is chosen, never when light is, and its own
- * system query again when nothing is stored.
+ * Points each `data-dark-media` source at the stored theme, since a `<source>`
+ * media query reads the system theme and never `data-theme`.
  */
 function syncThemedSources(root: HTMLElement): void {
   const stored = storedTheme(root)

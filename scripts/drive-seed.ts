@@ -1,13 +1,6 @@
-// Lays the states a drive films into the drive copy's `basic` board: a
-// 40-frame `marketing/crowd` page, an animated `marketing/motion` frame, a
-// `webapp/raw` frame stating raw colors, a scrolling `webapp/feed` phone
-// frame, a `webapp/deck` page of three slides, a `webapp/shapes` frame of free
-// elements, a `webapp/stacked` page of three frames, a Drives folder of two
-// projects, and a live reservation on `webapp/settings`. The committed
-// fixture lacks them so the evidence baselines never move. Run by the
-// `seed` key in `canon/config/preview.json` after each drive-copy rebuild.
-// CANON_PREVIEW_ROOT is required, never defaulting to `.`, since a bare run
-// would write into the tracked fixture.
+// Lays the drive's states into the drive copy, kept out of the fixture so the
+// evidence baselines never move. CANON_PREVIEW_ROOT is required, since a bare
+// run would write into the tracked fixture.
 import { join } from 'node:path'
 
 import { seedDrive } from './lib/drive-seed.ts'

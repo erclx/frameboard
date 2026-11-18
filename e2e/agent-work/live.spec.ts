@@ -110,10 +110,7 @@ test.describe('the live board', () => {
     page,
   }) => {
     const dot = page.frameLocator('iframe[title="hero"]').getByRole('img')
-    // A fetch in the default mode reads the HTTP cache the image load filled,
-    // so a freshness lifetime on the asset would answer the old bytes here.
-    // The write reloads the frame, which can tear down a read in flight, so a
-    // torn read answers null and the poll asks again.
+    // A cached asset would answer old bytes here, and a torn read answers null to repoll.
     const served = () =>
       dot
         .evaluate(async (img: HTMLImageElement) =>

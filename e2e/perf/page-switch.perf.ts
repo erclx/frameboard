@@ -99,8 +99,7 @@ async function observeClicks(page: Page): Promise<void> {
   await page.evaluate(() => {
     const durations: number[] = []
     ;(window as unknown as { __clicks: number[] }).__clicks = durations
-    // The DOM lib types carry no `durationThreshold`, and without it the
-    // observer reports only events past 104 ms.
+    // Untyped `durationThreshold`, without which only events past 104 ms report.
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
         if (entry.name === 'click') durations.push(entry.duration)
@@ -183,8 +182,7 @@ test.describe('a page switch', () => {
       body: JSON.stringify(summary, null, 2),
       contentType: 'application/json',
     })
-    // The seventy-four frame figure is recorded rather than held to the bar,
-    // since mounting that many frames alone runs near it.
+    // Only recorded at 74 frames, since mounting that many alone runs near the bar.
     expect(summary.toFortyMedian).toBeLessThanOrEqual(CLICK_MAX_MS)
   })
 })

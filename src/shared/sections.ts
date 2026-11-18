@@ -6,10 +6,7 @@ interface Box {
 }
 
 /**
- * Each frame's section, by name, keyed by frame name. A frame belongs to the
- * topmost section holding its center, the left and top edges inside and the
- * right and bottom outside, so two sections sharing an edge never both claim
- * it. Membership is read off geometry and never stored, so no frame writer
+ * Each frame's section, read off geometry and never stored, so no frame writer
  * keeps a member list in step.
  */
 export function membersOf(

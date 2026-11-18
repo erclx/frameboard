@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Smokes a built Frameboard CLI. Takes the dist folder as its one argument and
-# runs a copy of it from an empty folder outside the checkout and any
-# repository, so the bundle cannot lean on node_modules and serve has to create
-# its own .frameboard. Stops the server it starts on every exit path.
+# Smokes a built CLI from a copy of the dist folder outside any repository, so
+# the bundle cannot lean on node_modules, stopping its server on every exit.
 
 dist="${1:-}"
 if [[ ! -f "$dist/cli.js" ]]; then

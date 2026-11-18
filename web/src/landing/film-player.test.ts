@@ -123,8 +123,7 @@ describe('wireFilmPlayer', () => {
     expect(player()?.controls).toBe(true)
   })
 
-  // jsdom counts no <video> as focusable, while a browser focuses one carrying
-  // controls, so this reads which element the focus call landed on.
+  // Reads the focus call's target, since jsdom counts no <video> focusable.
   it('moves focus to the player', async () => {
     const root = renderFilm()
     const user = userEvent.setup()

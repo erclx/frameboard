@@ -1,9 +1,6 @@
-// Runs the full capture twice on one head and sorts every evidence image into
-// noise (the runs disagree), stale (the runs agree against the committed set),
-// or equal, within the raster tolerance `scripts/lib/evidence-drift.ts` states.
-// Each run writes into its own folder under `screenshots/drift/`, which stays
-// behind so a listed image can be opened, and the committed set is only read.
-// Reports and never gates, so it exits 0 whatever the lists hold.
+// Captures twice on one head and sorts each evidence image into noise, stale,
+// or equal, leaving both runs under `screenshots/drift/`. Reports and never
+// gates, so it exits 0.
 import { spawnSync } from 'node:child_process'
 import { rmSync } from 'node:fs'
 import { join } from 'node:path'

@@ -4,11 +4,8 @@ import { join, relative, sep } from 'node:path'
 import { PNG } from 'pngjs'
 
 /**
- * What Chromium's raster leaves different between two captures of one state.
- * Antialiased rounded corners land a little apart from run to run, and they sit
- * on every panel, so no mask can hold them. Measured at up to 130 pixels in a
- * frame and a channel delta of 44. A real change inside both limits, such as a
- * hairline token change on a small control, stays uncaptured.
+ * Raster noise between two captures, measured at up to 130 pixels and a delta
+ * of 44, so a hairline change inside both limits stays uncaptured.
  */
 export const RASTER_TOLERANCE = { pixels: 200, channelDelta: 64 }
 

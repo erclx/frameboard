@@ -28,10 +28,8 @@ export function isTheme(value: unknown): value is Theme {
 }
 
 /**
- * Shows a frame's root in `theme`: `data-theme`, `color-scheme`, and the
- * `.dark` or `.light` class, the selectors a token sheet reads. The frame
- * route embeds this function's source in the script it injects, so it uses
- * nothing from outside its own body.
+ * Shows a frame's root in `theme`, using nothing outside its own body, since
+ * the frame route embeds its source.
  */
 export function setFrameTheme(root: HTMLElement, theme: Theme): void {
   root.setAttribute('data-theme', theme)

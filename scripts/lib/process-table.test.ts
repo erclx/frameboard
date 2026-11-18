@@ -33,8 +33,7 @@ describe('parseStat', () => {
 })
 
 describe('processTable', () => {
-  // The start must come from boot rather than the wall clock, since `ps`
-  // lstart moves when the clock steps and the kill then spares a live process.
+  // Boot-relative, since `ps` lstart moves when the clock steps.
   it.runIf(process.platform === 'linux')(
     'should give this process the start the kernel counts from boot',
     () => {

@@ -65,10 +65,7 @@ function takeOver(path: string, staleRaw: string | null, me: Holder): boolean {
   if (!create(guard, me)) {
     const seen = read(guard)
     if (seen.holder && alive(seen.holder.pid)) return false
-    // A taker that died mid-takeover strands the guard, which nothing else
-    // would ever clear. Clearing it and retrying on the next poll, rather than
-    // taking the guard at once, leaves two waiters inside the takeover only
-    // when one stalls a whole poll between this read and its unlink.
+    // Clears a stranded guard and retries next poll, rather than taking it at once.
     if (read(guard).raw === seen.raw) unlinkQuietly(guard)
     return false
   }

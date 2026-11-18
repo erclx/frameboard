@@ -1,15 +1,6 @@
-// Serves the committed `basic` board and prints a link that edits, since a tab
-// edits only after it redeems a ticket and `serve --no-open` mints none. It
-// composes the CLI's `serve` and `open` and changes neither. CANON_PREVIEW_ROOT
-// (default `.`) names the checkout whose board is served, and PREVIEW_PORT
-// (default 4173) the port asked for. Stays up as long as the server it
-// started, and on a server already live it prints the link and exits.
-//
-// It starts `serve` with the hidden `--open-route`, so `/api/access/open` hands
-// out a fresh edit link on every open, for a browser with no shell such as a
-// recorder's. Any page that navigates a browser on this machine there gets a
-// writing tab, which is safe only because this serves a throwaway fixture or
-// drive copy. Pointing CANON_PREVIEW_ROOT at a real board widens that to it.
+// Serves the `basic` board and prints an editing link, since `serve --no-open`
+// mints none. Its `--open-route` makes any local browser a writer, safe only on
+// a throwaway board, so never point CANON_PREVIEW_ROOT at a real one.
 import { type ChildProcess, execFile, spawn } from 'node:child_process'
 import { join } from 'node:path'
 import { promisify } from 'node:util'

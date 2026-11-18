@@ -12,11 +12,8 @@ import {
 import { type TempBoard, writeBoard } from '../test/support/temp-board'
 
 /**
- * Captures each shell surface at the 1440 by 900 the references under
- * `canon/design/` were drawn at, light and dark, into
- * `screenshots/compare/`, for a pull request to set beside its reference.
- * It serves its own boards from the built CLI, since the empty page and the
- * empty home need boards the preview's `basic` fixture is not.
+ * Captures each shell surface at the references' 1440 by 900 for a pull
+ * request to set beside them, serving boards `basic` cannot stand in for.
  */
 
 const OUT = 'screenshots/compare'

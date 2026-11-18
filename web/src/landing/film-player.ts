@@ -1,12 +1,6 @@
 /**
- * Swaps the hero's footage, its pause, and the play control for an inline
- * player of the film, and puts them back on Close, on Escape, and when the film
- * ends. The play control is a link to the file, so with scripts off it still
- * opens the film. The player starts with sound, since the Play click is the
- * gesture that lets a browser play audio. The hero's nodes stay in the
- * document, hidden, so the pause wiring survives a round trip and a theme
- * switch made mid-film still re-points their sources. Escape is left to the
- * browser while the film is fullscreen.
+ * Swaps the hero for an inline film player with sound, the Play click being the
+ * gesture that allows audio, keeping the hero's nodes hidden so its wiring survives.
  */
 export function wireFilmPlayer(root: ParentNode = document): void {
   const shot = root.querySelector<HTMLElement>('[data-film]')

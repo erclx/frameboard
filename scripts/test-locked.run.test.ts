@@ -25,8 +25,7 @@ let stubs: string[]
 
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'test-locked-run-'))
-  // HOME and XDG_CACHE_HOME both move, so the lock sits in `home` on macOS
-  // and Linux alike and never queues behind the machine's real runs.
+  // Moved, so the lock never queues behind the machine's real runs.
   lock = lockPath(process.platform, { XDG_CACHE_HOME: home }, home)
   stubs = []
 })
@@ -168,8 +167,7 @@ describe('the time limit', { timeout: 20_000 }, () => {
       startedAt: '2026-11-14T10:00:00.000Z',
     }
     tryAcquire(lock, other)
-    // Counting the 4 s queue trips the 3 s limit, and the 0.5 s command
-    // leaves room for a stall when the clock starts where it should.
+    // Counting the 4 s queue trips the 3 s limit, with room for a stall.
     setTimeout(() => release(lock, process.pid), 4000)
 
     const run = await wrapAsync(

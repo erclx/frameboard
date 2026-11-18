@@ -1,11 +1,7 @@
 #!/usr/bin/env bash
-# Backs `bun run screenshot`. Serves the capture from a throwaway copy of the
-# `basic` board, since a run in the committed fixture rewrites its notes.json
-# when a case edits the hero, and leaves a change log in .run/ that the next
-# run paints as unseen agent changes. Evidence lands in a temporary root and
-# reaches e2e/evidence/ through evidence-promote.ts, unless the caller named a
-# root in FRAMEBOARD_EVIDENCE_ROOT. scripts/screenshot.sh is a file a tooling
-# sync overwrites, so all of this sits here.
+# Backs `bun run screenshot` from a throwaway copy of the `basic` board, since a
+# run in the committed fixture rewrites it. It sits here because a tooling sync
+# overwrites scripts/screenshot.sh.
 set -euo pipefail
 
 SCRIPTS="$(dirname "${BASH_SOURCE[0]}")"

@@ -55,11 +55,8 @@ export function stepAt({
 const wanted = new WeakMap<HTMLElement, number>()
 
 /**
- * Opens step `index` at once and shows its still once it has decoded. A
- * hidden still downloads but Chrome decodes it only on its first paint, so
- * swapping straight away paints one empty frame. A decode that fails still
- * shows the still, and a later call wins over an earlier decode. Steps and
- * stills pair up by their `data-step` value.
+ * Opens a step and shows its still once decoded, since Chrome decodes a hidden
+ * still only on first paint and an early swap paints one empty frame.
  */
 export async function setActiveStep(
   root: HTMLElement,
@@ -86,10 +83,8 @@ export async function setActiveStep(
 }
 
 /**
- * Pins the walkthrough under the bar and opens the step the scroll has
- * reached, so reading down the page steps through the list. A step's button
- * scrolls to that step, or opens it in place where the block cannot pin. The
- * list keeps one button in the tab order, moved by the arrow keys.
+ * Pins the walkthrough and opens the step the scroll reached, a step's button
+ * opening it in place where the block cannot pin.
  */
 export function wireWalkthrough(track: HTMLElement): void {
   const pinned = track.querySelector<HTMLElement>('[data-pinned]')
@@ -183,8 +178,7 @@ export function wireWalkthrough(track: HTMLElement): void {
     { passive: true },
   )
   window.addEventListener('resize', size)
-  // WebKit can run this before the stills and fonts settle the block's
-  // height, so the block is measured again once the page has loaded.
+  // Measured again on load, since WebKit can run this before the height settles.
   if (document.readyState !== 'complete') {
     window.addEventListener('load', size, { once: true })
   }
