@@ -872,6 +872,74 @@ describe('InspectorPanel', () => {
       expect(screen.getByText('Mixed')).toBeInTheDocument()
     })
 
+    describe('a foldable', () => {
+      const ok = () => Response.json({ ok: true, data: [] })
+      const folded = (pose: 'closed' | 'half' | 'open') => ({
+        ...shownAt(890),
+        device: 'foldable' as const,
+        pose,
+      })
+
+      it('names Foldable over the width’s device, with its pose under the row', () => {
+        render(<FrameSection page={PAGE} frames={[folded('half')]} />)
+
+        expect(toggle()).toHaveAccessibleDescription(
+          expect.stringMatching(/^Foldable /),
+        )
+        expect(
+          screen.getByText('Half open. The pose is set on the canvas.'),
+        ).toBeInTheDocument()
+      })
+
+      it('names no pose on a frame its width picks for', () => {
+        render(<FrameSection page={PAGE} frames={[shownAt(890)]} />)
+
+        expect(
+          screen.queryByText(/The pose is set on the canvas/),
+        ).not.toBeInTheDocument()
+      })
+
+      it('names a frame a foldable from the device menu', async () => {
+        const { sent, calls } = deviceCalls(ok)
+        render(
+          <FrameSection page={PAGE} frames={[shownAt(390)]} calls={calls} />,
+        )
+
+        await userEvent.click(
+          screen.getByRole('button', { name: 'Phone device' }),
+        )
+        await userEvent.click(
+          await screen.findByRole('menuitemradio', { name: 'Foldable' }),
+        )
+
+        expect(sent).toEqual([{ refs: [SWATCHES.ref], foldable: true }])
+      })
+
+      it('hands a foldable back to its width from the device menu', async () => {
+        const { sent, calls } = deviceCalls(ok)
+        render(
+          <FrameSection page={PAGE} frames={[folded('open')]} calls={calls} />,
+        )
+
+        await userEvent.click(
+          screen.getByRole('button', { name: 'Foldable device' }),
+        )
+        await userEvent.click(
+          await screen.findByRole('menuitemradio', { name: /^By width/ }),
+        )
+
+        expect(sent).toEqual([{ refs: [SWATCHES.ref], foldable: false }])
+      })
+
+      it('offers no device menu while the device is off', () => {
+        render(<FrameSection page={PAGE} frames={[SWATCHES]} />)
+
+        expect(
+          screen.queryByRole('button', { name: /^\w+ device$/ }),
+        ).not.toBeInTheDocument()
+      })
+    })
+
     it('toggles from its label as well as the switch', async () => {
       const { sent, calls } = deviceCalls(() =>
         Response.json({ ok: true, data: [] }),
