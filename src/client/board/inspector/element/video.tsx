@@ -18,11 +18,9 @@ interface VideoSectionProps {
 }
 
 /**
- * The Video or Audio section. Playback acts on the live page and writes
- * nothing, and an audio shows no Controls switch, since one without
- * `controls` draws nothing to pick on the canvas. `write` should skip the
- * reload once the page shows the bytes it answers, so a switch keeps the
- * clip playing.
+ * The Video or Audio section. Playback writes nothing, an audio shows no
+ * Controls switch since it would draw nothing to pick, and `write` should
+ * skip the reload so a switch keeps the clip playing.
  */
 export function VideoSection({ media, disabled, write }: VideoSectionProps) {
   const { reading } = media

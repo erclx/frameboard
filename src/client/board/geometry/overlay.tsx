@@ -76,10 +76,9 @@ export function SelectionOverlay({
 }
 
 /**
- * The frame selection. With an element selected inside it, the frame keeps a
- * dashed outline alone, as the parent of what is selected, and the element
- * overlay draws the handles and chip. Several frames each keep a solid
- * outline inside a dashed group line, the handles staying on their bounds.
+ * The frame selection. A frame holding a selected element keeps a dashed
+ * outline alone, the element overlay drawing its handles and chip, and
+ * several frames keep solid outlines inside a dashed group line.
  */
 function Selection({
   frames,
