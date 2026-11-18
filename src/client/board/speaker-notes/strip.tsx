@@ -77,6 +77,8 @@ function StripAt({
     setSaved(null)
   }
   const cancelled = useRef(false)
+  // The stored note a draft began from, sent with the write so an agent's newer note is never overwritten.
+  const base = useRef(stored)
   const room = useRef<HTMLDivElement>(null)
   const field = useRef<HTMLTextAreaElement>(null)
   const id = useId()
@@ -116,11 +118,15 @@ function StripAt({
       )
       return
     }
+    const text = draft
+    const from = base.current
     setDraft(null)
-    if ((speakerNotesOf(draft) ?? '') === stored) return
-    setSaved(draft)
-    calls.setSpeakerNotes(frame.ref, draft).catch((error: unknown) => {
+    if ((speakerNotesOf(text) ?? '') === from) return
+    setSaved(text)
+    calls.setSpeakerNotes(frame.ref, text, from).catch((error: unknown) => {
+      // Kept in the field, so a note an agent set meanwhile and this draft both stay in view.
       setSaved(null)
+      setDraft(text)
       reportRefusal('Couldn’t save the speaker notes')(error)
     })
   }
@@ -169,7 +175,9 @@ function StripAt({
               .join(' ')}
             aria-invalid={over || undefined}
             onFocus={() => {
-              if (!readOnly) setDraft(shown)
+              if (readOnly) return
+              base.current = stored
+              setDraft(shown)
             }}
             onChange={(event) => setDraft(event.target.value)}
             onBlur={commit}

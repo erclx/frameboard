@@ -129,9 +129,16 @@ export function createStructure(send: typeof fetch = fetch) {
       refs: readonly string[],
       transition: Transition | null,
     ) => post<FrameRecord[]>('/api/frame/transition', { refs, transition }),
-    /** Sets one frame's speaker note in one undo step, blank text clearing it. */
-    setSpeakerNotes: (ref: string, speakerNotes: string) =>
-      post<FrameRecord>('/api/frame/speaker-notes', { ref, speakerNotes }),
+    /**
+     * Sets one frame's speaker note in one undo step, blank text clearing it,
+     * refused `stale-layout` once the stored note is no longer `expected`.
+     */
+    setSpeakerNotes: (ref: string, speakerNotes: string, expected: string) =>
+      post<FrameRecord>('/api/frame/speaker-notes', {
+        ref,
+        speakerNotes,
+        expected,
+      }),
     flagFrames: (refs: readonly string[], flag: FrameFlag, on: boolean) =>
       post<FrameRecord[]>('/api/frame/flag', { refs, flag, on }),
     deleteFrames: (refs: readonly string[]) =>

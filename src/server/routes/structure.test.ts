@@ -921,6 +921,7 @@ describe('structureRoutes', () => {
       const response = await post('/api/frame/speaker-notes', {
         ref: 'studio/home/hero',
         speakerNotes: 'Open on the price.\nThen the demo.',
+        expected: '',
       })
       expect(await response.json()).toMatchObject({
         ok: true,
@@ -936,10 +937,34 @@ describe('structureRoutes', () => {
       expect(readFileSync(frameFile('hero'))).toEqual(bytes)
     })
 
+    it('refuses a speaker note with 409 when the note moved since the edit began', async () => {
+      await post('/api/frame/speaker-notes', {
+        ref: 'studio/home/hero',
+        speakerNotes: 'Set by an agent.',
+        expected: '',
+      })
+
+      const response = await post('/api/frame/speaker-notes', {
+        ref: 'studio/home/hero',
+        speakerNotes: 'Typed by hand.',
+        expected: '',
+      })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'stale-layout' },
+      })
+      expect(layout().hero.speakerNotes).toBe('Set by an agent.')
+    })
+
     it('refuses a speaker note with no writer and writes nothing', async () => {
       const response = await post(
         '/api/frame/speaker-notes',
-        { ref: 'studio/home/hero', speakerNotes: 'Open on the price.' },
+        {
+          ref: 'studio/home/hero',
+          speakerNotes: 'Open on the price.',
+          expected: '',
+        },
         {},
       )
 
@@ -1576,7 +1601,11 @@ describe('structureRoutes', () => {
       [
         'a speaker note',
         '/api/frame/speaker-notes',
-        { ref: 'studio/home/hero', speakerNotes: 'Open on the price.' },
+        {
+          ref: 'studio/home/hero',
+          speakerNotes: 'Open on the price.',
+          expected: '',
+        },
       ],
       [
         'a project rename',

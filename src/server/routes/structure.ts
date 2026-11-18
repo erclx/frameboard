@@ -162,10 +162,14 @@ const frameTransitionSchema = z.object({
   refs,
   transition: transition.nullable(),
 })
-/** Blank text clears the note, and the setter refuses one past its limit. */
+/**
+ * Blank text clears the note, and the setter refuses one past its limit.
+ * `expected` is the note the edit began from, so one an agent set since is kept.
+ */
 const frameSpeakerNotesSchema = z.object({
   ref,
   speakerNotes: z.string(),
+  expected: z.string(),
 })
 const frameFlagSchema = z.object({
   refs,
@@ -571,6 +575,7 @@ export function structureRoutes(
         setFrameSpeakerNotes(root, target, body.speakerNotes, {
           cwd,
           journal,
+          expected: body.expected,
         }),
       (records) => records.map((record) => record.ref),
     )

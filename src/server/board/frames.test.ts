@@ -1241,6 +1241,48 @@ describe('frames', () => {
         )
       })
 
+      it('refuses stale-layout when the note moved since the edit began, writing nothing', async () => {
+        const root = open()
+        hugHero(root, { speakerNotes: 'Set by an agent.' })
+
+        await expect(
+          setFrameSpeakerNotes(root, 'webapp/home/hero', 'Typed by hand.', {
+            cwd: root,
+            expected: 'Open on the price.',
+          }),
+        ).rejects.toMatchObject({ code: 'stale-layout' })
+        expect(layout('webapp/home').frames.hero.speakerNotes).toBe(
+          'Set by an agent.',
+        )
+      })
+
+      it('writes when the stored note is the one the edit began from', async () => {
+        const root = open()
+        hugHero(root, { speakerNotes: 'Open on the price.' })
+
+        const set = await setFrameSpeakerNotes(
+          root,
+          'webapp/home/hero',
+          'Typed by hand.',
+          { cwd: root, expected: 'Open on the price.' },
+        )
+
+        expect(set.speakerNotes).toBe('Typed by hand.')
+      })
+
+      it('reads an empty expected note as matching a frame holding none', async () => {
+        const root = open()
+
+        const set = await setFrameSpeakerNotes(
+          root,
+          'webapp/home/hero',
+          'Typed by hand.',
+          { cwd: root, expected: '' },
+        )
+
+        expect(set.speakerNotes).toBe('Typed by hand.')
+      })
+
       it('carries the note onto a duplicate', async () => {
         const root = open()
         hugHero(root, { speakerNotes: 'Open on the price.' })

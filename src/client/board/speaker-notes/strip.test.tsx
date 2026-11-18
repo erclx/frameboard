@@ -27,6 +27,19 @@ function recording() {
   return { posted, calls: createStructure(send) }
 }
 
+/** A send answering every write as the server refuses a note an agent changed meanwhile. */
+const refusing: typeof fetch = async () =>
+  Response.json(
+    {
+      ok: false,
+      error: {
+        code: 'stale-layout',
+        message: 'The speaker notes changed since this edit began.',
+      },
+    },
+    { status: 409 },
+  )
+
 function mount(
   frames: FrameRecord[],
   { claims }: { claims?: Record<string, Claim> } = {},
@@ -59,7 +72,9 @@ describe('the speaker notes strip', () => {
     await userEvent.type(notes(), 'Open on the price.')
     await userEvent.tab()
 
-    expect(posted).toEqual([{ ref: SLIDE, speakerNotes: 'Open on the price.' }])
+    expect(posted).toEqual([
+      { ref: SLIDE, speakerNotes: 'Open on the price.', expected: '' },
+    ])
   })
 
   it('keeps line breaks and writes on Ctrl+Enter', async () => {
@@ -72,7 +87,7 @@ describe('the speaker notes strip', () => {
     await userEvent.keyboard('{Control>}{Enter}{/Control}')
 
     expect(posted).toEqual([
-      { ref: SLIDE, speakerNotes: 'Open on it.\nThen demo.' },
+      { ref: SLIDE, speakerNotes: 'Open on it.\nThen demo.', expected: '' },
     ])
     expect(notes()).not.toHaveFocus()
   })
@@ -93,7 +108,23 @@ describe('the speaker notes strip', () => {
     await userEvent.clear(notes())
     await userEvent.tab()
 
-    expect(posted).toEqual([{ ref: SLIDE, speakerNotes: '' }])
+    expect(posted).toEqual([
+      { ref: SLIDE, speakerNotes: '', expected: 'Stored.' },
+    ])
+  })
+
+  it('keeps the draft in the field when the write is refused as stale', async () => {
+    render(
+      <SpeakerNotesStrip
+        frames={[frameOf('slide', { speakerNotes: 'Stored.' })]}
+        calls={createStructure(refusing)}
+      />,
+    )
+
+    await userEvent.type(notes(), ' Typed.')
+    await userEvent.tab()
+
+    await expect.poll(() => notes()).toHaveValue('Stored. Typed.')
   })
 
   it('writes nothing on blur when the note is unchanged', async () => {

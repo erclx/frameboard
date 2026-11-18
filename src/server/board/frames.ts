@@ -930,13 +930,14 @@ export async function setFrameTransition(
 /**
  * Sets a frame's speaker note on its layout entry, or clears it with null or
  * blank text, leaving the frame's file alone. Refuses `usage` past
- * `SPEAKER_NOTES_MAX` rather than cutting the text.
+ * `SPEAKER_NOTES_MAX` rather than cutting the text, and `stale-layout` under
+ * the lock when `expected`, the note the edit began from, is no longer held.
  */
 export async function setFrameSpeakerNotes(
   root: string,
   ref: string,
   text: string | null,
-  options: RefOptions & JournalOptions,
+  { expected, ...options }: RefOptions & JournalOptions & { expected?: string },
 ): Promise<FrameRecord> {
   if (text !== null && text.length > SPEAKER_NOTES_MAX) {
     throw new FrameboardError(
@@ -946,8 +947,18 @@ export async function setFrameSpeakerNotes(
     )
   }
   const speakerNotes = speakerNotesOf(text)
-  return updatePlacement(root, ref, options, (placement) => {
-    const { speakerNotes: _held, ...rest } = placement
+  return updatePlacement(root, ref, options, (placement, frameRef) => {
+    const { speakerNotes: held, ...rest } = placement
+    if (
+      expected !== undefined &&
+      (speakerNotesOf(expected) ?? '') !== (held ?? '')
+    ) {
+      throw new FrameboardError(
+        'stale-layout',
+        `The speaker notes on ${frameRef} changed since this edit began, so nothing was written.`,
+        { ref: frameRef, stored: held ?? '', expected },
+      )
+    }
     return speakerNotes ? { ...rest, speakerNotes } : rest
   })
 }
