@@ -12,4 +12,4 @@ The commands, checks, claims, change marks, and plugin a coding agent works with
 - [Claims](claims.md): How an agent claims a frame or reserves new ones, and what your edits do meanwhile
 - [Commands](commands.md): The board commands an agent runs to edit, inspect, capture, size, and share frames, and to find or generate images
 - [Plugin](plugin.md): The Claude Code plugin, its checks after each write, its note monitor, and the draw skill
-- [Presenting](presenting.md): Setting slide transitions and in-slide steps from the CLI, and adding a project transition
+- [Presenting](presenting.md): Setting slide transitions, in-slide steps, and speaker notes from the CLI, and adding a project transition

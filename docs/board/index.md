@@ -13,4 +13,4 @@ What you do by hand on the board, from selecting to exporting
 - [Notes](notes.md): Pinning a note on a frame or element and sending it to a listening agent
 - [Projects](projects.md): The home view, its cards, folders, sorting, and archive, and the rules a project turned off
 - [Selecting and undo](selecting.md): Selecting frames and elements, several at once, and undoing a hand edit
-- [Slides and export](slides-and-export.md): Slide transitions and steps, motion, PNG and filmstrip export, and opening a project on a phone
+- [Slides and export](slides-and-export.md): Slide transitions and steps, speaker notes, motion, PNG and filmstrip export, and opening a project on a phone
