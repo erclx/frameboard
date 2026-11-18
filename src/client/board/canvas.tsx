@@ -37,6 +37,7 @@ import {
   useStagedLive,
   type View,
 } from './cull'
+import { POSE_BAR_ROOM } from './device/poses'
 import { useElementActions } from './element/actions'
 import { BindingLinks } from './element/binding-links'
 import { ElementOverlay } from './element/overlay'
@@ -106,6 +107,9 @@ import { LinkedBoxes } from './widths/linked-box'
 const SCALE_EXTENT: [number, number] = [0.02, 4]
 
 const FIT_PADDING = 64
+
+/** The screen pixels a fit keeps clear under a foldable at the bottom, for its pose buttons and the size chip below them. */
+const FOLD_CHROME_ROOM = POSE_BAR_ROOM + 24
 /** Screen pixels a press may move and still count as a click. */
 const PLAY_CLICK_SLOP = 3
 /** How long a gesture has to rest before the view counts as settled and the cull runs. */
@@ -1150,22 +1154,29 @@ function fitView(
   if (frames.length === 0 || size.width === 0 || size.height === 0) {
     return { x: FIT_PADDING, y: FIT_PADDING, k: 1 }
   }
-  const boxes = frames.map(({ box, widths, device }) =>
-    drawnExtent(box, widths ?? [], device),
-  )
+  const boxes = frames.map(({ box, widths, device }) => ({
+    ...drawnExtent(box, widths ?? [], device),
+    device,
+  }))
   const left = Math.min(...boxes.map((box) => box.x))
   const top = Math.min(...boxes.map((box) => box.y))
   const right = Math.max(...boxes.map((box) => box.x + box.width))
   const bottom = Math.max(...boxes.map((box) => box.y + box.height))
+  // The floating toolbar sits in the bottom padding, where a foldable's buttons would land.
+  const room = boxes.some(
+    (box) => box.device === 'foldable' && box.y + box.height === bottom,
+  )
+    ? FOLD_CHROME_ROOM
+    : 0
   const k = Math.min(
     (size.width - 2 * FIT_PADDING) / (right - left),
-    (size.height - 2 * FIT_PADDING) / (bottom - top),
+    (size.height - 2 * FIT_PADDING - room) / (bottom - top),
     1,
   )
   const scale = Math.max(SCALE_EXTENT[0], k)
   return {
     x: (size.width - (right - left) * scale) / 2 - left * scale,
-    y: (size.height - (bottom - top) * scale) / 2 - top * scale,
+    y: (size.height - room - (bottom - top) * scale) / 2 - top * scale,
     k: scale,
   }
 }

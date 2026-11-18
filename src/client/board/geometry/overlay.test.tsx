@@ -233,6 +233,24 @@ describe('SelectionOverlay', () => {
     )
   })
 
+  it('stands the chip past the pose buttons under a selected foldable', () => {
+    const inbox = frameOf('inbox', {
+      box: { x: 100, y: 100, width: 890, height: 626 },
+      device: 'foldable',
+      pose: 'open',
+    })
+    act(() => select(selectionStore, PAGE, [inbox.ref]))
+
+    const { container } = render(<SelectionOverlay frames={[inbox]} />)
+
+    const selection = container.querySelector('[data-selection]')
+    const chip = container.querySelector('[data-chip]')
+    const bottom = selection?.getBoundingClientRect().bottom ?? 0
+    expect(chip?.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      bottom + 20 + 40,
+    )
+  })
+
   it('bounds several frames, outlines each, and counts them', () => {
     act(() => select(selectionStore, PAGE, [LEFT.ref, RIGHT.ref]))
 

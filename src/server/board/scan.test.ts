@@ -9,7 +9,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
-import { placeNext, scanBoard } from './scan'
+import { placeFrames, placeNext, scanBoard } from './scan'
 
 describe('scanBoard', () => {
   let board: FixtureBoard
@@ -442,6 +442,65 @@ describe('scanBoard', () => {
         'wrecked/home/hero',
       ])
     })
+  })
+})
+
+describe('placeFrames', () => {
+  const entry = { x: 0, y: 0, width: 890, height: 626, order: 0 }
+
+  it('answers the foldable over the width a shown frame would pick by', () => {
+    const placed = placeFrames(
+      { hero: { ...entry, showDevice: true, foldable: true, pose: 'open' } },
+      ['hero'],
+    )
+
+    expect(placed.get('hero')).toMatchObject({
+      device: 'foldable',
+      pose: 'open',
+    })
+  })
+
+  it.each([
+    ['an unknown name', 'tent'],
+    ['a number', 3],
+    ['no pose', undefined],
+  ])('reads %s as closed', (_label, pose) => {
+    const placed = placeFrames({ hero: { ...entry, foldable: true, pose } }, [
+      'hero',
+    ])
+
+    expect(placed.get('hero')?.pose).toBe('closed')
+  })
+
+  it.each([
+    ['a string', 'yes'],
+    ['absent', undefined],
+  ])(
+    'picks by the width when foldable is %s, holding no pose',
+    (_label, foldable) => {
+      const placed = placeFrames(
+        { hero: { ...entry, showDevice: true, foldable, pose: 'open' } },
+        ['hero'],
+      )
+
+      expect(placed.get('hero')?.device).toBe('tablet')
+      expect(placed.get('hero')).not.toHaveProperty('pose')
+    },
+  )
+
+  it('draws none of the widths a foldable entry lists', () => {
+    const placed = placeFrames(
+      {
+        hero: {
+          ...entry,
+          foldable: true,
+          widths: [{ width: 390, height: 844 }],
+        },
+      },
+      ['hero'],
+    )
+
+    expect(placed.get('hero')?.widths).toEqual([])
   })
 })
 

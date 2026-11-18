@@ -6,12 +6,17 @@ import { FrameboardError } from '@/shared/errors'
 import {
   BEZEL_COLORS,
   bezelBox,
+  BEZELS,
   bezelShadow,
   type Device,
+  FOLDABLE_ISLAND,
+  foldBand,
   HOME_BAR,
+  islandCenter,
   LAPTOP_BASE,
   laptopParts,
   PHONE_ISLAND,
+  type Pose,
   screenCorners,
 } from '@/shared/frame-device'
 import { frameThemeUrl, LOOK_MARKER, type Theme } from '@/shared/theme'
@@ -150,6 +155,8 @@ export type RenderFrame = (
     ref: string
     box: { width: number; height: number }
     device?: Device
+    /** How a foldable is held, which draws its island and fold, closed when absent. */
+    pose?: Pose
     element?: number
   },
   theme: Theme,
@@ -242,7 +249,9 @@ export function createWarmRenderer({
       } finally {
         await opened.close()
       }
-      return device ? drawBezel(open, shot, frame.box, device, scale) : shot
+      return device
+        ? drawBezel(open, shot, frame.box, { device, pose: frame.pose }, scale)
+        : shot
     })
     queue = run.catch(() => {})
     return run
@@ -293,7 +302,7 @@ async function drawBezel(
   browser: Browser,
   shot: Buffer,
   box: { width: number; height: number },
-  device: Device,
+  { device, pose = 'closed' }: { device: Device; pose?: Pose },
   scale: number,
 ): Promise<Buffer> {
   const outer = bezelBox({ x: 0, y: 0, ...box }, device)
@@ -310,7 +319,9 @@ async function drawBezel(
           `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
         : laptop
           ? laptopMarks(box)
-          : ''
+          : device === 'foldable'
+            ? foldableMarks(pose)
+            : ''
     const radius = screenCorners(device)
     await page.setContent(
       `<!doctype html><html><body style="margin:0;background:transparent">` +
@@ -339,6 +350,30 @@ function laptopMarks(box: { width: number; height: number }): string {
   )
 }
 
-function pill(width: number, height: number, color: string): string {
-  return `position:absolute;left:50%;transform:translateX(-50%);width:${width}px;height:${height}px;border-radius:${height / 2}px;background:${color};`
+/** The foldable's fold band, island, and home bar as the board draws them for a pose. */
+function foldableMarks(pose: Pose): string {
+  const band = foldBand(pose)
+  const reach = pose === 'half' ? -BEZELS.foldable.border : 0
+  const island = pill(
+    FOLDABLE_ISLAND.width,
+    FOLDABLE_ISLAND.height,
+    BEZEL_COLORS.island,
+    islandCenter(pose),
+  )
+  return (
+    (band
+      ? `<span style="position:absolute;left:50%;transform:translateX(-50%);top:${reach}px;bottom:${reach}px;width:${band.width}px;background:${band.background}"></span>`
+      : '') +
+    `<span style="${island}top:${FOLDABLE_ISLAND.top}px"></span>` +
+    `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
+  )
+}
+
+function pill(
+  width: number,
+  height: number,
+  color: string,
+  center = 0.5,
+): string {
+  return `position:absolute;left:${center * 100}%;transform:translateX(-50%);width:${width}px;height:${height}px;border-radius:${height / 2}px;background:${color};`
 }

@@ -3,6 +3,7 @@ import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { reserve } from '@/server/claims/store'
+import { type Pose, POSE_SIZES } from '@/shared/frame-device'
 import { FRAME_GAP, FRAME_SIZES } from '@/shared/frame-sizes'
 
 /** The page a reel pans across, which no committed board carries. */
@@ -36,6 +37,14 @@ const FEED_PAGE = join(import.meta.dirname, 'drive-feed.html')
 
 /** One phone frame drawn inside its device, so the strip under a device body has a frame to select. */
 const DEVICE = { project: 'webapp', page: 'device', frame: 'phone' }
+
+/**
+ * One frame naming the foldable, closed, holding a page that goes from one
+ * column to two as it opens, so the pose buttons have a frame to fold.
+ */
+const FOLD = { project: 'webapp', page: 'fold', frame: 'inbox' }
+
+const FOLD_PAGE = join(import.meta.dirname, 'drive-fold.html')
 
 /**
  * Three slides in a row under a Push transition, the middle one marking three
@@ -144,6 +153,8 @@ export interface Seeded {
   deck: 'laid' | 'kept'
   /** Whether the device page was laid now or was already there and kept. */
   device: 'laid' | 'kept'
+  /** Whether the foldable page was laid now or was already there and kept. */
+  fold: 'laid' | 'kept'
   /** Whether webapp's own transition was laid now or was already there and kept. */
   transition: 'laid' | 'kept'
   /** Whether the free shapes page was laid now or was already there and kept. */
@@ -192,6 +203,12 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     join(DECK_PAGES, `${DECK.slides[0]}.html`),
     { ...FRAME_SIZES.phone, showDevice: true },
   )
+  const fold = await layOne(root, FOLD, FOLD_PAGE, {
+    ...POSE_SIZES.closed,
+    showDevice: true,
+    foldable: true,
+    pose: 'closed',
+  })
   const folder = await layFolder(root)
   const longPath = await layLongPath(root)
   const reserved = await reserveSettings(root, now)
@@ -202,6 +219,7 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     feed,
     deck,
     device,
+    fold,
     transition,
     shapes,
     stacked,
@@ -308,6 +326,8 @@ async function layOne(
     height: number
     scroll?: boolean
     showDevice?: boolean
+    foldable?: boolean
+    pose?: Pose
   } = FRAME_SIZES.desktop,
 ): Promise<'laid' | 'kept'> {
   const folder = join(root, project, page)

@@ -1,4 +1,5 @@
 import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
+import type { Pose } from '@/shared/frame-device'
 import type { FrameSize } from '@/shared/frame-sizes'
 import type { KitInstallRecord, KitSaveRecord } from '@/shared/kits'
 import type { Transition } from '@/shared/present-transition'
@@ -118,6 +119,12 @@ export function createStructure(send: typeof fetch = fetch) {
     /** Shows or hides the device each frame's width names, in one undo step. */
     setDevice: (refs: readonly string[], show: boolean) =>
       post<FrameRecord[]>('/api/frame/device', { refs, show }),
+    /** Names the foldable on each frame, shown in the pose nearest its width, or hands the pick back to its width, in one undo step. */
+    setFoldable: (refs: readonly string[], foldable: boolean) =>
+      post<FrameRecord[]>('/api/frame/device', { refs, foldable }),
+    /** Folds each foldable to a pose, which sets its box, in one undo step. */
+    setPose: (refs: readonly string[], pose: Pose) =>
+      post<FrameRecord[]>('/api/frame/device', { refs, pose }),
     // One undo step, a list changed since its `expected` refusing `stale-layout`.
     setWidths: (
       refs: readonly string[],

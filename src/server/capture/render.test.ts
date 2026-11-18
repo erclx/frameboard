@@ -310,6 +310,59 @@ describe.skipIf(shell === null)(
       expect(corner).toBe(0)
     })
 
+    it.each([
+      ['closed', 466, 678, 253],
+      ['open', 890, 626, 687],
+    ] as const)(
+      'draws a %s foldable 20 past its screen with the island where the pose sets it',
+      async (pose, width, height, islandX) => {
+        const render = createWarmRenderer({
+          baseUrl: () => host.url,
+          browser: createWarmBrowser(async () => requireShell(shell)),
+          scale: 1,
+        })
+
+        const bytes = await render(
+          {
+            ref: 'studio/home/hero',
+            box: { width, height },
+            device: 'foldable',
+            pose,
+          },
+          'light',
+        )
+        // The island's middle, 14 down the screen and 15 into its 30 height.
+        const island = await pixelAt(requireShell(shell), bytes, islandX, 49)
+
+        expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+          width + 40,
+          height + 40,
+        ])
+        expect(island).toEqual([5, 5, 6, 255])
+      },
+    )
+
+    it('shades the fold of a half open foldable darker than the open crease', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+      const frame = {
+        ref: 'studio/home/hero',
+        box: { width: 890, height: 626 },
+        device: 'foldable' as const,
+      }
+
+      const half = await render({ ...frame, pose: 'half' }, 'light')
+      const open = await render({ ...frame, pose: 'open' }, 'light')
+      // Ten left of the fold's middle, where the crease has faded and the shade has not.
+      const [shaded] = await pixelAt(requireShell(shell), half, 455, 333)
+      const [creased] = await pixelAt(requireShell(shell), open, 455, 333)
+
+      expect(shaded).toBeLessThan(creased ?? 0)
+    })
+
     it('draws none of a phone page past the body at its screen corner', async () => {
       const render = createWarmRenderer({
         baseUrl: () => host.url,

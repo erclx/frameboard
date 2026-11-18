@@ -10,10 +10,16 @@ import {
   PROJECT_FILE,
 } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
-import { type Device, deviceForWidth } from '@/shared/frame-device'
+import {
+  type Device,
+  deviceForWidth,
+  type Pose,
+  poseOf,
+} from '@/shared/frame-device'
 import { DEFAULT_FRAME_SIZE, FRAME_SIZES } from '@/shared/frame-sizes'
 import {
   drawnExtent,
+  drawnWidths,
   type LinkedWidth,
   widthsOf,
   xPast,
@@ -72,8 +78,13 @@ export interface Placement {
   widths: LinkedWidth[]
   /** Present while the board draws the frame inside a device. */
   showDevice?: true
-  /** The device the box's width names while one shows, absent under 320 wide. */
+  /** The device drawn while one shows, the foldable when named, else the width's, absent under 320 wide. */
   device?: Device
+  /** Present while the frame names the foldable, shown or not, with its pose. */
+  foldable?: true
+  pose?: Pose
+  /** The widths a foldable's entry lists and never draws, which un-naming it draws again. */
+  keptWidths?: LinkedWidth[]
   /** Absent for a frame with no override or one holding a value no reader knows. */
   transition?: Transition
   /** Absent for a frame with no note or one holding a value of another type. */
@@ -220,7 +231,10 @@ export function placeFrames(
       height: entry.height,
     }
     const shown = showsDevice(entry)
-    const device = shown ? deviceForWidth(box.width) : null
+    const foldable = entry.foldable === true
+    const kept = widthsOf(entry.widths)
+    const named = foldable ? 'foldable' : deviceForWidth(box.width)
+    const device = shown ? named : null
     const transition = readTransition(entry.transition)
     const speakerNotes = speakerNotesOf(entry.speakerNotes)
     placements.set(name, {
@@ -231,9 +245,11 @@ export function placeFrames(
       hugWidth: !scroll && (entry.hugWidth ?? false),
       hugHeight: !scroll && (entry.hugHeight ?? false),
       scroll,
-      widths: widthsOf(entry.widths),
+      widths: drawnWidths(entry),
       ...(shown ? { showDevice: true as const } : {}),
       ...(device ? { device } : {}),
+      ...(foldable ? { foldable, pose: poseOf(entry.pose) } : {}),
+      ...(foldable && kept.length > 0 ? { keptWidths: kept } : {}),
       ...(transition ? { transition } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
       placed: true,
@@ -382,7 +398,12 @@ export async function scanPage(
   const records = await Promise.all(
     names.map(async (frame): Promise<FrameRecord> => {
       const framePath = join(path, `${frame}${FRAME_EXTENSION}`)
-      const placement = placements.get(frame) ?? placeNext([])
+      // The record carries the pose alone, which only a named foldable holds.
+      const {
+        foldable: _named,
+        keptWidths: _kept,
+        ...placement
+      } = placements.get(frame) ?? placeNext([])
       return {
         ref: `${project}/${name}/${frame}`,
         project,

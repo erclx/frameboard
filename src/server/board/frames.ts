@@ -4,7 +4,13 @@ import { join } from 'node:path'
 import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
-import { deviceForWidth } from '@/shared/frame-device'
+import {
+  deviceForWidth,
+  nearestPose,
+  type Pose,
+  POSE_SIZES,
+  poseOf,
+} from '@/shared/frame-device'
 import {
   DEFAULT_FRAME_SIZE,
   FRAME_SIZES,
@@ -90,6 +96,13 @@ export interface BodyOptions {
 export interface DeviceOptions {
   /** Whether the board draws the frame inside the device its width names, off when absent. */
   showDevice?: boolean
+}
+
+export interface FoldOptions {
+  /** True to name the foldable over the width's device, false to hand the pick back to the width, absent to leave it. */
+  foldable?: boolean
+  /** The pose a foldable folds to, which sets its box, refused on a frame naming none. */
+  pose?: Pose
 }
 
 export type FrameFlag = 'hidden' | 'locked'
@@ -441,6 +454,13 @@ function resizedPlacement(
   size: { width?: number; height?: number },
   options: ScrollOptions & WidthsOptions,
 ): Placement {
+  if (placement.foldable && options.widths && options.widths.length > 0) {
+    throw new FrameboardError(
+      'usage',
+      `${frameRef} is a foldable, whose poses are its sizes, so it shows at no other width.`,
+      { ref: frameRef, widths: options.widths },
+    )
+  }
   const scroll = options.scroll ?? placement.scroll
   const width = size.width ?? placement.box.width
   const drops = scroll && placement.hugHeight && size.height === undefined
@@ -450,8 +470,11 @@ function resizedPlacement(
     options.widths ?? placement.widths.map((linked) => linked.width),
     { width, hugWidth, held: placement.widths },
   )
+  const { keptWidths, ...kept } = placement
   return {
-    ...placement,
+    ...kept,
+    // An explicit clear drops the widths a foldable's entry kept undrawn.
+    ...(keptWidths && options.widths !== false ? { keptWidths } : {}),
     box: {
       ...placement.box,
       ...size,
@@ -893,19 +916,63 @@ export async function setFrameFlag(
 }
 
 /**
- * Shows or hides the device the board draws around a frame, which the
- * frame's width picks. The frame's file and box are left as they stand,
- * since the body wraps whatever size the frame is.
+ * Shows or hides a frame's device, names or un-names the foldable, and folds
+ * it, never writing the frame's file. Naming a foldable shows it and, as a
+ * pose does, sets the box to that pose's screen, fixed on both axes.
  */
 export async function setFrameDevice(
   root: string,
   ref: string,
-  show: boolean,
-  options: RefOptions & JournalOptions,
+  show: boolean | undefined,
+  {
+    foldable: name,
+    pose: fold,
+    ...options
+  }: RefOptions & JournalOptions & FoldOptions,
 ): Promise<FrameRecord> {
-  return updatePlacement(root, ref, options, (placement) => {
-    const { showDevice: _held, device: _device, ...rest } = placement
-    return show ? { ...rest, showDevice: true } : rest
+  return updatePlacement(root, ref, options, (placement, frameRef) => {
+    const {
+      showDevice: held,
+      device: _device,
+      foldable: named,
+      pose: stored,
+      keptWidths,
+      ...rest
+    } = placement
+    const foldable = name ?? named === true
+    if (fold && !foldable) {
+      throw new FrameboardError(
+        'usage',
+        `${frameRef} is not a foldable, so it has no pose. Name it with --foldable first.`,
+        { ref: frameRef, pose: fold },
+      )
+    }
+    const shown = show ?? (name === true || held === true)
+    const base = { ...rest, ...(shown ? { showDevice: true as const } : {}) }
+    if (!foldable) {
+      // The widths the entry kept draw again, less one the box now holds itself.
+      const widths = (keptWidths ?? rest.widths).filter(
+        (linked) => linked.width !== placement.box.width,
+      )
+      return { ...base, widths }
+    }
+    // Naming a frame keeps the widths it drew in its entry, undrawn.
+    const undrawn = keptWidths ?? rest.widths
+    const kept = {
+      widths: [],
+      ...(undrawn.length > 0 ? { keptWidths: undrawn } : {}),
+    }
+    const pose = fold ?? stored ?? nearestPose(placement.box.width)
+    if (!fold && named) return { ...base, ...kept, foldable, pose }
+    return {
+      ...base,
+      ...kept,
+      foldable,
+      pose,
+      box: { ...placement.box, ...POSE_SIZES[pose] },
+      hugWidth: false,
+      hugHeight: false,
+    }
   })
 }
 
@@ -1104,6 +1171,9 @@ class PageLayout {
       scroll,
       widths,
       showDevice,
+      foldable,
+      pose,
+      keptWidths,
       transition,
       speakerNotes,
       hugWidth: hugsWidth,
@@ -1113,6 +1183,8 @@ class PageLayout {
     const hugWidth = hugsWidth && !scroll
     const hugHeight = hugsHeight && !scroll
     const held = this.file.frames[name]
+    // A foldable draws none of the widths its entry lists, and keeps them for the day it is un-named.
+    const listed = foldable ? (keptWidths ?? []) : widths
     const entry: LayoutEntry = {
       ...held,
       x: box.x,
@@ -1127,15 +1199,26 @@ class PageLayout {
         ? { hugHeight }
         : {}),
       ...(scroll || held?.scroll !== undefined ? { scroll } : {}),
-      ...(widths.length > 0
-        ? { widths: widths.map(({ width, height }) => ({ width, height })) }
+      ...(listed.length > 0
+        ? { widths: listed.map(({ width, height }) => ({ width, height })) }
         : {}),
       ...(showDevice ? { showDevice } : {}),
+      ...(foldable ? { foldable } : {}),
+      // A held pose reading as this one stays as written, a value no reader knows included.
+      ...(foldable &&
+      pose &&
+      (held?.foldable !== true || poseOf(held.pose) !== pose)
+        ? { pose }
+        : {}),
       ...(transition ? { transition: { ...transition } } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
     }
-    if (widths.length === 0 && widthsOf(held?.widths).length > 0) {
+    if (listed.length === 0 && widthsOf(held?.widths).length > 0) {
       delete entry.widths
+    }
+    if (!foldable && held?.foldable === true) {
+      delete entry.foldable
+      delete entry.pose
     }
     if (!showDevice && held?.showDevice === true) delete entry.showDevice
     if (typeof held?.device === 'string') delete entry.device

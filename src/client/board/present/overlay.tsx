@@ -412,7 +412,12 @@ function ScaledFrame({
     >
       <PresentedFrame frame={frame} {...live} />
       {frame.device ? (
-        <Bezel device={frame.device} width={width} height={height} />
+        <Bezel
+          device={frame.device}
+          width={width}
+          height={height}
+          pose={frame.pose}
+        />
       ) : null}
     </div>
   )
