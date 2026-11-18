@@ -1629,9 +1629,14 @@ describe('double-clicking an element in a frame', () => {
     await expect.poll(() => drawn.querySelector('iframe')).not.toBeNull()
     const iframe = drawn.querySelector('iframe')
     if (!iframe) throw new Error('no live frame')
-    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style></head><body style="margin:0">${BODY}</body></html>`
+    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style><script data-frameboard type="module" src="/src/frame-bridge/main.ts"></script></head><body style="margin:0">${BODY}</body></html>`
+    // Complete once its bridge has run, which answers the double-click.
     await expect
-      .poll(() => iframe.contentDocument?.querySelector('h1'))
+      .poll(
+        () =>
+          iframe.contentDocument?.readyState === 'complete' &&
+          iframe.contentDocument.querySelector('h1'),
+      )
       .toBeTruthy()
     const heading = iframe.contentDocument?.querySelector('h1')
     if (!heading) throw new Error('the frame shows no heading')

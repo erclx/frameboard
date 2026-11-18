@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { BRIDGE_TAG, isElementAddress, readBridgeMessage } from './frame-bridge'
+import {
+  BRIDGE_TAG,
+  isElementAddress,
+  isElementBox,
+  readBridgeMessage,
+} from './frame-bridge'
 
 const ORIGIN = 'http://127.0.0.1:4000'
 
@@ -123,5 +128,22 @@ describe('isElementAddress', () => {
     ['null', null],
   ])('refuses %s', (_case, value) => {
     expect(isElementAddress(value)).toBe(false)
+  })
+})
+
+describe('isElementBox', () => {
+  it('accepts four finite edges', () => {
+    expect(isElementBox({ left: 0, top: 1, right: 2, bottom: 3 })).toBe(true)
+  })
+
+  it.each([
+    ['a missing edge', { left: 0, top: 1, right: 2 }],
+    [
+      'an edge that is not a number',
+      { left: '0', top: 1, right: 2, bottom: 3 },
+    ],
+    ['an infinite edge', { left: 0, top: 1, right: Infinity, bottom: 3 }],
+  ])('refuses %s', (_case, value) => {
+    expect(isElementBox(value)).toBe(false)
   })
 })

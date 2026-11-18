@@ -662,9 +662,10 @@ export function Canvas({
     ) {
       const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
       const drawn = withDrawn(frames)
-      if (overElement(layer, drawn, held, { x, y }) && editText(held, false)) {
-        return
-      }
+      void overElement(layer, drawn, held, { x, y }).then((over) => {
+        if (!over || !editText(held, false)) pickInside(event, true)
+      })
+      return
     }
     pickInside(event, true)
   }

@@ -1,5 +1,7 @@
+import { isElementBox } from '@/shared/frame-bridge'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { request } from '../bridge/channel'
 import { elementAt, renderedHash } from '../frame-dom'
 import type { ElementChange } from '../inspector/element/write'
 import type { BoardPoint } from '../notes/pick'
@@ -160,30 +162,40 @@ export function editTextInPlace(
   return cancel
 }
 
+/** A frame's live iframe on the board, or null for a placeholder. */
+function shownFrame(
+  container: ParentNode,
+  ref: string,
+): HTMLIFrameElement | null {
+  return container.querySelector<HTMLIFrameElement>(
+    `[data-frame="${CSS.escape(ref)}"] iframe`,
+  )
+}
+
 /** The live document a frame's iframe shows, or null for a placeholder. */
 function shownDocument(container: ParentNode, ref: string): Document | null {
-  return (
-    container.querySelector<HTMLIFrameElement>(
-      `[data-frame="${CSS.escape(ref)}"] iframe`,
-    )?.contentDocument ?? null
-  )
+  return shownFrame(container, ref)?.contentDocument ?? null
 }
 
 /**
  * Whether a board point falls inside the live box of the element `key`
- * names, in the frame the key names, so a double-click there edits it.
+ * names, in the frame the key names showing the key's bytes, so a
+ * double-click there edits it.
  */
-export function overElement(
+export async function overElement(
   container: ParentNode,
   frames: readonly FrameRecord[],
   key: ElementKey,
   at: BoardPoint,
-): boolean {
+): Promise<boolean> {
   const frame = frames.find((candidate) => candidate.ref === key.frame)
-  const shown = frame && shownDocument(container, frame.ref)
-  const element = shown && elementAt(shown, key.index)
-  if (!frame || !element) return false
-  const box = element.getBoundingClientRect()
+  const iframe = frame && shownFrame(container, frame.ref)
+  if (!frame || !iframe) return false
+  const box = await request(iframe, 'element-box', {
+    index: key.index,
+    hash: key.hash,
+  })
+  if (!isElementBox(box)) return false
   const x = at.x - frame.box.x
   const y = at.y - frame.box.y
   return x >= box.left && x < box.right && y >= box.top && y < box.bottom

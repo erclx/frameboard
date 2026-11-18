@@ -145,6 +145,14 @@ export function isElementAddress(value: unknown): value is ElementAddress {
   )
 }
 
+/** Whether a value is an element box, the value `element-box` replies with. */
+export function isElementBox(value: unknown): value is ElementBox {
+  return (
+    isRecord(value) &&
+    [value.left, value.top, value.right, value.bottom].every(Number.isFinite)
+  )
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }

@@ -20,8 +20,9 @@ type Handler = (args: unknown, id: string) => unknown
 document.currentScript?.remove()
 
 const board = window.parent
-// Same origin as the board until frames move to their own port.
-const boardOrigin = location.origin
+// Same origin as the board until frames move to their own port. The
+// document's origin, since a srcdoc frame's location names none.
+const boardOrigin = window.origin
 
 /** The live element an address names, or null when the frame shows other bytes. */
 function addressed(address: ElementAddress): Element | null {
