@@ -43,7 +43,7 @@ Owns `bezel.tsx`, the phone, tablet, laptop, or foldable body drawn around a fra
 - A laptop's lid is that spread, and its chin and wider base are positioned boxes from `laptopParts`, since one spread holds one width on every side
 - The body and the island scale with the canvas, its hairline edge stays one screen pixel at any zoom, and it takes no pointer events
 - The label, the open-alone link, and the rail stand past the border, a laptop's lid, and the In frame tag below the body, a laptop's base, and a linked width draws no device
-- Present fits and centers the frame by its body through `bezelBox`, since a laptop's body reaches further below than above
+- Present centers a frame by its body through `bezelBox` and fits it by `bezelReach`, which adds the edge and drop shadow, since a laptop's body reaches further below than above
 
 ### `src/client/board/scroll/`
 
