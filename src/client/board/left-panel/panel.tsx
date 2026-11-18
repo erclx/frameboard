@@ -115,8 +115,15 @@ export function LeftPanel({
       leftTabStore.setState({ tab: next })
     }
   }
-  // The panel opens on Design each time it mounts, as it did holding its own tab.
-  useEffect(() => () => leftTabStore.setState({ tab: 'design' }), [])
+  // A reset in a mount effect's cleanup would undo the palette's tab under StrictMode's remount.
+  useEffect(() => {
+    const { project: shown } = leftTabStore.getState()
+    if (shown === project.name) return
+    leftTabStore.setState({
+      project: project.name,
+      ...(shown === null ? {} : { tab: 'design' }),
+    })
+  }, [project.name])
   const splitShown = !finding && tab === 'design'
   const counted = useRef({ project: project.name, pages: project.pages.length })
   useEffect(() => {
