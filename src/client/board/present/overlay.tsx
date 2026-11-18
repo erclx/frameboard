@@ -332,22 +332,25 @@ function Presenting({
       className="fixed inset-0 z-50 overflow-hidden bg-black outline-none perspective-[2000px]"
     >
       <TransitionKeyframes own={ownKeyframes} />
-      {layers.map(({ frame: drawn, role }) => (
-        <TransitionLayer
-          key={drawn.ref}
-          role={role}
-          travel={travel}
-          project={frame.project}
-        >
-          <ScaledFrame
-            frame={drawn}
-            room={room}
-            live={role === 'enter'}
-            held={role === 'enter' && leaving !== null}
-            wake={wake}
-          />
-        </TransitionLayer>
-      ))}
+      {/* The grid covers the stage, so Tab never lands in a slide beneath it. */}
+      <div className="contents" inert={overview} data-present-stage>
+        {layers.map(({ frame: drawn, role }) => (
+          <TransitionLayer
+            key={drawn.ref}
+            role={role}
+            travel={travel}
+            project={frame.project}
+          >
+            <ScaledFrame
+              frame={drawn}
+              room={room}
+              live={role === 'enter'}
+              held={role === 'enter' && leaving !== null}
+              wake={wake}
+            />
+          </TransitionLayer>
+        ))}
+      </div>
       {overview ? (
         <Overview
           page={page}

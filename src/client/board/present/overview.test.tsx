@@ -227,6 +227,19 @@ describe('closing the overview', () => {
     expect(document.activeElement).toBe(button)
   })
 
+  it('keeps the slide beneath out of reach while open, and back once shut', async () => {
+    present(slidesOf('one', 'two'))
+    const stage = () =>
+      screen.getByRole('dialog').querySelector('iframe')?.closest('[inert]')
+    await userEvent.keyboard('g')
+
+    expect(stage()).not.toBeNull()
+
+    await userEvent.keyboard('{Escape}')
+
+    expect(stage()).toBeNull()
+  })
+
   it('steps the deck again once shut', async () => {
     present(slidesOf('one', 'two', 'three'))
     await userEvent.keyboard('gg{ArrowRight}')
