@@ -84,7 +84,9 @@ test.describe('a 3D model placed by hand', () => {
     const one = await hero(page).locator('[data-name="One"]').boundingBox()
     if (!one) throw new Error('The row draws no first child')
     await tools(page).getByRole('button', { name: 'Shapes' }).click()
-    await page.getByRole('menuitem', { name: /Image, video, or audio/ }).click()
+    await page
+      .getByRole('menuitem', { name: /Image, video, audio, or model/ })
+      .click()
     await page.getByRole('button', { name: 'Place phone.glb' }).click()
     await page.mouse.click(one.x + one.width + 20, one.y + one.height / 2)
 

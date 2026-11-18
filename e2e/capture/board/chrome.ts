@@ -300,7 +300,7 @@ function searchOnLoad(query: string): (page: Page) => Promise<void> {
 }
 
 /**
- * Opens the Shape menu and then the picker from its Image, video, or audio row, once
+ * Opens the Shape menu and then the picker from its Image, video, audio, or model row, once
  * the server grants writes, which enable the row. Waits in an init script as
  * `pressOnLoad` does.
  */
@@ -311,7 +311,9 @@ async function imagePickerOnLoad(page: Page): Promise<void> {
       const open = () => {
         const row = [
           ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
-        ].find((item) => item.textContent?.includes('Image, video, or audio'))
+        ].find((item) =>
+          item.textContent?.includes('Image, video, audio, or model'),
+        )
         if (row && row.getAttribute('aria-disabled') !== 'true') {
           row.click()
           return
@@ -324,7 +326,8 @@ async function imagePickerOnLoad(page: Page): Promise<void> {
           caret.click()
         }
         if (--left > 0) requestAnimationFrame(open)
-        else console.error('The Image, video, or audio row never enabled')
+        else
+          console.error('The Image, video, audio, or model row never enabled')
       }
       document.addEventListener('DOMContentLoaded', open)
     },

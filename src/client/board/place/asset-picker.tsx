@@ -45,7 +45,7 @@ export function AssetPicker({
         anchor={anchor}
         side="top"
         sideOffset={8}
-        aria-label="Image, video, or audio"
+        aria-label="Image, video, audio, or model"
         className="w-[260px] gap-0 p-0 text-xs"
       >
         {open ? (
@@ -112,14 +112,14 @@ function PickerList({
   return (
     <>
       <h3 className="px-3 pt-2.5 pb-1 text-label text-muted-foreground">
-        Image, video, or audio · {files.length}{' '}
+        Image, video, audio, or model · {files.length}{' '}
         {files.length === 1 ? 'file' : 'files'}
       </h3>
       {files.length === 0 ? (
         <div className="flex flex-col items-start gap-2 px-3 pt-1 pb-3">
           <p className="leading-normal text-muted-foreground">
-            No images, videos, or audio in <code className={CODE}>assets/</code>{' '}
-            yet.
+            No images, videos, audio, or models in{' '}
+            <code className={CODE}>assets/</code> yet.
           </p>
           <button
             type="button"
@@ -134,7 +134,7 @@ function PickerList({
             type="file"
             multiple
             hidden
-            accept="image/*,video/*,audio/*,.svg"
+            accept="image/*,video/*,audio/*,.svg,.glb,.gltf"
             aria-label="Choose files to add"
             onChange={(event) => {
               const chosen = [...(event.target.files ?? [])]

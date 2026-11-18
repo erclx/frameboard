@@ -599,7 +599,7 @@ test.describe('placing text and shapes into a frame', () => {
 
       await tools(page).getByRole('button', { name: 'Shapes' }).click()
       await page
-        .getByRole('menuitem', { name: /Image, video, or audio/ })
+        .getByRole('menuitem', { name: /Image, video, audio, or model/ })
         .click()
       await page.getByRole('button', { name: 'Place hero.png' }).click()
       await page.mouse.click(one.x + one.width + 20, one.y + one.height / 2)
