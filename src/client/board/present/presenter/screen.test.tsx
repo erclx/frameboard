@@ -129,11 +129,11 @@ describe('a fed state', () => {
 
     await userEvent.click(timer)
     now += 5_000
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1_100))
-    })
 
-    expect(timer).toHaveTextContent('00:05')
+    // The timer turns over on the next whole second, so the settle outlasts one.
+    await expect
+      .poll(() => timer.textContent, { timeout: 3_000 })
+      .toMatch(/^00:05/)
   })
 
   it('reads End of deck past the last slide', async () => {
@@ -145,6 +145,20 @@ describe('a fed state', () => {
     await expect.poll(() => slideIn('Now')?.title).toBe('second')
     expect(within(region('Next')).getByText('End of deck')).toBeInTheDocument()
     expect(slideIn('Next')).toBeNull()
+  })
+
+  it('draws End of deck in the shape a slide takes there', async () => {
+    open(
+      slidesOf({ first: undefined, second: undefined }),
+      presented({ frame: 'studio/home/second' }),
+    )
+
+    const next = await screen.findByRole('region', { name: 'Next' })
+    const end = within(next).getByText('End of deck')
+    const { width, height } = end.getBoundingClientRect()
+
+    // Each slide is 390 by 844, so the card keeps that shape.
+    expect(width / height).toBeCloseTo(390 / 844, 2)
   })
 
   it('says a slide holds no note, keeping the notes in place', async () => {
@@ -209,6 +223,16 @@ describe('a press', () => {
     await userEvent.keyboard('{ArrowRight}{ArrowLeft}[Space]')
 
     await expect.poll(() => step.mock.calls).toEqual([[1], [-1], [1]])
+  })
+
+  it('leaves the scrolling keys to a focused note, and Right still steps', async () => {
+    const { step } = open(slidesOf({ first: 'A long note.' }))
+    const notes = await screen.findByRole('region', { name: 'Speaker notes' })
+    notes.focus()
+
+    await userEvent.keyboard('{ArrowDown}{PageDown}{ArrowRight}')
+
+    await expect.poll(() => step.mock.calls).toEqual([[1]])
   })
 
   it('leaves presenting on Esc', async () => {

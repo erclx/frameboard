@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 
 import { useLive } from '@/client/live/store'
 import { themeStore, useShownTheme } from '@/client/theme/store'
+import { bezelBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { fitScale } from '../fit'
 import { ScaledFrame, type StepWalk } from '../overlay'
 import { useRoom } from '../room'
 import { presentOrder, presentStore, usePresent } from '../store'
@@ -100,6 +102,8 @@ function useAudience(id: string | null): Phase {
   return phase
 }
 
+const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', ' '])
+
 /** What a press asks the audience for, null for a key the presenter window leaves alone. */
 function commandOf(event: KeyboardEvent): 1 | -1 | 'leave' | null {
   if (event.ctrlKey || event.metaKey || event.altKey) return null
@@ -129,11 +133,13 @@ function commandOf(event: KeyboardEvent): 1 | -1 | 'leave' | null {
 function keysTo(link: PresenterLink | null): () => void {
   const press = (event: KeyboardEvent) => {
     event.stopPropagation()
+    const within = (selector: string) =>
+      event.target instanceof Element && event.target.closest(selector) !== null
     const onButton =
-      (event.key === ' ' || event.key === 'Enter') &&
-      event.target instanceof Element &&
-      event.target.closest('button') !== null
-    const command = onButton ? null : commandOf(event)
+      (event.key === ' ' || event.key === 'Enter') && within('button')
+    // A focused note keeps the keys that scroll it, and Left and Right still step.
+    const scrollsNotes = SCROLL_KEYS.has(event.key) && within('[data-notes]')
+    const command = onButton || scrollsNotes ? null : commandOf(event)
     if (command === null || !link) return
     event.preventDefault()
     if (event.repeat && command === 'leave') return
@@ -231,13 +237,7 @@ function Presenter({
         >
           <Label id="presenter-next">Next</Label>
           <div className="flex h-[42%] shrink-0 flex-col">
-            {next ? (
-              <SlideBox frame={next} walk="first" />
-            ) : (
-              <div className="grid flex-1 place-items-center rounded-[8px] bg-[#19191b] text-[14px] text-[#8c8f95]">
-                End of deck
-              </div>
-            )}
+            <SlideBox frame={next} walk="first" endLike={now} />
           </div>
           <Notes text={now?.speakerNotes} />
         </section>
@@ -261,9 +261,12 @@ function Label({ id, children }: { id: string; children: string }) {
 function SlideBox({
   frame,
   walk,
+  endLike,
 }: {
   frame: FrameRecord | undefined
   walk: StepWalk
+  /** With no `frame`, draws End of deck at the size this frame would take, so the layout holds still. */
+  endLike?: FrameRecord
 }) {
   const box = useRef<HTMLDivElement>(null)
   const room = useRoom(box)
@@ -282,7 +285,30 @@ function SlideBox({
           keys={false}
           held={false}
         />
+      ) : endLike ? (
+        <EndOfDeck like={endLike} room={room} />
       ) : null}
+    </div>
+  )
+}
+
+function EndOfDeck({
+  like,
+  room,
+}: {
+  like: FrameRecord
+  room: { width: number; height: number }
+}) {
+  const { width, height } = like.box
+  const body = bezelBox({ x: 0, y: 0, width, height }, like.device)
+  const scale = fitScale(body, room)
+  return (
+    <div
+      data-end-of-deck
+      className="absolute top-1/2 left-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-[8px] bg-[#19191b] text-[14px] text-[#8c8f95]"
+      style={{ width: body.width * scale, height: body.height * scale }}
+    >
+      End of deck
     </div>
   )
 }
@@ -321,6 +347,7 @@ function Notes({ text }: { text: string | undefined }) {
   return (
     <section
       aria-label="Speaker notes"
+      data-notes
       tabIndex={0}
       className="mt-4 min-h-0 flex-1 overflow-y-auto rounded-[8px] bg-[#19191b] p-4 text-[17px] leading-[1.55] whitespace-pre-wrap text-[#e6e6e2] outline-none focus-visible:ring-3 focus-visible:ring-[#4e92f6]"
     >
