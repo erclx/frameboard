@@ -1,7 +1,12 @@
 import { createStore } from 'zustand/vanilla'
 
 import { subscribe } from '../bridge/channel'
-import type { ElementKey } from '../selection'
+import { modeStore } from '../mode'
+import {
+  type ElementKey,
+  type SelectionStore,
+  selectionStore,
+} from '../selection'
 import type { Angle } from './model-staging'
 
 /** A viewer by its frame and file index, which hold through the hash each turn's write moves. */
@@ -16,7 +21,12 @@ export const turnStore = createStore<{ turning: Turning | null }>()(() => ({
   turning: null,
 }))
 
+/** Stops following the selection and the mode a turn began under. */
+let unfollow: (() => void) | null = null
+
 export function stopTurn(): void {
+  unfollow?.()
+  unfollow = null
   turnStore.setState({ turning: null })
 }
 
@@ -35,11 +45,14 @@ export function isTurning(
 
 /**
  * Enters turn mode when the frame showing the key's bytes holds a model
- * viewer there, answering whether it did.
+ * viewer there, answering whether it did. The mode ends once the selection
+ * names another element or the board leaves Edit.
  */
 export async function turnInPlace(
   container: ParentNode,
   key: ElementKey,
+  selection: SelectionStore = selectionStore,
+  mode: Pick<typeof modeStore, 'subscribe'> = modeStore,
 ): Promise<boolean> {
   const iframe = container.querySelector<HTMLIFrameElement>(
     `[data-frame="${CSS.escape(key.frame)}"] iframe`,
@@ -54,7 +67,20 @@ export async function turnInPlace(
   const reading = await read.opened
   read.close()
   if (!reading) return false
-  turnStore.setState({ turning: { frame: key.frame, index: key.index } })
+  stopTurn()
+  const turning = { frame: key.frame, index: key.index }
+  turnStore.setState({ turning })
+  // The surface unmounts for a moment on each turn's write, so the mode ends on the selection and never on that.
+  const unselect = selection.subscribe(({ element }) => {
+    if (!isTurning(turning, element ?? null)) stopTurn()
+  })
+  const unmode = mode.subscribe((state) => {
+    if (state.mode !== 'edit') stopTurn()
+  })
+  unfollow = () => {
+    unselect()
+    unmode()
+  }
   return true
 }
 

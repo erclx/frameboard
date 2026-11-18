@@ -4,6 +4,8 @@ import { LOOK_MARKER, RENDERED_HASH } from '@/shared/theme'
 import { BRIDGE } from '@/test/frame-bridge'
 
 import { request } from '../bridge/channel'
+import { modeStore } from '../mode'
+import { clear, selectElement, selectionStore } from '../selection'
 import { stopTurn, turnedBy, turnInPlace, turnStore } from './turn'
 
 const FRAME = 'studio/home/hero'
@@ -17,6 +19,8 @@ afterEach(() => {
   root?.remove()
   root = null
   stopTurn()
+  clear(selectionStore)
+  modeStore.setState({ mode: 'edit' })
 })
 
 /** A frame box holding a live page of `body`, as the canvas draws one. */
@@ -47,6 +51,45 @@ describe('turnInPlace', () => {
 
     expect(entered).toBe(true)
     expect(turnStore.getState().turning).toEqual({ frame: FRAME, index: 3 })
+  })
+
+  it('stays in turn mode as a write moves the selection to its new hash', async () => {
+    const container = await mountFrame(
+      '<model-viewer src="a.glb"></model-viewer>',
+    )
+    selectElement(selectionStore, 'studio/home', KEY)
+    await turnInPlace(container, KEY)
+
+    selectElement(selectionStore, 'studio/home', {
+      ...KEY,
+      hash: 'd'.repeat(64),
+    })
+
+    expect(turnStore.getState().turning).toEqual({ frame: FRAME, index: 3 })
+  })
+
+  it('leaves turn mode once the selection names another element', async () => {
+    const container = await mountFrame(
+      '<model-viewer src="a.glb"></model-viewer>',
+    )
+    selectElement(selectionStore, 'studio/home', KEY)
+    await turnInPlace(container, KEY)
+
+    selectElement(selectionStore, 'studio/home', { ...KEY, index: 2 })
+
+    expect(turnStore.getState().turning).toBeNull()
+  })
+
+  it('leaves turn mode once the board leaves Edit', async () => {
+    const container = await mountFrame(
+      '<model-viewer src="a.glb"></model-viewer>',
+    )
+    selectElement(selectionStore, 'studio/home', KEY)
+    await turnInPlace(container, KEY)
+
+    modeStore.setState({ mode: 'play' })
+
+    expect(turnStore.getState().turning).toBeNull()
   })
 
   it('stays out of turn mode for any other element', async () => {

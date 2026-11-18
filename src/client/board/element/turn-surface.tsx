@@ -92,7 +92,6 @@ export function TurnSurface({
       window.removeEventListener('keydown', key, true)
       window.removeEventListener('pointerdown', press, true)
       putBack(drag, stage)
-      stopTurn()
     }
   }, [on, frameRef, index])
 
