@@ -338,7 +338,8 @@ describe('LayoutSection padding', () => {
     ])
   })
 
-  it('writes one padding shorthand once both pairs read alike', async () => {
+  it('writes only the edited pair once both pairs read alike', async () => {
+    // The vertical 24px may come from a sheet, which a shorthand would override.
     const changes = renderSection(
       layoutOf({ padding: { top: 24, right: 0, bottom: 24, left: 0 } }),
     )
@@ -350,30 +351,15 @@ describe('LayoutSection padding', () => {
     expect(changes).toEqual([
       {
         kind: 'styles',
-        declarations: [{ property: 'padding', value: '24px' }],
+        declarations: [
+          { property: 'padding-left', value: '24px' },
+          { property: 'padding-right', value: '24px' },
+        ],
       },
     ])
   })
 
-  it('replaces a two-value shorthand with one value once its axes agree', async () => {
-    // `padding: 8px 16px` in the file reads back as these four sides.
-    const changes = renderSection(
-      layoutOf({ padding: { top: 8, right: 16, bottom: 8, left: 16 } }),
-    )
-
-    const field = screen.getByRole('textbox', { name: 'Vertical padding' })
-    await userEvent.clear(field)
-    await userEvent.type(field, '16{Enter}')
-
-    expect(changes).toEqual([
-      {
-        kind: 'styles',
-        declarations: [{ property: 'padding', value: '16px' }],
-      },
-    ])
-  })
-
-  it('writes the shorthand when the last differing side is set to match', async () => {
+  it('writes only the edited side once the last differing side matches', async () => {
     const changes = renderSection(
       layoutOf({ padding: { top: 4, right: 16, bottom: 16, left: 16 } }),
     )
@@ -385,7 +371,7 @@ describe('LayoutSection padding', () => {
     expect(changes).toEqual([
       {
         kind: 'styles',
-        declarations: [{ property: 'padding', value: '16px' }],
+        declarations: [{ property: 'padding-top', value: '16px' }],
       },
     ])
   })

@@ -487,7 +487,10 @@ function PaddingRow({ padding, disabled, write, preview }: PaddingRowProps) {
         onCommit={(change) =>
           write({
             kind: 'styles',
-            declarations: paddingWrite(padding, at, change),
+            declarations: at.map((side) => ({
+              property: `padding-${side}`,
+              value: `${Math.max(0, change(padding[side]))}px`,
+            })),
           })
         }
       />
@@ -537,34 +540,6 @@ function PaddingRow({ padding, disabled, write, preview }: PaddingRowProps) {
       </div>
     </>
   )
-}
-
-const SIDES = [
-  'top',
-  'right',
-  'bottom',
-  'left',
-] as const satisfies readonly Side[]
-
-/**
- * The declarations an edit to `at` writes, one `padding` once all four sides
- * agree, which the server writes in place of the longhands, else a longhand
- * per side edited, so no side set apart is lost.
- */
-function paddingWrite(
-  padding: LiveLayout['padding'],
-  at: readonly Side[],
-  change: (value: number) => number,
-): { property: string; value: string }[] {
-  const next = (side: Side) =>
-    at.includes(side) ? Math.max(0, change(padding[side])) : padding[side]
-  const [first, ...rest] = SIDES.map(next)
-  return rest.every((value) => value === first)
-    ? [{ property: 'padding', value: `${first}px` }]
-    : at.map((side) => ({
-        property: `padding-${side}`,
-        value: `${next(side)}px`,
-      }))
 }
 
 function Icon({ children }: { children: ReactNode }) {
