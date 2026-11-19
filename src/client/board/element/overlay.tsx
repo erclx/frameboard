@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 
-import { isTurned, pageBox } from '@/shared/frame-device'
+import { pageBox, turnsWith } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { subscribe } from '../bridge/channel'
@@ -67,14 +67,13 @@ function ElementGhosts({ frames, container }: ElementOverlayProps) {
     (state) => state.mode === 'edit' && state.tool === 'move',
   )
   const drawn = usePendingFrames(frames)
-  // A scroll frame reaches its overflow by scrolling, and a turned box is one screen of a page that scrolls, so neither draws a ghost.
+  // A scroll frame reaches its overflow by scrolling, and a shown phone, tablet, or foldable is one screen of a page that scrolls, as Present and Play scroll it, so neither draws a ghost.
   const walked = moving
     ? selected.filter(
         (ref) =>
           !frames.some(
             (frame) =>
-              frame.ref === ref &&
-              (frame.scroll || isTurned(frame.device, frame.turn)),
+              frame.ref === ref && (frame.scroll || turnsWith(frame.device)),
           ),
       )
     : []

@@ -611,21 +611,25 @@ describe('ElementOverlay', () => {
       expect(ghosts(drawn)).toEqual([])
     })
 
-    // Drawn upright first, so the empty read follows a ghost that had arrived.
-    it.each(['phone', 'tablet', 'foldable'] as const)(
-      'drops the ghost once a selected %s turns to one screen',
-      async (device) => {
+    // Drawn plain first, so the empty read follows a ghost that had arrived.
+    it.each([
+      ['an upright phone', { device: 'phone' }],
+      ['an upright tablet', { device: 'tablet' }],
+      ['an upright foldable', { device: 'foldable' }],
+      ['a turned phone', { device: 'phone', turn: 'left' }],
+    ] as const)(
+      'drops the ghost once a selected frame shows %s',
+      async (_name, shown) => {
         const container = await mountFrame(PAST)
-        const upright = { ...HERO, device }
         act(() => select(selectionStore, 'studio/home', [HERO.ref]))
         const { container: drawn, rerender } = render(
-          <ElementOverlay frames={[upright]} container={container} />,
+          <ElementOverlay frames={[HERO]} container={container} />,
         )
         await waitFor(() => expect(ghosts(drawn)).toHaveLength(1))
 
         rerender(
           <ElementOverlay
-            frames={[{ ...upright, turn: 'left' }]}
+            frames={[{ ...HERO, ...shown }]}
             container={container}
           />,
         )
@@ -633,6 +637,18 @@ describe('ElementOverlay', () => {
         expect(ghosts(drawn)).toEqual([])
       },
     )
+
+    it('still draws one for a selected laptop', async () => {
+      const container = await mountFrame(PAST)
+      const laptop = { ...HERO, device: 'laptop' as const }
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+
+      const { container: drawn } = render(
+        <ElementOverlay frames={[laptop]} container={container} />,
+      )
+
+      await waitFor(() => expect(ghosts(drawn)).toHaveLength(1))
+    })
 
     it('draws none while nothing on the frame is selected', async () => {
       const container = await mountFrame(PAST)
