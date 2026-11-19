@@ -770,7 +770,9 @@ test.describe('placing text and shapes into a frame', () => {
       await page.mouse.click(center.x, center.y)
       await page.keyboard.up('Meta')
       const outline = page.locator('[data-element-selection]')
-      await expect(outline.locator('[data-element-corner]')).toHaveCount(4)
+      // The chip draws with the marks, so their count reads settled once it shows.
+      await expect(outline.locator('[data-chip]')).toBeVisible()
+      const marks = await outline.locator('[data-element-corner]').count()
       const box = await outline.boundingBox()
       if (!box) throw new Error(`${name} draws no outline`)
       const zoom = await liveLayer(page).evaluate(
@@ -785,7 +787,7 @@ test.describe('placing text and shapes into a frame', () => {
       // The drag outruns the mark, and the cursor stays until release.
       await expect(canvas).toHaveCSS('cursor', 'nwse-resize')
       await page.mouse.up()
-      return { original, height, zoom }
+      return { original, height, zoom, marks }
     }
 
     /** The named element's height in the hero's own pixels. */
@@ -819,8 +821,16 @@ test.describe('placing text and shapes into a frame', () => {
     test('on a wrapped container across writes its width alone, reading W Fixed and H Hug, and one undo puts it back', async ({
       page,
     }) => {
-      const { original } = await dragCorner(page, WRAPPED, 'Group', 60, 0)
+      const { original, marks } = await dragCorner(
+        page,
+        WRAPPED,
+        'Group',
+        60,
+        0,
+      )
 
+      // Its 20px height draws no marks, and the outline's corner still resizes.
+      expect(marks).toBe(0)
       await expect.poll(read).not.toBe(original)
       const [, style = ''] =
         /data-name="Group" style="([^"]*)"/.exec(read()) ?? []
@@ -841,8 +851,15 @@ test.describe('placing text and shapes into a frame', () => {
     test('on an image writes its width and height, and one undo puts them back', async ({
       page,
     }) => {
-      const { original, zoom } = await dragCorner(page, IMAGE, 'Pic', 80, 40)
+      const { original, zoom, marks } = await dragCorner(
+        page,
+        IMAGE,
+        'Pic',
+        80,
+        40,
+      )
 
+      expect(marks).toBe(4)
       await expect.poll(read).not.toBe(original)
       const [, width, height] =
         /data-name="Pic"[^>]*width: (\d+)px; height: (\d+)px/.exec(read()) ?? []

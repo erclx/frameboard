@@ -280,11 +280,30 @@ describe('ElementOverlay', () => {
         '<section style="width: 80px; height: 40px; rotate: 90deg"><p>Held</p></section>',
         /^40 × 80$/,
       ],
+      [
+        'a shape under 24px tall',
+        '<div style="width: 80px; height: 23px"></div>',
+        /^80 × 23$/,
+      ],
+      [
+        'a shape under 24px wide',
+        '<div style="width: 23px; height: 80px"></div>',
+        /^23 × 80$/,
+      ],
     ])('draws no marks on %s', async (_name, body, size) => {
       const drawn = await selecting(body)
 
       expect(marks(drawn)).toBe(0)
       expect(chip(drawn)).toHaveTextContent(size)
+    })
+
+    it('keeps four marks on a shape 24px on both sides', async () => {
+      const drawn = await selecting(
+        '<div style="width: 24px; height: 24px"></div>',
+      )
+
+      expect(marks(drawn)).toBe(4)
+      expect(chip(drawn)).toHaveTextContent(/^24 × 24$/)
     })
 
     it('keeps the marks a held drop read while the written key waits on the reload', async () => {

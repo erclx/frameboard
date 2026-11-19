@@ -27,6 +27,13 @@ const CORNERS = [
   { left: '100%', top: '100%' },
 ] as const
 
+/**
+ * Below this many of the frame's own pixels on either side, a selected
+ * element draws no corner marks, which would sit over its content. A corner
+ * drag still resizes it, since the gestures find a corner by position.
+ */
+const MARKS_MIN = 24
+
 /** A member's outline inside a group's box, thinner so the group reads as one. */
 const MEMBER_OUTLINE = `${screen(1)} solid var(--primary)`
 
@@ -250,6 +257,8 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
         : null
   if (!box) return null
   const read = holds && !settled ? held.read : (measure?.read ?? null)
+  const marked =
+    read !== null && box.width >= MARKS_MIN && box.height >= MARKS_MIN
   return (
     <>
       <CanvasMediaBar element={element} box={box} container={container} />
@@ -274,7 +283,7 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
           zIndex: OVERLAY_Z,
         }}
       >
-        {read
+        {marked
           ? CORNERS.map((corner) => (
               <span
                 key={`${corner.left}-${corner.top}`}
