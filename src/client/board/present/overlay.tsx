@@ -629,6 +629,8 @@ function PresentedFrame({
   // The iframe stays mounted across slides, so only its first page waits.
   const waiting = useWaitingOnFirstLoad(iframe, true)
   const theme = useFrameTheme(frame.ref)
+  // Sent ahead of the colors, which a flip asks for in the theme it sends.
+  useThemeInFrame(iframe, theme)
   const colors = usePageColors(iframe, statusBar > 0, theme)
   const version = useLive((state) => state.reloads[frame.ref] ?? 0)
   // Read at load, since a later flip rewrites the root rather than restart the page.
@@ -636,7 +638,6 @@ function PresentedFrame({
     () => frameThemeUrl(frame.ref, frameTheme(frame.ref), version),
     [frame.ref, version],
   )
-  useThemeInFrame(iframe, theme)
   useEffect(() => {
     const element = iframe.current
     if (!element || !held) return
