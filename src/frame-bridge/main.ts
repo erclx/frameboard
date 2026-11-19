@@ -9,6 +9,7 @@ import {
   requestArgs,
 } from '@/shared/frame-bridge/messages'
 
+import { answersParent } from './board-origin'
 import { chromeHandlers } from './chrome'
 import { controlHandlers } from './controls'
 import { gapHandlers } from './gap'
@@ -30,9 +31,8 @@ import { openTextEdit } from './text-edit'
 document.currentScript?.remove()
 
 const board = window.parent
-// Same origin as the board until frames move to their own port. The
-// document's origin, since a srcdoc frame's location names none.
-const boardOrigin = window.origin
+// The document's origin, since a srcdoc frame's location names none.
+const ownOrigin = window.origin
 
 const page = crypto.randomUUID()
 
@@ -90,17 +90,27 @@ const handlers: Handlers = {
   ...previewHandlers(() => announce()),
 }
 
-function send(message: BridgeMessage): void {
-  board.postMessage(message, boardOrigin)
+/** Posts to the board at `origin`, the one its request came from. */
+function send(message: BridgeMessage, origin: string): void {
+  board.postMessage(message, origin)
 }
 
-/** Tells the board which bytes the page shows, which it holds for every read a press takes at once. */
+/**
+ * Tells the board which bytes the page shows, which it holds for every read a
+ * press takes at once. Posted to any origin, since it carries a page id and a
+ * content hash alone, and the frame's own scripts can read both anyway.
+ */
 function announce(hash = renderedHash(document)): void {
-  send({ tag: BRIDGE_TAG, kind: 'shown', page, hash })
+  send({ tag: BRIDGE_TAG, kind: 'shown', page, hash }, '*')
 }
 
 /** Runs the request's handler on arguments its schema read, answering the value it returns. */
-function answer<O extends BridgeOp>(op: O, args: unknown, id: string): unknown {
+function answer<O extends BridgeOp>(
+  op: O,
+  args: unknown,
+  id: string,
+  origin: string,
+): unknown {
   const handler = handlers[op] as Handler<O> | undefined
   if (!handler) throw new Error(`no handler for ${op}`)
   const read = requestArgs(op, args)
@@ -108,7 +118,7 @@ function answer<O extends BridgeOp>(op: O, args: unknown, id: string): unknown {
   return handler(read, {
     id,
     push: (value: BridgeOps[O]['push']) =>
-      send({ tag: BRIDGE_TAG, kind: 'push', id, value }),
+      send({ tag: BRIDGE_TAG, kind: 'push', id, value }, origin),
     onClose: (stop) => closers.set(id, stop),
   })
 }
@@ -120,7 +130,9 @@ if (board !== window) {
   window.addEventListener('pagehide', () => announce(null))
   window.addEventListener('message', (event) => {
     if (event.source !== board) return
-    const message = readBridgeMessage(event, boardOrigin)
+    const { origin } = event
+    if (!answersParent(origin, ownOrigin)) return
+    const message = readBridgeMessage(event, origin)
     if (message?.kind === 'close') {
       closers.get(message.id)?.()
       closers.delete(message.id)
@@ -128,11 +140,14 @@ if (board !== window) {
     if (message?.kind !== 'request') return
     const { id } = message
     try {
-      const value = answer(message.op, message.args, id)
-      send({ tag: BRIDGE_TAG, kind: 'reply', id, ok: true, value })
+      const value = answer(message.op, message.args, id, origin)
+      send({ tag: BRIDGE_TAG, kind: 'reply', id, ok: true, value }, origin)
     } catch (error) {
       const text = error instanceof Error ? error.message : String(error)
-      send({ tag: BRIDGE_TAG, kind: 'reply', id, ok: false, error: text })
+      send(
+        { tag: BRIDGE_TAG, kind: 'reply', id, ok: false, error: text },
+        origin,
+      )
     }
   })
 }
