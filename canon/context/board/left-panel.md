@@ -35,6 +35,8 @@ Owns the Assets tab, whose Files, Find, and Generate row sits in `tab.tsx`. File
 
 Owns Find, searching Openverse's images or Poly Haven's CC0 models, picked in the field's filter menu, and a model saves as one 1k GLB. A newer search aborts the older. `saveStore` in `../sourcing.ts` keys each save by project, kind, and source id, so a Save click and a drag of one result land one file.
 
+- `search-store.ts` holds each project's query, kind, license choice, and last search, so Find returns as it was left and a reload starts it empty
+
 - A result's thumbnail loads straight from the source in the board's chrome, over http or https alone, and falls back to its grey block
 - Save keeps its Saved mark once the file lands, so the grid never jumps, and a read-only tab lists results with Save off and says why
 - A result's drag carries a `DraggedResult` and saves only on a drop over the canvas, through `placeResult` in `src/client/board/place/write.ts`, then lands as a tile's drop does
@@ -66,4 +68,5 @@ Owns the first-run guide, the card a new board's empty page shows, asking for a 
 
 - Each asset write from the tile menu is one undo step. Rename and delete carry the license file, and replace takes it out, since the license named the bytes it replaced.
 - A rename rewrites the loads in each linking frame's own file through `src/server/board/asset-links.ts`, and refuses `asset-held` while a session holds one of those frames.
+- An element whose load a rename moved takes the new file name as its `data-name` only while that name is still the old file's, so a name set by hand stays.
 - A link in a linked sheet or a script string is not a load the rename sees, so it breaks for the link check to report.
