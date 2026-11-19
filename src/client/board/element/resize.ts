@@ -17,6 +17,7 @@ import { writeElement, writeElements } from '../inspector/element/write'
 import type { ElementKey } from '../selection'
 import type { GroupMember, MemberEdit } from './group'
 import { heldGhost, heldMeasures } from './measures'
+import { newTextStore } from './text-in-place'
 
 /** What a corner drag's write reads off the element it resizes. */
 export type ResizeTarget = Pick<ResizeRead, 'kind' | 'inset'> &
@@ -32,12 +33,20 @@ function drawsLive(container: ParentNode, ref: string): boolean {
 /**
  * How the element `key` names takes a corner resize, read from what its
  * frame pushed for the selection at the key's bytes, or null for one that
- * takes none or is not measured.
+ * takes none, is not measured, or is a placed Text still open for typing.
  */
 export function shownResize(
   container: ParentNode,
   key: ElementKey,
 ): ResizeRead | null {
+  const typing = newTextStore.getState().key
+  if (
+    typing?.frame === key.frame &&
+    typing.index === key.index &&
+    typing.hash === key.hash
+  ) {
+    return null
+  }
   if (!drawsLive(container, key.frame)) return null
   return heldMeasures([key])?.[0]?.read ?? null
 }
