@@ -92,7 +92,7 @@ export interface Placement {
   pose?: Pose
   /** Present while the frame picks the phone's wide island, shown or not. */
   island?: 'wide'
-  /** Present while the frame is turned, with the size it held upright, which only the write reads. */
+  /** Present while the frame is turned, with the size it held upright, which only the write reads and a foldable never keeps. */
   turn?: 'left' | 'right'
   upright?: UprightSize
   /** The widths a foldable's entry lists and never draws, which un-naming it draws again. */
@@ -248,8 +248,8 @@ export function placeFrames(
     const foldable = entry.foldable === true
     const kept = widthsOf(entry.widths)
     const upright = uprightOf(entry.upright)
-    // A foldable's poses are its sizes, so it reads upright whatever it holds.
-    const turn = upright && !foldable ? turnOf(entry.turn) : 'upright'
+    // A foldable's pose gives its upright size, so only another device needs one kept.
+    const turn = foldable || upright ? turnOf(entry.turn) : 'upright'
     const named = foldable ? 'foldable' : deviceForWidth(uprightWidth(entry))
     const device = shown ? named : null
     const transition = readTransition(entry.transition)
@@ -269,7 +269,8 @@ export function placeFrames(
       ...(foldable ? { foldable, pose: poseOf(entry.pose) } : {}),
       ...(foldable && kept.length > 0 ? { keptWidths: kept } : {}),
       ...(islandOf(entry.island) === 'wide' ? { island: 'wide' as const } : {}),
-      ...(turn !== 'upright' && upright ? { turn, upright } : {}),
+      ...(turn !== 'upright' && foldable ? { turn } : {}),
+      ...(turn !== 'upright' && !foldable && upright ? { turn, upright } : {}),
       ...(transition ? { transition } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
       ...(kit ? { kit } : {}),
