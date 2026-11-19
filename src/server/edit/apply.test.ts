@@ -250,6 +250,36 @@ describe('applyEdit', () => {
       })
     })
 
+    it('should fold a padding pair over its shorthand and verify the fold', () => {
+      expect(
+        applyEdit('<div style="padding: 8px 16px"></div>', FIRST, {
+          kind: 'styles',
+          declarations: [
+            { property: 'padding-top', value: '16px' },
+            { property: 'padding-bottom', value: '16px' },
+          ],
+        }),
+      ).toMatchObject({
+        ok: true,
+        html: '<div style="padding: 16px"></div>',
+      })
+    })
+
+    it('should write a padding pair alone where no other side is inline', () => {
+      expect(
+        applyEdit('<div style="color: red"></div>', FIRST, {
+          kind: 'styles',
+          declarations: [
+            { property: 'padding-left', value: '24px' },
+            { property: 'padding-right', value: '24px' },
+          ],
+        }),
+      ).toMatchObject({
+        ok: true,
+        html: '<div style="color: red; padding-left: 24px; padding-right: 24px"></div>',
+      })
+    })
+
     it('should refuse no declarations', () => {
       expect(
         applyEdit(SHAPE, FIRST, { kind: 'styles', declarations: [] }),

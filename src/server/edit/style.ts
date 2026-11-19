@@ -130,14 +130,20 @@ export function declaredValues(style: string, property: string): string[] {
 }
 
 /**
- * The part of a decoded style's last shorthand that a paint longhand reads
- * from, which `setDeclaration` writes in place of the longhand. Undefined for
- * a property with no such shorthand, or a shorthand holding no such part.
+ * The part of a decoded style's last shorthand that a paint longhand or a
+ * padding side reads from, which `setDeclaration` writes in place of the
+ * longhand. Undefined for a property with no such shorthand, or a shorthand
+ * holding no such part.
  */
 export function shorthandValue(
   style: string,
   property: string,
 ): string | undefined {
+  const side = PADDING_LONGHANDS.indexOf(property)
+  if (side >= 0) {
+    const padding = declaredValues(style, 'padding').at(-1)
+    return padding === undefined ? undefined : paddingSides(padding)?.[side]
+  }
   const shorthand = PART_SHORTHANDS[property]
   if (!shorthand) return undefined
   const value = declaredValues(style, shorthand).at(-1)
@@ -150,9 +156,21 @@ export type DeclarationResult =
 
 /**
  * Sets or drops one declaration, dropping later ones so nothing overrides the
- * edit, and refusing a style ending inside an open quote or comment.
+ * edit, and refusing a style ending inside an open quote or comment. A padding
+ * side folds the inline padding into one `padding` once all four are declared.
  */
 export function setDeclaration(
+  style: string,
+  property: string,
+  value: string,
+): DeclarationResult {
+  const written = writeDeclaration(style, property, value)
+  return written.ok && PADDING_LONGHANDS.includes(property)
+    ? { ok: true, style: foldPadding(written.style) }
+    : written
+}
+
+function writeDeclaration(
   style: string,
   property: string,
   value: string,
@@ -197,6 +215,79 @@ export function setDeclaration(
     return [`${lead}${declaration}`]
   })
   return { ok: true, style: next.join(';') }
+}
+
+const PADDING_LONGHANDS: readonly string[] = SHORTHAND_LONGHANDS.padding ?? []
+
+/**
+ * A length or percentage `padding` accepts, so a fold never puts a value one
+ * side would drop into a shorthand, where it would drop all four.
+ */
+const PADDING_LENGTH =
+  /^(?:0|(?:\d+\.?\d*|\.\d+)(?:%|px|r?em|r?lh|r?ex|r?ch|r?cap|r?ic|[sld]?v(?:w|h|i|b|min|max)|cq(?:w|h|i|b|min|max)|pt|pc|cm|mm|q|in))$/i
+
+/** The top, right, bottom, and left a padding shorthand sets, if each is a plain length. */
+function paddingSides(value: string): string[] | undefined {
+  const parts = value.trim().split(/\s+/)
+  if (parts.length > 4 || !parts.every((part) => PADDING_LENGTH.test(part))) {
+    return undefined
+  }
+  const [top = '', right = top, bottom = top, left = right] = parts
+  return [top, right, bottom, left]
+}
+
+function paddingShorthand([
+  top,
+  right,
+  bottom,
+  left,
+]: readonly string[]): string {
+  if (left !== right) return `${top} ${right} ${bottom} ${left}`
+  if (bottom !== top) return `${top} ${right} ${bottom}`
+  return right === top ? `${top}` : `${top} ${right}`
+}
+
+/**
+ * Folds a style's padding declarations into one `padding` once all four sides
+ * are declared inline, since the shorthand then overrides nothing a sheet sets.
+ * Leaves the style as written where a side cannot be read, as behind `!important`
+ * or a comment, or where a logical side or a later shorthand would disagree.
+ */
+function foldPadding(style: string): string {
+  const { segments } = declarations(style)
+  const sides: (string | undefined)[] = [
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+  ]
+  const at: number[] = []
+  for (const [index, segment] of segments.entries()) {
+    const property = propertyOf(segment)
+    if (!property.startsWith('padding')) continue
+    if (segment.includes('/*')) return style
+    const value = segment.slice(segment.indexOf(':') + 1)
+    if (property === 'padding') {
+      const all = paddingSides(value)
+      if (!all || at.length > 0) return style
+      sides.splice(0, 4, ...all)
+    } else {
+      const side = PADDING_LONGHANDS.indexOf(property)
+      if (side < 0 || !PADDING_LENGTH.test(value.trim())) return style
+      sides[side] = value.trim()
+    }
+    at.push(index)
+  }
+  const [first] = at
+  const known = sides.filter((side) => side !== undefined)
+  if (first === undefined || at.length < 2 || known.length < 4) return style
+  const lead = /^\s*/.exec(segments[first] ?? '')?.[0] ?? ''
+  return segments
+    .flatMap((segment, index) => {
+      if (index === first) return [`${lead}padding: ${paddingShorthand(known)}`]
+      return at.includes(index) ? [] : [segment]
+    })
+    .join(';')
 }
 
 /**
