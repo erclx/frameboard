@@ -44,6 +44,75 @@ export async function runWorkflow(
   send: typeof fetch,
   clock: RunClock = realClock,
 ): Promise<ImageBytes> {
+  const outputs = await runPrompt(base, workflow, send, clock)
+  return readImage(base, firstSavedImage(outputs), send)
+}
+
+/**
+ * Queues the workflow, waits for it to finish, and reads the first GLB a save
+ * node wrote, ignoring any later one. Refuses `provider-failed` as
+ * `runWorkflow` does, and when the run saved no GLB.
+ */
+export async function runModelWorkflow(
+  base: string,
+  workflow: Workflow,
+  send: typeof fetch,
+  clock: RunClock = realClock,
+): Promise<Uint8Array> {
+  const outputs = await runPrompt(base, workflow, send, clock)
+  const file = firstSavedModel(outputs)
+  const answer = await call(send, viewUrl(base, file))
+  if (!answer.ok) {
+    throw failed(answer.status, `could not serve ${file.filename}`)
+  }
+  return new Uint8Array(await answer.arrayBuffer())
+}
+
+/** A picture to hand the server, named by the file name it is stored under. */
+export interface Upload {
+  name: string
+  bytes: Uint8Array
+}
+
+/**
+ * Hands a picture to the server through its own upload, answering the name a
+ * `LoadImage` node reads it by. The server may store it under another name,
+ * so a run takes the answered name rather than the one sent.
+ */
+export async function uploadImage(
+  base: string,
+  upload: Upload,
+  send: typeof fetch,
+): Promise<string> {
+  const form = new FormData()
+  // Copied, since a Blob refuses a view that may sit on a SharedArrayBuffer.
+  form.append('image', new Blob([upload.bytes.slice()]), upload.name)
+  form.append('overwrite', 'true')
+  const answer = await call(send, routeOf(base, 'upload/image'), {
+    method: 'POST',
+    body: form,
+  })
+  if (!answer.ok) {
+    throw failed(answer.status, `refused the upload of ${upload.name}`)
+  }
+  const body: unknown = await answer.json().catch(() => null)
+  const name = field(body, 'name')
+  if (typeof name !== 'string' || name === '') {
+    throw failed(answer.status, 'took the upload but answered no name')
+  }
+  const subfolder = field(body, 'subfolder')
+  return typeof subfolder === 'string' && subfolder !== ''
+    ? `${subfolder}/${name}`
+    : name
+}
+
+/** Queues the workflow and waits for it to finish, answering the outputs its history records. */
+async function runPrompt(
+  base: string,
+  workflow: Workflow,
+  send: typeof fetch,
+  clock: RunClock,
+): Promise<unknown> {
   const queued = await call(send, routeOf(base, 'prompt'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -63,9 +132,7 @@ export async function runWorkflow(
     const entry = field(await answer.json().catch(() => null), id)
     const status = field(entry, 'status')
     if (field(status, 'status_str') === 'error') throw runFailed(status)
-    if (field(status, 'completed') === true) {
-      return readImage(base, firstSavedImage(field(entry, 'outputs')), send)
-    }
+    if (field(status, 'completed') === true) return field(entry, 'outputs')
     if (clock.now() >= deadline) {
       throw failed(
         null,
@@ -130,17 +197,49 @@ function firstSavedImage(outputs: unknown): SavedFile {
   throw failed(200, 'the run finished and saved no image')
 }
 
-async function readImage(
-  base: string,
-  file: SavedFile,
-  send: typeof fetch,
-): Promise<ImageBytes> {
+/** The first GLB a save node wrote, which ComfyUI lists under a node's `3d` output. */
+function firstSavedModel(outputs: unknown): SavedFile {
+  const nodes =
+    typeof outputs === 'object' && outputs !== null
+      ? Object.values(outputs)
+      : []
+  for (const node of nodes) {
+    const files = field(node, '3d')
+    for (const file of Array.isArray(files) ? files : []) {
+      const filename = field(file, 'filename')
+      if (
+        typeof filename === 'string' &&
+        filename.toLowerCase().endsWith('.glb') &&
+        field(file, 'type') === 'output'
+      ) {
+        const subfolder = field(file, 'subfolder')
+        return {
+          filename,
+          subfolder: typeof subfolder === 'string' ? subfolder : '',
+          type: 'output',
+        }
+      }
+    }
+  }
+  throw failed(200, 'the run finished and saved no GLB')
+}
+
+/** Where `/view` serves a saved file, which it answers as it is unless a `channel` asks for one. */
+function viewUrl(base: string, file: SavedFile): string {
   const query = new URLSearchParams({
     filename: file.filename,
     subfolder: file.subfolder,
     type: file.type,
   })
-  const answer = await call(send, `${routeOf(base, 'view')}?${query}`)
+  return `${routeOf(base, 'view')}?${query}`
+}
+
+async function readImage(
+  base: string,
+  file: SavedFile,
+  send: typeof fetch,
+): Promise<ImageBytes> {
+  const answer = await call(send, viewUrl(base, file))
   if (!answer.ok) {
     throw failed(answer.status, `could not serve ${file.filename}`)
   }
