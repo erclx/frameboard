@@ -107,6 +107,19 @@ export type Change =
       hashes: Record<Side, string>
     }
   /**
+   * One frame file a hand write rewrote outside any element edit, such as an
+   * asset rename pointing its links at the new name, held whole on both sides,
+   * so an agent's write anywhere in the file overtakes the step rather than
+   * being reverted by it.
+   */
+  | {
+      kind: 'rewritten'
+      path: string
+      ref: string
+      before: string
+      after: string
+    }
+  /**
    * One element a hand edit rewrote, held as its span on both sides, so an undo
    * restores it and keeps every other byte as it stands.
    */
@@ -227,6 +240,11 @@ async function reads(change: Change, side: Side): Promise<boolean> {
         (await exists(change.path)) &&
         (await exists(change.slot)) &&
         (await hashPath(change.path)) === change.hashes[side]
+      )
+    case 'rewritten':
+      return (
+        (await exists(change.path)) &&
+        (await readText(change.path)) === change[side]
       )
     case 'element':
       return (
@@ -355,6 +373,12 @@ export async function restore(
     case 'replaced':
       await swapWithSlot(change.path, change.slot)
       return
+    case 'rewritten':
+      return rewriteFrame(change, (source) =>
+        source === change[OTHER[side]]
+          ? { html: change[side], keep: () => {} }
+          : undefined,
+      )
     case 'element':
       return rewriteFrame(change, (source) => {
         const swapped = swapSpan(source, change.span, OTHER[side])
@@ -479,7 +503,7 @@ async function rewriteToken(
 async function rewriteFrame(
   change: Extract<
     Change,
-    { kind: 'element' | 'inserted' | 'deleted' | 'relocated' }
+    { kind: 'element' | 'inserted' | 'deleted' | 'relocated' | 'rewritten' }
   >,
   rewrite: (source: string) => { html: string; keep: () => void } | undefined,
 ): Promise<string> {
@@ -570,6 +594,11 @@ export class StepJournal implements Journal {
   /** The element a hand edit rewrote in a frame file, which this journal does not write. */
   element(path: string, ref: string, span: ElementSpan): void {
     this.changes.push({ kind: 'element', path, ref, span })
+  }
+
+  /** A frame file a hand write rewrote whole on each side, which this journal does not write. */
+  rewritten(path: string, ref: string, before: string, after: string): void {
+    this.changes.push({ kind: 'rewritten', path, ref, before, after })
   }
 
   /** The element a placement tool wrote into a frame file, which this journal does not write. */

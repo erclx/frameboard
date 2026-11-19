@@ -29,6 +29,8 @@ export interface Journal {
   project(file: string, before: ProjectFiling, after: ProjectFiling): void
   /** One token's declarations in the project token sheet at `path`, on each side of a hand edit that already wrote it. */
   token(path: string, name: string, before: TokenSides, after: TokenSides): void
+  /** A frame file at `path`, by its board ref, that the verb already rewrote whole, on each side of the write. */
+  rewritten(path: string, ref: string, before: string, after: string): void
   /** Renames `from` to `to`, in place of the verb's own rename. */
   moved(from: string, to: string): Promise<void>
   /** A file or folder the verb just created, whose content an undo checks before removing it. */

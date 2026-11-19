@@ -1,17 +1,19 @@
 import { randomBytes } from 'node:crypto'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import {
   link,
   mkdir,
   readdir,
+  readFile,
   realpath,
   rename,
   rm,
   stat,
   writeFile,
 } from 'node:fs/promises'
-import { dirname, join, sep } from 'node:path'
+import { basename, dirname, join, sep } from 'node:path'
 
+import { type FrameTarget, readFrame } from '@/server/checks/frame-source'
 import {
   assetKind,
   extensionOf,
@@ -23,7 +25,12 @@ import {
 import { ASSETS_FOLDER } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 import { PROJECT_KITS } from '@/shared/kits'
-import { NAME_MAX_LENGTH, nextFreeName } from '@/shared/names'
+import {
+  isValidName,
+  NAME_MAX_LENGTH,
+  namesCollide,
+  nextFreeName,
+} from '@/shared/names'
 import type {
   AssetAddResult,
   AssetFile,
@@ -31,6 +38,7 @@ import type {
 } from '@/shared/records/assets'
 import { LICENSE_FILE_SUFFIX } from '@/shared/records/sourcing'
 
+import { framesLinking, rewriteAssetLinks } from './asset-links'
 import type { JournalOptions } from './journal'
 import { isCode, LOCK_SUFFIX, TEMP_SUFFIX } from './json-record'
 
@@ -255,6 +263,140 @@ export async function replaceAsset(
     await rm(temp, { force: true })
   }
   return { path, frames: [] }
+}
+
+/** Checks the frames a rename would rewrite, by ref, throwing to refuse it. */
+export type RenameGate = (refs: string[]) => Promise<void>
+
+export interface RenameOptions extends JournalOptions {
+  gate?: RenameGate
+}
+
+/**
+ * Renames an asset and its license file in their folder and points every
+ * frame linking it at the new name, writing no file until the gate passed
+ * on every frame. A frame write that fails puts back the frames written
+ * before it, so no project is left half renamed. Refuses `invalid-name` for
+ * a name off the board rule or changing the extension, and `name-taken` for
+ * a name another file in the folder holds in any case.
+ */
+export async function renameAsset(
+  root: string,
+  project: string,
+  path: string,
+  name: string,
+  { journal, gate = async () => {} }: RenameOptions = {},
+): Promise<AssetWriteResult> {
+  const projectDir = join(root, project)
+  const file = await writableAsset(projectDir, path)
+  const folder = dirname(file)
+  const from = basename(file)
+  const renamed = [...path.split('/').slice(0, -1), name].join('/')
+  if (name === from) return { path, frames: [] }
+  if (
+    !isValidName(name) ||
+    isScratch(name) ||
+    name.endsWith(LICENSE_FILE_SUFFIX) ||
+    extensionOf(name) !== extensionOf(from)
+  ) {
+    throw new FrameboardError(
+      'invalid-name',
+      `${name} is not a name ${from} can take. Use letters, digits, dots, dashes, and underscores, keep the .${extensionOf(from)} ending, and stay within ${NAME_MAX_LENGTH} characters.`,
+      { path, name },
+    )
+  }
+  const taken = (await readdir(folder)).find(
+    (entry) =>
+      entry !== from &&
+      entry !== `${from}${LICENSE_FILE_SUFFIX}` &&
+      (namesCollide(entry, name) ||
+        namesCollide(entry, `${name}${LICENSE_FILE_SUFFIX}`)),
+  )
+  if (taken !== undefined) {
+    throw new FrameboardError(
+      'name-taken',
+      `assets/${[...path.split('/').slice(0, -1), taken].join('/')} already exists. Pick another name.`,
+      { path, name },
+    )
+  }
+
+  const frames = await framesLinking(root, project, path)
+  const ref = ({ page, name: frame }: FrameTarget) =>
+    `${project}/${page}/${frame}`
+  await gate(frames.map(ref))
+
+  const target = join(folder, name)
+  const rewrites = frames.flatMap((frame) => {
+    const source = readFrame(frame)
+    if (!Buffer.from(source.html, 'utf8').equals(readFileSync(source.path))) {
+      throw new FrameboardError(
+        'invalid-utf8',
+        `${ref(frame)} is not UTF-8, so the rename cannot point its links at ${name}. Nothing was renamed.`,
+        { frame: ref(frame) },
+      )
+    }
+    const after = rewriteAssetLinks(source, file, target)
+    return after === null
+      ? []
+      : [{ path: source.path, ref: ref(frame), before: source.html, after }]
+  })
+  const written: typeof rewrites = []
+  const license = licenseOf(file)
+  try {
+    for (const rewrite of rewrites) {
+      await writeFrameWhole(rewrite.path, rewrite.before, rewrite.after)
+      written.push(rewrite)
+    }
+    if (journal) {
+      for (const each of written) {
+        journal.rewritten(each.path, each.ref, each.before, each.after)
+      }
+      await journal.moved(file, target)
+      if (license !== null) {
+        await journal.moved(license, `${target}${LICENSE_FILE_SUFFIX}`)
+      }
+    } else {
+      await rename(file, target)
+      if (license !== null) {
+        await rename(license, `${target}${LICENSE_FILE_SUFFIX}`)
+      }
+    }
+  } catch (error) {
+    for (const each of written.toReversed()) {
+      await writeFrameWhole(each.path, each.after, each.before).catch(() => {})
+    }
+    throw error
+  }
+  return { path: renamed, frames: written.map((each) => each.ref) }
+}
+
+/**
+ * Writes a frame file whole through a temp file, refusing with
+ * `stale-address` when the file no longer holds `before`, so an agent's
+ * write that landed since is never overwritten.
+ */
+async function writeFrameWhole(
+  path: string,
+  before: string,
+  after: string,
+): Promise<void> {
+  const temp = join(
+    dirname(path),
+    `.${basename(path)}.${randomBytes(6).toString('hex')}${TEMP_SUFFIX}`,
+  )
+  await writeFile(temp, after)
+  try {
+    if ((await readFile(path, 'utf8')) !== before) {
+      throw new FrameboardError(
+        'stale-address',
+        `An agent changed ${basename(path)} while the rename read it, so nothing was renamed. Try again.`,
+        { path },
+      )
+    }
+    await rename(temp, path)
+  } finally {
+    await rm(temp, { force: true })
+  }
 }
 
 /**

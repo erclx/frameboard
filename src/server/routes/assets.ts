@@ -9,19 +9,22 @@ import {
   addAssets,
   listAssets,
   removeAsset,
+  renameAsset,
   replaceAsset,
 } from '@/server/board/assets'
 import { listTransitions, ownKeyframes } from '@/server/board/transitions'
+import { refuseClaimed } from '@/server/claims/gate'
 import type { History } from '@/server/history/stack'
 import { FrameboardError } from '@/shared/errors'
 import { isValidName } from '@/shared/names'
-import type {
-  AssetWriteResult,
-  TransitionKeyframesList,
+import {
+  assetRenameSchema,
+  type AssetWriteResult,
+  type TransitionKeyframesList,
 } from '@/shared/records/assets'
 
 import { type Access, requireWriter } from '../access/guard'
-import { answerRefusal } from './envelope'
+import { answerRefusal, parseBody } from './envelope'
 import { decodeSegments } from './frames'
 
 /** The most a drop may carry, multipart overhead included. */
@@ -177,6 +180,19 @@ export function assetsRoutes(
     return c.json({ ok: true, data })
   })
 
+  app.patch(file, authorized, async (c) => {
+    const project = c.req.param('project')
+    const { asset } = target(c.req.url, project)
+    const { name } = await parseBody(c.req.raw, assetRenameSchema)
+    const data = await recorded((journal) =>
+      renameAsset(root, project, asset, name, {
+        journal,
+        gate: (refs) => refuseHeld(root, asset, refs),
+      }),
+    )
+    return c.json({ ok: true, data })
+  })
+
   app.put(file, authorized, limited, async (c) => {
     const { projectDir, asset } = target(c.req.url, c.req.param('project'))
     const form = await c.req
@@ -202,6 +218,27 @@ export function assetsRoutes(
   app.onError(answerRefusal)
 
   return app
+}
+
+/** Refuses `asset-held` naming the session, when another session holds a frame the rename would rewrite. */
+async function refuseHeld(
+  root: string,
+  asset: string,
+  refs: string[],
+): Promise<void> {
+  try {
+    await refuseClaimed(root, refs, new Date())
+  } catch (error) {
+    if (!(error instanceof FrameboardError) || error.code !== 'frame-claimed') {
+      throw error
+    }
+    const { tag, frame } = error.details
+    throw new FrameboardError(
+      'asset-held',
+      `${String(tag)} is editing ${String(frame)}, which links assets/${asset}, so it was not renamed. Try again once it finishes.`,
+      error.details,
+    )
+  }
 }
 
 function projectFolder(root: string, project: string): string | null {

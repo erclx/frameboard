@@ -16,6 +16,8 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'asset-not-found': 404,
   'name-taken': 409,
   'stale-layout': 409,
+  'stale-address': 409,
+  'invalid-utf8': 422,
   'frame-claimed': 409,
   'asset-held': 409,
   'asset-type-refused': 400,

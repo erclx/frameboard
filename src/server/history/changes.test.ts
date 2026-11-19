@@ -404,6 +404,34 @@ describe('changes', () => {
     })
   })
 
+  describe('rewritten', () => {
+    beforeEach(() => {
+      writeFileSync(at('webapp/home/hero.html'), '<img src="../assets/b.jpg">')
+      journal.rewritten(
+        at('webapp/home/hero.html'),
+        'webapp/home/hero',
+        '<img src="../assets/a.jpg">',
+        '<img src="../assets/b.jpg">',
+      )
+    })
+
+    it('fails once an agent wrote anywhere in the frame', async () => {
+      writeFileSync(
+        at('webapp/home/hero.html'),
+        '<img src="../assets/b.jpg"><p>agent</p>',
+      )
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
+    })
+
+    it('writes the frame back whole and answers its hash', async () => {
+      const hash = await restore(first(), 'before')
+
+      expect(read('webapp/home/hero.html')).toBe('<img src="../assets/a.jpg">')
+      expect(hash).toBe(contentHash('<img src="../assets/a.jpg">'))
+    })
+  })
+
   describe('element', () => {
     const HERO = 'webapp/home/hero.html'
 
