@@ -1,21 +1,47 @@
 import { ChevronDown, ChevronRight, Plus, Search } from 'lucide-react'
-import { type DragEvent, useEffect, useRef, useState } from 'react'
+import {
+  type DragEvent,
+  Fragment,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 
+import { reportRefusal } from '@/client/board/left-panel/page-actions'
 import { leftTabStore } from '@/client/board/left-panel/tab-store'
+import type { AssetMenuActs } from '@/client/board/menus/asset'
+import { placeAtCenter } from '@/client/board/place/write'
+import { canvasView } from '@/client/board/view'
+import { Button } from '@/client/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@/client/components/ui/dialog'
 import { useLive } from '@/client/live/store'
-import type { AssetAddResult, AssetList } from '@/shared/records/assets'
+import type {
+  AssetAddResult,
+  AssetFile,
+  AssetList,
+} from '@/shared/records/assets'
 
+import { frameLabel } from './describe'
+import { isPlaceable, type PlaceableFile } from './drag'
 import {
   type AssetGroup,
   type Chip,
   CHIP_LABELS,
   chipCounts,
+  fileName,
   groupAssets,
   withoutKits,
 } from './groups'
 import { fetchAssets } from './list'
 import { Tile } from './tile'
-import { uploadAssets } from './upload'
+import { ASSET_WRITES, type AssetWrites, uploadAssets } from './upload'
 
 const CODE = 'font-mono text-label font-normal text-foreground'
 
@@ -25,16 +51,29 @@ interface FilesViewProps {
   load?: (project: string) => Promise<AssetList | null>
   /** Posts a drop, the API in the app. */
   upload?: (project: string, files: File[]) => Promise<AssetAddResult>
+  /** Renames, replaces, deletes, and reads the frames linking a file, the API in the app. */
+  writes?: AssetWrites
+  /** Lands a file in a new frame at the view's center, `placeAtCenter` in the app. */
+  place?: (file: PlaceableFile) => void
+}
+
+/** The file Delete asks about and the frames linking it, which the confirm names. */
+interface Deleting {
+  path: string
+  frames: string[]
 }
 
 /**
  * The Assets tab's Files view, re-reading the list on every board message
- * while open, so a file an agent wrote shows without a reload.
+ * while open, so a file an agent wrote shows without a reload. It holds
+ * which tile renames, the Delete confirm, and each replaced file's version.
  */
 export function FilesView({
   project,
   load = fetchAssets,
   upload = uploadAssets,
+  writes = ASSET_WRITES,
+  place = placeAtCenter,
 }: FilesViewProps) {
   const canWrite = useLive((state) => state.canWrite)
   const [reads, setReads] = useState(0)
@@ -43,9 +82,77 @@ export function FilesView({
   const [busy, setBusy] = useState(false)
   const [refusals, setRefusals] = useState<{ id: string; text: string }[]>([])
   const picker = useRef<HTMLInputElement>(null)
+  const replacer = useRef<HTMLInputElement>(null)
+  const replacing = useRef<string | null>(null)
   const [search, setSearch] = useState('')
   const [picked, setPicked] = useState<Chip>('all')
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<Deleting | null>(null)
+  const [versions, setVersions] = useState<Readonly<Record<string, number>>>({})
+
+  /** Runs one write, toasting a refusal, and reads the list again after it either way. */
+  async function written(title: string, write: () => Promise<unknown>) {
+    try {
+      await write()
+    } catch (error) {
+      reportRefusal(title)(error)
+    } finally {
+      setReads((count) => count + 1)
+    }
+  }
+
+  function rename(path: string, name: string) {
+    setRenaming(null)
+    void written('Couldn’t rename the file', () =>
+      writes.rename(project, path, name),
+    )
+  }
+
+  function replace(path: string, file: File) {
+    void written('Couldn’t replace the file', async () => {
+      await writes.replace(project, path, file)
+      setVersions((current) => ({
+        ...current,
+        [path]: (current[path] ?? 0) + 1,
+      }))
+    })
+  }
+
+  function remove(path: string) {
+    void written('Couldn’t delete the file', () => writes.remove(project, path))
+  }
+
+  /** Deletes a file no frame links at once, and asks first, naming them, for one some frame does. */
+  async function askDelete(file: AssetFile) {
+    if (file.frames === 0) {
+      remove(file.path)
+      return
+    }
+    try {
+      const frames = await writes.frames(project, file.path)
+      if (frames.length === 0) remove(file.path)
+      else setDeleting({ path: file.path, frames })
+    } catch (error) {
+      reportRefusal('Couldn’t delete the file')(error)
+    }
+  }
+
+  function actsFor(file: AssetFile): Omit<AssetMenuActs, 'copy'> {
+    if (!canWrite) return {}
+    return {
+      place:
+        isPlaceable(file) && canvasView.page() !== null
+          ? () => place({ project, path: file.path, kind: file.kind })
+          : undefined,
+      rename: () => setRenaming(file.path),
+      replace: () => {
+        replacing.current = file.path
+        replacer.current?.click()
+      },
+      remove: () => void askDelete(file),
+    }
+  }
 
   async function add(files: File[]) {
     if (!canWrite || files.length === 0) return
@@ -145,6 +252,19 @@ export function FilesView({
             void add(chosen)
           }}
         />
+        <input
+          ref={replacer}
+          type="file"
+          hidden
+          aria-label="Choose a file to replace it with"
+          onChange={(event) => {
+            const [chosen] = event.target.files ?? []
+            const path = replacing.current
+            event.target.value = ''
+            replacing.current = null
+            if (chosen && path !== null) replace(path, chosen)
+          }}
+        />
       </div>
       {count === 0 ? (
         <p className="mx-3 my-1 text-muted-foreground">
@@ -207,9 +327,26 @@ export function FilesView({
               <Group
                 key={group.folder}
                 group={group}
-                project={project}
                 open={!collapsed.has(group.folder)}
                 onToggle={() => toggle(group.folder)}
+                tile={(file) => (
+                  <Tile
+                    key={file.path}
+                    project={project}
+                    file={file}
+                    version={versions[file.path]}
+                    acts={actsFor(file)}
+                    loadFrames={() => writes.frames(project, file.path)}
+                    rename={
+                      renaming === file.path
+                        ? {
+                            commit: (name) => rename(file.path, name),
+                            cancel: () => setRenaming(null),
+                          }
+                        : undefined
+                    }
+                  />
+                )}
               />
             ))
           )}
@@ -253,19 +390,78 @@ export function FilesView({
           ))}
         </ul>
       ) : null}
+      <Dialog
+        open={deleting !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(null)
+        }}
+      >
+        <DialogContent showCloseButton={false} className="gap-3 p-4">
+          <DialogTitle className="text-title font-semibold">
+            Delete {deleting ? fileName(deleting.path) : null}?
+          </DialogTitle>
+          <DialogDescription>
+            {deleting ? deleteWarning(deleting.frames) : null}
+          </DialogDescription>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleting(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleting) remove(deleting.path)
+                setDeleting(null)
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  )
+}
+
+/** The listed frames past which Delete's confirm counts the rest. */
+const NAMED_FRAMES = 3
+
+/** Delete's warning, naming the frames whose link breaks and saying Undo brings the file back. */
+function deleteWarning(frames: readonly string[]): ReactNode {
+  const named = frames.slice(0, NAMED_FRAMES)
+  const rest = frames.length - named.length
+  const parts: ReactNode[] = named.map((ref) => (
+    <b key={ref} className="font-medium text-foreground">
+      {frameLabel(ref)}
+    </b>
+  ))
+  if (rest > 0) parts.push(`${rest} more`)
+  return (
+    <>
+      {frames.length === 1 ? 'Its link in ' : 'Its links in '}
+      {parts.map((part, index) => (
+        // oxlint-disable-next-line react/no-array-index-key -- the parts are fixed in order for one render
+        <Fragment key={index}>
+          {index === 0 ? null : index === parts.length - 1 ? ' and ' : ', '}
+          {part}
+        </Fragment>
+      ))}
+      {frames.length === 1 ? ' breaks' : ' break'}, which the link check
+      reports. Undo brings the file back.
+    </>
   )
 }
 
 interface GroupProps {
   group: AssetGroup
-  project: string
   open: boolean
   onToggle: () => void
+  /** Draws one file's tile. */
+  tile: (file: AssetFile) => ReactNode
 }
 
 /** One folder's tiles under a heading that collapses them, `assets/` naming the folder's own files. */
-function Group({ group, project, open, onToggle }: GroupProps) {
+function Group({ group, open, onToggle, tile }: GroupProps) {
   const Caret = open ? ChevronDown : ChevronRight
   const count = group.files.length
   return (
@@ -284,9 +480,7 @@ function Group({ group, project, open, onToggle }: GroupProps) {
       </h4>
       {open ? (
         <ul className="grid grid-cols-2 gap-2 px-2 pt-0.5 pb-2">
-          {group.files.map((file) => (
-            <Tile key={file.path} project={project} file={file} />
-          ))}
+          {group.files.map(tile)}
         </ul>
       ) : null}
     </section>

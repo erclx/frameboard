@@ -1,12 +1,284 @@
 import '../../styles.css'
 
-import { render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { AssetFile } from '@/shared/records/assets'
+import { liveStore } from '@/client/live/store'
+import type { AssetFile, AssetWriteResult } from '@/shared/records/assets'
 
 import CLIP from '../../../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
+import { FilesView } from './files'
 import { Thumbnail } from './tile'
+import type { AssetWrites } from './upload'
+
+const LAKE: AssetFile = {
+  path: 'lake.jpg',
+  kind: 'image',
+  size: 2_000,
+  frames: 1,
+}
+const TOKYO: AssetFile = {
+  path: 'tokyo.jpg',
+  kind: 'image',
+  size: 2_000,
+  frames: 0,
+}
+
+/** Writes that answer as the server would and keep each call, so a test reads what the view sent. */
+function fakeWrites(frames: string[] = ['studio/home/hero']) {
+  const sent: unknown[][] = []
+  const done = (path: string): Promise<AssetWriteResult> =>
+    Promise.resolve({ path, frames: [] })
+  const writes: AssetWrites = {
+    rename: async (...args) => {
+      sent.push(['rename', ...args])
+      return done(args[1])
+    },
+    replace: async (...args) => {
+      sent.push(['replace', args[0], args[1], args[2].name])
+      return done(args[1])
+    },
+    remove: async (...args) => {
+      sent.push(['remove', ...args])
+      return done(args[1])
+    },
+    frames: async () => frames,
+  }
+  return { writes, sent }
+}
+
+function renderFiles(writes: AssetWrites, files: AssetFile[] = [LAKE, TOKYO]) {
+  return render(
+    <FilesView
+      project="studio"
+      load={async () => ({ files })}
+      writes={writes}
+    />,
+  )
+}
+
+async function tileButton(path: string) {
+  return screen.findByRole('button', {
+    name: new RegExp(`Copy path of ${path}`),
+  })
+}
+
+async function rightClick(path: string) {
+  await userEvent.pointer({
+    keys: '[MouseRight]',
+    target: await tileButton(path),
+  })
+  return screen.findByRole('menu')
+}
+
+function itemNames(menu: HTMLElement): string[] {
+  return within(menu)
+    .getAllByRole('menuitem')
+    .map((item) => item.textContent ?? '')
+}
+
+describe('an asset tile menu in a writing tab', () => {
+  beforeEach(() => {
+    act(() => liveStore.setState({ canWrite: true }))
+  })
+
+  afterEach(() => {
+    act(() => liveStore.setState({ canWrite: false, board: null }))
+  })
+
+  it('opens from a right-click with every entry, counting the frames using it', async () => {
+    renderFiles(fakeWrites().writes)
+
+    const menu = await rightClick('lake.jpg')
+
+    expect(itemNames(menu)).toEqual([
+      'Place on canvas',
+      'Copy pathclick',
+      'Show 1 frame using it',
+      'Rename',
+      'Replace file…',
+      'Delete',
+    ])
+  })
+
+  it('opens from the ⋯ button by keyboard and gives focus back to the tile on Escape', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+    const tile = await tileButton('lake.jpg')
+    tile.focus()
+
+    await user.tab()
+    expect(
+      screen.getByRole('button', { name: 'Actions for lake.jpg' }),
+    ).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await screen.findByRole('menu')
+    await user.keyboard('{Escape}')
+
+    await waitFor(() => expect(tile).toHaveFocus())
+  })
+
+  it('greys Show frames using it for a file no frame uses', async () => {
+    renderFiles(fakeWrites().writes)
+
+    const menu = await rightClick('tokyo.jpg')
+
+    expect(
+      within(menu).getByRole('menuitem', { name: 'No frames use it' }),
+    ).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('lists the frames using the file by page and frame', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites(['studio/home/hero', 'studio/pricing/card']).writes)
+
+    await user.click(
+      within(await rightClick('lake.jpg')).getByRole('menuitem', {
+        name: 'Show 1 frame using it',
+      }),
+    )
+
+    expect(
+      await screen.findByRole('button', { name: 'home / hero' }),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'pricing / card' })).toBeVisible()
+  })
+
+  it('renames the stem in place and keeps the extension', async () => {
+    const user = userEvent.setup()
+    const { writes, sent } = fakeWrites()
+    renderFiles(writes)
+
+    await user.click(
+      within(await rightClick('lake.jpg')).getByRole('menuitem', {
+        name: 'Rename',
+      }),
+    )
+    const field = screen.getByRole('textbox', { name: 'Rename lake.jpg' })
+    expect(field).toHaveValue('lake')
+    await user.keyboard('shore{Enter}')
+
+    expect(sent).toEqual([['rename', 'studio', 'lake.jpg', 'shore.jpg']])
+  })
+
+  it('cancels a rename on Escape and sends nothing', async () => {
+    const user = userEvent.setup()
+    const { writes, sent } = fakeWrites()
+    renderFiles(writes)
+
+    await user.click(
+      within(await rightClick('lake.jpg')).getByRole('menuitem', {
+        name: 'Rename',
+      }),
+    )
+    await user.keyboard('shore{Escape}')
+
+    expect(sent).toEqual([])
+    expect(await tileButton('lake.jpg')).toBeVisible()
+  })
+
+  it('asks before deleting a file a frame uses, naming the frame', async () => {
+    const user = userEvent.setup()
+    const { writes, sent } = fakeWrites()
+    renderFiles(writes)
+
+    await user.click(
+      within(await rightClick('lake.jpg')).getByRole('menuitem', {
+        name: 'Delete',
+      }),
+    )
+    const dialog = await screen.findByRole('dialog', {
+      name: 'Delete lake.jpg?',
+    })
+    expect(dialog).toHaveTextContent('Its link in home / hero breaks')
+    expect(sent).toEqual([])
+    await user.click(within(dialog).getByRole('button', { name: 'Delete' }))
+
+    expect(sent).toEqual([['remove', 'studio', 'lake.jpg']])
+  })
+
+  it('keeps the file when the confirm is cancelled', async () => {
+    const user = userEvent.setup()
+    const { writes, sent } = fakeWrites()
+    renderFiles(writes)
+
+    await user.click(
+      within(await rightClick('lake.jpg')).getByRole('menuitem', {
+        name: 'Delete',
+      }),
+    )
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Cancel',
+      }),
+    )
+
+    expect(sent).toEqual([])
+  })
+
+  it('deletes a file no frame uses without asking', async () => {
+    const user = userEvent.setup()
+    const { writes, sent } = fakeWrites([])
+    renderFiles(writes)
+
+    await user.click(
+      within(await rightClick('tokyo.jpg')).getByRole('menuitem', {
+        name: 'Delete',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(sent).toEqual([['remove', 'studio', 'tokyo.jpg']]),
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('replaces the file with the one picked and reloads its thumbnail', async () => {
+    const user = userEvent.setup()
+    const { writes, sent } = fakeWrites()
+    const { container } = renderFiles(writes)
+    const click = vi
+      .spyOn(HTMLInputElement.prototype, 'click')
+      .mockImplementation(() => {})
+
+    await user.click(
+      within(await rightClick('lake.jpg')).getByRole('menuitem', {
+        name: 'Replace file…',
+      }),
+    )
+    await user.upload(
+      screen.getByLabelText('Choose a file to replace it with'),
+      new File(['new'], 'sunset.jpg', { type: 'image/jpeg' }),
+    )
+
+    await waitFor(() =>
+      expect(sent).toEqual([['replace', 'studio', 'lake.jpg', 'sunset.jpg']]),
+    )
+    await waitFor(() =>
+      expect(
+        container.querySelector('img[src$="lake.jpg?v=1"]'),
+      ).not.toBeNull(),
+    )
+    click.mockRestore()
+  })
+})
+
+describe('an asset tile menu in a view-only tab', () => {
+  it('offers Copy path alone and draws no ⋯ button', async () => {
+    renderFiles(fakeWrites().writes)
+
+    const menu = await rightClick('lake.jpg')
+
+    expect(itemNames(menu)).toEqual(['Copy pathclick'])
+    expect(
+      screen.queryByRole('button', {
+        name: 'Actions for lake.jpg',
+        hidden: true,
+      }),
+    ).not.toBeInTheDocument()
+  })
+})
 
 const VIDEO: AssetFile = { path: 'clip.webm', kind: 'video', size: 14_000 }
 

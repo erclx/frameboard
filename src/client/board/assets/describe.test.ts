@@ -8,7 +8,9 @@ import {
   describeUsage,
   formatLength,
   formatSize,
+  frameLabel,
   linkPath,
+  stemOf,
 } from './describe'
 
 describe('describeAsset', () => {
@@ -89,5 +91,25 @@ describe('assetUrl', () => {
     expect(assetUrl('my studio', 'img/a b.png')).toBe(
       '/frames/my%20studio/assets/img/a%20b.png',
     )
+  })
+})
+
+describe('stemOf', () => {
+  it('splits at the last dot, keeping the dot with the extension', () => {
+    expect(stemOf('hero.v2.png')).toEqual({
+      stem: 'hero.v2',
+      extension: '.png',
+    })
+  })
+
+  it('takes a name with no dot, or a leading dot alone, whole as the stem', () => {
+    expect(stemOf('LICENSE')).toEqual({ stem: 'LICENSE', extension: '' })
+    expect(stemOf('.env')).toEqual({ stem: '.env', extension: '' })
+  })
+})
+
+describe('frameLabel', () => {
+  it('names a frame by its page and its own name', () => {
+    expect(frameLabel('studio/home/hero')).toBe('home / hero')
   })
 })

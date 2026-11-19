@@ -73,3 +73,17 @@ export function assetUrl(project: string, path: string): string {
   const segments = path.split('/').map(encodeURIComponent).join('/')
   return `/frames/${encodeURIComponent(project)}/assets/${segments}`
 }
+
+/** A file name split at its last dot, the dot kept with the extension, and a dot-less name taken whole as the stem. */
+export function stemOf(name: string): { stem: string; extension: string } {
+  const dot = name.lastIndexOf('.')
+  return dot <= 0
+    ? { stem: name, extension: '' }
+    : { stem: name.slice(0, dot), extension: name.slice(dot) }
+}
+
+/** A frame ref as the board names it, page then frame. */
+export function frameLabel(ref: string): string {
+  const [, page = '', ...name] = ref.split('/')
+  return `${page} / ${name.join('/')}`
+}
