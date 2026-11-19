@@ -26,9 +26,11 @@ import {
 } from '@/client/theme/store'
 import {
   BEZELS,
+  insetsPage,
   pageCorners,
   screenCorners,
   shownBox,
+  sideInset,
   topInset,
   turnsWith,
 } from '@/shared/frame-device'
@@ -188,6 +190,7 @@ export const Frame = memo(function Frame({
   const { hugHeight } = frame
   // The page starts under a phone's status bar, so the box holds the page and the bar.
   const statusBar = topInset(frame.device, frame.turn)
+  const side = sideInset(frame.device, frame.turn)
   useEffect(() => {
     const element = iframe.current
     if (!live || !element || previewWidth === undefined || !hugHeight) return
@@ -228,7 +231,11 @@ export const Frame = memo(function Frame({
         hugHeight: frame.hugHeight,
       }).height
     : height
-  const colors = usePageColors(iframe, live && statusBar > 0, theme)
+  const colors = usePageColors(
+    iframe,
+    live && insetsPage(frame.device, frame.turn),
+    theme,
+  )
   const waiting = useWaitingOnFirstLoad(iframe, live)
   const shownShort = drawnHeight < height
   useHiddenScrollbar(iframe, live, frame.scroll || shownShort)
@@ -261,12 +268,15 @@ export const Frame = memo(function Frame({
   const below = frame.device ? BEZELS[frame.device].bottom : 0
   // The screen rounds under its bezel, whose body cannot cover a square corner.
   const corners = frame.device ? screenCorners(frame.device) : undefined
-  // The page stands under a phone's status bar, square where the two meet.
+  // The page stands under an upright phone's status bar and between a turned one's side strips, square where they meet.
   const page = frame.device
     ? {
         borderRadius: pageCorners(frame.device, frame.turn),
         ...(statusBar
           ? { marginTop: statusBar, height: `calc(100% - ${statusBar}px)` }
+          : {}),
+        ...(side
+          ? { marginLeft: side, width: `calc(100% - ${2 * side}px)` }
           : {}),
       }
     : {}

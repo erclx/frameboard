@@ -103,7 +103,7 @@ describe('createHug', () => {
     expect(entries().hero).toMatchObject({ width: 466, height: 1000 + 54 })
   })
 
-  it('measures a turned phone frame at its turned width with no status bar', async () => {
+  it('measures a turned phone frame at its page width, its box less both side insets, with no status bar', async () => {
     board = boardOf({
       hero: {
         width: 844,
@@ -125,7 +125,7 @@ describe('createHug', () => {
 
     await hug.now(await scanBoard(board.root), [HERO])
 
-    expect(boxes).toEqual([{ width: 844, height: 390 }])
+    expect(boxes).toEqual([{ width: 736, height: 390 }])
     expect(entries().hero).toMatchObject({ width: 844, height: 1500 })
   })
 

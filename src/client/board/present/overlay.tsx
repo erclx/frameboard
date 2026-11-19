@@ -18,9 +18,11 @@ import { useLive } from '@/client/live/store'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import {
   bezelBox,
+  insetsPage,
   pageCorners,
   screenCorners,
   shownBox,
+  sideInset,
   topInset,
   turnsWith,
 } from '@/shared/frame-device'
@@ -608,7 +610,7 @@ function useStepWalk(
 /**
  * One frame's live page through the same frame-port address the canvas
  * loads, in the theme the frame shows on the board, never a capture, inside
- * its device with the page under a phone's status bar.
+ * its device with the page inset as the board insets it.
  */
 function PresentedFrame({
   frame,
@@ -637,11 +639,15 @@ function PresentedFrame({
   // The screen rounds under its bezel, whose body cannot cover a square corner.
   const corners = frame.device ? screenCorners(frame.device) : undefined
   const statusBar = topInset(frame.device, frame.turn)
+  const side = sideInset(frame.device, frame.turn)
   const page = frame.device
     ? {
         borderRadius: pageCorners(frame.device, frame.turn),
         ...(statusBar
           ? { marginTop: statusBar, height: `calc(100% - ${statusBar}px)` }
+          : {}),
+        ...(side
+          ? { marginLeft: side, width: `calc(100% - ${2 * side}px)` }
           : {}),
       }
     : {}
@@ -651,7 +657,11 @@ function PresentedFrame({
   const theme = useFrameTheme(frame.ref)
   // Sent ahead of the colors, which a flip asks for in the theme it sends.
   useThemeInFrame(iframe, theme)
-  const colors = usePageColors(iframe, statusBar > 0, theme)
+  const colors = usePageColors(
+    iframe,
+    insetsPage(frame.device, frame.turn),
+    theme,
+  )
   const version = useLive((state) => state.reloads[frame.ref] ?? 0)
   // Read at load, since a later flip rewrites the root rather than restart the page.
   const framePort = useFramePort()
