@@ -87,8 +87,9 @@ test.describe('a phone slide turned from the present bar', () => {
       .getByRole('button', { name: 'Rotate' })
       .click()
 
-    await expect.poll(() => size(shown(page))).toEqual([844, 390])
-    await expect.poll(() => size(nowSlide(presenter))).toEqual([844, 390])
+    // Turned, the page stands 54 in from each short side, clear of the island.
+    await expect.poll(() => size(shown(page))).toEqual([736, 390])
+    await expect.poll(() => size(nowSlide(presenter))).toEqual([736, 390])
   })
 })
 
