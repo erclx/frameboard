@@ -687,6 +687,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       mask: [AVATAR],
       setup: themed(
         both(
+          asWriter,
           devicesTurned,
           noAgentChanges,
           onCanvas({ select: ['webapp/home/about'] }),

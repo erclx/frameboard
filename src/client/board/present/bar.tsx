@@ -187,7 +187,7 @@ function StepSlot({ step, steps }: { step: number; steps: number }) {
 const ROTATE_CLASS =
   'flex h-[30px] items-center gap-1 rounded-[7px] px-2 whitespace-nowrap'
 
-/** Rotate after the slide count, as `canon/design/present/bar` draws it, in the bar's own colors. */
+/** Rotate after the slide count, as `canon/design/present/rotate` draws it, in the bar's own colors. */
 function RotateButton({ off, onClick }: { off?: string; onClick: () => void }) {
   return (
     <button

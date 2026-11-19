@@ -31,7 +31,7 @@ export function RotateLabel() {
 
 /**
  * Rotate alone under a selected phone or tablet, as
- * `canon/design/canvas/device` draws it, turning it a quarter at each press.
+ * `canon/design/canvas/device-turned` draws it, turning it a quarter at each press.
  */
 export function RotateButtons({
   frameRef,
