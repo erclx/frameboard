@@ -338,6 +338,58 @@ describe('LayoutSection padding', () => {
     ])
   })
 
+  it('writes one padding shorthand once both pairs read alike', async () => {
+    const changes = renderSection(
+      layoutOf({ padding: { top: 24, right: 0, bottom: 24, left: 0 } }),
+    )
+
+    const field = screen.getByRole('textbox', { name: 'Horizontal padding' })
+    await userEvent.clear(field)
+    await userEvent.type(field, '24{Enter}')
+
+    expect(changes).toEqual([
+      {
+        kind: 'styles',
+        declarations: [{ property: 'padding', value: '24px' }],
+      },
+    ])
+  })
+
+  it('replaces a two-value shorthand with one value once its axes agree', async () => {
+    // `padding: 8px 16px` in the file reads back as these four sides.
+    const changes = renderSection(
+      layoutOf({ padding: { top: 8, right: 16, bottom: 8, left: 16 } }),
+    )
+
+    const field = screen.getByRole('textbox', { name: 'Vertical padding' })
+    await userEvent.clear(field)
+    await userEvent.type(field, '16{Enter}')
+
+    expect(changes).toEqual([
+      {
+        kind: 'styles',
+        declarations: [{ property: 'padding', value: '16px' }],
+      },
+    ])
+  })
+
+  it('writes the shorthand when the last differing side is set to match', async () => {
+    const changes = renderSection(
+      layoutOf({ padding: { top: 4, right: 16, bottom: 16, left: 16 } }),
+    )
+
+    const top = screen.getByRole('textbox', { name: 'Top padding' })
+    await userEvent.clear(top)
+    await userEvent.type(top, '16{Enter}')
+
+    expect(changes).toEqual([
+      {
+        kind: 'styles',
+        declarations: [{ property: 'padding', value: '16px' }],
+      },
+    ])
+  })
+
   it('reads Mixed for a pair whose sides differ and opens per side', () => {
     renderSection(
       layoutOf({ padding: { top: 4, right: 8, bottom: 4, left: 16 } }),

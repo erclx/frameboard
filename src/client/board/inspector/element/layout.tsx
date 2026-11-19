@@ -454,9 +454,9 @@ interface PaddingRowProps {
 type Side = 'top' | 'right' | 'bottom' | 'left'
 
 /**
- * Horizontal and vertical padding, each writing its two longhands as one
- * edit, with a toggle opening a field per side. A pair whose sides differ
- * reads `Mixed`, and a step moves each side by the step from its own.
+ * Horizontal and vertical padding, each writing its two sides as one edit,
+ * with a toggle opening a field per side. A pair whose sides differ reads
+ * `Mixed`, and a step moves each side by the step from its own.
  */
 function PaddingRow({ padding, disabled, write, preview }: PaddingRowProps) {
   const [sides, setSides] = useState(
@@ -487,10 +487,7 @@ function PaddingRow({ padding, disabled, write, preview }: PaddingRowProps) {
         onCommit={(change) =>
           write({
             kind: 'styles',
-            declarations: at.map((side) => ({
-              property: `padding-${side}`,
-              value: `${Math.max(0, change(padding[side]))}px`,
-            })),
+            declarations: paddingWrite(padding, at, change),
           })
         }
       />
@@ -540,6 +537,34 @@ function PaddingRow({ padding, disabled, write, preview }: PaddingRowProps) {
       </div>
     </>
   )
+}
+
+const SIDES = [
+  'top',
+  'right',
+  'bottom',
+  'left',
+] as const satisfies readonly Side[]
+
+/**
+ * The declarations an edit to `at` writes, one `padding` once all four sides
+ * agree, which the server writes in place of the longhands, else a longhand
+ * per side edited, so no side set apart is lost.
+ */
+function paddingWrite(
+  padding: LiveLayout['padding'],
+  at: readonly Side[],
+  change: (value: number) => number,
+): { property: string; value: string }[] {
+  const next = (side: Side) =>
+    at.includes(side) ? Math.max(0, change(padding[side])) : padding[side]
+  const [first, ...rest] = SIDES.map(next)
+  return rest.every((value) => value === first)
+    ? [{ property: 'padding', value: `${first}px` }]
+    : at.map((side) => ({
+        property: `padding-${side}`,
+        value: `${next(side)}px`,
+      }))
 }
 
 function Icon({ children }: { children: ReactNode }) {

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { createLiveStore } from '@/client/live/store'
+import type { Gap } from '@/shared/frame-bridge/gap'
 import type { ElementTree, TreeElement } from '@/shared/records/elements'
 import { frameOf } from '@/test/board'
 import { BRIDGE } from '@/test/frame-bridge'
@@ -9,9 +10,11 @@ import { request } from '../bridge/channel'
 import { writeElement } from '../inspector/element/write'
 import { createModeStore } from '../mode'
 import { createSelectionStore, selectElement } from '../selection'
+import type { FrameGap } from './gap'
 import {
   deleteElement,
   fileFrameName,
+  ghostFor,
   moveElement,
   moveElementTo,
   placeElement,
@@ -386,7 +389,7 @@ describe('placeFile', () => {
       },
     )
 
-    // Capped at the main's 400px, a 1600 by 900 photo lands at 400 by 225, placed free.
+    // Capped at the 350px left to the frame's right edge, a 1600 by 900 photo lands at 350 by 197, placed free.
     expect(sent).toEqual([
       {
         ref: HERO.ref,
@@ -396,10 +399,70 @@ describe('placeFile', () => {
         element: {
           kind: 'asset',
           path: 'photos/hero.png',
-          width: 400,
-          height: 225,
+          width: 350,
+          height: 197,
         },
         at: { left: 50, top: 30, orFlow: true },
+      },
+    ])
+  })
+
+  it('fits an image dropped near the right edge inside the frame at its ratio', async () => {
+    const container = await mount(COLUMN)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 5, hash: ANSWERED },
+    })
+
+    await placeFile(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 360, y: HERO.box.y + 30 },
+      PHOTO,
+      {
+        selection: createSelectionStore(),
+        mode: createModeStore(1280),
+        live: createLiveStore(),
+        send,
+        measure: async () => ({ width: 1023, height: 768 }),
+      },
+    )
+
+    expect(sent).toMatchObject([
+      {
+        element: { kind: 'asset', width: 40, height: 30 },
+        at: { left: 360, top: 30 },
+      },
+    ])
+  })
+
+  it('steps a drop at the very edge back so its smallest size lands inside', async () => {
+    const container = await mount(COLUMN)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 5, hash: ANSWERED },
+    })
+
+    await placeFile(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 390, y: HERO.box.y + 30 },
+      PHOTO,
+      {
+        selection: createSelectionStore(),
+        mode: createModeStore(1280),
+        live: createLiveStore(),
+        send,
+        measure: async () => ({ width: 400, height: 400 }),
+      },
+    )
+
+    expect(sent).toMatchObject([
+      {
+        element: { kind: 'asset', width: 24, height: 24 },
+        at: { left: 376, top: 30 },
       },
     ])
   })
@@ -1386,5 +1449,60 @@ describe('placeResult', () => {
     )
 
     expect(placed).toEqual([])
+  })
+})
+
+const GHOST_FRAME = frameOf('hero', {
+  box: { x: 100, y: 50, width: 400, height: 300 },
+})
+
+/** The gap under a point in `GHOST_FRAME`, free unless `flow` says the container lays out flex or grid. */
+function gapIn(flow: boolean): FrameGap {
+  const gap: Gap = {
+    parent: 2,
+    before: null,
+    row: false,
+    flow,
+    origin: { x: 0, y: 0 },
+    room: 400,
+    line: { x: 0, y: 120, width: 400, height: 0 },
+  }
+  return { frame: GHOST_FRAME, hash: 'c'.repeat(64), gap }
+}
+
+describe('ghostFor', () => {
+  it('puts a Text box at the pointer in a free frame', () => {
+    expect(ghostFor('text', { x: 300, y: 200 }, gapIn(false))).toEqual({
+      kind: 'text',
+      x: 300,
+      y: 200,
+    })
+  })
+
+  it('centers a clicked shape on the pointer at the side it lands at', () => {
+    expect(ghostFor('ellipse', { x: 300, y: 200 }, gapIn(false))).toEqual({
+      kind: 'ellipse',
+      x: 250,
+      y: 150,
+      width: 100,
+      height: 100,
+    })
+  })
+
+  it('fits a file to the frame past the pointer as its drop would', () => {
+    expect(
+      ghostFor('asset', { x: 460, y: 80 }, gapIn(false), {
+        width: 1023,
+        height: 768,
+      }),
+    ).toEqual({ kind: 'asset', x: 460, y: 80, width: 40, height: 30 })
+  })
+
+  it('draws nothing over a flow container, where the line shows the gap', () => {
+    expect(ghostFor('text', { x: 300, y: 200 }, gapIn(true))).toBeNull()
+  })
+
+  it('draws nothing for a divider, which always joins the flow', () => {
+    expect(ghostFor('divider', { x: 300, y: 200 }, gapIn(false))).toBeNull()
   })
 })

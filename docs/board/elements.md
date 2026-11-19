@@ -9,7 +9,9 @@ How you add an element to a frame and change its size and place.
 
 ## Text and shapes
 
-The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame where you click, sizing a rectangle or ellipse to a drag that previews the shape. Drag an element to move it, press Delete to take it out, or double-click text to retype it, Enter adding a line. Alt+Shift+ArrowUp and ArrowDown step it among its siblings.
+The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame where you click, sizing a rectangle or ellipse to a drag that previews the shape. A blue line marks where it joins a row or column, and a dashed box follows the pointer where it lands freely.
+
+Drag an element to move it, press Delete to take it out, or double-click text to retype it, Enter adding a line. Alt+Shift+ArrowUp and ArrowDown step it among its siblings.
 
 - Text beside another element, such as words around a `code`, retypes only the run you double-clicked, and Enter adds a line there only where the element already keeps its breaks
 
@@ -26,7 +28,7 @@ Past a frame's edge, an Absolute element shows as a dashed ghost a press drags b
 
 Images, videos, audio, and 3D models come from the project's `assets/` folder and land the same way. A model is a `.glb` or `.gltf` file, and the Assets tab refuses any other model file with the way to export one from Blender.
 
-- Image, video, audio, or model in the Shape menu, or Cmd+Shift+K, picks a file and places it where you click, at its own size capped at the column's width, and audio lands as a player 300px wide
+- Image, video, audio, or model in the Shape menu, or Cmd+Shift+K, places a file where you click, at its own size shrunk to fit the column and the frame, and audio lands as a player 300px wide
 - Dragging a tile from the Assets tab onto a frame places it where you let go. A video tile shows its first frame and length, plays muted on hover, and says when its codec cannot play.
   - A tile let go over empty canvas makes a frame the file's size, outlined while you drag, and one undo takes the frame and its media back
   - Find in the Assets tab searches Openverse for public domain photos, or Poly Haven for CC0 3D models from its filter menu. Save brings one into `assets/` with its license, and a dragged result saves, then lands.

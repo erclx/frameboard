@@ -23,21 +23,55 @@ const METADATA_MS = 3000
 const MAX_SIDE = 10_000
 
 /**
- * A placed file's box, its natural size or the fallback, capped at `room` and
- * the insert route's side limit with its ratio kept.
+ * A placed file's box, its natural size or the fallback, capped at `room`,
+ * at `height` when one is given, and at the insert route's side limit, with
+ * its ratio kept.
  */
-export function placedSize(natural: AssetSize | null, room: number): AssetSize {
+export function placedSize(
+  natural: AssetSize | null,
+  room: number,
+  height = 0,
+): AssetSize {
   const size =
     natural && natural.width > 0 && natural.height > 0 ? natural : FALLBACK_SIZE
   const scale = Math.min(
     1,
     room > 0 ? room / size.width : 1,
+    height > 0 ? height / size.height : 1,
     MAX_SIDE / size.width,
     MAX_SIDE / size.height,
   )
   return {
     width: Math.max(1, Math.round(size.width * scale)),
     height: Math.max(1, Math.round(size.height * scale)),
+  }
+}
+
+/** The least room a free drop keeps past the pointer on each axis. */
+const LEAST_ROOM = 24
+
+/**
+ * A file dropped free, fitted to the container's `room` and to the distance
+ * `past` the pointer to the frame's right and bottom edges, stepping `back`
+ * where under `LEAST_ROOM` is left, so it never lands past either edge.
+ */
+export function fitFromPointer(
+  natural: AssetSize | null,
+  room: number,
+  past: { x: number; y: number },
+): { size: AssetSize; back: { x: number; y: number } } {
+  const across = Math.max(past.x, LEAST_ROOM)
+  const size = placedSize(
+    natural,
+    room > 0 ? Math.min(room, across) : across,
+    Math.max(past.y, LEAST_ROOM),
+  )
+  return {
+    size,
+    back: {
+      x: Math.max(0, size.width - past.x),
+      y: Math.max(0, size.height - past.y),
+    },
   }
 }
 
