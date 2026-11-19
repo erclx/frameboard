@@ -1,5 +1,5 @@
 import { ChevronDown, Search } from 'lucide-react'
-import { type FormEvent, useEffect, useRef, useState } from 'react'
+import type { FormEvent } from 'react'
 import { useStore } from 'zustand'
 
 import { ChromeMenuContent, MENU_ROW } from '@/client/board/chrome/menu'
@@ -18,14 +18,22 @@ import { BoardWriteError } from '@/client/live/write'
 import {
   findImages,
   findModels,
-  type ImageFind,
-  type ModelFind,
   type ResultKind,
   saveKey,
   saveResult,
   saveStore,
 } from '../sourcing'
 import { ModelTile, ResultTile } from './result-tile'
+import {
+  EMPTY_SEARCH,
+  type FindSearch,
+  type Kind,
+  nextSearch,
+  type SearchState,
+  searchStore,
+  stopSearch,
+  updateSearch,
+} from './search-store'
 
 const CODE = 'font-mono text-label font-normal text-foreground'
 const LINE_BOX = 'mx-3 my-1.5 text-label font-normal leading-[1.45]'
@@ -38,9 +46,6 @@ const LINK =
 
 /** How many grey tiles hold the grid's shape while a search runs. */
 const PLACEHOLDERS = ['a', 'b', 'c', 'd']
-
-/** What Find searches, picked in the filter menu. */
-type Kind = 'images' | 'models'
 
 const KIND: Record<
   Kind,
@@ -60,13 +65,6 @@ const KIND: Record<
   },
 }
 
-type SearchState =
-  | { state: 'idle' }
-  | { state: 'searching'; query: string }
-  | { state: 'done'; find: ImageFind }
-  | { state: 'models'; find: ModelFind }
-  | { state: 'failed'; status: number | null; query: string }
-
 interface FindViewProps {
   project: string
   /** Runs one image search, the board's route in the app. */
@@ -79,7 +77,7 @@ interface FindViewProps {
 
 /**
  * Find in the Assets tab, searching Openverse's images or Poly Haven's CC0
- * models. A newer search abandons an older one, so an older answer never replaces a newer.
+ * models. The search lives in the project's store entry, so it outlives the tab and keeps landing after the tab closes.
  */
 export function FindView({
   project,
@@ -88,40 +86,37 @@ export function FindView({
   save = saveResult,
 }: FindViewProps) {
   const canWrite = useLive((state) => state.canWrite)
-  const [text, setText] = useState('')
-  const [kind, setKind] = useState<Kind>('images')
-  const [credited, setCredited] = useState(false)
-  const [search, setSearch] = useState<SearchState>({ state: 'idle' })
-  const running = useRef<AbortController | null>(null)
-  useEffect(() => () => running.current?.abort(), [])
+  const { text, kind, credited, search } = useStore(
+    searchStore,
+    (state) => state[project] ?? EMPTY_SEARCH,
+  )
+  const update = (change: Partial<FindSearch>) => updateSearch(project, change)
 
   async function run(query: string, wide: boolean, on: Kind) {
     const trimmed = query.trim()
     if (trimmed === '') return
-    running.current?.abort()
-    const controller = new AbortController()
-    running.current = controller
-    setSearch({ state: 'searching', query: trimmed })
+    const signal = nextSearch(project)
+    update({ search: { state: 'searching', query: trimmed } })
     try {
       const next: SearchState =
         on === 'models'
           ? {
               state: 'models',
-              find: await findModel(project, trimmed, controller.signal),
+              find: await findModel(project, trimmed, signal),
             }
           : {
               state: 'done',
-              find: await find(project, trimmed, wide, controller.signal),
+              find: await find(project, trimmed, wide, signal),
             }
-      if (!controller.signal.aborted) setSearch(next)
+      if (!signal.aborted) update({ search: next })
     } catch (error) {
-      if (controller.signal.aborted) return
+      if (signal.aborted) return
       const status =
         error instanceof BoardWriteError &&
         typeof error.details.status === 'number'
           ? error.details.status
           : null
-      setSearch({ state: 'failed', status, query: trimmed })
+      update({ search: { state: 'failed', status, query: trimmed } })
     }
   }
 
@@ -131,18 +126,18 @@ export function FindView({
   }
 
   function widen(next: boolean) {
-    setCredited(next)
+    update({ credited: next })
     const last = lastQuery(search)
     if (last !== null) void run(last, next, kind)
   }
 
   function pick(next: Kind) {
     if (next === kind) return
-    setKind(next)
+    update({ kind: next })
     const typed = text.trim() === '' ? lastQuery(search) : text
     if (typed === null) {
-      running.current?.abort()
-      setSearch({ state: 'idle' })
+      stopSearch(project)
+      update({ search: { state: 'idle' } })
       return
     }
     void run(typed, credited, next)
@@ -168,7 +163,7 @@ export function FindView({
           placeholder={KIND[kind].field}
           value={text}
           spellCheck={false}
-          onChange={(event) => setText(event.target.value)}
+          onChange={(event) => update({ text: event.target.value })}
           className="min-w-0 flex-1 bg-transparent text-label font-normal outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
         />
         <FilterMenu

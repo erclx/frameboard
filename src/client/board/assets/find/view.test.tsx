@@ -15,6 +15,7 @@ import type {
 } from '@/shared/records/sourcing'
 
 import { resetSaves, saveResult } from '../sourcing'
+import { resetSearches } from './search-store'
 import { FindView } from './view'
 
 function result(id: string, overrides: Partial<ImageResult> = {}): ImageResult {
@@ -119,6 +120,7 @@ beforeEach(() => {
 
 afterEach(() => {
   resetSaves()
+  resetSearches()
 })
 
 describe('FindView', () => {
@@ -338,6 +340,104 @@ describe('FindView', () => {
 
     expect(screen.queryByText('Photo older')).not.toBeInTheDocument()
     expect(screen.getByText('Photo newer')).toBeInTheDocument()
+  })
+
+  describe('after leaving the tab', () => {
+    it('shows the last query, its results, and each Saved mark on return', async () => {
+      const find = vi.fn(async (_: string, query: string) =>
+        answer(query, [result('a1'), result('b2')]),
+      )
+      const save = (request: Parameters<typeof saveResult>[0]) =>
+        saveResult(
+          request,
+          async () => saved('house.jpg'),
+          async () => true,
+        )
+      const first = render(
+        <FindView project="webapp" find={find} save={save} />,
+      )
+      const user = await searchFor('house')
+      await user.click(
+        await screen.findByRole('button', { name: 'Save Photo a1' }),
+      )
+      await screen.findByRole('button', { name: 'Saved Photo a1' })
+
+      first.unmount()
+      render(<FindView project="webapp" find={find} save={save} />)
+
+      expect(
+        screen.getByRole('searchbox', { name: 'Search free images' }),
+      ).toHaveValue('house')
+      expect(
+        screen.getByRole('button', { name: 'Saved Photo a1' }),
+      ).toBeVisible()
+      expect(
+        screen.getByRole('button', { name: 'Save Photo b2' }),
+      ).toBeInTheDocument()
+      expect(find).toHaveBeenCalledTimes(1)
+    })
+
+    it('lands a search still running when the tab closed', async () => {
+      let land = (_: ImageFind) => {}
+      const find = vi.fn(() => new Promise<ImageFind>((done) => (land = done)))
+      const first = render(<FindView project="webapp" find={find} />)
+      await searchFor('house')
+
+      first.unmount()
+      await act(async () => land(answer('house', [result('a1')])))
+      render(<FindView project="webapp" find={find} />)
+
+      expect(screen.getByText('Photo a1')).toBeInTheDocument()
+    })
+
+    it('keeps Models picked, with its results', async () => {
+      const findModels = vi.fn(async (_: string, query: string) =>
+        modelAnswer(query, [model('sofa_02')]),
+      )
+      const first = render(
+        <FindView
+          project="webapp"
+          find={async (_, query) => answer(query, [result('a1')])}
+          findModels={findModels}
+        />,
+      )
+      const user = await searchFor('chair')
+      await screen.findByText('Photo a1')
+      await user.click(screen.getByRole('button', { name: 'Filter: Images' }))
+      await user.click(
+        await screen.findByRole('menuitemradio', { name: 'Models' }),
+      )
+      await screen.findByText('Sofa 02')
+
+      first.unmount()
+      render(
+        <FindView project="webapp" find={vi.fn()} findModels={findModels} />,
+      )
+
+      expect(
+        screen.getByRole('button', { name: 'Filter: Models' }),
+      ).toBeInTheDocument()
+      expect(screen.getByText('Sofa 02')).toBeInTheDocument()
+    })
+
+    it('starts another project empty', async () => {
+      const first = render(
+        <FindView
+          project="webapp"
+          find={async (_, query) => answer(query, [result('a1')])}
+        />,
+      )
+      await searchFor('house')
+      await screen.findByText('Photo a1')
+
+      first.unmount()
+      render(<FindView project="mobile" find={vi.fn()} />)
+
+      expect(
+        screen.getByRole('searchbox', { name: 'Search free images' }),
+      ).toHaveValue('')
+      expect(screen.getByText(/A result you save lands in/)).toBeInTheDocument()
+    })
   })
 
   it('saves a result once however fast Save is pressed, then marks it Saved', async () => {
