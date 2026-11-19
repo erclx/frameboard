@@ -557,7 +557,7 @@ function PreviewChip({ width }: { width: number }) {
   )
 }
 
-/** The kit a frame draws with, by its title where the project still holds it. */
+/** Drawn only while notes are hidden, since a shown strip already carries the note. */
 function NoteMark() {
   return (
     <span
@@ -569,6 +569,7 @@ function NoteMark() {
   )
 }
 
+/** The kit a frame draws with, by its title where the project still holds it. */
 function KitChip({ project, kit }: { project: string; kit: string }) {
   const title = useLive(
     (state) =>
