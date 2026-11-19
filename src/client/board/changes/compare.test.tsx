@@ -302,9 +302,12 @@ describe('compare', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Compare pricing with before' }),
     )
-    await waitFor(() =>
-      expect(before()?.contentDocument?.URL).toContain('/frames/'),
-    )
+    // Settled on a loaded page, since a loaded run reaches the URL before the head.
+    await waitFor(() => {
+      const shown = before()?.contentDocument
+      expect(shown?.URL).toContain('/frames/')
+      expect(shown?.readyState).toBe('complete')
+    })
     await bridgeIn(before() as HTMLIFrameElement)
 
     act(() => flipFrame(PRICING, themeStore))
