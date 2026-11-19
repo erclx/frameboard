@@ -35,14 +35,17 @@ export interface Hug {
 
 /**
  * The server's hug step, writing through `setMeasured`, with an unbounded,
- * empty, or failing frame keeping its box.
+ * empty, or failing frame keeping its box. A failing one is reported through
+ * `report`, the server's log unless a test stands in, since nothing retries it.
  */
 export function createHug({
   root,
   measure,
+  report = (line) => console.error(line),
 }: {
   root: string
   measure: MeasureFrame
+  report?: (line: string) => void
 }): Hug {
   let queue: Promise<unknown> = Promise.resolve()
   let closed = false
@@ -63,6 +66,9 @@ export function createHug({
       try {
         size = await measureParts(measure, frame, parts)
       } catch (error) {
+        report(
+          `frameboard: ${frame.ref} keeps its box, since its measure failed: ${failureOf(error)}`,
+        )
         if (
           error instanceof FrameboardError &&
           error.code === 'browser-not-found'
@@ -126,6 +132,16 @@ export function createHug({
       closed = true
     },
   }
+}
+
+/**
+ * A board error's code and message, or another error's first line, since a
+ * browser error goes on to its call log.
+ */
+function failureOf(error: unknown): string {
+  if (error instanceof FrameboardError) return `${error.code}: ${error.message}`
+  const message = error instanceof Error ? error.message : String(error)
+  return message.split('\n', 1)[0] ?? ''
 }
 
 /** Which boxes a run measures: the frame's own, its linked widths, or both. */

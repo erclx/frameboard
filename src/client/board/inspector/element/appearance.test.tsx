@@ -128,6 +128,48 @@ describe('AppearanceSection', () => {
   })
 })
 
+describe('AppearanceSection on a model', () => {
+  function renderModel(rotation = rotationOf()) {
+    const { write } = recorder()
+    render(
+      <AppearanceSection
+        opacity={1}
+        radius={0}
+        rotation={rotation}
+        model
+        disabled={false}
+        write={write}
+      />,
+    )
+  }
+
+  it('leaves the turns to the Model section for a model with none', () => {
+    renderModel()
+
+    expect(
+      screen.queryByRole('group', { name: 'Rotate and flip' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: '3D' })).not.toBeInTheDocument()
+  })
+
+  it('keeps the turns for a model whose file holds a transform', () => {
+    renderModel(
+      rotationOf({
+        transform: { own: 'rotate(10deg)', ruled: false, reanchors: false },
+      }),
+    )
+
+    expect(screen.getByRole('group', { name: 'Rotate and flip' })).toBeVisible()
+    expect(screen.getByRole('region', { name: '3D' })).toBeVisible()
+  })
+
+  it('keeps the turns for a model the file rotates', () => {
+    renderModel(rotationOf({ degrees: 15 }))
+
+    expect(screen.getByRole('group', { name: 'Rotate and flip' })).toBeVisible()
+  })
+})
+
 describe('AppearanceSection commit field', () => {
   it('drops a historyUndo while the field is unfocused', () => {
     const { changes, write } = recorder()

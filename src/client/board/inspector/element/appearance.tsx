@@ -53,6 +53,8 @@ interface AppearanceSectionProps {
   /** The corner radius in px. */
   radius: number
   rotation: Rotation
+  /** Whether the element is a model, which turns in its own Model section. */
+  model?: boolean
   disabled: boolean
   write: WriteElement
   /** Shows a step on the live element before it is written. */
@@ -68,11 +70,15 @@ export function AppearanceSection({
   opacity,
   radius,
   rotation,
+  model = false,
   disabled,
   write,
   preview,
 }: AppearanceSectionProps) {
   const percent = Math.round(opacity * 100)
+  // A model keeps its box turns only while the file holds one, so a turn it carries can still be cleared.
+  const turns =
+    !model || rotation.transform.own !== '' || rotation.degrees !== 0
   return (
     <>
       <section
@@ -119,19 +125,23 @@ export function AppearanceSection({
             )}
           />
         </div>
-        <RotationRow
+        {turns ? (
+          <RotationRow
+            rotation={rotation}
+            disabled={disabled}
+            write={write}
+            preview={preview}
+          />
+        ) : null}
+      </section>
+      {turns ? (
+        <TiltSection
           rotation={rotation}
           disabled={disabled}
           write={write}
           preview={preview}
         />
-      </section>
-      <TiltSection
-        rotation={rotation}
-        disabled={disabled}
-        write={write}
-        preview={preview}
-      />
+      ) : null}
     </>
   )
 }

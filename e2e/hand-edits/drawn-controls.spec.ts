@@ -132,3 +132,92 @@ test.describe('controls drawn in a frame', () => {
     await expect(slide.getByText('Black and white')).toBeHidden()
   })
 })
+
+test.describe('a phone frame as tall as its page, entered in Play', () => {
+  const ABOUT = 'webapp/home/about'
+  let board: FixtureBoard
+  let server: BoardServer
+
+  const frame = (page: Page) => page.locator(`[data-frame="${ABOUT}"] iframe`)
+  const scrollY = (page: Page) =>
+    frame(page).evaluate(
+      (element: HTMLIFrameElement) => element.contentWindow?.scrollY ?? -1,
+    )
+  const pageHeight = (page: Page) =>
+    frame(page).evaluate((element: HTMLIFrameElement) => element.offsetHeight)
+
+  /** Turns `about` into a phone frame 2454 tall, its page 2400 under the status bar. */
+  test.beforeEach(async () => {
+    board = copyFixtureBoard('basic')
+    const folder = join(board.root, 'webapp/home')
+    const layout = JSON.parse(readFileSync(join(folder, 'layout.json'), 'utf8'))
+    layout.frames.about = {
+      ...layout.frames.about,
+      height: 2454,
+      showDevice: true,
+    }
+    writeFileSync(join(folder, 'layout.json'), JSON.stringify(layout))
+    writeFileSync(
+      join(folder, 'about.html'),
+      TUNER.replace(
+        '</body>',
+        // Taller than the 2400 page, so a scroll left over at full length shows.
+        '<div id="top" style="height:2600px">about</div></body>',
+      ),
+    )
+    server = await serveBoard(board.root)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('shows one screen and scrolls its page under the wheel, and Edit shows it whole', async ({
+    page,
+  }) => {
+    await page.goto(`${server.url}/p/webapp/home`)
+    await expect(frame(page)).toBeVisible()
+    await page.getByRole('button', { name: 'Play' }).click()
+    await page
+      .frameLocator(`[data-frame="${ABOUT}"] iframe`)
+      .locator('#top')
+      .click({ position: { x: 20, y: 20 } })
+    await expect(page.getByText('In frame, Esc to leave')).toBeVisible()
+    // The page stands under the 54 tall status bar on an 844 tall screen.
+    await expect.poll(() => pageHeight(page)).toBe(790)
+
+    await frame(page).hover()
+    await page.mouse.wheel(0, 400)
+    await expect.poll(() => scrollY(page)).toBeGreaterThan(0)
+
+    await page.keyboard.press('Escape')
+    await page.getByRole('button', { name: 'Edit' }).click()
+    await expect.poll(() => pageHeight(page)).toBe(2400)
+    await expect.poll(() => scrollY(page)).toBe(0)
+  })
+
+  test('puts Keep values inside the phone it shows, not the stored box below it', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    await expect(frame(page)).toBeVisible()
+    await page.getByRole('button', { name: 'Play' }).click()
+    const tuner = page.frameLocator(`[data-frame="${ABOUT}"] iframe`)
+    await tuner.locator('#photo').click()
+    await expect(page.getByText('In frame, Esc to leave')).toBeVisible()
+
+    await tuner.getByRole('slider', { name: 'Brightness' }).fill('130')
+
+    const keep = page.getByRole('group', { name: 'Moved controls' })
+    await expect(keep).toContainText('1 value changed')
+    const shown = await frame(page).boundingBox()
+    const placed = await keep.boundingBox()
+    expect(shown).not.toBeNull()
+    expect(placed).not.toBeNull()
+    expect((placed?.y ?? 0) + (placed?.height ?? 0)).toBeLessThanOrEqual(
+      (shown?.y ?? 0) + (shown?.height ?? 0),
+    )
+  })
+})

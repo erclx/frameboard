@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { useLive } from '@/client/live/store'
 import { themeStore, useShownTheme } from '@/client/theme/store'
-import { bezelBox } from '@/shared/frame-device'
+import { bezelBox, shownBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { presentScale } from '../fit'
@@ -299,7 +299,7 @@ function EndOfDeck({
   like: FrameRecord
   room: { width: number; height: number }
 }) {
-  const { width, height } = like.box
+  const { width, height } = shownBox(like)
   const body = bezelBox({ x: 0, y: 0, width, height }, like.device)
   const scale = presentScale(like, room)
   return (

@@ -45,7 +45,7 @@
         position: relative;
         overflow: hidden;
         width: 720px;
-        height: 400px;
+        height: 480px;
         background: var(--canvas);
       }
       .cap {
@@ -633,6 +633,33 @@
         white-space: nowrap;
         transform: translateX(-50%);
       }
+      .mhint {
+        margin: 0 0 8px;
+        padding: 6px 8px;
+        border-radius: 6px;
+        background: var(--raised);
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.4;
+      }
+      .mhint b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .mhint kbd {
+        font:
+          500 10px 'Geist Mono',
+          'DejaVu Sans Mono',
+          monospace;
+        padding: 0 4px;
+        border-radius: 4px;
+        background: var(--panel);
+        box-shadow: 0 0 0 1px var(--border);
+        color: var(--text);
+      }
+      .insp {
+        overflow: hidden;
+      }
     </style>
   </head>
   <body>
@@ -678,15 +705,19 @@
         </div>
         <div class="isec">
           <div class="ihead"><span>Model</span><i>phone.glb</i></div>
-          <span class="cap2">Angle</span>
+          <p class="mhint">
+            <b>Double-click</b> the model to turn it by hand.
+            <kbd>Esc</kbd> leaves.
+          </p>
+          <span class="cap2">Camera · where you look from</span>
           <div class="grid2">
             <label class="fld"
-              ><span class="k">H</span><span class="v">-40°</span></label
+              ><span class="k">Around</span><span class="v">-40°</span></label
             ><label class="fld"
-              ><span class="k">V</span><span class="v">75°</span></label
+              ><span class="k">Height</span><span class="v">75°</span></label
             >
           </div>
-          <span class="cap2 next">Rotation</span>
+          <span class="cap2 next">Model · how it sits</span>
           <div class="grid3">
             <label class="fld"
               ><span class="k">X</span><span class="v">0°</span></label
@@ -696,31 +727,25 @@
               ><span class="k">Z</span><span class="v">0°</span></label
             >
           </div>
-          <div class="grid2" style="margin-top: 6px">
-            <div>
-              <span class="cap2">Scale</span
-              ><label class="fld"><span class="v">1</span></label>
-            </div>
-            <div>
-              <span class="cap2">Animation</span
-              ><label class="fld"
-                ><span class="v">Spin</span
-                ><span class="car"
-                  ><svg
-                    width="10"
-                    height="10"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M6 9l6 6 6-6" /></svg></span
-              ></label>
-            </div>
-          </div>
-          <div class="srow">Autoplay<span class="sw on"></span></div>
+          <span class="cap2 next">Scale</span
+          ><label class="fld"><span class="v">1</span></label
+          ><span class="cap2 next">Clip in this file · 1</span
+          ><label class="fld"
+            ><span class="v">Spin</span
+            ><span class="car"
+              ><svg
+                width="10"
+                height="10"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M6 9l6 6 6-6" /></svg></span
+          ></label>
+          <div class="srow">Play on load<span class="sw on"></span></div>
         </div>
       </div>
     </div>

@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.43.0](https://github.com/erclx/frameboard/compare/v0.42.0...v0.43.0) (2026-11-19)
+
+
+### Features
+
+* **bridge:** move the frame chrome reads behind the frame bridge ([#402](https://github.com/erclx/frameboard/issues/402)) ([6aaff44](https://github.com/erclx/frameboard/commit/6aaff44158cd8c145d0ac89809d33ca804eb83e7))
+* **device:** draw the phone body and start its page under a status bar ([#403](https://github.com/erclx/frameboard/issues/403)) ([df18152](https://github.com/erclx/frameboard/commit/df18152f00cf9093b6f213004922713f7837bd18))
+* **home:** pulse a thumbnail grey until its capture loads ([#399](https://github.com/erclx/frameboard/issues/399)) ([3dc38c8](https://github.com/erclx/frameboard/commit/3dc38c879a957da404fa042107f7b2ced4efd4f6))
+
+
+### Bug Fixes
+
+* **assets:** drag tiles by their picture and tidy Find and Files ([#400](https://github.com/erclx/frameboard/issues/400)) ([47f7c11](https://github.com/erclx/frameboard/commit/47f7c116628480afdd27709cc4dc217adae5c3f8))
+* **canvas:** reveal a grown foldable and hold Layers rows on a re-read ([#398](https://github.com/erclx/frameboard/issues/398)) ([1f0d3ec](https://github.com/erclx/frameboard/commit/1f0d3ec029d099979ad99c456451cfa344337123))
+
 ## [0.42.0](https://github.com/erclx/frameboard/compare/v0.41.0...v0.42.0) (2026-11-18)
 
 

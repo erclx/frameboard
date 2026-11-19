@@ -138,6 +138,52 @@ test.describe('presenting a page', () => {
   })
 })
 
+test.describe('a phone frame as tall as its page', () => {
+  /** Turns `about` into a phone frame 2454 tall, its page 2400 under the status bar. */
+  test.beforeEach(async () => {
+    const folder = join(board.root, 'webapp/home')
+    const layout = JSON.parse(readFileSync(join(folder, 'layout.json'), 'utf8'))
+    layout.frames.about = {
+      ...layout.frames.about,
+      height: 2454,
+      showDevice: true,
+    }
+    writeFileSync(join(folder, 'layout.json'), JSON.stringify(layout))
+    writeFileSync(
+      join(folder, 'about.html'),
+      '<!doctype html><title>about</title><body style="margin:0"><div style="height:2400px;background:linear-gradient(#fde,#def)">about</div></body>',
+    )
+    await server.stop()
+    server = await serveBoard(board.root)
+  })
+
+  test('presents it one screen tall and scrolls its page under the wheel', async ({
+    page,
+  }) => {
+    await open(page)
+    await page.keyboard.press('Shift+P')
+    await page.keyboard.press('ArrowRight')
+    await expect(shown(page)).toHaveAttribute('title', 'about')
+    const scrollY = () =>
+      shown(page).evaluate(
+        (frame: HTMLIFrameElement) => frame.contentWindow?.scrollY ?? -1,
+      )
+    // The page stands under the 54 tall status bar on an 844 tall screen.
+    await expect
+      .poll(() =>
+        shown(page).evaluate((frame: HTMLIFrameElement) => frame.offsetHeight),
+      )
+      .toBe(790)
+    await expect.poll(scrollY).toBe(0)
+
+    await shown(page).hover()
+    await page.mouse.wheel(0, 400)
+
+    await expect.poll(scrollY).toBeGreaterThan(0)
+    await expect(shown(page)).toHaveAttribute('title', 'about')
+  })
+})
+
 test.describe('a deck with a transition and a stepped slide', () => {
   // A fading deck reading hero, about with two steps, then closing.
   test.beforeEach(() => {

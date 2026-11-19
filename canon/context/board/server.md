@@ -22,8 +22,8 @@ Owns the board folder's watcher, the socket hub, the decision to open a tab, and
 - `.html` or `.swap` reloads its frame, a page file the page, non-kit `assets/` media its linking frames, other assets the project, `layout.json` a `kit` change, `notes.json` or `.license.json` nothing
 - Writes gather into batches closing 50 ms after the last event or 250 ms after the first, so one agent turn costs one rescan
 - `fs.watch` on macOS drops writes in its first tens of milliseconds, so the watch counts nothing for its first 100 ms and resolves only once warm
-- `hug.ts` measures a hugging frame under the layout lock with no undo step, before the board is sent for a frame its own write reloaded and after it for an asset or sheet reload
-- A frame placed while a batch measured is measured once more in that batch's rescan, and a size whose file changed since its scan is dropped for that write's own batch
+- `hug.ts` measures a hugging frame under the layout lock with no undo step, before the board goes out for its own reload and after it for an asset or sheet, and logs a failed measure to stderr
+- A frame placed mid-measure is measured in that rescan, one a waiting batch saw placed by the batch naming its `layout.json`, and a size whose file changed since its scan is dropped
 
 ### `src/server/claims/`
 

@@ -1,6 +1,6 @@
 ---
 title: Models
-description: When a frame shows a 3D model, the viewer script its head loads, the attributes that stage it, and how to build a simple model with a kept script
+description: When a frame shows a 3D model, finding one on Poly Haven, the viewer script its head loads, the attributes that stage it, and how to build a simple model with a kept script
 ---
 
 # Models
@@ -13,7 +13,16 @@ A model costs a script of about 1 MB in the project and a wait on every capture,
 
 - Place a model when the developer names a 3D object, or asks for one they can turn or that plays a clip
 - Tilt a flat card with a CSS `transform` instead, since a tilt needs no model and no script
-- Use a `.glb` the project's `assets/` already holds before building one
+- Use a `.glb` the project's `assets/` already holds, then a found one, before building one
+
+## Find a model before building one
+
+`frameboard model find <query>` searches Poly Haven's 522 public domain models and saves one into the project's `assets/` as a single `.glb` with its license file. Take the ranking and the flags from the `models` block of `frameboard docs --json`.
+
+- Search for an everyday object, since the library is mostly props, furniture, plants, rocks, and industrial parts, with almost no named product such as a phone, a laptop, or a shoe
+- Answer a product search that comes back empty by building the shape from boxes, below, rather than searching again with other words
+- Save at the default `1k` unless the developer asks for detail, and say what a larger `--size` weighs before taking it, since a stool is about 1 MB at `1k` and 40 MB at `8k`
+- Name Poly Haven to the developer when showing results, which its terms ask of anything listing its models
 
 ## Write the element and its script
 
@@ -29,8 +38,9 @@ Never link the viewer or a model by a web address, since a frame loads nothing o
 
 Every staging choice is an attribute on the element, so set one with `frameboard edit --attr` on a placed frame rather than rewriting the file.
 
-- Set `camera-orbit` for the angle, and `max-camera-orbit` beside it once the distance passes the model's own framing, since the viewer ignores the distance otherwise
-- Set `orientation` to turn the model itself and `scale` to size it
+- Set `camera-orbit` for the angle, and `max-camera-orbit` beside it once the distance passes the model's own framing, since the viewer ignores the distance otherwise. The inspector shows the angle under Camera.
+- Set `orientation` to turn the model itself and `scale` to size it. The inspector shows `orientation` under Model.
+- Turn a model with `orientation` rather than a CSS `transform`, since the inspector hides its box rotation for a model whose `style` sets no `transform` and no `rotate`
 - Set `animation-name` and `autoplay` only for a model that carries a clip
 - Read the element again before staging it, since the developer may have turned it by hand on the board
 

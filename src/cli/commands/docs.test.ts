@@ -68,6 +68,7 @@ describe('docs', () => {
       'image find',
       'image generate',
       'image doctor',
+      'model find',
       'page add',
       'page duplicate',
       'page rename',
@@ -194,6 +195,19 @@ describe('docs', () => {
     )
     expect(contentFormat.models[2]).toContain(
       'orientation="<roll>deg <pitch>deg <yaw>deg"',
+    )
+  })
+
+  it('states where model find searches, how it ranks, and the size it saves at', async () => {
+    const { contentFormat } = await docs()
+    const find = contentFormat.models.find((line: string) =>
+      line.startsWith('model find'),
+    )
+
+    expect(find).toContain('Poly Haven')
+    expect(find).toContain('then by download count')
+    expect(find).toContain(
+      '1k textures unless --size names one of 1k, 2k, 4k, 8k, 16k',
     )
   })
 

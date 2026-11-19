@@ -137,7 +137,7 @@ test.describe('a 3D model placed by hand', () => {
       `camera-orbit="${angle}deg 75deg auto" max-camera-orbit="auto auto auto"`,
     )
     await expect(
-      section.getByRole('textbox', { name: 'Angle across' }),
+      section.getByRole('textbox', { name: 'Camera around' }),
     ).toHaveValue(`${angle}°`)
     // Turn mode holds through the write, so a second drag needs no second double-click.
     await expect(chip).toBeVisible()

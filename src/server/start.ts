@@ -266,7 +266,7 @@ async function listen({
   // The board the tabs last received, which a moved frame's stamp is read against.
   const shown: { board: ListResult | null } = { board: null }
   // Not `shown`, since a tab's snapshot can scan a placement before its batch.
-  const scanned: { board: ListResult | null } = { board: null }
+  const scanned: ScannedBoard = { board: null, unmeasured: [] }
   let moved: MovedFolder[] = []
   const recentlyMoved = () => {
     moved = moved.filter(({ at }) => Date.now() - at < MOVED_MS)
@@ -496,6 +496,13 @@ async function listen({
         let latest = scanned.board ?? board
         if (trails) {
           latest = await scanBoard(root)
+          // Measures nothing it finds newly placed, so those wait for the batch naming their layout.
+          scanned.unmeasured = placedRefs(
+            scanned.board ?? board,
+            latest,
+            undefined,
+            scanned.unmeasured,
+          )
           scanned.board = latest
           hub.broadcast({ type: 'board', data: latest })
           shown.board = latest
@@ -585,6 +592,17 @@ async function listen({
   }
 }
 
+/** The board the last batch scanned, replaced by each batch's first scan. */
+interface ScannedBoard {
+  board: ListResult | null
+  /**
+   * Hugging frames `board` holds placed that no batch measured. A batch
+   * waiting its turn can scan a placement whose `layout.json` it does not
+   * name, and the batch that names it would read the frame as placed already.
+   */
+  unmeasured: string[]
+}
+
 /**
  * One rescan per batch, pushing the board, then reloads, then findings, then
  * notes, an agent's changes waiting out the grace before the board hears.
@@ -621,8 +639,7 @@ async function pushBatch(
     moved: () => readonly MovedFolder[]
     /** The board the tabs last received, replaced by this batch's. */
     shown: { board: ListResult | null }
-    /** The board the last batch scanned, replaced by this batch's first scan. */
-    scanned: { board: ListResult | null }
+    scanned: ScannedBoard
   },
 ): Promise<void> {
   let board
@@ -634,12 +651,20 @@ async function pushBatch(
     // Lands reserved frames first, so the board first sees them in their box.
     await landReserved(root, new Date()).catch(() => [])
     board = await scanBoard(root)
-    const previous = scanned.board
-    scanned.board = board
+    const { board: previous, unmeasured } = scanned
     own = ownFileRefs(board, paths)
     // Measured here, since a placement changes only `layout.json`.
     placed = previous
-      ? placedRefs(previous, board, paths).filter((ref) => !own.includes(ref))
+      ? placedRefs(previous, board, paths, unmeasured).filter(
+          (ref) => !own.includes(ref),
+        )
+      : []
+    const measuring = new Set([...own, ...placed])
+    scanned.board = board
+    scanned.unmeasured = previous
+      ? placedRefs(previous, board, undefined, unmeasured).filter(
+          (ref) => !measuring.has(ref),
+        )
       : []
     // New linked widths measure after the push, as `hug.now` queues them.
     relisted = previous ? relistedRefs(previous, board) : []

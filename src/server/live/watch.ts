@@ -331,18 +331,23 @@ function frameNameOf(name: string): string | null {
 
 /**
  * Hugging frames newly placed, measured without a reload, since placing writes
- * `layout.json` alone, which reloads nothing.
+ * `layout.json` alone, which reloads nothing. `unmeasured` names frames
+ * `previous` holds placed that no batch measured, read as unplaced.
  */
 export function placedRefs(
   previous: ListResult,
   next: ListResult,
   paths?: readonly string[],
+  unmeasured: readonly string[] = [],
 ): string[] {
   const written = paths && new Set(paths)
+  const pending = new Set(unmeasured)
   const before = new Set(
     previous.projects.flatMap((project) =>
       project.pages.flatMap((page) =>
-        page.frames.filter((frame) => frame.placed).map((frame) => frame.ref),
+        page.frames
+          .filter((frame) => frame.placed && !pending.has(frame.ref))
+          .map((frame) => frame.ref),
       ),
     ),
   )
