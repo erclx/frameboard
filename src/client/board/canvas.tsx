@@ -584,8 +584,7 @@ export function Canvas({
       if (pressRail(layer, event)) event.stopPropagation()
     }
     viewport.addEventListener('pointerdown', railPress, { capture: true })
-    // A press in the text open for typing moves its caret. Cancelled, it sends
-    // no mousedown, so the frame keeps focus and the edit stays open.
+    // Cancelling a press in the open text sends no mousedown, so the frame keeps focus.
     let kept = false
     const keepPress = (event: PointerEvent) => {
       const press =
