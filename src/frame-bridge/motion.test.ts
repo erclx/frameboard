@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { FrameMotion } from '@/shared/frame-bridge/motion'
 import { ask, bridgedFrame } from '@/test/frame-bridge'
 
+import { motionHandlersFor } from './motion'
+
 // A box sliding 200 px right over 2 s, so its left edge names the moment.
 // canon-allow-embedded: the page whose slide the hold assertions read, kept beside them
 const SLIDE = `<style>
@@ -74,6 +76,18 @@ async function timelineOf(
 }
 
 describe('motion', () => {
+  it('pushes null for a still page once no timeline registers in time', async () => {
+    const pushes: (FrameMotion | null)[] = []
+    // The test's own page runs no animation, so it stands for a still frame.
+    const started = motionHandlersFor(100).motion?.(
+      {},
+      { id: 'still', push: (found) => pushes.push(found), onClose: () => {} },
+    )
+
+    expect(started).toBe(true)
+    await expect.poll(() => pushes).toEqual([null])
+  })
+
   it('pushes a CSS slide once it runs', async () => {
     const { found } = await timelineOf(SLIDE)
 

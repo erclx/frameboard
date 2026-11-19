@@ -1,7 +1,7 @@
 import type { FrameMotion } from '@/shared/frame-bridge/motion'
 import { holdMotionIn, type Motion, readMotionIn } from '@/shared/motion'
 
-import type { Handlers } from './handler'
+import type { HandlerContext, Handlers } from './handler'
 
 /** How long a page's script has to register a timeline after it loads, as capture allows. */
 export const MOTION_TIMEOUT_MS = 10_000
@@ -105,36 +105,47 @@ const timelines = new Map<
   { found: FrameMotion; seek: (ms: number) => Promise<void> }
 >()
 
-/** The page's timeline, which the board reads, holds, and plays on its own clock. */
-export const motionHandlers: Handlers = {
-  // `readMotionIn` waits up to 10 s, past the board's reply wait, so the timeline is pushed.
-  motion: (_args, { id, push, onClose }) => {
-    let closed = false
-    void readFrameMotion()
-      .catch(() => null)
-      .then((found) => {
-        if (closed) return
-        if (found)
-          timelines.set(id, { found, seek: createSeeker(found.motion) })
-        push(found)
-      })
-    onClose(() => {
-      closed = true
-      timelines.delete(id)
+/**
+ * The page's timeline, which the board reads, holds, and plays on its own
+ * clock, a still page pushing null once `timeoutMs` passes.
+ */
+export function motionHandlersFor(timeoutMs: number): Handlers {
+  return {
+    motion: (_args, context) => readMotion(timeoutMs, context),
+    'motion-seek': ({ motion, at }) => {
+      const held = timelines.get(motion)
+      if (!held) return false
+      void held.seek(at)
+      return true
+    },
+    'motion-release': ({ motion }) => {
+      const held = timelines.get(motion)
+      if (!held) return false
+      release(held.found.motion)
+      return true
+    },
+    'motion-moment': (found) => momentOf(found),
+  }
+}
+
+export const motionHandlers = motionHandlersFor(MOTION_TIMEOUT_MS)
+
+// `readMotionIn` waits up to 10 s, past the board's reply wait, so the timeline is pushed.
+function readMotion(
+  timeoutMs: number,
+  { id, push, onClose }: HandlerContext<'motion'>,
+): boolean {
+  let closed = false
+  void readFrameMotion(timeoutMs)
+    .catch(() => null)
+    .then((found) => {
+      if (closed) return
+      if (found) timelines.set(id, { found, seek: createSeeker(found.motion) })
+      push(found)
     })
-    return true
-  },
-  'motion-seek': ({ motion, at }) => {
-    const held = timelines.get(motion)
-    if (!held) return false
-    void held.seek(at)
-    return true
-  },
-  'motion-release': ({ motion }) => {
-    const held = timelines.get(motion)
-    if (!held) return false
-    release(held.found.motion)
-    return true
-  },
-  'motion-moment': (found) => momentOf(found),
+  onClose(() => {
+    closed = true
+    timelines.delete(id)
+  })
+  return true
 }
