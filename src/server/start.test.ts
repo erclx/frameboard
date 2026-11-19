@@ -891,6 +891,76 @@ describe.skipIf(shell === null)(
         await new Promise((resolve) => held.close(resolve))
       }
     })
+
+    it('measures a frame placed while a batch naming another file waits its turn', async () => {
+      writeFileSync(
+        join(board.root, 'studio/home/quick.html'),
+        '<!doctype html><html><head><style>body { margin: 0 }</style></head><body><div style="height: 700px"></div></body></html>',
+      )
+      await expect
+        .poll(
+          () =>
+            messages.some(
+              (message) =>
+                message.type === 'findings' &&
+                'studio/home/quick' in message.findings,
+            ),
+          { timeout: 10_000 },
+        )
+        .toBe(true)
+      let requested: () => void = () => {}
+      let release: () => void = () => {}
+      const released = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const held = createServer((_request, response) => {
+        requested()
+        void released.then(() => response.end(''))
+      })
+      await new Promise<void>((resolve) => held.listen(0, '127.0.0.1', resolve))
+      const { port } = held.address() as AddressInfo
+      const hero = join(board.root, 'studio/home/hero.html')
+      const other = join(board.root, 'studio/home/other.html')
+      const batched = (path: string) =>
+        new Promise<void>((resolve) => {
+          const stop = server.watcher.onBatch((paths) => {
+            if (!paths.includes(path)) return
+            stop()
+            resolve()
+          })
+        })
+
+      try {
+        const heroBatched = batched(hero)
+        // Hero's measure keeps its box, so its batch writes nothing and rescans nothing.
+        writeFileSync(
+          hero,
+          `<!doctype html><html><head><style>body { margin: 0 }</style><script src="http://127.0.0.1:${port}/hold.js"></script></head><body><div style="height: 900px"></div></body></html>`,
+        )
+        await heroBatched
+        // The checker can load hero before its batch, so only a later request is the measure.
+        await new Promise<void>((resolve) => {
+          requested = resolve
+        })
+        const otherBatched = batched(other)
+        writeFileSync(other, '<p>other</p>')
+        await otherBatched
+        await cli(['frame', 'add', 'studio/home/quick', '--size', 'desktop'], {
+          cwd: board.root,
+        })
+        release()
+
+        const quickHeight = () =>
+          JSON.parse(
+            readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
+          ).frames.quick?.height
+        await expect.poll(quickHeight, { timeout: 10_000 }).toBe(700)
+      } finally {
+        release()
+        held.closeAllConnections()
+        await new Promise((resolve) => held.close(resolve))
+      }
+    })
   },
 )
 

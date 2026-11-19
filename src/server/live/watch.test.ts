@@ -627,6 +627,18 @@ describe('placedRefs', () => {
     ])
   })
 
+  it('names a hugging frame an earlier scan saw placed but no batch measured', async () => {
+    writeFileSync(at('studio/home/tall.html'), '<main>Tall</main>')
+    writeHomeLayout({ tall: { ...TALL, hugHeight: true } })
+    const previous = await scanBoard(board.root)
+
+    expect(
+      placedRefs(previous, await scanBoard(board.root), homeLayout(), [
+        'studio/home/tall',
+      ]),
+    ).toEqual(['studio/home/tall'])
+  })
+
   it('leaves out a frame still unplaced', async () => {
     const previous = await scanBoard(board.root)
     writeFileSync(at('studio/home/tall.html'), '<main>Tall</main>')
