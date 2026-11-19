@@ -185,16 +185,21 @@ async function devicesTurned(page: Page): Promise<void> {
 }
 
 /**
- * Names the about frame a foldable in `pose`, at that pose's screen size,
- * putting the layout back when the page closes.
+ * Names the about frame a foldable in `pose`, at that pose's screen size, or
+ * with its sides swapped when `turn` names a quarter turn, putting the layout
+ * back when the page closes.
  */
-function foldableShown(pose: Pose): (page: Page) => Promise<void> {
+function foldableShown(
+  pose: Pose,
+  turn?: 'left' | 'right',
+): (page: Page) => Promise<void> {
   return async (page) => {
     const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
     const originalLayout = readFileSync(layoutPath, 'utf8')
     const layout = JSON.parse(originalLayout)
+    const { width, height } = POSE_SIZES[pose]
     Object.assign(layout.frames.about, {
-      ...POSE_SIZES[pose],
+      ...(turn ? { width: height, height: width, turn } : { width, height }),
       showDevice: true,
       foldable: true,
       pose,
@@ -715,6 +720,25 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     })),
     {
+      // A selected open foldable turned left, its island in the left strip and its page between the strips.
+      section: 'device-foldable-turned',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          foldableShown('open', 'left'),
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          readyWhen(
+            'body:has([data-bezel="foldable"][data-bezel-turn="left"] [data-bezel-strip]):has([data-poses])',
+          ),
+        ),
+      ),
+    },
+    {
       section: 'inspector-widths',
       theme,
       route: '/p/webapp/home',
@@ -888,6 +912,25 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           presentOnLoad,
           readyWhen(
             '[data-presenting]:has([data-bezel-turn="left"]) [role="toolbar"] button:has(svg)',
+          ),
+        ),
+      ),
+    },
+    {
+      // An open foldable turned left presented, its page between its strips.
+      section: 'present-foldable-turned',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      setup: themed(
+        both(
+          foldableShown('open', 'left'),
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          presentOnLoad,
+          readyWhen(
+            '[data-presenting] [data-bezel="foldable"][data-bezel-turn="left"] [data-bezel-strip]',
           ),
         ),
       ),
