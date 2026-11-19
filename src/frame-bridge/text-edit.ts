@@ -19,6 +19,14 @@ const SPACES = /[\t\n\f\r ]+/g
  */
 export type EndTextEdit = (end: TextEditEnd, restore: () => void) => void
 
+/** An open text edit, which the board ends or moves the caret of. */
+export interface OpenTextEdit {
+  /** Ends the edit with nothing written, the old text shown again. */
+  cancel: () => void
+  /** Moves the caret to a point in the text, answering false for a point outside it or an ended edit. */
+  caretAt: (at: FramePoint) => boolean
+}
+
 /** Whether an element's computed style shows a newline in its text as a space. */
 function collapsesBreaks(element: HTMLElement): boolean {
   const { whiteSpace } = getComputedStyle(element)
@@ -26,15 +34,15 @@ function collapsesBreaks(element: HTMLElement): boolean {
 }
 
 /**
- * Opens an element's text for typing, answering its cancel or null, or only
- * the run at `at` beside child elements. A break is a newline, never a `<br>`,
- * and a reload ends the edit with nothing to write.
+ * Opens an element's text for typing, answering the open edit or null, or
+ * only the run at `at` beside child elements. A break is a newline, never a
+ * `<br>`, and a reload ends the edit with nothing to write.
  */
 export function openTextEdit(
   found: Element,
   end: EndTextEdit,
   at?: FramePoint,
-): (() => void) | null {
+): OpenTextEdit | null {
   if (!(found instanceof HTMLElement)) return null
   if (found.childElementCount > 0) {
     const run = at && runAt(found, at)
@@ -141,6 +149,13 @@ export function openTextEdit(
     getSelection()?.addRange(caret)
   }
 
+  const caretAt = ({ x, y }: FramePoint) => {
+    const point = caretPointAt(x, y)
+    if (!open || !point || !element.contains(point.node)) return false
+    placeCaret(point.node, point.offset)
+    return true
+  }
+
   element.setAttribute('contenteditable', 'plaintext-only')
   element.setAttribute(EDITING, '')
   element.addEventListener('keydown', keydown)
@@ -153,15 +168,36 @@ export function openTextEdit(
   const selection = getSelection()
   selection?.removeAllRanges()
   selection?.addRange(range)
-  return cancel
+  return { cancel, caretAt }
+}
+
+/** The caret position under a frame point, or null where the browser names none. */
+function caretPointAt(
+  x: number,
+  y: number,
+): { node: Node; offset: number } | null {
+  const position = document.caretPositionFromPoint?.(x, y)
+  if (position) return { node: position.offsetNode, offset: position.offset }
+  // WebKit before caretPositionFromPoint names the point by a range.
+  const range = document.caretRangeFromPoint?.(x, y)
+  return range
+    ? { node: range.startContainer, offset: range.startOffset }
+    : null
+}
+
+/** Collapses the selection to one caret at the offset in the node. */
+function placeCaret(node: Node, offset: number): void {
+  const caret = document.createRange()
+  caret.setStart(node, offset)
+  caret.collapse(true)
+  const selection = getSelection()
+  selection?.removeAllRanges()
+  selection?.addRange(caret)
 }
 
 /** The text node of the element's own under a point, or null for a child's text, bare white space, or none. */
 function runAt(element: HTMLElement, { x, y }: FramePoint): Text | null {
-  const node =
-    document.caretPositionFromPoint?.(x, y)?.offsetNode ??
-    // WebKit before caretPositionFromPoint names the point by a range.
-    document.caretRangeFromPoint?.(x, y)?.startContainer
+  const node = caretPointAt(x, y)?.node
   return node instanceof Text &&
     node.parentNode === element &&
     node.data.trim() !== ''
@@ -178,7 +214,7 @@ function openRunEdit(
   element: HTMLElement,
   node: Text,
   end: EndTextEdit,
-): () => void {
+): OpenTextEdit {
   const index = [...element.childNodes]
     .filter((child) => child instanceof Text)
     .indexOf(node)
@@ -311,6 +347,15 @@ function openRunEdit(
     getSelection()?.addRange(caret)
   }
 
+  // A point on a child or another run names no offset in the run, so it moves nothing.
+  const caretAt = ({ x, y }: FramePoint) => {
+    const point = caretPointAt(x, y)
+    const offset = point && offsetIn(point.node, point.offset)
+    if (!open || offset === undefined || offset === null) return false
+    placeCaret(node, offset)
+    return true
+  }
+
   for (const { child } of children)
     child.setAttribute('contenteditable', 'false')
   element.setAttribute('contenteditable', 'plaintext-only')
@@ -326,5 +371,5 @@ function openRunEdit(
   const selection = getSelection()
   selection?.removeAllRanges()
   selection?.addRange(range)
-  return cancel
+  return { cancel, caretAt }
 }

@@ -652,7 +652,12 @@ export function Canvas({
     stopEditing.current?.()
     stopEditing.current = null
     if (waits) {
-      stopEditing.current = editTextWhenShown(layer, key, write, selectionStore)
+      stopEditing.current = editTextWhenShown(
+        layer,
+        key,
+        write,
+        selectionStore,
+      ).cancel
       return Promise.resolve(true)
     }
     selectElement(selectionStore, page.ref, key)
