@@ -9,8 +9,10 @@ import {
   requestArgs,
 } from '@/shared/frame-bridge/messages'
 
+import { chromeHandlers } from './chrome'
 import { gapHandlers } from './gap'
 import { addressed, type Handler, type Handlers, onceParsed } from './handler'
+import { keyHandlers } from './keys'
 import { liveElementHandlers } from './live-element'
 import { measureHandlers } from './measure'
 import { mediaHandlers } from './media'
@@ -36,7 +38,9 @@ const closers = new Map<string, () => void>()
 const committed = new Map<string, () => void>()
 
 const handlers: Handlers = {
+  ...chromeHandlers,
   ...gapHandlers,
+  ...keyHandlers,
   ...liveElementHandlers,
   ...measureHandlers,
   ...mediaHandlers,
