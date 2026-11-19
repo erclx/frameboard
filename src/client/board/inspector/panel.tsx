@@ -340,6 +340,7 @@ function ElementDesign({ page, element }: ElementProps) {
         opacity={live.opacity}
         radius={live.radius}
         rotation={live.rotation}
+        model={model !== null}
         disabled={disabled}
         write={write}
         preview={preview}

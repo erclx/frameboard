@@ -17,12 +17,13 @@ The right panel's Design tab edits what is selected, and each edit writes ordina
 
 ## Model
 
-A selected 3D model shows a Model section first, naming its file. Every control writes one attribute on the model's own element and shows on the canvas at once, with no reload.
+A selected 3D model shows a Model section first, naming its file over a hint that a double-click turns it by hand. Every control writes one attribute on the model's own element and shows on the canvas at once, with no reload.
 
-- Angle sets where the camera sits, H across and V down from the top, and writes `camera-orbit` with `max-camera-orbit` beside it as one undo step
-- Rotation turns the model itself about X, Y, and Z, and Scale sizes it, each dropping its attribute at its resting value
-- Animation picks one of the model's clips and Autoplay starts it, and both stay off for a model that carries no clip
+- Camera sets where you look from, Around and Height from the top, and writes `camera-orbit` with `max-camera-orbit` beside it as one undo step
+- Model turns the model itself about X, Y, and Z, and Scale sizes it, each dropping its attribute at its resting value
+- Clip in this file picks one of the model's own clips and Play on load starts it, and both stay off for a model that carries no clip
 - Double-click a selected model to turn it by drag. Each release writes the angle, and Escape or a click outside the model leaves turning.
+- Appearance shows no Rotation row and no 3D section for a model, unless its file already rotates or transforms it
 
 ## Colors
 
