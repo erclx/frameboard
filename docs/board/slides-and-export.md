@@ -13,14 +13,15 @@ The Slides and Export tabs, and the Motion section a moving frame adds.
 - Hovering a tile plays it on the selected slides, and a click saves it. Transitions under `assets/transitions/` follow the built-ins, by file name.
 - An element's Slides tab sets the step it appears on, its effect from the same tiles, and its start as On press, With last, or After last
 - While presenting, the arrows reveal a slide's steps in order before moving on, and the bar shows a dot per step, or the count past six
-- G while presenting, or the bar's grid button, shows every slide with the current one marked. Enter, a click, or a typed number then Enter jumps to a slide at its first step.
+- G while presenting, or the bar's grid button, shows every slide, the one on stage badged Now and the arrows' place ringed. Enter, a click, or a typed number and Enter jumps to that slide's first step.
 - Alt+Shift+P or the bar's Presenter view button opens a second window with the slide now, the next one, the note, a timer, and the clock, and F then takes the audience full screen
 
 ## Speaker notes
 
-- A slide selected while the Slides tab is open shows a Speaker notes strip under it, where you write what you mean to say over that slide
+- The Notes button in the Slides tab's Page section shows a Speaker notes strip under every slide of the page, where you write what you mean to say over each one, and pressing it again hides them all
+- Notes start hidden, the choice is kept in this browser, and while they are hidden a slide holding a note carries a small note mark on its label
 - The note saves when you click away or press Ctrl+Enter, and Esc puts back what was there before you started typing
-- A slide holding a note shows its strip on any tab, and a note never enters the frame's file, so an agent rewriting the slide keeps it
+- A note never enters the frame's file, so an agent rewriting the slide keeps it
 - The audience's window shows no note, and the presenter view shows it under the next slide, scrolling a long one
 
 ## Export
