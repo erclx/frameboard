@@ -23,6 +23,7 @@ import {
   BEZELS,
   pageCorners,
   screenCorners,
+  shownBox,
   topInset,
 } from '@/shared/frame-device'
 import { referenceHeight } from '@/shared/frame-sizes'
@@ -198,9 +199,17 @@ export const Frame = memo(function Frame({
     }
   }, [live, previewWidth, hugHeight, frame.ref, statusBar])
 
+  // An entered page-tall phone shows one screen with its page scrolling, while its label and notes keep the stored box.
+  const drawnHeight = entered
+    ? shownBox({
+        box: { width, height },
+        device: frame.device,
+        scroll: frame.scroll,
+      }).height
+    : height
   const colors = usePageColors(iframe, live && statusBar > 0, theme)
   const waiting = useWaitingOnFirstLoad(iframe, live)
-  useHiddenScrollbar(iframe, live, frame.scroll)
+  useHiddenScrollbar(iframe, live, frame.scroll || drawnHeight < height)
   useMotionDriver(iframe, frame.ref, live, playing)
 
   useEffect(() => {
@@ -249,7 +258,13 @@ export const Frame = memo(function Frame({
           !entered &&
           'data-label-hover:[outline:calc(1px/var(--zoom,1))_solid_color-mix(in_srgb,var(--primary)_45%,transparent)]',
       )}
-      style={{ left: x, top: y, width, height, zIndex: frame.order }}
+      style={{
+        left: x,
+        top: y,
+        width,
+        height: drawnHeight,
+        zIndex: frame.order,
+      }}
     >
       <div
         className={cn(
@@ -327,7 +342,7 @@ export const Frame = memo(function Frame({
         <Bezel
           device={frame.device}
           width={width}
-          height={height}
+          height={drawnHeight}
           pose={frame.pose}
           island={frame.island}
           colors={colors}
