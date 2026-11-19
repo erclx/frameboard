@@ -31,6 +31,16 @@ Owns the Assets tab, whose Files, Find, and Generate row sits in `tab.tsx`. File
 - A drop on the tab, or the header's `+` picker, posts the files through `writeBoard`, and a tab with no write access says why and adds nothing
 - Refusals show as an inline line under the drop hint rather than a toast, and a drop reloads only the frames linking a dropped file, through the `assets/` watch
 
+A tile opens its menu, in `src/client/board/menus/asset.tsx`, from a right-click or from the ⋯ button a writing tab shows on a hovered or focused tile. A view-only tab offers Copy path alone and draws no ⋯. `files.tsx` holds which tile renames and the Delete confirm, and each write's refusal toasts.
+
+- Place on canvas lands the file in a new frame at the view's center through `placeAtCenter`, the landing a drop on bare canvas makes
+- Show frames using it lists the linking frames from `GET .../assets/<path>` in a popover, and a click jumps to one
+- Rename edits the stem alone in the board's `RenameField`, keeping the extension, and the server refuses a changed extension
+- Replace file… writes a picked file of the same kind under the same path, and bumps the tile's `?v=` so its thumbnail loads the new bytes
+- Delete asks first only for a file some frame links, naming the frames, since Undo brings the file back
+
+Each write is one undo step. Rename and delete carry the license file, and replace takes it out, since the license named the old bytes. Rename rewrites each linking frame's own loads through `src/server/board/asset-links.ts` and refuses `asset-held` while a session holds one.
+
 ### `src/client/board/assets/find/`
 
 Owns Find, an Openverse search run on Enter, with a filter menu at the end of the search field whose credited licenses item searches again. A newer search aborts the older, so an older answer never replaces it. `saveStore` in `../sourcing.ts` keys each save by project and Openverse id, so a Save click and a drag of one result land one file.

@@ -23,8 +23,8 @@ This record holds at most 650 words.
 ### Hand edits
 
 - Most edits a designer makes in a design tool are made by hand, outside the non-goals
-- The developer adds, duplicates, renames, reorders, and deletes pages and frames, draws or picks a frame's size, selects several, and undoes their changes
-- By hand, a developer sets a frame's position, size, fill, and extra widths, and an element's name, look, and text, with colors showing their token names
+- The developer adds, duplicates, renames, reorders, and deletes pages and frames, replaces, renames, and deletes assets, draws or picks a frame's size, selects several, and undoes their changes
+- A developer sets a frame's position, size, fill, and extra widths, and an element's name, look, and text, with colors showing their token names
 - A developer places text, a shape, an image, video, audio, or a 3D model in a frame, sizes it, deletes it, and edits text in place
 - A developer sets a container's flow, spacing, and alignment and each child's size, places an element freely or in the flow, and wraps a selection in one container
 
@@ -33,7 +33,7 @@ This record holds at most 650 words.
 - The agent sees the developer's selection and works through notes pinned on frames, with images and replies, which reach a listening session or start one
 - The board shows the frame an agent is editing and warns a second session
 - A frame breaking a content rule is reported at once to its agent and the board, and projects add rules or turn one off
-- An agent screenshots a frame or page, and the developer exports a frame or an element as a PNG in either theme
+- An agent screenshots a frame or page, and the developer exports a frame or element as a PNG in either theme
 - A developer opens one project's frames read only on a phone on the same network
 
 ### Themes and tokens
@@ -69,6 +69,6 @@ This record holds at most 650 words.
 ## Constraints
 
 - Runs on macOS and Linux
-- A hand edit writes ordinary HTML and CSS on each element it names, its parent when placing one freely, or a token sheet, and the browser lays out the rest.
+- A hand edit writes ordinary HTML and CSS on each element it names, its parent when placing one freely, a token sheet, or a renamed asset's links, and the browser lays out the rest.
 - Human and agent edits never silently overwrite each other.
 - Frameboard knows nothing about any consumer, which hands it a board folder and token stylesheet.
