@@ -1,13 +1,13 @@
 ---
 title: Sourcing
-description: The image verbs that find a public domain photo or generate one on the developer's key, saving it into a project's assets with a license file
+description: The image verbs that find or generate a picture and the model verb that finds a public domain 3D model, saving each into a project's assets with a license file
 ---
 
 # Sourcing
 
 ## Overview
 
-Owns where a picture in a frame comes from, being the `image find`, `image generate`, and `image doctor` verbs and the code saving what they fetch into a project's `assets/`. Every saved image carries a `<file>.license.json` beside it, so a reader can tell where it came from.
+Owns where a picture or a 3D model in a frame comes from, being the `image find`, `image generate`, `image doctor`, and `model find` verbs and the code saving what they fetch into a project's `assets/`. Every saved file carries a `<file>.license.json` beside it, so a reader can tell where it came from.
 
 ## Layout
 
