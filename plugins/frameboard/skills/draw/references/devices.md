@@ -37,4 +37,4 @@ While a phone shows, the board starts the page under a status bar it draws itsel
 
 ## Check it
 
-Capture the frame with its device on and read both themes, since a phone's status bar takes the page's fill and text color and the body's own colors differ per theme.
+Capture the frame with its device on and read both themes, since a phone's status bar takes the page's fill and text color.
