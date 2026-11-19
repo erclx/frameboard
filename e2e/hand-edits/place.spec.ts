@@ -653,6 +653,39 @@ test.describe('placing text and shapes into a frame', () => {
 
       await expect.poll(read).toBe(original)
     })
+
+    test('an image tile dragged by the middle of its picture lands in a row gap as one img', async ({
+      page,
+    }) => {
+      await page.goto(await server.ticketUrl())
+      await page.goto(`${server.url}/p/webapp/home`)
+      const original = read()
+      await page.getByRole('tab', { name: 'Assets' }).click()
+      const gap = await centerOf(page, '[data-name="One"]')
+      const one = await hero(page).locator('[data-name="One"]').boundingBox()
+      const layer = await page.locator('[data-hit-layer]').boundingBox()
+      if (!one || !layer)
+        throw new Error('The row or the hit layer draws no box')
+
+      await page
+        .getByRole('button', { name: /^Copy path of hero.png,/ })
+        .locator('img')
+        .dragTo(page.locator('[data-hit-layer]'), {
+          targetPosition: {
+            x: one.x + one.width + 20 - layer.x,
+            y: gap.y - layer.y,
+          },
+        })
+
+      await expect
+        .poll(read)
+        .toBe(
+          original.replace(
+            '<div data-name="Two"',
+            '<img data-name="hero.png" src="../assets/hero.png" alt="" style="width: 1px; height: 1px; object-fit: cover"><div data-name="Two"',
+          ),
+        )
+    })
   })
 
   test.describe('a corner drag', () => {

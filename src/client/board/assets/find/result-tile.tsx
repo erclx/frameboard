@@ -102,6 +102,7 @@ function Thumbnail({ url }: { url: string | null }) {
           loading="lazy"
           decoding="async"
           referrerPolicy="no-referrer"
+          draggable={false}
           onError={() => setFailed(true)}
           className="h-[72px] w-full object-cover"
         />
