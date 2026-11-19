@@ -223,7 +223,7 @@ const PADDING_LONGHANDS: readonly string[] = SHORTHAND_LONGHANDS.padding ?? []
  * side would drop into a shorthand, where it would drop all four.
  */
 const PADDING_LENGTH =
-  /^(?:0|(?:\d+\.?\d*|\.\d+)(?:%|px|r?em|r?lh|r?ex|r?ch|r?cap|r?ic|[sld]?v(?:w|h|i|b|min|max)|cq(?:w|h|i|b|min|max)|pt|pc|cm|mm|q|in))$/i
+  /^(?:0|(?:\d+(?:\.\d+)?|\.\d+)(?:%|px|r?em|r?lh|r?ex|r?ch|r?cap|r?ic|[sld]?v(?:w|h|i|b|min|max)|cq(?:w|h|i|b|min|max)|pt|pc|cm|mm|q|in))$/i
 
 /** The top, right, bottom, and left a padding shorthand sets, if each is a plain length. */
 function paddingSides(value: string): string[] | undefined {

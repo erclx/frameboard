@@ -305,6 +305,7 @@ describe('setDeclaration on a padding side', () => {
     ['a value no length reads', 'padding: 4px; padding-left: 1fr'],
     ['a unitless side', 'padding: 4px; padding-left: 2'],
     ['a negative side', 'padding: 4px; padding-left: -2px'],
+    ['a number ending on its dot', 'padding: 4px; padding-left: 4.px'],
   ])('should not fold %s', (_, style) => {
     expect(setDeclaration(style, 'padding-top', '8px')).toEqual({
       ok: true,
