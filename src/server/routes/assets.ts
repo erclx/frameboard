@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 
+import { framesLinking } from '@/server/board/asset-links'
 import type { AssetUsage } from '@/server/board/asset-usage'
 import {
   addAssets,
@@ -18,6 +19,7 @@ import type { History } from '@/server/history/stack'
 import { FrameboardError } from '@/shared/errors'
 import { isValidName } from '@/shared/names'
 import {
+  type AssetFrames,
   assetRenameSchema,
   type AssetWriteResult,
   type TransitionKeyframesList,
@@ -170,6 +172,17 @@ export function assetsRoutes(
       })),
     )
     return c.json({ ok: true, data: await addAssets(projectDir, uploads) })
+  })
+
+  app.get(file, async (c) => {
+    const project = c.req.param('project')
+    const { asset } = target(c.req.url, project)
+    const linking = await framesLinking(root, project, asset)
+    const data: AssetFrames = {
+      path: asset,
+      frames: linking.map(({ page, name }) => `${project}/${page}/${name}`),
+    }
+    return c.json({ ok: true, data })
   })
 
   app.delete(file, authorized, async (c) => {

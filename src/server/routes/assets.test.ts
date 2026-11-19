@@ -179,6 +179,10 @@ describe('assetsRoutes', () => {
     writeFileSync(asset(path), content)
   }
 
+  function frame(path: string): string {
+    return join(board.root, 'webapp', path)
+  }
+
   function write(
     method: 'DELETE' | 'PATCH' | 'PUT',
     path: string,
@@ -194,6 +198,32 @@ describe('assetsRoutes', () => {
       body,
     })
   }
+
+  describe('GET a file', () => {
+    it('answers the frames linking it, each by ref', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeFileSync(frame('home/hero.html'), '<img src="../assets/lake.jpg">')
+
+      const response = await routes().request(
+        '/api/projects/webapp/assets/lake.jpg',
+      )
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { path: 'lake.jpg', frames: ['webapp/home/hero'] },
+      })
+    })
+
+    it('answers no frames for a file no frame links', async () => {
+      writeAsset('lake.jpg', 'pixels')
+
+      const response = await routes().request(
+        '/api/projects/webapp/assets/lake.jpg',
+      )
+
+      expect((await response.json()).data.frames).toEqual([])
+    })
+  })
 
   describe('DELETE', () => {
     it('deletes the file and answers its path', async () => {
@@ -375,10 +405,6 @@ describe('assetsRoutes', () => {
     return write('PATCH', path, {
       body: JSON.stringify({ name }),
     })
-  }
-
-  function frame(path: string): string {
-    return join(board.root, 'webapp', path)
   }
 
   describe('PATCH', () => {

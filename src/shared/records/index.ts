@@ -3,6 +3,7 @@ import type { z } from 'zod'
 import { addressFileSchema } from './address'
 import {
   assetAddResultSchema,
+  assetFramesSchema,
   assetListSchema,
   assetRenameSchema,
   assetWriteResultSchema,
@@ -58,6 +59,7 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   assetAdd: assetAddResultSchema,
   assetRename: assetRenameSchema,
   assetWrite: assetWriteResultSchema,
+  assetFrames: assetFramesSchema,
   elements: elementTreeSchema,
   selection: selectionResultSchema,
   find: findResultSchema,

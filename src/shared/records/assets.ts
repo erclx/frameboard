@@ -48,6 +48,14 @@ export const assetWriteResultSchema = z.object({
 
 export type AssetWriteResult = z.infer<typeof assetWriteResultSchema>
 
+/** The frames linking one asset, each as a frame ref in board order. */
+export const assetFramesSchema = z.object({
+  path: z.string(),
+  frames: z.array(z.string()),
+})
+
+export type AssetFrames = z.infer<typeof assetFramesSchema>
+
 /**
  * A project's own transitions as present mode plays them, sorted by name.
  * `css` holds each one's keyframes alone, under the names
