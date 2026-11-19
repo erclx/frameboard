@@ -67,10 +67,14 @@ function ElementGhosts({ frames, container }: ElementOverlayProps) {
     (state) => state.mode === 'edit' && state.tool === 'move',
   )
   const drawn = usePendingFrames(frames)
-  // A scroll frame reaches its overflow by scrolling, so it draws no ghost.
+  // A scroll frame reaches its overflow by scrolling, and a frame showing its device body is one screen of a page that scrolls, as Present and Play scroll it, so neither draws a ghost. A record carries `device` only while the body shows.
   const walked = moving
     ? selected.filter(
-        (ref) => !frames.some((frame) => frame.ref === ref && frame.scroll),
+        (ref) =>
+          !frames.some(
+            (frame) =>
+              frame.ref === ref && (frame.scroll || frame.device !== undefined),
+          ),
       )
     : []
   const held = useGhosts(container, walked)
