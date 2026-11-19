@@ -70,8 +70,12 @@ async function countProject(
   return counts
 }
 
-/** The asset paths one frame links, each once. A frame gone between the listing and the read links none. */
-function linkedAssets(
+/**
+ * The asset paths one frame links, each once, read from its file as it stands
+ * rather than from a cached count. A frame gone between the listing and the
+ * read links none.
+ */
+export function linkedAssets(
   root: string,
   project: string,
   page: string,

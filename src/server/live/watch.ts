@@ -2,13 +2,17 @@ import { join, relative, sep } from 'node:path'
 
 import { watch } from 'chokidar'
 
+import { linkedAssets } from '@/server/board/asset-usage'
 import {
   ASSETS_FOLDER,
   FRAME_EXTENSION,
   LAYOUT_FILE,
 } from '@/server/board/scan'
+import { assetKind, isPlaceableKind } from '@/shared/asset-kinds'
 import { CLAIMS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
+import { KIT_ASSETS, PROJECT_KITS } from '@/shared/kits'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
+import { LICENSE_FILE_SUFFIX } from '@/shared/records/sourcing'
 
 const NOTES_FILE = 'notes.json'
 /** A batch closes this long after its last event. */
@@ -152,16 +156,18 @@ export function reloadRefs(
   board: ListResult,
   tokens: string | null = null,
 ): string[] {
-  const { refs, everyFrame } = reloadCauses(root, paths, tokens)
+  const { refs, everyFrame, media } = reloadCauses(root, paths, tokens)
   const named: string[] = []
   for (const project of board.projects) {
+    const changed = media.get(project.name)
     for (const page of project.pages) {
       for (const frame of page.frames) {
         if (
           everyFrame ||
           refs.has(frame.ref) ||
           refs.has(`${page.ref}/*`) ||
-          refs.has(`${project.name}/*`)
+          refs.has(`${project.name}/*`) ||
+          (changed !== undefined && links(root, frame, changed))
         ) {
           named.push(frame.ref)
         }
@@ -169,6 +175,23 @@ export function reloadRefs(
     }
   }
   return named
+}
+
+/** Whether the frame's file, read as it stands, loads any of the changed asset paths. */
+function links(
+  root: string,
+  frame: FrameRecord,
+  changed: ReadonlySet<string>,
+): boolean {
+  for (const path of linkedAssets(
+    root,
+    frame.project,
+    frame.page,
+    frame.name,
+  )) {
+    if (changed.has(path)) return true
+  }
+  return false
 }
 
 /**
@@ -182,31 +205,41 @@ export function ownReloadRefs(
   board: ListResult,
   tokens: string | null = null,
 ): string[] {
-  const { refs, everyFrame } = reloadCauses(root, paths, tokens)
+  const { refs, everyFrame, media } = reloadCauses(root, paths, tokens)
   if (everyFrame) return []
-  return board.projects.flatMap((project) =>
-    refs.has(`${project.name}/*`)
-      ? []
-      : project.pages.flatMap((page) =>
-          refs.has(`${page.ref}/*`)
-            ? []
-            : page.frames
-                .filter((frame) => refs.has(frame.ref))
-                .map((frame) => frame.ref),
-        ),
-  )
+  return board.projects.flatMap((project) => {
+    if (refs.has(`${project.name}/*`)) return []
+    const changed = media.get(project.name)
+    return project.pages.flatMap((page) =>
+      refs.has(`${page.ref}/*`)
+        ? []
+        : page.frames
+            .filter(
+              (frame) =>
+                refs.has(frame.ref) &&
+                (changed === undefined || !links(root, frame, changed)),
+            )
+            .map((frame) => frame.ref),
+    )
+  })
 }
 
 /**
  * What a batch's paths reach: frame refs, `<page>/*` and `<project>/*`
- * wildcards, and whether a board-wide sheet reaches every frame.
+ * wildcards, whether a board-wide sheet reaches every frame, and per project
+ * the placeable media under `assets/` that reach only the frames loading them.
+ *
+ * A stylesheet, script, font, or anything in a kit's folder keeps the project
+ * reload, since a frame can reach one through a sheet's `url()` or the kit
+ * the frame route imports, neither of which the frame's own loads list.
  */
 function reloadCauses(
   root: string,
   paths: string[],
   tokens: string | null,
-): { refs: Set<string>; everyFrame: boolean } {
+): { refs: Set<string>; everyFrame: boolean; media: Map<string, Set<string>> } {
   const refs = new Set<string>()
+  const media = new Map<string, Set<string>>()
   let everyFrame = false
   for (const path of paths) {
     const [project, folder, ...rest] = relative(root, path).split(sep)
@@ -220,7 +253,16 @@ function reloadCauses(
     }
     if (!project || !folder || rest.length === 0) continue
     if (folder === ASSETS_FOLDER) {
-      refs.add(`${project}/*`)
+      const name = rest.at(-1) ?? ''
+      if (name.endsWith(LICENSE_FILE_SUFFIX)) continue
+      const inKit = rest[0] === PROJECT_KITS || rest[0] === KIT_ASSETS
+      if (inKit || !isPlaceableKind(assetKind(name))) {
+        refs.add(`${project}/*`)
+        continue
+      }
+      const changed = media.get(project) ?? new Set<string>()
+      changed.add(rest.join('/'))
+      media.set(project, changed)
     } else if (rest.length === 1) {
       const name = rest[0] ?? ''
       if (name === LAYOUT_FILE || name === NOTES_FILE) continue
@@ -232,7 +274,7 @@ function reloadCauses(
       )
     }
   }
-  return { refs, everyFrame }
+  return { refs, everyFrame, media }
 }
 
 /** A project or page folder the board's own rename moved from `from` to `path`, at `at` in epoch milliseconds. */
