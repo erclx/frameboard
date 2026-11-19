@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 
 import { cn } from '@/client/lib/cn'
 import { thumbnailUrl } from '@/client/live/thumbnail-url'
@@ -16,8 +16,28 @@ interface FrameSkeletonProps {
   className?: string
 }
 
-/** How a capture's image request ended, keyed by its URL so a new stamp waits again. */
-type Settled = Readonly<Record<string, 'loaded' | 'failed'>>
+/** A failed capture request, keyed by its URL so a new stamp waits again. */
+type Failed = Readonly<Record<string, true>>
+
+/**
+ * Capture URLs loaded this visit, held above the cards so a remount draws at
+ * once. A failure stays per card, so a remount asks again.
+ */
+const loaded = new Set<string>()
+const listeners = new Set<() => void>()
+
+function markLoaded(href: string): void {
+  if (loaded.has(href)) return
+  loaded.add(href)
+  for (const listener of listeners) listener()
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+const loadedCount = () => loaded.size
 
 /** What a box shows: its capture, the pulse while that loads, or still grey without one. */
 type Capture = 'drawn' | 'waiting' | 'none'
@@ -39,7 +59,9 @@ export function FrameSkeleton({
   captures,
   className,
 }: FrameSkeletonProps) {
-  const [settled, setSettled] = useState<Settled>({})
+  const [failed, setFailed] = useState<Failed>({})
+  // Subscribes to the loaded set, whose size changes on every new load.
+  useSyncExternalStore(subscribe, loadedCount, loadedCount)
   const frames = cardFrames(project)
   if (frames.length === 0) return null
   const boxes = frames.map((frame) => frame.box)
@@ -47,8 +69,8 @@ export function FrameSkeleton({
   const top = Math.min(...boxes.map((box) => box.y))
   const right = Math.max(...boxes.map((box) => box.x + box.width))
   const bottom = Math.max(...boxes.map((box) => box.y + box.height))
-  const settle = (href: string, outcome: Settled[string]) =>
-    setSettled((current) => ({ ...current, [href]: outcome }))
+  const fail = (href: string) =>
+    setFailed((current) => ({ ...current, [href]: true }))
   return (
     <svg
       aria-hidden
@@ -63,12 +85,12 @@ export function FrameSkeleton({
           captures && stamp
             ? thumbnailUrl(ref, captures.theme, stamp)
             : undefined
-        const outcome = href === undefined ? undefined : settled[href]
+        const broken = href !== undefined && failed[href] === true
         const capture: Capture | undefined = !captures
           ? undefined
-          : href === undefined || outcome === 'failed'
+          : href === undefined || broken
             ? 'none'
-            : outcome === 'loaded'
+            : loaded.has(href)
               ? 'drawn'
               : 'waiting'
         return (
@@ -83,7 +105,7 @@ export function FrameSkeleton({
               strokeWidth={1}
               vectorEffect="non-scaling-stroke"
             />
-            {href !== undefined && outcome !== 'failed' ? (
+            {href !== undefined && !broken ? (
               <image
                 href={href}
                 x={box.x}
@@ -91,8 +113,8 @@ export function FrameSkeleton({
                 width={box.width}
                 height={box.height}
                 preserveAspectRatio="none"
-                onLoad={() => settle(href, 'loaded')}
-                onError={() => settle(href, 'failed')}
+                onLoad={() => markLoaded(href)}
+                onError={() => fail(href)}
               />
             ) : null}
           </g>

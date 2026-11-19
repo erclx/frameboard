@@ -511,7 +511,7 @@ describe('FrameSkeleton in a card', () => {
 
   it('pulses a stamped box grey until its capture loads, then draws it', () => {
     liveStore.setState({
-      thumbnails: { light: { 'sketch/home/hero': 'r1-0-1440x900' }, dark: {} },
+      thumbnails: { light: { 'sketch/home/hero': 'r2-0-1440x900' }, dark: {} },
     })
     const { container } = renderOne(
       withFrames([frame('hero', { x: 0, y: 0, width: 1440, height: 900 })]),
@@ -524,6 +524,22 @@ describe('FrameSkeleton in a card', () => {
       ['waiting', true],
       ['drawn', false],
     ])
+  })
+
+  it('draws a capture already loaded once its card mounts again', () => {
+    liveStore.setState({
+      thumbnails: { light: { 'sketch/home/hero': 'r3-0-1440x900' }, dark: {} },
+    })
+    const record = withFrames([
+      frame('hero', { x: 0, y: 0, width: 1440, height: 900 }),
+    ])
+    const first = renderOne(record)
+    settleCapture(first.container, 'load')
+    first.unmount()
+
+    const { container } = renderOne(record)
+
+    expect(boxState(container)).toEqual(['drawn', false])
   })
 
   it('settles a box whose capture fails to load to still grey', () => {
