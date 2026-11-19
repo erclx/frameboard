@@ -68,6 +68,7 @@ describe('docs', () => {
       'image find',
       'image generate',
       'image doctor',
+      'model find',
       'page add',
       'page duplicate',
       'page rename',
