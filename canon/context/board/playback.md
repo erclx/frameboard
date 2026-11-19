@@ -26,7 +26,7 @@ Owns the hold, a frame's timeline driven by the board in this tab alone, set fro
 Owns Play's state and surfaces, being the frame `entered.ts` holds, the `shield.tsx` under the frames' layer, and the drawn controls `controls.ts` runs in the entered frame alone, with `keep-bar.tsx` offering Keep values once one moves. A layers row in Play reveals its frame and enters it.
 
 - d3-zoom swallows the click ending a press that moved past 3 px, so a pan starting over a frame never enters it while a jittered click still does
-- Esc runs `play.leaveFrame` ahead of `mode.exitPlay`, bound into the entered frame's window, where the board's keys never arrive
+- Esc runs `play.leaveFrame` ahead of `mode.exitPlay`, taken inside the entered frame through the bridge, where the board's keys never arrive
 - `controls.ts` binds again on every load of the entered iframe, since a frame can be entered before its page draws and a reload is a new document
 - Leaving the frame, a page switch, or leaving Play puts each moved control back to the file's values, so Edit never shows a value the file does not hold
 - Keep values is one `writeElements` call, so one undo puts the file back, and a view-only tab tunes live with a bar offering Reset alone
