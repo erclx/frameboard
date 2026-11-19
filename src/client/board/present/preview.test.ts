@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { frameElements } from '@/shared/frame-bridge/elements'
 import type { ResolvedTransition } from '@/shared/present-transition'
+import { BRIDGE } from '@/test/frame-bridge'
 
 import {
   playPreview,
@@ -140,7 +141,7 @@ describe('previewStepOn', () => {
     const loaded = new Promise((resolve) =>
       iframe.addEventListener('load', resolve, { once: true }),
     )
-    iframe.srcdoc = `<!doctype html><body>${body}</body>`
+    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${'c'.repeat(64)}"></style>${BRIDGE}</head><body>${body}</body></html>`
     frame.append(iframe)
     document.body.append(frame)
     await loaded
@@ -161,9 +162,35 @@ describe('previewStepOn', () => {
 
     previewStepOn({ frame: 'studio/home/hero', index, hash: '' }, 'wipe')
 
-    expect([
-      two.getAttribute('data-frameboard-step-effect'),
+    await expect
+      .poll(() => two.getAttribute('data-frameboard-step-effect'))
+      .toBe('wipe')
+    expect(
       doc.getElementById('one')?.hasAttribute('data-frameboard-step'),
-    ]).toEqual(['wipe', false])
+    ).toBe(false)
+  })
+
+  it('takes the marks back when a second preview starts', async () => {
+    vi.useRealTimers()
+    const doc = await liveSlide(
+      'studio/home/hero',
+      '<p id="one" data-step="1">One</p><p id="two" data-step="2">Two</p>',
+    )
+    const [one, two] = ['one', 'two'].map((id) => doc.getElementById(id))
+    if (!one || !two) throw new Error('No step element')
+    const at = (element: Element) => frameElements(doc).indexOf(element)
+    previewStepOn(
+      { frame: 'studio/home/hero', index: at(one), hash: '' },
+      'fade',
+    )
+    await expect.poll(() => one.hasAttribute('data-frameboard-step')).toBe(true)
+
+    previewStepOn(
+      { frame: 'studio/home/hero', index: at(two), hash: '' },
+      'zoom',
+    )
+
+    await expect.poll(() => two.hasAttribute('data-frameboard-step')).toBe(true)
+    expect(one.hasAttribute('data-frameboard-step')).toBe(false)
   })
 })

@@ -1,18 +1,14 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useStore } from 'zustand'
 
 import { Button } from '@/client/components/ui/button'
 import { maxFilmstripCount } from '@/shared/capture-limits'
+import type { FrameMotion } from '@/shared/frame-bridge/motion'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { PlayButton, SeekTrack } from '../element/media-bar'
 import { reportRefusal } from '../left-panel/page-actions'
-import {
-  type FrameMotion,
-  liveMomentOf,
-  useFrameMotion,
-  useMotionEnded,
-} from '../motion/seek'
+import { liveMomentOf, useFrameMotion, useMotionEnded } from '../motion/seek'
 import {
   formatMoment,
   holdMotion,
@@ -55,11 +51,21 @@ function MotionControls({ frame, found, hold }: MotionControlsProps) {
   // An undriven frame runs on its own clock, so it plays until the timeline ends.
   const playing = hold?.playing ?? !ended
   const at = hold ? Math.min(hold.at, span) : ended ? span : null
+  // Each press counts, so a pause answered after a later press holds nothing.
+  const presses = useRef(0)
   const control = {
     reading: { paused: !playing, time: (at ?? 0) / 1000, length: span / 1000 },
     togglePlay: () => {
-      if (!playing) playMotion(frame.ref)
-      else holdMotion(frame.ref, at ?? liveMomentOf(frame.ref, found))
+      const press = (presses.current += 1)
+      if (!playing) {
+        playMotion(frame.ref)
+      } else if (at !== null) {
+        holdMotion(frame.ref, at)
+      } else {
+        void liveMomentOf(frame.ref, found).then((moment) => {
+          if (press === presses.current) holdMotion(frame.ref, moment)
+        })
+      }
     },
     seek: (seconds: number) => holdMotion(frame.ref, seconds * 1000),
   }

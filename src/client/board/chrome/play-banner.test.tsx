@@ -6,17 +6,19 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { liveStore } from '@/client/live/store'
 import { frameOf } from '@/test/board'
 import { contrastOnPage } from '@/test/contrast'
+import { BRIDGE } from '@/test/frame-bridge'
 
 import { enterFrame, leaveFrame } from '../play/entered'
 import { PlayBanner } from './play-banner'
 
 const HINT = 'Nothing on this page takes a click'
 
-/** A frame root holding a live page, as the canvas draws one. */
+/** A frame root holding a live page with the stamp and the bridge the frame route injects, as the canvas draws one. */
 function Live({ frameRef, body }: { frameRef: string; body: string }) {
+  const page = `<!doctype html><html><head><style data-frameboard data-hash="${'c'.repeat(64)}"></style>${BRIDGE}</head><body>${body}</body></html>`
   return (
     <div data-frame={frameRef}>
-      <iframe title={frameRef} srcDoc={body} />
+      <iframe title={frameRef} srcDoc={page} />
     </div>
   )
 }

@@ -8,22 +8,16 @@ import type { FrameRecord } from '@/shared/records/list'
 import { RotateLabel } from '../device/poses'
 import { rotateFrame, turnRefusal } from '../device/turn'
 import { enteredStore } from '../play/entered'
-import { pageReach } from '../play/reach'
-
-/** A frame's load reaches a capturing listener on its host document, though it never bubbles. */
-function onFrameLoad(listener: () => void): () => void {
-  document.addEventListener('load', listener, true)
-  return () => document.removeEventListener('load', listener, true)
-}
+import { pageReach, watchReach } from '../play/reach'
 
 /**
- * The Play notice, saying nothing takes a click only once it has read every
- * shown frame, so a culled one never lets it claim so, and offering Rotate
- * to a writer while a phone or tablet is entered.
+ * The Play notice, saying nothing takes a click only once every shown frame
+ * answered, so a culled or loading one never lets it claim so, and offering
+ * Rotate to a writer while a phone or tablet is entered.
  */
 export function PlayBanner({ frames }: { frames: readonly FrameRecord[] }) {
   const reach = useSyncExternalStore(
-    onFrameLoad,
+    watchReach,
     useCallback(() => pageReach(frames), [frames]),
     () => 'unread' as const,
   )

@@ -1,7 +1,10 @@
 import { type RefObject, useEffect, useState } from 'react'
 
-import { holdMotionIn, type Motion, readMotionIn } from '@/shared/motion'
+import type { FrameMotion } from '@/shared/frame-bridge/motion'
 
+import { request, subscribe, type Subscription } from '../bridge/channel'
+import { followFrame, followPage } from '../bridge/shown'
+import { liveIframe } from '../frame-dom'
 import {
   advanceMotion,
   holdMotion,
@@ -11,88 +14,21 @@ import {
   releaseMotion,
 } from './store'
 
-/** How long a frame's script has to register a timeline after it loads, as capture allows. */
-export const MOTION_TIMEOUT_MS = 10_000
-
-/** A live frame's timeline and the length in ms its track spans. */
-export interface FrameMotion {
-  motion: Motion
-  /**
-   * The timeline's end, or for one that repeats forever its longest single
-   * iteration, so a spinner still scrubs within one turn.
-   */
-  span: number
+/** Whether two reads name one timeline, so a restamp's read keeps the one held. */
+function sameMotion(a: FrameMotion | null, b: FrameMotion | null): boolean {
+  return (
+    a === b ||
+    (a !== null &&
+      b !== null &&
+      a.span === b.span &&
+      a.motion.source === b.motion.source &&
+      a.motion.duration === b.motion.duration)
+  )
 }
 
 /**
- * Reads the timeline a live frame's window runs, in the frame's own realm,
- * or null when none registers within `timeoutMs`.
- */
-export async function readFrameMotion(
-  view: Window,
-  timeoutMs = MOTION_TIMEOUT_MS,
-): Promise<FrameMotion | null> {
-  const motion = await readMotionIn(view, timeoutMs)
-  if (motion === null) return null
-  return { motion, span: motion.duration ?? longestIteration(view) }
-}
-
-// Only CSS and Web Animations report no end, since `__hf` and GSAP give a
-// finite duration, so the iteration is read off the page's animations.
-function longestIteration(view: Window): number {
-  const lengths = view.document.getAnimations().map((animation) => {
-    const timing = animation.effect?.getComputedTiming()
-    const duration = Number(timing?.duration)
-    const delay = timing?.delay ?? 0
-    return Number.isFinite(duration) ? delay + duration : 0
-  })
-  return Math.round(Math.max(0, ...lengths))
-}
-
-/**
- * A seek that keeps only the latest moment asked for: while one seek runs,
- * each newer ask replaces the waiting one, so a drag over a slow `__hf.seek`
- * catches up rather than queuing every position it passed.
- */
-export function createSeeker(
-  view: Window,
-  motion: Motion,
-): (ms: number) => Promise<void> {
-  let waiting: number | null = null
-  let running: Promise<void> | null = null
-
-  const drain = async () => {
-    while (waiting !== null) {
-      const ms = waiting
-      waiting = null
-      await holdMotionIn(view, { motion, ms })
-    }
-    running = null
-  }
-
-  return (ms) => {
-    waiting = ms
-    running ??= drain()
-    return running
-  }
-}
-
-/**
- * Hands a page the board held back to its own clock. CSS and Web Animations
- * play on from where they stand. A script timeline the board paused has no
- * play the contract names, so the page loads again from its start.
- */
-export function releaseIn(view: Window, motion: Motion): void {
-  if (motion.source === 'css') {
-    for (const animation of view.document.getAnimations()) animation.play()
-    return
-  }
-  view.location.reload()
-}
-
-/**
- * The selected frame's live timeline, re-read on each load or swap, undefined
- * while pending and null with nothing to seek.
+ * The selected frame's live timeline, read again on each page or swap,
+ * undefined while pending and null with nothing to seek.
  */
 export function useFrameMotion(ref: string): FrameMotion | null | undefined {
   const [read, setRead] = useState<{
@@ -100,36 +36,34 @@ export function useFrameMotion(ref: string): FrameMotion | null | undefined {
     motion: FrameMotion | null
   } | null>(null)
   useEffect(() => {
-    const host = document.querySelector(`[data-frame="${CSS.escape(ref)}"]`)
+    // Only the newest subscription lands, since a closed one resolves null.
     let current = 0
-    const resolve = () => {
-      const asked = (current += 1)
-      const view =
-        host?.querySelector<HTMLIFrameElement>(':scope > iframe')?.contentWindow
-      if (!view) {
-        setRead({ ref, motion: null })
-        return
-      }
-      setRead(null)
-      void readFrameMotion(view).then(
-        (motion) => {
-          if (asked === current) setRead({ ref, motion })
-        },
-        () => {
-          if (asked === current) setRead({ ref, motion: null })
-        },
+    const land = (asked: number, motion: FrameMotion | null) => {
+      if (asked !== current) return
+      setRead((held) =>
+        held?.ref === ref && sameMotion(held.motion, motion)
+          ? held
+          : { ref, motion },
       )
     }
-    resolve()
-    if (!host) return
-    // Captured, since a load never bubbles, and a swap shows as a child change.
-    const swaps = new MutationObserver(resolve)
-    swaps.observe(host, { childList: true })
-    host.addEventListener('load', resolve, true)
+    const stop = followFrame(
+      document.body,
+      ref,
+      (iframe) => {
+        const asked = (current += 1)
+        const reading = subscribe(iframe, 'motion', {}, (motion) =>
+          land(asked, motion),
+        )
+        void reading.opened.then((started) => {
+          if (started === null) land(asked, null)
+        })
+        return reading.close
+      },
+      () => land((current += 1), null),
+    )
     return () => {
       current += 1
-      swaps.disconnect()
-      host.removeEventListener('load', resolve, true)
+      stop()
     }
   }, [ref])
   if (read === null || read.ref !== ref) return undefined
@@ -137,8 +71,98 @@ export function useFrameMotion(ref: string): FrameMotion | null | undefined {
 }
 
 /**
- * Drives a frame's live page from the motion store, re-seeking after a reload.
- * Entering Play and leaving the page end the hold.
+ * Drives one page from the motion store on the board's own clock, each tick
+ * posting one seek the frame keeps only the newest of, and releasing only a
+ * page it moved. Answers what stops it.
+ */
+function drivePage(iframe: HTMLIFrameElement, ref: string): () => void {
+  let reading: Subscription<'motion'> | null = null
+  let bound: { id: string; found: FrameMotion } | null = null
+  let driven = false
+  let clock: { from: number; started: number; frame: number } | null = null
+
+  const stopClock = () => {
+    if (clock) cancelAnimationFrame(clock.frame)
+    clock = null
+  }
+
+  const seek = (at: number) => {
+    if (bound) void request(iframe, 'motion-seek', { motion: bound.id, at })
+  }
+
+  const tick = (now: number) => {
+    if (!clock || !bound) return
+    const { span, motion } = bound.found
+    const elapsed = clock.from + (now - clock.started)
+    // Held at its end, since a release replays a finished CSS animation from 0.
+    if (motion.duration !== null && elapsed >= span) {
+      holdMotion(ref, span)
+      return
+    }
+    advanceMotion(ref, span > 0 ? elapsed % span : elapsed)
+    clock.frame = requestAnimationFrame(tick)
+  }
+
+  const startClock = (hold: MotionHold) => {
+    if (clock || !bound) return
+    // Play at the end starts over, as the loop does.
+    const from = hold.at >= bound.found.span ? 0 : hold.at
+    clock = {
+      from,
+      started: performance.now(),
+      frame: requestAnimationFrame(tick),
+    }
+  }
+
+  const bind = () => {
+    if (reading) return
+    const opened = subscribe(iframe, 'motion', {}, (found) => {
+      if (!found) return
+      bound = { id: opened.id, found }
+      apply()
+    })
+    reading = opened
+  }
+
+  const apply = () => {
+    const hold = motionHoldOf(ref)
+    if (!hold) {
+      stopClock()
+      if (driven && bound) {
+        void request(iframe, 'motion-release', { motion: bound.id })
+      }
+      driven = false
+      return
+    }
+    if (!bound) {
+      bind()
+      return
+    }
+    driven = true
+    seek(hold.at)
+    if (hold.playing) startClock(hold)
+    else stopClock()
+  }
+
+  let last = motionHoldOf(ref)
+  const stop = onMotionHoldChange(() => {
+    const next = motionHoldOf(ref)
+    if (next === last) return
+    last = next
+    apply()
+  })
+  // A page that loads under a hold lands on the same moment.
+  if (last) bind()
+  return () => {
+    stop()
+    stopClock()
+    reading?.close()
+  }
+}
+
+/**
+ * Drives a frame's live page from the motion store, holding each page it
+ * loads at the moment held. Entering Play and leaving the page end the hold.
  */
 export function useMotionDriver(
   iframe: RefObject<HTMLIFrameElement | null>,
@@ -156,100 +180,7 @@ export function useMotionDriver(
   useEffect(() => {
     const element = iframe.current
     if (!live || !element) return
-    let bound: {
-      view: Window
-      found: FrameMotion
-      seek: (ms: number) => Promise<void>
-    } | null = null
-    // Generations drop a stale read, which may never settle in a discarded document.
-    let generation = 0
-    let bindingFor: number | null = null
-    // Whether this document has been seeked, so a release touches only a page the board moved.
-    let driven = false
-    let clock: { from: number; started: number; frame: number } | null = null
-    let disposed = false
-
-    const stopClock = () => {
-      if (clock) element.contentWindow?.cancelAnimationFrame(clock.frame)
-      clock = null
-    }
-
-    const tick = (now: number) => {
-      if (!clock || !bound) return
-      const { span, motion } = bound.found
-      const elapsed = clock.from + (now - clock.started)
-      // Held at its end, since a release replays a finished CSS animation from 0.
-      if (motion.duration !== null && elapsed >= span) {
-        holdMotion(ref, span)
-        return
-      }
-      advanceMotion(ref, span > 0 ? elapsed % span : elapsed)
-      clock.frame = bound.view.requestAnimationFrame(tick)
-    }
-
-    const startClock = (hold: MotionHold) => {
-      if (clock || !bound) return
-      // Play at the end starts over, as the loop does.
-      const from = hold.at >= bound.found.span ? 0 : hold.at
-      const started = bound.view.performance.now()
-      clock = { from, started, frame: bound.view.requestAnimationFrame(tick) }
-    }
-
-    const apply = () => {
-      if (disposed) return
-      const hold = motionHoldOf(ref)
-      if (!hold) {
-        stopClock()
-        if (driven && bound) releaseIn(bound.view, bound.found.motion)
-        driven = false
-        return
-      }
-      if (!bound) {
-        void bind()
-        return
-      }
-      driven = true
-      void bound.seek(hold.at)
-      if (hold.playing) startClock(hold)
-      else stopClock()
-    }
-
-    const bind = async () => {
-      const view = element.contentWindow
-      const asked = generation
-      if (bindingFor === asked || !view) return
-      bindingFor = asked
-      const found = await readFrameMotion(view).catch(() => null)
-      if (bindingFor === asked) bindingFor = null
-      if (disposed || asked !== generation || !found) return
-      bound = { view, found, seek: createSeeker(view, found.motion) }
-      apply()
-    }
-
-    // Rebinds the reloaded document at the same moment.
-    const reload = () => {
-      generation += 1
-      stopClock()
-      bound = null
-      driven = false
-      if (motionHoldOf(ref)) void bind()
-    }
-
-    let last = motionHoldOf(ref)
-    const stop = onMotionHoldChange(() => {
-      const next = motionHoldOf(ref)
-      if (next === last) return
-      last = next
-      apply()
-    })
-    element.addEventListener('load', reload)
-    if (last) void bind()
-    return () => {
-      disposed = true
-      stop()
-      stopClock()
-      element.removeEventListener('load', reload)
-    }
+    return followPage(element, () => drivePage(element, ref))
   }, [iframe, ref, live])
 }
 
@@ -270,47 +201,33 @@ export function useMotionEnded(
   useEffect(() => {
     if (held || !timed) return
     let timer = 0
+    let open = true
     const check = () => {
-      const left = found.span - liveMomentOf(ref, found)
-      setRead({ found, ended: left <= 0 })
-      if (left > 0) timer = window.setTimeout(check, left)
+      void liveMomentOf(ref, found).then((moment) => {
+        if (!open) return
+        const left = found.span - moment
+        setRead({ found, ended: left <= 0 })
+        if (left > 0) timer = window.setTimeout(check, left)
+      })
     }
     check()
-    return () => window.clearTimeout(timer)
+    return () => {
+      open = false
+      window.clearTimeout(timer)
+    }
   }, [ref, found, held, timed])
   return !held && timed && read?.found === found && read.ended
 }
 
 /**
  * The moment a free-running frame shows now, so pausing it holds where it
- * stood. CSS reads its animations' clock and GSAP its `time()`. `__hf`
- * exposes no reading, so a HyperFrames page pauses at its start.
+ * stood, 0 while no live page answers.
  */
-export function liveMomentOf(ref: string, found: FrameMotion): number {
-  const frame = document.querySelector<HTMLIFrameElement>(
-    `[data-frame="${CSS.escape(ref)}"] > iframe`,
-  )?.contentWindow
-  if (!frame) return 0
-  const { motion, span } = found
-  let at = 0
-  if (motion.source === 'css') {
-    const times = frame.document
-      .getAnimations()
-      .map((animation) => Number(animation.currentTime))
-      .filter((time) => Number.isFinite(time))
-    at = Math.max(0, ...times)
-  } else if (motion.source === 'timelines') {
-    const registry = (
-      frame as unknown as { __timelines?: Record<string, { time?: unknown }> }
-    ).__timelines
-    const clock = Object.values(registry ?? {}).find(
-      (timeline) => typeof timeline?.time === 'function',
-    )
-    const seconds = clock
-      ? Number((clock.time as () => unknown).call(clock))
-      : 0
-    at = Number.isFinite(seconds) ? seconds * 1000 : 0
-  }
-  if (span <= 0) return Math.round(at)
-  return Math.round(motion.duration === null ? at % span : Math.min(at, span))
+export async function liveMomentOf(
+  ref: string,
+  found: FrameMotion,
+): Promise<number> {
+  const iframe = liveIframe(ref)
+  if (!iframe) return 0
+  return (await request(iframe, 'motion-moment', found)) ?? 0
 }

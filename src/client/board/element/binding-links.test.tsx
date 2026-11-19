@@ -4,9 +4,9 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
+import { ask, bridgeIn } from '@/test/frame-bridge'
 
 import TUNER from '../../../../test/fixtures/frames/tuner-links.html?raw'
-import { RESTAMPED } from '../frame-dom'
 import { modeStore } from '../mode'
 import { clear, select, selectionStore } from '../selection'
 import { BindingLinks } from './binding-links'
@@ -24,7 +24,7 @@ afterEach(() => {
   layer = undefined
 })
 
-/** Mounts the hero frame's live iframe of `source`, as the canvas draws one. */
+/** Mounts the hero frame's live, bridged iframe of `source`, as the canvas draws one. */
 async function mountFrame(source: string): Promise<HTMLDivElement> {
   layer = document.createElement('div')
   const frame = document.createElement('div')
@@ -40,6 +40,7 @@ async function mountFrame(source: string): Promise<HTMLDivElement> {
   layer.append(frame)
   document.body.append(layer)
   await loaded
+  await bridgeIn(iframe)
   return layer
 }
 
@@ -121,9 +122,7 @@ describe('BindingLinks', () => {
 
     // A transform resizes nothing, so only the restamp makes the overlay measure.
     photo.style.transform = 'translateX(-40px)'
-    act(() => {
-      iframe.dispatchEvent(new Event(RESTAMPED))
-    })
+    await ask(iframe, 'restamp', { hash: 'd'.repeat(64) })
 
     const right = Math.round(photo.getBoundingClientRect().right)
     expect(right).not.toBe(before - HERO.box.x)
@@ -143,9 +142,7 @@ describe('BindingLinks', () => {
     if (!iframe) throw new Error('The frame draws no iframe')
 
     iframe.contentDocument?.documentElement.remove()
-    act(() => {
-      iframe.dispatchEvent(new Event(RESTAMPED))
-    })
+    await ask(iframe, 'restamp', { hash: 'd'.repeat(64) })
 
     await waitFor(() =>
       expect(container.querySelector('[data-binding-link]')).toBeNull(),

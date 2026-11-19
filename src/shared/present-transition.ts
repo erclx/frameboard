@@ -227,3 +227,15 @@ export const STEP_START_LABELS = {
   with: 'With last',
   after: 'After last',
 } as const satisfies Record<StepStart, string>
+
+/** How long one step's entrance runs. Appear runs none. */
+export const STEP_MS = 400
+
+/** Each effect's keyframes, which a presented page's step style and the inspector's tiles both mount. */
+export const STEP_KEYFRAMES = `
+@keyframes frameboard-step-appear { from { visibility: hidden } to { visibility: visible } }
+@keyframes frameboard-step-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes frameboard-step-fly { from { opacity: 0; translate: 0 40px } to { opacity: 1; translate: 0 0 } }
+@keyframes frameboard-step-wipe { from { clip-path: inset(0 100% 0 0) } to { clip-path: inset(0 0 0 0) } }
+@keyframes frameboard-step-zoom { from { opacity: 0; scale: 0.6 } to { opacity: 1; scale: 1 } }
+`

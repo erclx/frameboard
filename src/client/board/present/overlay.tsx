@@ -8,10 +8,9 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 
-import { findAction, isEnabled } from '@/client/actions/registry'
+import { type Action, findAction, isEnabled } from '@/client/actions/registry'
 import { useLive } from '@/client/live/store'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
-import { HIDE_CONTROLS_CSS } from '@/shared/bindings'
 import {
   bezelBox,
   pageCorners,
@@ -21,14 +20,17 @@ import {
   turnsWith,
 } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
-import { frameThemeUrl, LOOK_MARKER, setFrameTheme } from '@/shared/theme'
+import { frameThemeUrl } from '@/shared/theme'
 
+import { request, subscribe } from '../bridge/channel'
+import { followPage } from '../bridge/shown'
 import { focusWithoutTooltip } from '../chrome/quiet-focus'
 import { PRESENT } from '../chrome/toolbar-tools'
 import { Bezel } from '../device/bezel'
 import { usePageColors } from '../device/page-colors'
 import { rotateFrame, turnRefusal } from '../device/turn'
 import { useWaitingOnFirstLoad } from '../frame-loading'
+import { useThemeInFrame } from '../frame-theme'
 import { useHiddenScrollbar } from '../hidden-scrollbar'
 import { LoadingBlock } from '../loading-block'
 import { PresentBar } from './bar'
@@ -40,7 +42,6 @@ import {
   useOwnKeyframes,
 } from './own-transitions'
 import { useRoom } from './room'
-import { readSteps, showSteps, type StepGroup, touchesSteps } from './steps'
 import {
   countSteps,
   endTransition,
@@ -83,32 +84,34 @@ function bindingMatches(binding: string, event: KeyboardEvent): boolean {
   )
 }
 
-/**
- * Takes every key ahead of the board while presenting, except in a frame's own
- * window, where only the present keys are taken.
- */
-function takeKeys(target: Window, frame: boolean): () => void {
+/** The present action a press names, by its key or its code. */
+function presentActionOf(event: KeyboardEvent): Action | undefined {
+  return PRESENT_KEYS.map((id) => findAction(id)).find((candidate) =>
+    candidate?.keys?.some((binding) => bindingMatches(binding, event)),
+  )
+}
+
+/** Takes every key ahead of the board while presenting, leaving a frame's own window to `bindPresentKeys`. */
+function takeKeys(): () => void {
   const press = (event: KeyboardEvent) => {
     // The open grid takes its own keys, and every other place stays deaf to them.
     if (overviewOpen()) {
-      if (!frame && !inOverview(event.target)) event.stopPropagation()
+      if (!inOverview(event.target)) event.stopPropagation()
       return
     }
     // Space and Enter press a focused bar button, which a step would cancel.
     if (pressesButton(event)) return
-    const action = PRESENT_KEYS.map((id) => findAction(id)).find((candidate) =>
-      candidate?.keys?.some((binding) => bindingMatches(binding, event)),
-    )
+    const action = presentActionOf(event)
     if (action && isEnabled(action)) {
       event.preventDefault()
       event.stopPropagation()
       if (!event.repeat || action.repeat) action.run()
       return
     }
-    if (!frame) event.stopPropagation()
+    event.stopPropagation()
   }
-  target.addEventListener('keydown', press, true)
-  return () => target.removeEventListener('keydown', press, true)
+  window.addEventListener('keydown', press, true)
+  return () => window.removeEventListener('keydown', press, true)
 }
 
 function inOverview(target: EventTarget | null): boolean {
@@ -295,7 +298,7 @@ function Presenting({
   useInertBehind(layer)
   useReturnFocus()
 
-  useEffect(() => takeKeys(window, false), [])
+  useEffect(() => takeKeys(), [])
   useEffect(() => {
     if (!frame) leavePresenting()
   }, [frame])
@@ -444,123 +447,156 @@ export function ScaledFrame({
 }
 
 /**
- * Hides every drawn control in a presented slide, which shows the design
- * alone, by one injected style, and answers its undo.
+ * The bindings of every present action enabled now, none while the grid is
+ * open, since a binding the frame holds prevents the page's own press.
  */
-function hideControls(doc: Document): () => void {
-  const style = doc.createElement('style')
-  style.setAttribute(LOOK_MARKER, '')
-  style.textContent = HIDE_CONTROLS_CSS
-  doc.head?.append(style)
-  return () => style.remove()
-}
-
-const HOLD_ID = 'frameboard-present-hold'
-
-/**
- * Pauses or resumes every CSS animation in `doc` by one injected style, which
- * reaches an animation the frame starts later too.
- */
-function holdAnimations(doc: Document, held: boolean): void {
-  const style = doc.getElementById(HOLD_ID)
-  if (!held) {
-    style?.remove()
-    return
-  }
-  if (style) return
-  const added = doc.createElement('style')
-  added.id = HOLD_ID
-  added.textContent =
-    '*, *::before, *::after { animation-play-state: paused !important }'
-  doc.head?.append(added)
+function enabledPresentKeys(): string[] {
+  if (overviewOpen()) return []
+  return PRESENT_KEYS.flatMap((id) => {
+    const action = findAction(id)
+    return action && isEnabled(action) ? (action.keys ?? []) : []
+  })
 }
 
 /**
- * Runs `write` on the iframe's document now and on every load after, since
- * each load is a new document, undoing the last run before the next and on
- * the cleanup it returns.
+ * Has a presented page take the present keys enabled now, reopened as one
+ * turns on or off, ignoring the single-key switch the board's window ignores.
  */
-function onEachLoad(
-  iframe: HTMLIFrameElement | null,
-  write: (element: HTMLIFrameElement) => (() => void) | void,
-): (() => void) | undefined {
-  if (!iframe) return
-  let undo: (() => void) | void
-  const run = () => {
-    undo?.()
-    undo = write(iframe)
-  }
-  run()
-  iframe.addEventListener('load', run)
+function bindPresentKeys(iframe: HTMLIFrameElement): () => void {
+  let taken = enabledPresentKeys()
+  const open = () =>
+    subscribe(
+      iframe,
+      'keys',
+      { keys: taken, keepTyping: false, keepButtons: true },
+      ({ key, repeat }) => {
+        const action = PRESENT_KEYS.map((id) => findAction(id)).find(
+          (candidate) => candidate?.keys?.includes(key),
+        )
+        if (!taken.includes(key) || !action || !isEnabled(action)) return
+        if (!repeat || action.repeat) action.run()
+      },
+    )
+  let held = open()
+  const stop = presentStore.subscribe(() => {
+    const next = enabledPresentKeys()
+    if (next.join(' ') === taken.join(' ')) return
+    taken = next
+    held.close()
+    held = open()
+  })
   return () => {
-    iframe.removeEventListener('load', run)
-    undo?.()
+    stop()
+    held.close()
   }
 }
 
-/** The step attributes an agent's write can change, which read the steps again. */
-const STEP_KEYS = ['data-step', 'data-step-effect', 'data-step-start']
+/** Keeps an op's request open on each page an iframe shows, which holds what it does in the page until closed. */
+function holdOnEachPage(
+  iframe: HTMLIFrameElement,
+  op: 'hold-animations' | 'hide-controls',
+): () => void {
+  return followPage(iframe, () => subscribe(iframe, op, {}, () => {}).close)
+}
+
+/** How long a loaded slide stays hidden on a bridge that never answers, the channel's own reply wait. */
+const STEPS_WAIT_MS = 5000
 
 /**
- * Walks a frame's steps as `walk` says, re-read on each load and agent change.
- * Answers whether the frame's own document loaded, since an iframe's first is blank.
+ * The step a walk opens a page at, read before its count is known: every one
+ * for a frame arrived at going back, so a slide reloaded mid-walk hides only
+ * what the audience has not seen.
+ */
+function openingStep(): number {
+  const { step } = presentStore.getState()
+  return step === 'last' ? Number.MAX_SAFE_INTEGER : step
+}
+
+/**
+ * Walks one page's steps inside its frame, counting them into this window's
+ * present store and showing the step it holds, calling `ready` once the page
+ * shows the step it should, or the frame refused.
+ */
+function walkLive(iframe: HTMLIFrameElement, ready: () => void): () => void {
+  const opening = openingStep()
+  let revealed = opening
+  /** The group the last press revealed, which a reread keeps entering. */
+  let entering: number | null = null
+  let replied = false
+  let counting = false
+
+  const show = () =>
+    request(iframe, 'steps-show', { steps: walk.id, shown: revealed, entering })
+
+  // Counting can resolve a step back onto this frame, which plays no entrance.
+  const recount = (count: number): boolean => {
+    counting = true
+    countSteps(count)
+    counting = false
+    const shown = shownStep()
+    if (entering !== shown - 1) entering = null
+    const moved = shown !== revealed
+    revealed = shown
+    return moved
+  }
+
+  const walk = subscribe(iframe, 'steps', { shown: opening }, (count) => {
+    if (replied && recount(count)) void show()
+  })
+  void walk.opened.then(async (count) => {
+    if (count !== null) {
+      replied = true
+      if (recount(count)) await show()
+    }
+    ready()
+  })
+  const stop = presentStore.subscribe(() => {
+    if (!replied || counting) return
+    const shown = shownStep()
+    if (shown === revealed) return
+    entering = shown > revealed ? shown - 1 : null
+    revealed = shown
+    void show()
+  })
+  return () => {
+    stop()
+    walk.close()
+  }
+}
+
+/**
+ * Walks a frame's steps as `walk` says on each page it shows. Answers whether
+ * the page shows its steps yet, since an iframe's first page is blank and a
+ * stepped slide must not flash whole, or the reply wait passed since it loaded.
  */
 function useStepWalk(
   iframe: RefObject<HTMLIFrameElement | null>,
   walk: StepWalk,
 ): boolean {
   const [loaded, setLoaded] = useState(false)
-  const read = useRef<{ doc: Document; groups: StepGroup[] } | null>(null)
-  const revealed = useRef(0)
-  /** The group the last press revealed, which a reread keeps entering. */
-  const entering = useRef<number | null>(null)
 
   useEffect(() => {
-    if (walk === 'off') return
-    return onEachLoad(iframe.current, (element) => {
-      const doc = element.contentDocument
-      if (!doc || doc.URL === 'about:blank') return
-      const reread = () => {
-        const groups = readSteps(doc)
-        if (walk === 'first') {
-          showSteps(doc, groups, 0)
-          return
-        }
-        // Counting can resolve a step back onto this frame, which plays no entrance.
-        read.current = null
-        countSteps(groups.length)
-        read.current = { doc, groups }
-        revealed.current = shownStep()
-        if (entering.current !== revealed.current - 1) entering.current = null
-        showSteps(doc, groups, revealed.current, entering.current)
-      }
-      entering.current = null
-      reread()
-      setLoaded(true)
-      const view = doc.defaultView
-      if (!view) return
-      const observer = new view.MutationObserver((records) => {
-        if (touchesSteps(records)) reread()
-      })
-      observer.observe(doc.documentElement, {
-        subtree: true,
-        childList: true,
-        attributeFilter: STEP_KEYS,
-      })
-      return () => observer.disconnect()
+    const element = iframe.current
+    if (walk === 'off' || !element) return
+    const ready = () => setLoaded(true)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const waited = () => {
+      clearTimeout(timer)
+      timer = setTimeout(ready, STEPS_WAIT_MS)
+    }
+    element.addEventListener('load', waited)
+    const stop = followPage(element, () => {
+      if (walk === 'live') return walkLive(element, ready)
+      const hidden = subscribe(element, 'steps', { shown: 0 }, () => {})
+      void hidden.opened.then(ready)
+      return hidden.close
     })
+    return () => {
+      stop()
+      clearTimeout(timer)
+      element.removeEventListener('load', waited)
+    }
   }, [iframe, walk])
-
-  useEffect(() => {
-    if (walk !== 'live') return
-    return presentStore.subscribe(() => {
-      const shown = shownStep()
-      if (!read.current || shown === revealed.current) return
-      entering.current = shown > revealed.current ? shown - 1 : null
-      revealed.current = shown
-      showSteps(read.current.doc, read.current.groups, shown, entering.current)
-    })
-  }, [walk])
 
   return loaded
 }
@@ -609,6 +645,8 @@ function PresentedFrame({
   // The iframe stays mounted across slides, so only its first page waits.
   const waiting = useWaitingOnFirstLoad(iframe, true)
   const theme = useFrameTheme(frame.ref)
+  // Sent ahead of the colors, which a flip asks for in the theme it sends.
+  useThemeInFrame(iframe, theme)
   const colors = usePageColors(iframe, statusBar > 0, theme)
   const version = useLive((state) => state.reloads[frame.ref] ?? 0)
   // Read at load, since a later flip rewrites the root rather than restart the page.
@@ -616,44 +654,29 @@ function PresentedFrame({
     () => frameThemeUrl(frame.ref, frameTheme(frame.ref), version),
     [frame.ref, version],
   )
-  useEffect(
-    () =>
-      onEachLoad(iframe.current, (element) => {
-        const root = element.contentDocument?.documentElement
-        if (root) setFrameTheme(root, theme)
-      }),
-    [theme],
-  )
-  useEffect(
-    () =>
-      onEachLoad(iframe.current, (element) => {
-        const doc = element.contentDocument
-        if (doc) holdAnimations(doc, held)
-      }),
-    [held],
-  )
-  useEffect(
-    () =>
-      onEachLoad(iframe.current, (element) => {
-        const doc = element.contentDocument
-        if (doc) return hideControls(doc)
-      }),
-    [],
-  )
-  useEffect(
-    () =>
-      onEachLoad(iframe.current, (element) => {
-        const target = element.contentWindow
-        if (!keys || !target) return
-        const untake = takeKeys(target, true)
-        if (wake) target.addEventListener('pointermove', wake)
-        return () => {
-          untake()
-          if (wake) target.removeEventListener('pointermove', wake)
-        }
-      }),
-    [keys, wake],
-  )
+  useEffect(() => {
+    const element = iframe.current
+    if (!element || !held) return
+    return holdOnEachPage(element, 'hold-animations')
+  }, [held])
+  useEffect(() => {
+    const element = iframe.current
+    if (!element) return
+    return holdOnEachPage(element, 'hide-controls')
+  }, [])
+  useEffect(() => {
+    const element = iframe.current
+    if (!element || !keys) return
+    return followPage(element, () => bindPresentKeys(element))
+  }, [keys])
+  useEffect(() => {
+    const element = iframe.current
+    if (!element || !keys || !wake) return
+    return followPage(
+      element,
+      () => subscribe(element, 'pointer-move', {}, () => wake()).close,
+    )
+  }, [keys, wake])
   return (
     <>
       <iframe

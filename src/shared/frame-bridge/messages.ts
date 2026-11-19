@@ -1,7 +1,15 @@
 import { z } from 'zod'
 
+import type { PageColors } from '@/shared/frame-device'
+import { STEP_EFFECTS, type StepEffect } from '@/shared/present-transition'
 import type { Theme } from '@/shared/theme'
 
+import {
+  type ControlEdits,
+  controlEditsSchema,
+  type DrawnBinding,
+  drawnBindingsSchema,
+} from './controls'
 import { type ShownGap, shownGapSchema } from './gap'
 import {
   type FrameOverflow,
@@ -26,6 +34,7 @@ import {
   type ModelStage,
   modelStageSchema,
 } from './model'
+import { type FrameMotion, frameMotionSchema } from './motion'
 
 // The board and a frame's bridge talk over `postMessage`, whatever the frame's
 // origin. A request's id comes back on its one reply, and on every push a
@@ -111,6 +120,8 @@ export interface KeyBindings {
   /** tinykeys bindings, as the board's actions name them. */
   keys: string[]
   keepTyping: boolean
+  /** Whether a Space or Enter on a button in the page stays with the page, false when left out. */
+  keepButtons?: boolean
 }
 
 /** A binding the frame took a press of, its repeats marked so the board runs a held key as its own window would. */
@@ -118,6 +129,15 @@ export interface KeyFired {
   key: string
   repeat: boolean
 }
+
+/** What a presented page shows of its steps: the first `shown` groups, the one at `entering` playing its entrance. */
+export interface StepsShown {
+  shown: number
+  entering: number | null
+}
+
+/** What the board asks of the drawn controls a `controls` subscription bound. */
+export type ControlsAct = 'reset' | 'settle'
 
 /** Each op's arguments, its reply value, and what it pushes, `never` for an op that pushes nothing. */
 export interface BridgeOps {
@@ -240,6 +260,91 @@ export interface BridgeOps {
     value: null
     push: never
   }
+  /**
+   * Reads the page's steps and shows the first `shown`, answering how many
+   * presses it holds, and on an agent's write reads them again, showing the
+   * step it holds and pushing the new count, until closed.
+   */
+  steps: { args: { shown: number }; value: number; push: number }
+  /** Shows a `steps` subscription's page at a step, by its request id, answering whether it held one. */
+  'steps-show': {
+    args: StepsShown & { steps: string }
+    value: boolean
+    push: never
+  }
+  /** Plays a step's entrance once on the element at an index, checking no hash, until it ends or is closed. */
+  'step-preview': {
+    args: { index: number; effect: StepEffect }
+    value: boolean
+    push: never
+  }
+  /** Pauses every CSS animation in the page until closed, answering whether it held a head. */
+  'hold-animations': {
+    args: Record<string, never>
+    value: boolean
+    push: never
+  }
+  /** Hides every drawn control until closed, answering whether it held a head. */
+  'hide-controls': { args: Record<string, never>; value: boolean; push: never }
+  /** Pushes on a pointer move in the page, at most once a frame, until closed. */
+  'pointer-move': { args: Record<string, never>; value: boolean; push: null }
+  /**
+   * Starts reading the page's timeline, answering true, and pushes it once
+   * it registers, or null when none does in time.
+   */
+  motion: {
+    args: Record<string, never>
+    value: boolean
+    push: FrameMotion | null
+  }
+  /**
+   * Holds a `motion` subscription's timeline at a moment in ms, by its
+   * request id, a newer seek replacing one still waiting, answering whether
+   * it held a timeline.
+   */
+  'motion-seek': {
+    args: { motion: string; at: number }
+    value: boolean
+    push: never
+  }
+  /** Hands a held page back to its own clock, playing CSS on and reloading any other, answering whether it held a timeline. */
+  'motion-release': { args: { motion: string }; value: boolean; push: never }
+  /**
+   * The moment in ms a free-running page shows now on the timeline a `motion`
+   * push named, 0 for a HyperFrames page, which exposes no reading.
+   */
+  'motion-moment': { args: FrameMotion; value: number; push: never }
+  /**
+   * Binds the page's drawn controls, a move setting its property inline and
+   * pushing how many are moved, until closed, which puts every value back.
+   */
+  controls: { args: Record<string, never>; value: boolean; push: number }
+  /** Resets or settles a `controls` subscription's moved controls, by its request id, answering whether it held one. */
+  'controls-act': {
+    args: { controls: string; act: ControlsAct }
+    value: boolean
+    push: never
+  }
+  /** The batch a keep writes for a `controls` subscription's moved controls, with the hash it was read at, null with none moved. */
+  'controls-edits': {
+    args: { controls: string }
+    value: ControlEdits | null
+    push: never
+  }
+  /** Whether the page holds anything a click reaches. */
+  'takes-clicks': { args: Record<string, never>; value: boolean; push: never }
+  /** Every drawn control with its target's box, pushed again on a resize or scroll until closed. */
+  bindings: {
+    args: Record<string, never>
+    value: DrawnBinding[]
+    push: DrawnBinding[]
+  }
+  /** The fill and text color the page shows, which a phone's status bar paints. */
+  'page-colors': {
+    args: Record<string, never>
+    value: PageColors
+    push: never
+  }
 }
 
 export type BridgeOp = keyof BridgeOps
@@ -281,12 +386,18 @@ export type BridgeMessage =
     }
 
 const OPS: readonly string[] = [
+  'bindings',
   'content-height',
+  'controls',
+  'controls-act',
+  'controls-edits',
   'element-box',
   'element-boxes',
   'gap-at',
+  'hide-controls',
   'hide-scrollbar',
   'hide-strips',
+  'hold-animations',
   'keep-previews',
   'keys',
   'live-body',
@@ -296,14 +407,24 @@ const OPS: readonly string[] = [
   'media-act',
   'model',
   'model-stage',
+  'motion',
+  'motion-moment',
+  'motion-release',
+  'motion-seek',
   'overflow',
+  'page-colors',
   'paint',
   'pick-at',
   'pins',
+  'pointer-move',
   'preview-style',
   'restamp',
   'scroll',
   'scroll-act',
+  'step-preview',
+  'steps',
+  'steps-show',
+  'takes-clicks',
   'text-edit',
   'text-written',
   'theme',
@@ -365,6 +486,9 @@ export function readBridgeMessage(
 }
 
 const indexSchema = z.number().int().nonnegative()
+
+/** A count of steps or controls, which `steps` takes past the last to show every one. */
+const countSchema = z.number().int().nonnegative()
 
 const noArgsSchema = z.object({}).strict() as z.ZodType<Record<string, never>>
 
@@ -433,7 +557,11 @@ const SCHEMAS: {
     value: z.boolean(),
   },
   keys: {
-    args: z.object({ keys: z.array(z.string()), keepTyping: z.boolean() }),
+    args: z.object({
+      keys: z.array(z.string()),
+      keepTyping: z.boolean(),
+      keepButtons: z.boolean().optional(),
+    }),
     value: z.boolean(),
     push: z.object({ key: z.string(), repeat: z.boolean() }),
   },
@@ -517,6 +645,65 @@ const SCHEMAS: {
   'text-written': {
     args: z.object({ edit: z.string(), written: z.boolean() }),
     value: z.null(),
+  },
+  steps: {
+    args: z.object({ shown: countSchema }),
+    value: countSchema,
+    push: countSchema,
+  },
+  'steps-show': {
+    args: z.object({
+      steps: z.string(),
+      shown: countSchema,
+      entering: indexSchema.nullable(),
+    }),
+    value: z.boolean(),
+  },
+  'step-preview': {
+    args: z.object({ index: indexSchema, effect: z.enum(STEP_EFFECTS) }),
+    value: z.boolean(),
+  },
+  'hold-animations': { args: noArgsSchema, value: z.boolean() },
+  'hide-controls': { args: noArgsSchema, value: z.boolean() },
+  'pointer-move': { args: noArgsSchema, value: z.boolean(), push: z.null() },
+  motion: {
+    args: noArgsSchema,
+    value: z.boolean(),
+    push: frameMotionSchema.nullable(),
+  },
+  'motion-seek': {
+    args: z.object({ motion: z.string(), at: z.number().finite() }),
+    value: z.boolean(),
+  },
+  'motion-release': {
+    args: z.object({ motion: z.string() }),
+    value: z.boolean(),
+  },
+  'motion-moment': {
+    args: frameMotionSchema,
+    value: z.number().finite().nonnegative(),
+  },
+  controls: { args: noArgsSchema, value: z.boolean(), push: countSchema },
+  'controls-act': {
+    args: z.object({
+      controls: z.string(),
+      act: z.enum(['reset', 'settle']),
+    }),
+    value: z.boolean(),
+  },
+  'controls-edits': {
+    args: z.object({ controls: z.string() }),
+    value: controlEditsSchema,
+  },
+  'takes-clicks': { args: noArgsSchema, value: z.boolean() },
+  bindings: {
+    args: noArgsSchema,
+    value: drawnBindingsSchema,
+    push: drawnBindingsSchema,
+  },
+  'page-colors': {
+    args: noArgsSchema,
+    value: z.object({ fill: z.string().nullable(), ink: z.string() }),
   },
 }
 

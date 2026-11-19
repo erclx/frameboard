@@ -10,6 +10,7 @@ import {
 } from '@/shared/frame-bridge/messages'
 
 import { chromeHandlers } from './chrome'
+import { controlHandlers } from './controls'
 import { gapHandlers } from './gap'
 import { addressed, type Handler, type Handlers, onceParsed } from './handler'
 import { keyHandlers } from './keys'
@@ -17,7 +18,11 @@ import { liveElementHandlers } from './live-element'
 import { measureHandlers } from './measure'
 import { mediaHandlers } from './media'
 import { modelHandlers } from './model'
+import { motionHandlers } from './motion'
+import { presentHandlers } from './present'
 import { previewHandlers } from './preview'
+import { reachHandlers } from './reach'
+import { stepHandlers } from './steps'
 import { openTextEdit } from './text-edit'
 
 // The frame route injects this as a script, which leaves no element behind,
@@ -39,12 +44,17 @@ const committed = new Map<string, () => void>()
 
 const handlers: Handlers = {
   ...chromeHandlers,
+  ...controlHandlers,
   ...gapHandlers,
   ...keyHandlers,
   ...liveElementHandlers,
   ...measureHandlers,
   ...mediaHandlers,
   ...modelHandlers,
+  ...motionHandlers,
+  ...presentHandlers,
+  ...reachHandlers,
+  ...stepHandlers,
   'element-box': (address) => {
     const element = addressed(address)
     if (!element) return null

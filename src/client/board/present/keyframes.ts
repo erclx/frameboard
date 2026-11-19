@@ -3,10 +3,10 @@ import type { CSSProperties } from 'react'
 import {
   type Direction,
   ownKeyframesName,
+  STEP_KEYFRAMES,
   transitionNameOf,
 } from '@/shared/present-transition'
 
-import { STEP_KEYFRAMES } from './steps'
 import type { Travel } from './travel'
 
 /** Which side of a transition a layer draws: the slide arriving or the one it replaces. */

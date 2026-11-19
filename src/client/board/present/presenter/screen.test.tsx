@@ -8,6 +8,7 @@ import { liveStore } from '@/client/live/store'
 import { themeStore } from '@/client/theme/store'
 import type { FrameRecord } from '@/shared/records/list'
 import { boardOf, frameOf, pageOf } from '@/test/board'
+import { bridgeIn } from '@/test/frame-bridge'
 
 import { presentStore } from '../store'
 import { type PresentedState, serveAudience } from '../sync'
@@ -70,15 +71,26 @@ const region = (name: string) => screen.getByRole('region', { name })
 const slideIn = (name: string) =>
   region(name).querySelector<HTMLIFrameElement>('iframe')
 
-/** The loaded document of the slide in region `name`, once it is the frame's own. */
+/**
+ * The loaded document of the slide in region `name`, once it is the frame's
+ * own, with the bridge the frame route would inject.
+ */
 async function documentIn(name: string): Promise<Document> {
-  return vi.waitFor(() => {
-    const doc = slideIn(name)?.contentDocument
-    if (!doc || doc.URL === 'about:blank' || doc.readyState !== 'complete') {
+  const { iframe, doc } = await vi.waitFor(() => {
+    const iframe = slideIn(name)
+    const doc = iframe?.contentDocument
+    if (
+      !iframe ||
+      !doc ||
+      doc.URL === 'about:blank' ||
+      doc.readyState !== 'complete'
+    ) {
       throw new Error(`${name} is still loading`)
     }
-    return doc
+    return { iframe, doc }
   })
+  await bridgeIn(iframe)
+  return doc
 }
 
 const STEPPED = '<p id="a" data-step="1">One</p><p id="b" data-step="2">Two</p>'

@@ -1,4 +1,5 @@
 import type { ScrollView } from '@/shared/frame-bridge/messages'
+import { pageColors } from '@/shared/frame-device'
 import { LOOK_MARKER, setFrameTheme } from '@/shared/theme'
 
 import type { Handlers } from './handler'
@@ -17,7 +18,7 @@ function scrollView(): ScrollView | null {
   return { top: scrollY / full, size: innerHeight / full }
 }
 
-/** The frame's chrome the board draws around it, being its theme, its scroll, and its height. */
+/** The frame's chrome the board draws around it, being its theme, its scroll, its height, and the colors its status bar paints. */
 export const chromeHandlers: Handlers = {
   theme: ({ theme }) => {
     setFrameTheme(document.documentElement, theme)
@@ -61,6 +62,7 @@ export const chromeHandlers: Handlers = {
     return true
   },
   'content-height': () => (document.body ? contentBottom(document) : null),
+  'page-colors': () => pageColors(document),
 }
 
 // The furthest uncropped bottom edge, mirroring `readContentSize` in
