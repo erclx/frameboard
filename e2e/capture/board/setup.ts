@@ -787,13 +787,14 @@ export function actWhen(
 /** The unlocked about row's lock button enables once the server grants writes, so it marks a tab that may write. */
 export const WRITES_GRANTED = 'button[aria-label="Lock about"]:not([disabled])'
 
-/** Where `menuOn` right-clicks: a frame's center, empty canvas, the selected element, or a panel row. */
+/** Where `menuOn` right-clicks: a frame's center, empty canvas, the selected element, a panel row, or a panel list's empty space. */
 type MenuSpot =
   | { frame: string }
   | { reserved: string }
   | { empty: true }
-  | { element: true }
+  | { element: true; several?: true }
   | { row: string }
+  | { space: 'pages' | 'layers' }
 
 /**
  * Right-clicks `spot` once writes are granted, after a Copy as PNG with `copy`,
@@ -828,6 +829,13 @@ export function menuOn(
             )
           }
           if ('element' in spot) {
+            // Several picks draw one after another, so the menu waits for the last.
+            if (
+              spot.several &&
+              !document.documentElement.hasAttribute('data-elements-picked')
+            ) {
+              return null
+            }
             return at(document.querySelector('[data-element-selection]'))
           }
           if ('row' in spot) {
@@ -837,13 +845,20 @@ export function menuOn(
               ),
             )
           }
+          if ('space' in spot) {
+            return at(
+              document.querySelector(
+                `[aria-labelledby="${spot.space}-heading"] [aria-hidden]:is(li, div)`,
+              ),
+            )
+          }
           const hit = document.querySelector('[data-hit-layer]')
           const box = hit?.getBoundingClientRect()
           return box ? { x: box.left + 24, y: box.bottom - 120 } : null
         }
         const open = (at: { x: number; y: number }) => {
           const target =
-            'row' in spot
+            'row' in spot || 'space' in spot
               ? document.elementFromPoint(at.x, at.y)
               : document.querySelector('[data-hit-layer]')
           target?.dispatchEvent(

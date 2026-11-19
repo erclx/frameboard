@@ -2,7 +2,7 @@ import { pointer } from 'd3-selection'
 import { zoomTransform } from 'd3-zoom'
 import { type ReactElement, type RefObject, useState } from 'react'
 
-import { useActions } from '@/client/actions/registry'
+import { isEnabled, useActions } from '@/client/actions/registry'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -18,7 +18,12 @@ import { releaseReserved, reservedOn } from '../claims/reservations'
 import { treeOf } from '../element/tree'
 import { up } from '../element/walk'
 import { selectedElementBoxAt } from '../geometry/hit'
-import { select, selectionStore, useSelection } from '../selection'
+import {
+  select,
+  selectedElements,
+  selectionStore,
+  useSelection,
+} from '../selection'
 import { menuPlace } from './actions'
 import { DeleteRow, MenuRow, MenuTitle } from './items'
 import { type MenuTarget, menuTarget } from './target'
@@ -208,6 +213,7 @@ function FrameItems() {
 const ELEMENT_IDS = [
   'note.addHere',
   'tool.note',
+  'element.wrap',
   'element.up',
   'view.zoomToSelection',
   'element.toFront',
@@ -228,6 +234,7 @@ export function ElementItems({ noteable }: { noteable: boolean }) {
   const [
     note,
     noteTool,
+    wrap,
     parent,
     zoom,
     toFront,
@@ -240,6 +247,7 @@ export function ElementItems({ noteable }: { noteable: boolean }) {
     remove,
   ] = useActions(ELEMENT_IDS)
   const element = useSelection((state) => state.element ?? null)
+  const several = useSelection((state) => selectedElements(state).length > 1)
   const tree = element ? treeOf(element.frame) : null
   // Esc from an element sitting directly in `body` selects the frame itself.
   const atTop =
@@ -248,6 +256,9 @@ export function ElementItems({ noteable }: { noteable: boolean }) {
     <>
       <ContextMenuGroup>
         <MenuTitle>Element</MenuTitle>
+        {several && wrap && isEnabled(wrap) ? (
+          <MenuRow action={wrap}>Use auto layout</MenuRow>
+        ) : null}
         {noteable ? (
           <MenuRow action={note} binding={noteTool?.keys?.[0]}>
             Add a note here

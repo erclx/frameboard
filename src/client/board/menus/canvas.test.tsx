@@ -12,6 +12,7 @@ import { userEvent } from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { IS_MAC } from '@/client/actions/keys'
+import { registerActions } from '@/client/actions/registry'
 import { liveStore, receiveBoard, receiveClaims } from '@/client/live/store'
 import { receiveChanges, unseenStore } from '@/client/live/unseen'
 import { frameTheme, themeStore } from '@/client/theme/store'
@@ -677,5 +678,79 @@ describe('CanvasMenu', () => {
 
     await expect.poll(() => screen.queryByRole('menu')).toBeNull()
     expect(selectionStore.getState().frames).toEqual([A.ref])
+  })
+})
+
+describe('the wrap row', () => {
+  const unregisters: (() => void)[] = []
+  afterEach(() => {
+    while (unregisters.length > 0) unregisters.pop()?.()
+  })
+
+  /** Stands in for `element.wrap`, which enables on one element too, so the menu holds the count. */
+  function standIn() {
+    const runs = { count: 0 }
+    unregisters.push(
+      registerActions([
+        {
+          id: 'element.wrap',
+          label: 'Use auto layout',
+          group: 'selection',
+          palette: false,
+          keys: ['Shift+KeyA'],
+          enabled: () => true,
+          run: () => (runs.count += 1),
+        },
+      ]),
+    )
+    return runs
+  }
+
+  function outline(): void {
+    const drawn = document.createElement('div')
+    drawn.dataset.elementSelection = ''
+    Object.assign(drawn.style, {
+      position: 'absolute',
+      left: '100px',
+      top: '100px',
+      width: '100px',
+      height: '100px',
+    })
+    document.querySelector('[data-layer]')?.append(drawn)
+  }
+
+  it('leads two selected elements menu with Use auto layout and runs it', async () => {
+    const runs = standIn()
+    render(<Board page={PAGE} />)
+    const member = { frame: A.ref, hash: 'h' }
+    selectElements(selectionStore, PAGE.ref, [
+      { ...member, index: 2 },
+      { ...member, index: 3 },
+    ])
+    outline()
+
+    rightClick(centerOf(A.ref))
+
+    const menu = await screen.findByRole('menu')
+    const items = within(menu).getAllByRole('menuitem')
+    expect(items[0]).toHaveTextContent(/^Use auto layout/)
+    await userEvent.click(items[0] as HTMLElement)
+    expect(runs.count).toBe(1)
+  })
+
+  it('leaves Use auto layout out of one selected element menu', async () => {
+    standIn()
+    render(<Board page={PAGE} />)
+    selectElement(selectionStore, PAGE.ref, {
+      frame: A.ref,
+      index: 2,
+      hash: 'h',
+    })
+    outline()
+
+    rightClick(centerOf(A.ref))
+
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).queryByText('Use auto layout')).toBeNull()
   })
 })

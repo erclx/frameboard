@@ -238,6 +238,7 @@ export function LeftPanel({
                 minSize={PAGES_MIN}
               >
                 <LayersList
+                  shown={shown?.ref}
                   frames={frames}
                   sections={shown?.sections}
                   calls={calls}

@@ -33,7 +33,7 @@ import { treeOf, trees } from '../element/tree'
 import { up } from '../element/walk'
 import { type FrameGroup, groupsOf } from '../frame-order'
 import { withDrawn } from '../geometry/write'
-import { FrameRowMenu } from '../menus/layers'
+import { FrameRowMenu, LayersSpaceMenu } from '../menus/layers'
 import { modeStore } from '../mode'
 import { enterFrame } from '../play/entered'
 import {
@@ -60,6 +60,8 @@ import { PanelSection } from './section'
 import { SectionRow } from './section-rows'
 
 interface LayersListProps {
+  /** The ref of the page the list shows, which an empty page has no frame to name it by. */
+  shown?: string
   /** The page's frames as the server sends them, bottom of the stack first. */
   frames: readonly FrameRecord[]
   /** The page's sections as the server sends them, bottom first, each naming the frames it holds. */
@@ -81,6 +83,7 @@ const NO_SECTIONS: readonly SectionRecord[] = []
  * never into or out of a section.
  */
 export function LayersList({
+  shown,
   frames,
   sections = NO_SECTIONS,
   calls = structure,
@@ -198,7 +201,10 @@ export function LayersList({
   }
 
   return (
-    <section aria-labelledby="layers-heading" className="flex min-h-0 flex-col">
+    <section
+      aria-labelledby="layers-heading"
+      className="flex h-full min-h-0 flex-col"
+    >
       <PanelSection id="layers-heading" title="Layers">
         <button
           type="button"
@@ -216,11 +222,18 @@ export function LayersList({
         </button>
       </PanelSection>
       {frames.length === 0 ? (
-        <p className="px-3.5 py-1 text-muted-foreground">
-          No frames on this page
-        </p>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <p className="px-3.5 py-1 text-muted-foreground">
+            No frames on this page
+          </p>
+          <LayersSpaceMenu
+            page={shown ?? ''}
+            frames={frames}
+            trigger={<div aria-hidden className="min-h-3 flex-1" />}
+          />
+        </div>
       ) : (
-        <ul className="flex min-h-0 flex-col overflow-y-auto pb-1">
+        <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-1">
           {groups.map((group) => {
             const rows = group.rows.map((frame, index) =>
               frameRow(frame, index, listOf(group)),
@@ -248,6 +261,11 @@ export function LayersList({
               </SectionRow>
             )
           })}
+          <LayersSpaceMenu
+            page={shown ?? pageOfFrames(frames)}
+            frames={frames}
+            trigger={<li aria-hidden className="min-h-3 flex-1" />}
+          />
         </ul>
       )}
     </section>
