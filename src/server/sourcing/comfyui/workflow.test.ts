@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import {
+  BUNDLED_MODEL_WORKFLOW,
   BUNDLED_WORKFLOW,
   checkWorkflow,
   fillWorkflow,
@@ -102,6 +103,32 @@ describe('checkWorkflow', () => {
     const filled = JSON.stringify(fillWorkflow(graph, values))
     expect(filled).not.toContain('{{')
     expect(filled).toContain('"noise_seed":9007199254740991')
+  })
+
+  it('refuses usage for a model workflow holding no {{image}}', () => {
+    expect(() => checkWorkflow(BUNDLED_WORKFLOW, 'flux.json', 'model')).toThrow(
+      expect.objectContaining({
+        code: 'usage',
+        message: expect.stringContaining('{{image}}'),
+      }),
+    )
+  })
+
+  it('accepts the bundled model workflow and fills its picture and every sampler seed', () => {
+    const graph = checkWorkflow(BUNDLED_MODEL_WORKFLOW, 'bundled', 'model')
+
+    const filled = fillWorkflow(graph, { image: 'axe (1).png', seed: 7 })
+
+    expect(JSON.stringify(filled)).not.toContain('{{')
+    const nodes = Object.values(filled)
+    expect(
+      nodes.find((node) => node.class_type === 'LoadImage')?.inputs.image,
+    ).toBe('axe (1).png')
+    expect(
+      nodes
+        .filter((node) => node.class_type === 'KSampler')
+        .map((node) => node.inputs.seed),
+    ).toEqual([7, 7, 7, 7])
   })
 })
 
