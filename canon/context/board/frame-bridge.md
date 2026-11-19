@@ -17,7 +17,7 @@ Holds the script that runs in each frame's own realm, built to `dist/frame-bridg
 
 - The script removes its own `<script>` as it starts, so the live element indices the board reads match the file
 - It answers only `window.parent` at the frame's own origin, and a frame with no parent, as capture and the phone link show one, never listens
-- `main.ts` checks each request's arguments against its op's schema and hands them to one area's handlers, such as `measure.ts`, `text-edit.ts`, `keys.ts`, or `chrome.ts`
+- `main.ts` checks each request's arguments against its op's schema and hands them to one area's handlers, such as `measure.ts`, `keys.ts`, `steps.ts`, `motion.ts`, or `controls.ts`
 - It announces its hash in a `shown` message once its body parses, on a restamp, and as its page goes, naming the page by an id, since a page going posts with no window
 - Text in place owns `contenteditable` and the keys, opens only the run at the point beside a child, and keeps the old text until the board says whether the write landed
 
@@ -28,7 +28,7 @@ Owns the board's end, which posts a request to one iframe's window and resolves 
 - The board focuses the iframe before an edit opens, since a frame on another origin cannot take focus itself, and hands focus back when the edit is refused
 - The channel parses every reply and push against its op's schema and answers null for one in another shape, since a frame's own script can post in the bridge's shape
 - `shown.ts` holds each iframe's announced hash. `followFrame` reopens a subscription on each page, restamp, and swap, and `followPage` keeps one per page for the theme, scrollbar, rail, and keys.
-- What a press reads, being the selection's measures, the ghosts, the pin corners, and a scroll frame's view, is pushed by the frame and held on the board, so it trails the page by a frame
+- What a press reads, being the selection's measures, the ghosts, the pin corners, a scroll frame's view, and Play's reach, is held on the board from the frame's word, so it trails the page
 - The preview height hides its iframe for its two readings, at 1 px and at the reference height, since two requests cannot share the one task the collapsed page never painted in
 
 ### `src/shared/frame-bridge/`
@@ -36,7 +36,7 @@ Owns the board's end, which posts a request to one iframe's window and resolves 
 Holds the contract both sides import, since the frame bundle may import nothing from the board. `messages.ts` carries the envelope, the op names, and a zod schema per op, and the files beside it carry the shapes the ops reply with.
 
 - `elements.ts` holds the element addressing helpers, `frameElements`, `elementIndex`, `elementAt`, and `renderedHash`, which the frame and the board's later readers both call
-- `live-element.ts`, `gap.ts`, `media.ts`, and `model.ts` each pair a reply's shape with its schema, and the pure parsers such as `flowOf` sit beside the shapes they read
+- `live-element.ts`, `gap.ts`, `media.ts`, `model.ts`, `motion.ts`, and `controls.ts` each pair a reply's shape with its schema, and the pure parsers such as `flowOf` sit beside the shapes they read
 
 ## Gotchas
 

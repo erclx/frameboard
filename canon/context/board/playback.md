@@ -16,7 +16,7 @@ Owns how the board runs what a frame draws over time, being the motion hold, Pla
 Owns the hold, a frame's timeline driven by the board in this tab alone, set from the inspector's Motion section and shown as a Held chip on the label, whose click ends it. A free-running frame whose finite timeline has finished reads Play at its end time, through one timer in `useMotionEnded`.
 
 - `store.ts` keeps each held or playing frame's moment by ref, and nothing in it reaches the server, the history, or another tab
-- `seek.ts` calls the seek functions in `src/shared/motion.ts` on the iframe's own window, so the hold lands on the frame's clock and never the board's
+- `seek.ts` seeks, releases, and reads a moment through the frame's bridge, and a playing hold runs on the board's own clock, one seek per tick
 - A drag keeps only the latest moment while a seek runs, and a finite timeline stops held at its end while one that repeats forever loops over one iteration
 - A hold ends on entering Play and when the frame leaves the canvas on a page switch, and an agent's write reloading the frame lands it on the same moment
 - Ending a hold plays CSS animations on from where they stand, and reloads a `__hf` or `__timelines` page, since neither contract names a play
@@ -27,9 +27,9 @@ Owns Play's state and surfaces, being the frame `entered.ts` holds, the `shield.
 
 - d3-zoom swallows the click ending a press that moved past 3 px, so a pan starting over a frame never enters it while a jittered click still does
 - Esc runs `play.leaveFrame` ahead of `mode.exitPlay`, taken inside the entered frame through the bridge, where the board's keys never arrive
-- `controls.ts` binds again on every load of the entered iframe, since a frame can be entered before its page draws and a reload is a new document
+- `controls.ts` binds each page the entered iframe shows, one mounted after entering too, and a restamp keeps the binding, whose close puts values back
 - Leaving the frame, a page switch, or leaving Play puts each moved control back to the file's values, so Edit never shows a value the file does not hold
-- Keep values is one `writeElements` call, so one undo puts the file back, and a view-only tab tunes live with a bar offering Reset alone
+- Keep values is one `writeElements` call at the hash the frame read its edits at, so one undo puts the file back, and a view-only tab offers Reset alone
 
 ### `src/client/board/present/`
 
@@ -39,7 +39,7 @@ Owns present mode, a page's frames one at a time over the window on black throug
 - Tab on the board and the Layers panel keep Layers order, so the two orders differ on one page
 - Leaving returns focus to what opened presenting, or to the Present button once that is gone, with the frame shown selected
 - Reduced motion makes every transition a cut, a step taken before own keyframes arrive cuts, and a transition with no `leave` keeps its leaving slide still
-- Only present mode hides a step, so Edit, Play, a capture, and an export show every one
+- The frame walks a slide's steps and hides a group an agent adds at the step it holds, and only present mode hides one, so Edit and a capture show every one
 
 ### `src/client/board/present/presenter/`
 
