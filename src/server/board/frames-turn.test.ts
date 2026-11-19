@@ -213,11 +213,141 @@ describe('a turned phone or tablet', () => {
     })
   })
 
+  describe('a turned foldable', () => {
+    const FOLDABLE = {
+      width: 466,
+      height: 678,
+      showDevice: true,
+      foldable: true,
+      pose: 'closed',
+    }
+
+    it('takes its pose’s screen with the sides swapped and keeps no upright size', async () => {
+      const root = open()
+      setHero(root, FOLDABLE)
+
+      const turned = await setFrameDevice(root, HERO, undefined, {
+        cwd: root,
+        turn: 'left',
+      })
+
+      expect(turned).toMatchObject({
+        device: 'foldable',
+        pose: 'closed',
+        turn: 'left',
+        box: { width: 678, height: 466 },
+      })
+      const entry = layout('webapp/home').frames.hero
+      expect(entry).toMatchObject({ turn: 'left', width: 678, height: 466 })
+      expect(entry).not.toHaveProperty('upright')
+    })
+
+    it('keeps the turn through a fold and takes the new pose’s swapped screen', async () => {
+      const root = open()
+      setHero(root, FOLDABLE)
+      await setFrameDevice(root, HERO, undefined, { cwd: root, turn: 'left' })
+
+      const opened = await setFrameDevice(root, HERO, undefined, {
+        cwd: root,
+        pose: 'open',
+      })
+
+      expect(opened).toMatchObject({
+        pose: 'open',
+        turn: 'left',
+        box: { width: 626, height: 890 },
+      })
+    })
+
+    it('turns while folding when both arrive in one call', async () => {
+      const root = open()
+      setHero(root, FOLDABLE)
+
+      const turned = await setFrameDevice(root, HERO, undefined, {
+        cwd: root,
+        pose: 'half',
+        turn: 'right',
+      })
+
+      expect(turned).toMatchObject({
+        pose: 'half',
+        turn: 'right',
+        box: { width: 626, height: 890 },
+      })
+    })
+
+    it('stands upright at its pose’s screen', async () => {
+      const root = open()
+      setHero(root, { ...FOLDABLE, width: 890, height: 626, pose: 'open' })
+      await setFrameDevice(root, HERO, undefined, { cwd: root, turn: 'right' })
+
+      const upright = await setFrameDevice(root, HERO, undefined, {
+        cwd: root,
+        turn: 'upright',
+      })
+
+      expect(upright).toMatchObject({ box: { width: 890, height: 626 } })
+      expect(upright).not.toHaveProperty('turn')
+      expect(layout('webapp/home').frames.hero).not.toHaveProperty('turn')
+    })
+
+    it('stands upright at its pose’s screen when named off, keeping no stale turn', async () => {
+      const root = open()
+      setHero(root, FOLDABLE)
+      await setFrameDevice(root, HERO, undefined, { cwd: root, turn: 'left' })
+
+      const unnamed = await setFrameDevice(root, HERO, undefined, {
+        cwd: root,
+        foldable: false,
+      })
+
+      expect(unnamed).toMatchObject({ box: { width: 466, height: 678 } })
+      expect(unnamed).not.toHaveProperty('turn')
+      const entry = layout('webapp/home').frames.hero
+      expect(entry).not.toHaveProperty('turn')
+      expect(entry).not.toHaveProperty('upright')
+    })
+
+    it('turns the phone its width names when named off with a turn in one call', async () => {
+      const root = open()
+      setHero(root, FOLDABLE)
+      await setFrameDevice(root, HERO, undefined, { cwd: root, turn: 'left' })
+
+      const turned = await setFrameDevice(root, HERO, undefined, {
+        cwd: root,
+        foldable: false,
+        turn: 'left',
+      })
+
+      expect(turned).toMatchObject({
+        device: 'phone',
+        turn: 'left',
+        box: { width: 678, height: 466 },
+      })
+      expect(layout('webapp/home').frames.hero).toMatchObject({
+        turn: 'left',
+        upright: { width: 466, height: 678 },
+      })
+    })
+
+    it('reads a stored turn on a foldable entry that holds no upright size', async () => {
+      const root = open()
+      setHero(root, { ...FOLDABLE, width: 678, height: 466, turn: 'right' })
+
+      const read = await readFrame(root, HERO, { cwd: root })
+
+      expect(read).toMatchObject({ device: 'foldable', turn: 'right' })
+    })
+  })
+
   describe('refusals', () => {
     it.each([
       ['a laptop', { width: 1440, height: 900, showDevice: true }],
       ['a frame showing no device', { width: 390, height: 844 }],
-      ['a foldable', { ...PHONE, foldable: true, pose: 'closed' }],
+      [
+        'a foldable showing no device',
+        { width: 466, height: 678, foldable: true, pose: 'closed' },
+      ],
       [
         'a frame holding extra widths',
         { ...PHONE, widths: [{ width: 430, height: 932 }] },

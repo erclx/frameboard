@@ -56,12 +56,12 @@ A responsive page is one frame file shown at several widths, so every fix to the
 - A phone draws a status bar over the top 54 px of the box and lays the page out under it, so a 390 by 844 frame holds a 390 by 790 page
 - `capture` draws the bar too, and a hugging height counts it
 - `--island wide` gives the phone its wide island, and `--island compact` takes it back
-- `--turn left` or `--turn right` lays a phone or tablet out landscape with no status bar, `--turn upright` restores the size it held, and `list --json` reports `turn` while it is turned
+- `--turn left` or `--turn right` lays a phone, tablet, or foldable out landscape with no status bar, and `--turn upright` stands it back up. `list --json` reports `turn` while it is turned
 
 The older `phone` and `tablet` read as `on`, and `none` as `off`. A frame can also name a foldable over the device its width picks, through three flags on the same verb.
 
 - `--foldable` names it and shows it, in the pose nearest the frame's width
-- `--pose <closed|half|open>` folds it, setting the box to 466 by 678 closed and 890 by 626 half or open, and writes `layout.json` alone
+- `--pose <closed|half|open>` folds it, setting the box to 466 by 678 closed and 890 by 626 half or open, sides swapped while turned, and writes `layout.json` alone
 - `--no-foldable` hands the pick back to the width, and `--pose` on a frame naming no foldable is refused as `usage`
 - `list --json` reports `device` as `foldable` and adds `pose`
 
@@ -71,8 +71,13 @@ The `image` commands put a picture into a project's `assets/` with a `<file>.lic
 
 - `image find "<query>"` searches Openverse for public domain images with no key and writes nothing, and `--credited` adds images that ask only for credit
 - `--save <id>` saves one result, and `--name <stem>` names the file, which otherwise takes the query
-- `image generate "<prompt>"` runs on fal or Google, whichever key the environment holds first, and spends on that key at once, so `--dry-run` answers the provider and price first
-- `image doctor` reports the GPU, a local ComfyUI server, and which keys are set, and installs nothing
+
+Generating makes an image nobody licensed, on the developer's own server or key.
+
+- `image generate "<prompt>"` runs on the first ready provider and spends on its key at once, so `--dry-run` answers the provider and price first
+- A ComfyUI server at `FRAMEBOARD_COMFYUI_URL` goes first and charges nothing, running FLUX.2 klein 4B or the workflow `--workflow <file>` names
+- `image free` unloads that server's model once a batch of runs ends
+- `image doctor` reports the GPU, the ComfyUI server's version and the files each bundled workflow lacks, and which keys are set, printing setup steps and installing nothing
 
 ## Models
 
@@ -80,6 +85,12 @@ The `image` commands put a picture into a project's `assets/` with a `<file>.lic
 
 - `--save <number-or-id>` saves one as a single `.glb` with its license file beside it, and `--name <stem>` names the file
 - `--size <size>` picks the texture size, `1k` by default, and a size the model lacks is refused with the sizes it has
+
+`model generate <picture>` makes a textured `.glb` from one picture on the ComfyUI server at `FRAMEBOARD_COMFYUI_URL`, charging nothing.
+
+- It runs Pixal3D at web size, about 17 MB, or the workflow `--workflow <file>` names, and takes about a minute with no progress line
+- The license file names the picture and carries a project asset's own license forward, and `--dry-run` answers without calling the server
+- The server keeps the model loaded between runs, so `image free` unloads it once a batch ends
 
 ## Design references
 

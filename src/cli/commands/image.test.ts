@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -40,6 +40,42 @@ function network(results: unknown[]) {
     return Response.json({ results })
   }) as typeof fetch
   return { send, asked }
+}
+
+/**
+ * A fake ComfyUI that finishes every prompt at once and serves one PNG,
+ * recording each request and each prompt body posted.
+ */
+function comfy() {
+  const asked: string[] = []
+  const prompts: unknown[] = []
+  const send = (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = new URL(String(input))
+    asked.push(`${init?.method ?? 'GET'} ${url.href}`)
+    if (url.pathname.endsWith('/prompt')) {
+      prompts.push(JSON.parse(String(init?.body)))
+      return Response.json({ prompt_id: 'p1' })
+    }
+    if (url.pathname.endsWith('/history/p1')) {
+      return Response.json({
+        p1: {
+          status: { completed: true },
+          outputs: {
+            '9': {
+              images: [{ filename: 'f.png', subfolder: '', type: 'output' }],
+            },
+          },
+        },
+      })
+    }
+    if (url.pathname.endsWith('/view')) {
+      return new Response(new Uint8Array([9, 9]), {
+        headers: { 'content-type': 'image/png' },
+      })
+    }
+    return new Response('')
+  }) as typeof fetch
+  return { send, asked, prompts }
 }
 
 describe('image find', () => {
@@ -176,6 +212,7 @@ describe('image generate', () => {
   beforeEach(() => {
     board = writeBoard({ 'acme/project.json': '{ "version": 1 }\n' })
     assets = join(board.root, 'acme/assets')
+    vi.stubEnv('FRAMEBOARD_COMFYUI_URL', '')
     vi.stubEnv('FAL_KEY', '')
     vi.stubEnv('GEMINI_API_KEY', '')
   })
@@ -274,6 +311,163 @@ describe('image generate', () => {
     expect(result.stdout).not.toContain('fal-secret')
     expect(existsSync(assets)).toBe(false)
   })
+
+  describe('on a local ComfyUI server', () => {
+    beforeEach(() => {
+      vi.stubEnv('FRAMEBOARD_COMFYUI_URL', 'http://127.0.0.1:8188')
+      vi.stubEnv('FAL_KEY', 'fal-secret')
+    })
+
+    it('answers comfyui at $0 on a dry run and makes no request', async () => {
+      const { send, asked } = comfy()
+
+      const result = await run(send, 'a phone on a desk', '--dry-run')
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).toMatchObject({
+        provider: 'comfyui',
+        model: 'flux-2-klein-4b-fp8',
+        priceUsd: 0,
+        dryRun: true,
+      })
+      expect(asked).toEqual([])
+    })
+
+    it('saves the PNG with a license recording the seed it drew', async () => {
+      const { send, prompts } = comfy()
+
+      const result = await run(send, 'a phone on a desk')
+
+      expect(result.exitCode).toBe(0)
+      expect([...readFileSync(join(assets, 'a-phone-on-a-desk.png'))]).toEqual([
+        9, 9,
+      ])
+      const license = JSON.parse(
+        readFileSync(
+          join(assets, 'a-phone-on-a-desk.png.license.json'),
+          'utf8',
+        ),
+      )
+      expect(license).toMatchObject({
+        origin: 'generated',
+        provider: 'comfyui',
+        model: 'flux-2-klein-4b-fp8',
+        priceUsd: 0,
+      })
+      expect(license.workflow).toBeUndefined()
+      expect(JSON.stringify(prompts[0])).toContain(
+        `"noise_seed":${license.seed}`,
+      )
+    })
+
+    it('runs the --workflow file and names it in the license', async () => {
+      const path = join(board.root, 'z-image.json')
+      writeFileSync(
+        path,
+        JSON.stringify({
+          '1': { class_type: 'CLIPTextEncode', inputs: { text: '{{prompt}}' } },
+        }),
+      )
+      const { send, prompts } = comfy()
+
+      const result = await run(send, 'a phone', '--workflow', path)
+
+      expect(result.exitCode).toBe(0)
+      expect(prompts[0]).toEqual({
+        prompt: {
+          '1': { class_type: 'CLIPTextEncode', inputs: { text: 'a phone' } },
+        },
+      })
+      expect(
+        JSON.parse(
+          readFileSync(join(assets, 'a-phone.png.license.json'), 'utf8'),
+        ),
+      ).toMatchObject({ model: 'z-image.json', workflow: path })
+    })
+
+    it('refuses usage for --workflow beside --provider fal before any request', async () => {
+      const path = join(board.root, 'z-image.json')
+      writeFileSync(
+        path,
+        JSON.stringify({
+          '1': { class_type: 'CLIPTextEncode', inputs: { text: '{{prompt}}' } },
+        }),
+      )
+      const { send, asked } = comfy()
+
+      const result = await run(
+        send,
+        'a phone',
+        '--workflow',
+        path,
+        '--provider',
+        'fal',
+      )
+
+      expect(result.exitCode).toBe(2)
+      expect(result.json().error?.code).toBe('usage')
+      expect(asked).toEqual([])
+    })
+
+    it('refuses usage on a dry run for a workflow with no {{prompt}}', async () => {
+      const path = join(board.root, 'fixed.json')
+      writeFileSync(
+        path,
+        JSON.stringify({
+          '1': { class_type: 'CLIPTextEncode', inputs: { text: 'a cat' } },
+        }),
+      )
+      const { send, asked } = comfy()
+
+      const result = await run(send, 'a phone', '--workflow', path, '--dry-run')
+
+      expect(result.exitCode).toBe(2)
+      expect(result.json().error?.code).toBe('usage')
+      expect(asked).toEqual([])
+    })
+  })
+})
+
+describe('image free', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('posts /free to the server and reports it unloaded', async () => {
+    vi.stubEnv('FRAMEBOARD_COMFYUI_URL', 'http://gpu.lan:8188/')
+    const { send, asked } = comfy()
+
+    const result = await cli(['image', 'free', '--json'], {
+      cwd: process.cwd(),
+      fetch: send,
+    })
+
+    expect(result.exitCode).toBe(0)
+    expect(result.json().data).toEqual({
+      version: 1,
+      url: 'http://gpu.lan:8188/',
+      freed: true,
+    })
+    expect(asked).toEqual(['POST http://gpu.lan:8188/free'])
+  })
+
+  it('refuses provider-failed when nothing answers', async () => {
+    vi.stubEnv('FRAMEBOARD_COMFYUI_URL', '')
+    const refusing = (async () => {
+      throw new TypeError('fetch failed')
+    }) as typeof fetch
+
+    const result = await cli(['image', 'free', '--json'], {
+      cwd: process.cwd(),
+      fetch: refusing,
+    })
+
+    expect(result.exitCode).toBe(13)
+    expect(result.json().error).toMatchObject({
+      code: 'provider-failed',
+      details: { provider: 'comfyui' },
+    })
+  })
 })
 
 describe('image doctor', () => {
@@ -282,6 +476,7 @@ describe('image doctor', () => {
   })
 
   it('reports each key as set or unset at exit 0, never its value', async () => {
+    vi.stubEnv('FRAMEBOARD_COMFYUI_URL', '')
     vi.stubEnv('FAL_KEY', 'fal-secret')
     vi.stubEnv('GEMINI_API_KEY', '')
     const refusing = (async () => {

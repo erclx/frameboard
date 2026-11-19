@@ -6,6 +6,7 @@ const request = {
   prompt: 'a house',
   size: { width: 1376, height: 768 },
   key: 'gem-secret',
+  seed: 1,
 }
 
 /** A fake Gemini API answering one status and body, recording each request. */

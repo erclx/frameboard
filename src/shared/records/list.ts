@@ -49,7 +49,7 @@ export const frameRecordSchema = z.object({
   /** `wide` while the frame picks the phone's wide island, shown or not, absent for the compact one. */
   island: z.literal('wide').optional(),
   /**
-   * The way a phone or tablet frame is turned, shown or not, absent upright.
+   * The way a phone, tablet, or foldable frame is turned, shown or not, absent upright.
    * A turned frame's box is landscape, and a turned phone draws no status bar.
    */
   turn: z.enum(['left', 'right']).optional(),

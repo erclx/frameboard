@@ -13,7 +13,7 @@ import { pageReach, watchReach } from '../play/reach'
 /**
  * The Play notice, saying nothing takes a click only once every shown frame
  * answered, so a culled or loading one never lets it claim so, and offering
- * Rotate to a writer while a phone or tablet is entered.
+ * Rotate to a writer while a phone, tablet, or foldable is entered.
  */
 export function PlayBanner({ frames }: { frames: readonly FrameRecord[] }) {
   const reach = useSyncExternalStore(

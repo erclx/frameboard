@@ -58,23 +58,39 @@ export function RotateButtons({
         data-turns={frameRef}
         className={BAR_GROUP}
       >
-        <button
-          type="button"
-          data-label-control
-          aria-disabled={off ? true : undefined}
-          title={off}
-          onClick={() => {
-            if (!off) rotateFrame({ ref: frameRef, turn }, { calls })
-          }}
-          className={cn(
-            BAR_BUTTON,
-            off ? 'opacity-60' : 'hover:text-foreground active:bg-muted',
-          )}
-        >
-          <RotateLabel />
-        </button>
+        <RotateButton frameRef={frameRef} turn={turn} off={off} calls={calls} />
       </div>
     </div>
+  )
+}
+
+function RotateButton({
+  frameRef,
+  turn,
+  off,
+  calls,
+}: {
+  frameRef: string
+  turn?: Turn
+  off?: string
+  calls: Structure
+}) {
+  return (
+    <button
+      type="button"
+      data-label-control
+      aria-disabled={off ? true : undefined}
+      title={off}
+      onClick={() => {
+        if (!off) rotateFrame({ ref: frameRef, turn }, { calls })
+      }}
+      className={cn(
+        BAR_BUTTON,
+        off ? 'opacity-60' : 'hover:text-foreground active:bg-muted',
+      )}
+    >
+      <RotateLabel />
+    </button>
   )
 }
 
@@ -92,14 +108,16 @@ interface PoseButtonsProps {
   below: number
   /** Why the frame cannot fold, which turns the buttons off and names the reason. */
   off?: string
+  /** Rotate after a divider, with the turn it is held at and why it cannot turn, absent where the viewer cannot write. */
+  rotate?: { turn?: Turn; off?: string }
   /** The server calls a fold writes through, the board's own when absent. */
   calls?: Structure
 }
 
 /**
- * The Closed, Half, and Open buttons under a selected foldable, as
- * `canon/design/canvas/foldable-buttons` draws them, held at screen size and
- * reached through the hit layer as the label's controls are.
+ * The Closed, Half, and Open buttons under a selected foldable, then a divider
+ * and Rotate, as `canon/design/canvas/foldable-buttons` draws them, held at
+ * screen size and reached through the hit layer as the label's controls are.
  */
 export function PoseButtons({
   frameRef,
@@ -107,6 +125,7 @@ export function PoseButtons({
   pose,
   below,
   off,
+  rotate,
   calls = structure,
 }: PoseButtonsProps) {
   return (
@@ -153,6 +172,21 @@ export function PoseButtons({
             </button>
           )
         })}
+        {rotate ? (
+          <>
+            <span
+              aria-hidden
+              data-bar-divider
+              className="mx-[3px] h-3.5 w-px self-center bg-border"
+            />
+            <RotateButton
+              frameRef={frameRef}
+              turn={rotate.turn}
+              off={rotate.off}
+              calls={calls}
+            />
+          </>
+        ) : null}
       </div>
     </div>
   )

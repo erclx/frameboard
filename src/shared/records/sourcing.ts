@@ -3,7 +3,7 @@ import { z } from 'zod'
 /** So `house.jpg` carries its license in `house.jpg.license.json` beside it. */
 export const LICENSE_FILE_SUFFIX = '.license.json'
 
-export const IMAGE_PROVIDERS = ['fal', 'google'] as const
+export const IMAGE_PROVIDERS = ['comfyui', 'fal', 'google'] as const
 
 export type ImageProviderName = (typeof IMAGE_PROVIDERS)[number]
 
@@ -121,9 +121,11 @@ const foundLicenseSchema = z.discriminatedUnion('source', [
   polyhavenLicenseSchema,
 ])
 
-const generatedLicenseSchema = z.object({
+const generatedImageLicenseSchema = z.object({
   version: z.literal(1),
   origin: z.literal('generated'),
+  /** Absent on every image license written so far, which reads as an image. */
+  kind: z.literal('image').optional(),
   provider: z.enum(IMAGE_PROVIDERS),
   model: z.string(),
   prompt: z.string(),
@@ -131,10 +133,60 @@ const generatedLicenseSchema = z.object({
   height: z.int(),
   /** The price estimated before the call, in US dollars. */
   priceUsd: z.number(),
+  /** The noise seed a local run drew, so the same image can be made again. */
+  seed: z.int().optional(),
+  /** The workflow file `--workflow` named, absent for the bundled one. */
+  workflow: z.string().optional(),
   savedAt: z.string(),
 })
 
-/** The `<file>.license.json` beside every saved image or model, saying where it came from. */
+/** The picture a model was made from, so the model keeps the credit the picture carried. */
+export const sourcePictureSchema = z.object({
+  /**
+   * Relative to the project's `assets/` for a project asset, else the file's
+   * name alone, never a path on the machine.
+   */
+  path: z.string(),
+  inAssets: z.boolean(),
+  /** The picture's own license file's origin and license name, null when it has none. */
+  license: z
+    .object({
+      origin: z.enum(['found', 'generated']),
+      /** The license a found picture carries, such as `cc0`, null for a generated one. */
+      license: z.string().nullable(),
+    })
+    .nullable(),
+})
+
+export type SourcePicture = z.infer<typeof sourcePictureSchema>
+
+const generatedModelLicenseSchema = z.object({
+  version: z.literal(1),
+  origin: z.literal('generated'),
+  kind: z.literal('model'),
+  provider: z.literal('comfyui'),
+  /** The ComfyUI server the model was made on. */
+  server: z.string(),
+  /** The bundled model, or the workflow file's name when `--workflow` named one. */
+  model: z.string(),
+  /** The workflow file `--workflow` named, absent for the bundled one. */
+  workflow: z.string().optional(),
+  picture: sourcePictureSchema,
+  /** The noise seed the run drew, so the same model can be made again. */
+  seed: z.int(),
+  savedAt: z.string(),
+})
+
+const generatedLicenseSchema = z.discriminatedUnion('kind', [
+  generatedImageLicenseSchema,
+  generatedModelLicenseSchema,
+])
+
+/**
+ * The `<file>.license.json` beside every saved image or model, saying where
+ * it came from. A generated one carries `kind: 'model'` for a model, and no
+ * kind or `kind: 'image'` for an image.
+ */
 export const licenseFileSchema = z.discriminatedUnion('origin', [
   foundLicenseSchema,
   generatedLicenseSchema,
@@ -158,6 +210,21 @@ export type SavedImage = z.infer<typeof savedImageSchema>
 export const savedModelSchema = savedImageSchema
 
 export type SavedModel = SavedImage
+
+/** What `model generate` answers, with `saved` null on a dry run. */
+export const modelGenerateSchema = z.object({
+  version: z.literal(1),
+  provider: z.literal('comfyui'),
+  /** The ComfyUI server at `FRAMEBOARD_COMFYUI_URL`. */
+  server: z.string(),
+  /** The bundled model, or the workflow file's name when `--workflow` named one. */
+  model: z.string(),
+  picture: sourcePictureSchema,
+  dryRun: z.boolean(),
+  saved: savedModelSchema.nullable(),
+})
+
+export type ModelGenerate = z.infer<typeof modelGenerateSchema>
 
 /** What `image generate` answers, with `saved` null on a dry run. */
 export const imageGenerateSchema = z.object({
@@ -198,13 +265,45 @@ export const imageOfferSchema = z.object({
 
 export type ImageOffer = z.infer<typeof imageOfferSchema>
 
+/** What `image free` answers once the server unloaded its models. */
+export const imageFreeSchema = z.object({
+  version: z.literal(1),
+  /** The ComfyUI server at `FRAMEBOARD_COMFYUI_URL`, or the default address. */
+  url: z.string(),
+  freed: z.literal(true),
+})
+
+export type ImageFree = z.infer<typeof imageFreeSchema>
+
+/** A model file a bundled workflow loads, as ComfyUI's `models/<folder>/` should hold it. */
+export const missingModelSchema = z.object({
+  /** The verb whose bundled workflow loads it, `image` for image generate and `model` for model generate. */
+  for: z.enum(['image', 'model']),
+  folder: z.string(),
+  file: z.string(),
+  bytes: z.int(),
+  /** Where the file downloads from. */
+  url: z.string(),
+})
+
+export type MissingModel = z.infer<typeof missingModelSchema>
+
 /** What `image doctor` answers, naming each key as set or unset and never its value. */
 export const imageDoctorSchema = z.object({
   version: z.literal(1),
   /** The first GPU `nvidia-smi` reports, null when it is absent or fails. */
   gpu: z.object({ name: z.string(), memoryMiB: z.int() }).nullable(),
   /** The ComfyUI server at `FRAMEBOARD_COMFYUI_URL`, or the default address. */
-  local: z.object({ url: z.string(), running: z.boolean() }),
+  local: z.object({
+    url: z.string(),
+    running: z.boolean(),
+    /** The ComfyUI version the server reports, null when none answers. */
+    version: z.string().nullable(),
+    /** Each bundled workflow's files the server lacks, image ones first, null when it does not answer. */
+    missing: z.array(missingModelSchema).nullable(),
+  }),
+  /** Commands that would get this machine generating locally, empty when it already can. */
+  setup: z.array(z.string()),
   /** Each provider key by its environment variable, true when set and not empty. */
   keys: z.record(z.string(), z.boolean()),
   providers: z.array(
