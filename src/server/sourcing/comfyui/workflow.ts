@@ -55,10 +55,8 @@ const REQUIRED: Record<
 const PLACEHOLDER = /\{\{(prompt|image|width|height|seed)\}\}/g
 
 /**
- * The workflow with each placeholder the values name filled, leaving any
- * other as written. A string that is one number placeholder alone becomes
- * that number, since ComfyUI refuses a width sent as text, and a placeholder
- * inside longer text is filled as text.
+ * The workflow with each placeholder the values name filled, leaving any other.
+ * A lone number placeholder becomes a number, since ComfyUI refuses a width sent as text.
  */
 export function fillWorkflow(
   workflow: Workflow,

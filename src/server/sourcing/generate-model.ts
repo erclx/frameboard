@@ -40,11 +40,8 @@ export interface ModelGenerationPlan {
 }
 
 /**
- * The picture at `path`, read relative to `cwd`, else to the project's
- * folder, else to its `assets/`, so `assets/axe.png` and `axe.png` both name a
- * project asset. A project asset carries its own license's origin and license
- * name forward. Refuses `usage` for a path naming no file or a file that is no
- * PNG, JPEG, WebP, or GIF, read from its bytes rather than its name.
+ * The picture at `path`, read from `cwd`, the project, or its `assets/`, carrying a project asset's license forward.
+ * Refuses `usage` for no file, or a file whose bytes are no PNG, JPEG, WebP, or GIF.
  */
 export async function readPicture(
   path: string,

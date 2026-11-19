@@ -7,10 +7,8 @@ export const PNG_BYTES = new Uint8Array([
 ])
 
 /**
- * A fake ComfyUI that takes an upload as `stored`, finishes every prompt at
- * once, and serves one GLB. It records each request as `METHOD path` and each
- * prompt posted. `history` replaces the finished run's history entry, as for
- * a run failing in a node.
+ * A fake ComfyUI storing an upload as `stored`, finishing every prompt at once, and serving one GLB.
+ * `history` replaces the finished run's entry, as for a run failing in a node.
  */
 export function comfyModelServer({
   stored = 'axe.png',
