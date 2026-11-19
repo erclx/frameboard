@@ -313,7 +313,7 @@ test.describe('an asset renamed, replaced, and deleted from its tile menu', () =
       page
         .getByRole('button', { name: /^Copy path of lake\.png/ })
         .locator('img'),
-    ).toHaveAttribute('src', /lake\.png\?v=1$/)
+    ).toHaveAttribute('src', /lake\.png\?v=64-1$/)
   })
 
   test('a delete asks first naming the frame linking it, and one undo brings the file back', async ({
