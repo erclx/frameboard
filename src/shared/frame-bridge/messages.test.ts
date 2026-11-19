@@ -262,6 +262,7 @@ describe('the chrome ops', () => {
     ['scroll-act', { act: 'page', toward: -1 }],
     ['scroll-act', { act: 'to', top: 0.25 }],
     ['keys', { keys: ['Escape'], keepTyping: false }],
+    ['focus-keys', {}],
     ['content-height', {}],
   ] as const)('takes the arguments %s carries', (op, args) => {
     expect(requestArgs(op, args)).toEqual(args)
@@ -274,6 +275,7 @@ describe('the chrome ops', () => {
     ['a key list of one key', 'keys', { keys: 'Escape', keepTyping: false }],
     ['keys with no typing rule', 'keys', { keys: ['Escape'] }],
     ['arguments where none go', 'content-height', { at: 1 }],
+    ['a key list where none goes', 'focus-keys', { keys: ['Tab'] }],
   ] as const)('refuses %s', (_case, op, args) => {
     expect(requestArgs(op, args)).toBe(REFUSED)
   })
@@ -289,6 +291,11 @@ describe('the chrome ops', () => {
     const fired = { key: 'Escape', repeat: false }
 
     expect(pushValue('keys', fired)).toEqual(fired)
+  })
+
+  it('reads a key heard in the frame as a focus-keys push', () => {
+    expect(pushValue('focus-keys', true)).toBe(true)
+    expect(pushValue('focus-keys', { key: 'Tab' })).toBe(REFUSED)
   })
 
   it.each([
