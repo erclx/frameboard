@@ -298,3 +298,111 @@ describe('the chrome ops', () => {
     expect(replyValue(op, value)).toBe(REFUSED)
   })
 })
+
+describe('the motion and present ops', () => {
+  it.each([
+    ['steps', { shown: 2 }],
+    ['steps-show', { steps: 's1', shown: 1, entering: 0 }],
+    ['steps-show', { steps: 's1', shown: 0, entering: null }],
+    ['step-preview', { index: 4, effect: 'wipe' }],
+    ['hold-animations', {}],
+    ['hide-controls', {}],
+    ['pointer-move', {}],
+    ['keys', { keys: ['ArrowRight'], keepTyping: false, keepButtons: true }],
+    ['motion', {}],
+    ['motion-seek', { motion: 'm1', at: 1250 }],
+    ['motion-release', { motion: 'm1' }],
+    ['motion-moment', { motion: 'm1' }],
+    ['controls', {}],
+    ['controls-act', { controls: 'c1', act: 'reset' }],
+    ['controls-act', { controls: 'c1', act: 'settle' }],
+    ['controls-edits', { controls: 'c1' }],
+    ['takes-clicks', {}],
+    ['bindings', {}],
+    ['page-colors', {}],
+  ] as const)('takes the arguments %s carries', (op, args) => {
+    expect(requestArgs(op, args)).toEqual(args)
+  })
+
+  it.each([
+    ['a step before the first', 'steps', { shown: -1 }],
+    [
+      'a step shown to no subscription',
+      'steps-show',
+      { shown: 1, entering: null },
+    ],
+    [
+      'an entrance no slide tool has',
+      'step-preview',
+      { index: 0, effect: 'spin' },
+    ],
+    ['a seek to no moment', 'motion-seek', { motion: 'm1', at: Number.NaN }],
+    [
+      'an act the controls take none of',
+      'controls-act',
+      { controls: 'c1', act: 'keep' },
+    ],
+    ['arguments where none go', 'pointer-move', { every: 2 }],
+  ] as const)('refuses %s', (_case, op, args) => {
+    expect(requestArgs(op, args)).toBe(REFUSED)
+  })
+
+  it('reads a timeline pushed once it registers, and the null of none', () => {
+    const found = { motion: { source: 'css', duration: 2000 }, span: 2000 }
+
+    expect(pushValue('motion', found)).toEqual(found)
+    expect(pushValue('motion', null)).toBeNull()
+  })
+
+  it('reads a keep batch with the hash it was read at', () => {
+    const batch = {
+      hash: 'a',
+      edits: [
+        { index: 3, change: { kind: 'attribute', name: 'value', value: '4' } },
+        {
+          index: 5,
+          change: {
+            kind: 'styles',
+            declarations: [{ property: '--gap', value: '4px' }],
+          },
+        },
+      ],
+    }
+
+    expect(replyValue('controls-edits', batch)).toEqual(batch)
+  })
+
+  it('reads the controls and targets a page draws', () => {
+    const drawn = [
+      {
+        key: 0,
+        control: { x: 1, y: 2, width: 3, height: 4 },
+        target: null,
+        label: '.card, no match',
+      },
+    ]
+
+    expect(pushValue('bindings', drawn)).toEqual(drawn)
+  })
+
+  it.each([
+    [
+      'a timeline from no source the board reads',
+      'motion',
+      { motion: { source: 'gif', duration: 1 }, span: 1 },
+    ],
+    ['a moved count below none', 'controls', -1],
+    ['a step count of a half press', 'steps', 1.5],
+    ['a pointer move carrying a point', 'pointer-move', { x: 1, y: 2 }],
+  ] as const)('refuses a push holding %s', (_case, op, value) => {
+    expect(pushValue(op, value)).toBe(REFUSED)
+  })
+
+  it.each([
+    ['a keep batch missing its hash', 'controls-edits', { edits: [] }],
+    ['page colors with no ink', 'page-colors', { fill: null }],
+    ['a moment before the start', 'motion-moment', -1],
+  ] as const)('refuses a reply holding %s', (_case, op, value) => {
+    expect(replyValue(op, value)).toBe(REFUSED)
+  })
+})
