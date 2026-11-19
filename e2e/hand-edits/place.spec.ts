@@ -435,6 +435,49 @@ test.describe('placing text and shapes into a frame', () => {
       )
   })
 
+  test('a click inside a text open for typing moves the caret there, and a click outside ends the edit', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const headline = await centerOf(page, 'h1')
+    await page.mouse.dblclick(headline.x, headline.y)
+    await expect(hero(page).locator('h1')).toBeFocused()
+
+    // The screen point just inside the third character, read off the frame's own layout.
+    const frame = await page
+      .locator(`[data-frame="${HERO}"] iframe`)
+      .boundingBox()
+    if (!frame) throw new Error('The hero draws no frame')
+    const { left, top, height, width } = await hero(page)
+      .locator('h1')
+      .evaluate((h1) => {
+        const range = document.createRange()
+        range.setStart(h1.firstChild ?? h1, 2)
+        range.setEnd(h1.firstChild ?? h1, 3)
+        const box = range.getBoundingClientRect()
+        return {
+          left: box.left,
+          top: box.top,
+          height: box.height,
+          width: document.documentElement.clientWidth,
+        }
+      })
+    const k = frame.width / width
+    await page.mouse.click(
+      frame.x + (left + 1) * k,
+      frame.y + (top + height / 2) * k,
+    )
+    await expect(hero(page).locator('h1')).toBeFocused()
+    await page.keyboard.type('X')
+
+    const canvas = await liveCanvas(page).boundingBox()
+    if (!canvas) throw new Error('The canvas draws no box')
+    await page.mouse.click(canvas.x + 8, canvas.y + canvas.height - 8)
+
+    await expect.poll(read).toContain('<h1 data-name="Headline">heXro</h1>')
+  })
+
   test('a double-click on bare text beside a code edits that run in place, keeping the code', async ({
     page,
   }) => {

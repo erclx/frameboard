@@ -342,6 +342,106 @@ function textLinesHeld(ref: string): (page: Page) => Promise<void> {
 }
 
 /**
+ * Opens the hero's headline by one double-click, presses at the start of its
+ * text, and types there, holding the write so the shot shows the edit open.
+ */
+function textCaretHeld(ref: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await probeFrames(page, ['h1'], PRESS_FRAMES)
+    await page.addInitScript(
+      ({ owner, frames }) => {
+        if (window !== window.top) return
+        const { frameReport, frameAct } = window as unknown as ProbeWindow
+        let left = frames
+        const sent = window.fetch.bind(window)
+        window.fetch = (...args) =>
+          String(args[0]).includes('/api/frames/edit')
+            ? new Promise<Response>(() => {})
+            : sent(...args)
+        const iframe = () =>
+          document.querySelector<HTMLIFrameElement>(
+            `[data-frame="${owner}"] iframe`,
+          )
+        const hit = () => document.querySelector('[data-hit-layer]')
+        // A point in the frame's own coordinates, as the board's screen reads it.
+        const pointOn = (x: number, y: number, width: number) => {
+          const box = iframe()?.getBoundingClientRect()
+          if (!box) return null
+          const k = box.width / (width || box.width)
+          return { clientX: box.left + x * k, clientY: box.top + y * k }
+        }
+        const doubleClick = (own: ProbedElement, width: number) => {
+          const at = pointOn(
+            own.left + own.width / 2,
+            own.top + own.height / 2,
+            width,
+          )
+          const target = hit()
+          if (!at || !target) return
+          const send = (type: string, detail: number) =>
+            (type === 'mouseup' ? window : target).dispatchEvent(
+              new MouseEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                detail,
+                ...at,
+              }),
+            )
+          for (const detail of [1, 2]) {
+            send('mousedown', detail)
+            send('mouseup', detail)
+            send('click', detail)
+          }
+          send('dblclick', 2)
+        }
+        let asked = 0
+        let typed = false
+        const run = () => {
+          const frame = iframe()
+          const report = frame ? frameReport(frame) : null
+          const heading = report?.elements.h1
+          if (frame && report && heading && frame.dataset.renderedAt) {
+            // The frame types in its own page, so the shot waits for the words.
+            if (typed && heading.text.startsWith('Big ')) {
+              document.documentElement.setAttribute('data-text-caret-held', '')
+              return
+            }
+            const at = pointOn(
+              heading.left + 1,
+              heading.top + heading.height / 2,
+              report.width,
+            )
+            if (heading.editing && !typed && at) {
+              // The caret request and the paste reach the frame in the order sent.
+              hit()?.dispatchEvent(
+                new PointerEvent('pointerdown', {
+                  bubbles: true,
+                  cancelable: true,
+                  button: 0,
+                  isPrimary: true,
+                  ...at,
+                }),
+              )
+              frameAct(frame, { type: 'h1', text: 'Big ', atCaret: true })
+              typed = true
+            } else if (!heading.editing && asked++ % 60 === 0) {
+              doubleClick(heading, report.width)
+            }
+          }
+          if (--left > 0) requestAnimationFrame(run)
+          else console.error(`No headline in ${owner} took a placed caret`)
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(run),
+        )
+      },
+      { owner: ref, frames: PRESS_FRAMES },
+    )
+  }
+}
+
+/**
  * Serves hero with words around its caption's `code`, rewriting the bytes in
  * flight, which adds text nodes alone so every tree index holds.
  */
@@ -797,6 +897,22 @@ export function editingCases(theme: 'light' | 'dark'): CaptureCase[] {
           asWriter,
           textLinesHeld('webapp/home/hero'),
           readyWhen('[data-text-lines-held]'),
+        ),
+      ),
+    },
+    {
+      // The hero's headline opened by one double-click, typed into at a caret a press placed at its start.
+      section: 'text-edit-caret',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          textCaretHeld('webapp/home/hero'),
+          readyWhen('[data-text-caret-held]'),
         ),
       ),
     },

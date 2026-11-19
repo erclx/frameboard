@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { EDITING } from '@/shared/frame-bridge/messages'
+import { frameOf } from '@/test/board'
+
 import { request } from '../bridge/channel'
 import type { ElementChange } from '../inspector/element/write'
 import { createSelectionStore, selectElement } from '../selection'
-import { editTextInPlace, editTextWhenShown } from './text-in-place'
+import {
+  editTextInPlace,
+  editTextWhenShown,
+  pressInEdit,
+} from './text-in-place'
 
 const HASH = 'c'.repeat(64)
 const NEXT = 'd'.repeat(64)
@@ -688,5 +695,137 @@ describe('editTextWhenShown', () => {
         ?.querySelector('h1')
         ?.hasAttribute('contenteditable'),
     ).toBe(false)
+  })
+})
+
+describe('caretAt on an open edit', () => {
+  /** The frame-local point just inside the left edge of the character at `offset`. */
+  function pointAt(shown: Document, node: Node, offset: number) {
+    const range = shown.createRange()
+    range.setStart(node, offset)
+    range.setEnd(node, offset + 1)
+    const { left, top, height } = range.getBoundingClientRect()
+    return { x: left + 1, y: top + height / 2 }
+  }
+
+  it('moves the caret to the point and keeps the edit open', async () => {
+    const { container, shown, heading } = await mount('<h1>Hello world</h1>')
+    const edit = editTextInPlace(container, KEY, recorder().write)
+    await edit.opened
+    const text = heading.firstChild
+    if (!text) throw new Error('The heading holds no text.')
+
+    const placed = await edit.caretAt(pointAt(shown, text, 6))
+
+    expect(placed).toBe(true)
+    expect(shown.getSelection()?.isCollapsed).toBe(true)
+    expect(shown.getSelection()?.anchorOffset).toBe(6)
+    expect(edit.isOpen()).toBe(true)
+    expect(heading.hasAttribute(EDITING)).toBe(true)
+  })
+
+  it('places no caret for a point outside the text, keeping the selection', async () => {
+    const { container, iframe, shown } = await mount('<h1>Hello world</h1>')
+    const edit = editTextInPlace(container, KEY, recorder().write)
+    await edit.opened
+
+    const placed = await edit.caretAt({ x: 4, y: iframe.clientHeight - 4 })
+
+    expect(placed).toBe(false)
+    expect(shown.getSelection()?.toString()).toBe('Hello world')
+  })
+
+  it('reads closed and places nothing once the edit ends', async () => {
+    const { container, heading } = await mount('<h1>Hello world</h1>')
+    const edit = editTextInPlace(container, KEY, recorder().write)
+    await edit.opened
+
+    press(heading, 'Escape')
+    await expect.poll(() => edit.isOpen()).toBe(false)
+
+    expect(await edit.caretAt({ x: 1, y: 1 })).toBe(false)
+  })
+
+  it('places no caret on a child beside the run being edited', async () => {
+    const { container, shown, heading } = await mount(
+      '<h1>One <code>xyz</code> two</h1>',
+    )
+    const [, code, last] = heading.childNodes
+    if (!code?.firstChild || !last) throw new Error('No run beside a code.')
+    const edit = editTextInPlace(
+      container,
+      KEY,
+      recorder().write,
+      pointAt(shown, last, 2),
+    )
+    await edit.opened
+
+    const placed = await edit.caretAt(pointAt(shown, code.firstChild, 1))
+
+    expect(placed).toBe(false)
+    expect(shown.getSelection()?.toString()).toBe(' two')
+  })
+
+  it('moves the caret within the run being edited', async () => {
+    const { container, shown, heading } = await mount(
+      '<h1>One <code>xyz</code> two</h1>',
+    )
+    const [, , last] = heading.childNodes
+    if (!last) throw new Error('No run beside a code.')
+    const edit = editTextInPlace(
+      container,
+      KEY,
+      recorder().write,
+      pointAt(shown, last, 2),
+    )
+    await edit.opened
+
+    const placed = await edit.caretAt(pointAt(shown, last, 3))
+
+    expect(placed).toBe(true)
+    expect(shown.getSelection()?.anchorNode).toBe(last)
+    expect(shown.getSelection()?.anchorOffset).toBe(3)
+  })
+})
+
+describe('pressInEdit', () => {
+  const FRAMES = [
+    frameOf('hero', { box: { x: 100, y: 50, width: 400, height: 300 } }),
+  ]
+
+  /** A layer drawing the selected element's outline at a board box. */
+  function outlined(box: { x: number; y: number; w: number; h: number }) {
+    const layer = document.createElement('div')
+    const outline = document.createElement('div')
+    outline.dataset.elementSelection = ''
+    Object.assign(outline.style, {
+      left: `${box.x}px`,
+      top: `${box.y}px`,
+      width: `${box.w}px`,
+      height: `${box.h}px`,
+    })
+    layer.append(outline)
+    return layer
+  }
+
+  it('answers the frame point for a board point inside the outline', () => {
+    const layer = outlined({ x: 140, y: 90, w: 100, h: 30 })
+
+    expect(pressInEdit(layer, FRAMES, KEY, { x: 150, y: 100 })).toEqual({
+      x: 50,
+      y: 50,
+    })
+  })
+
+  it('answers null for a board point past the outline', () => {
+    const layer = outlined({ x: 140, y: 90, w: 100, h: 30 })
+
+    expect(pressInEdit(layer, FRAMES, KEY, { x: 150, y: 121 })).toBeNull()
+  })
+
+  it('answers null while no outline draws', () => {
+    expect(
+      pressInEdit(document.createElement('div'), FRAMES, KEY, { x: 0, y: 0 }),
+    ).toBeNull()
   })
 })

@@ -7,6 +7,7 @@ import { pageBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { request, subscribe } from '../bridge/channel'
+import { selectedElementBox } from '../geometry/hit'
 import type { ElementChange } from '../inspector/element/write'
 import type { BoardPoint } from '../notes/pick'
 import type { ElementKey, SelectionStore } from '../selection'
@@ -17,12 +18,20 @@ import type { ElementKey, SelectionStore } from '../selection'
  */
 export type WriteText = (changes: readonly ElementChange[]) => Promise<boolean>
 
-/** An in-place text edit the board asked a frame to open. */
-export interface TextEdit {
-  /** Whether the frame opened it, false for an element holding anything but text. */
-  opened: Promise<boolean>
+/** An in-place text edit the board can end or move the caret of, open or still waiting on its frame. */
+export interface TextEditing {
   /** Ends the edit with nothing written, the old text shown again. */
   cancel: () => void
+  /** Whether the frame holds the edit open now, read at once so a press can be kept from the board. */
+  isOpen: () => boolean
+  /** Moves the caret to a frame point, answering whether the point fell in the text being edited. */
+  caretAt: (at: FramePoint) => Promise<boolean>
+}
+
+/** An in-place text edit the board asked a frame to open. */
+export interface TextEdit extends TextEditing {
+  /** Whether the frame opened it, false for an element holding anything but text. */
+  opened: Promise<boolean>
 }
 
 /** A frame's live iframe on the board, or null for a placeholder. */
@@ -47,8 +56,16 @@ export function editTextInPlace(
   at?: FramePoint,
 ): TextEdit {
   const iframe = shownFrame(container, key.frame)
-  if (!iframe) return { opened: Promise.resolve(false), cancel: () => {} }
+  if (!iframe) {
+    return {
+      opened: Promise.resolve(false),
+      cancel: () => {},
+      isOpen: () => false,
+      caretAt: () => Promise.resolve(false),
+    }
+  }
   const focused = document.activeElement
+  let open = false
   // A frame on another origin cannot take focus itself, so the board hands it over.
   iframe.focus()
   const edit = subscribe(
@@ -57,6 +74,7 @@ export function editTextInPlace(
     { index: key.index, hash: key.hash, ...(at ? { at } : {}) },
     (end) => {
       if (!isTextEditEnd(end)) return
+      open = false
       edit.close()
       if (end.kind === 'closed') return
       const changes: ElementChange[] = [
@@ -77,7 +95,10 @@ export function editTextInPlace(
     },
   )
   const opened = edit.opened.then((value) => {
-    if (value === true) return true
+    if (value === true) {
+      open = true
+      return true
+    }
     // Focus goes back where it was, so the board's keys still reach the board.
     if (document.activeElement === iframe) {
       iframe.blur()
@@ -85,7 +106,17 @@ export function editTextInPlace(
     }
     return false
   })
-  return { opened, cancel: edit.close }
+  return {
+    opened,
+    cancel: () => {
+      open = false
+      edit.close()
+    },
+    isOpen: () => open,
+    caretAt: async (at) =>
+      open &&
+      (await request(iframe, 'text-caret', { edit: edit.id, at })) === true,
+  }
 }
 
 /**
@@ -111,6 +142,30 @@ export async function overElement(
   return x >= box.left && x < box.right && y >= box.top && y < box.bottom
 }
 
+/**
+ * The point in the edited element's frame a board point falls on, when it
+ * falls inside the outline the selection draws for `key`, else null. Read
+ * from the drawn outline, so a press decides at once, a frame behind typing.
+ */
+export function pressInEdit(
+  layer: ParentNode,
+  frames: readonly FrameRecord[],
+  key: ElementKey,
+  at: BoardPoint,
+): FramePoint | null {
+  const box = selectedElementBox(layer)
+  if (
+    !box ||
+    at.x < box.x ||
+    at.x > box.x + box.width ||
+    at.y < box.y ||
+    at.y > box.y + box.height
+  ) {
+    return null
+  }
+  return framePoint(frames, key.frame, at)
+}
+
 /** A board point in the viewport of the frame `ref` names, or null for a frame not drawn. */
 export function framePoint(
   frames: readonly FrameRecord[],
@@ -125,14 +180,15 @@ export function framePoint(
 
 /**
  * Opens an element for typing once its frame shows the key's bytes, as a
- * placed Text waits, and stops waiting once the selection moves on.
+ * placed Text waits, and stops waiting once the selection moves on. The
+ * answer reads the edit that opened, as one opened at once is read.
  */
 export function editTextWhenShown(
   container: HTMLElement,
   key: ElementKey,
   write: WriteText,
   selection: SelectionStore,
-): () => void {
+): TextEditing {
   let current: TextEdit | null = null
   let waiting = true
   const stop = () => {
@@ -157,8 +213,12 @@ export function editTextWhenShown(
   // A load does not bubble, so a frame reloading is caught on the way down.
   container.addEventListener('load', attempt, true)
   attempt()
-  return () => {
-    stop()
-    current?.cancel()
+  return {
+    cancel: () => {
+      stop()
+      current?.cancel()
+    },
+    isOpen: () => current?.isOpen() ?? false,
+    caretAt: (at) => current?.caretAt(at) ?? Promise.resolve(false),
   }
 }

@@ -259,6 +259,12 @@ export interface BridgeOps {
   restamp: { args: { hash: string }; value: boolean; push: never }
   /** Opens the element's text for typing, answering whether it opened, and pushes how the edit ends. */
   'text-edit': { args: TextEditArgs; value: boolean; push: TextEditEnd }
+  /** Moves an open edit's caret, by its request id, to a point in its text, answering whether the point fell in it. */
+  'text-caret': {
+    args: { edit: string; at: FramePoint }
+    value: boolean
+    push: never
+  }
   /** Tells a committed edit, by its request id, whether the text was written, so a refusal shows the old text. */
   'text-written': {
     args: { edit: string; written: boolean }
@@ -431,6 +437,7 @@ const OPS: readonly string[] = [
   'steps',
   'steps-show',
   'takes-clicks',
+  'text-caret',
   'text-edit',
   'text-written',
   'theme',
@@ -652,6 +659,10 @@ const SCHEMAS: {
     args: addressSchema.extend({ at: pointSchema.optional() }),
     value: z.boolean(),
     push: textEditEndSchema,
+  },
+  'text-caret': {
+    args: z.object({ edit: z.string(), at: pointSchema }),
+    value: z.boolean(),
   },
   'text-written': {
     args: z.object({ edit: z.string(), written: z.boolean() }),

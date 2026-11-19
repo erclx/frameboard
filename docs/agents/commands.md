@@ -59,7 +59,7 @@ A responsive page is one frame file shown at several widths, so every fix to the
 - `capture` draws the bar too, and a hugging height counts it
 - `--island wide` gives the phone its wide island, and `--island compact` takes it back
 - `--turn left` or `--turn right` lays a phone, tablet, or foldable out landscape with no status bar, and `--turn upright` stands it back up. `list --json` reports `turn` while it is turned
-- A turned phone insets its page 54 px from each short side, so an 844 by 390 box holds a 736 by 390 page clear of the island
+- A turned phone or foldable insets its page 54 px from each side edge, so a phone's 844 by 390 box holds a 736 by 390 page clear of the island
 
 The older `phone` and `tablet` read as `on`, and `none` as `off`.
 

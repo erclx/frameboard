@@ -4,6 +4,7 @@ import {
   type BridgeMessage,
   type BridgeOp,
   type BridgeOps,
+  type FramePoint,
   readBridgeMessage,
   REFUSED,
   requestArgs,
@@ -42,6 +43,9 @@ const closers = new Map<string, () => void>()
 /** The committed text edits awaiting the board's write, each answering how to show the old text. */
 const committed = new Map<string, () => void>()
 
+/** The open text edits by their request id, each moving its caret to a point. */
+const carets = new Map<string, (at: FramePoint) => boolean>()
+
 const handlers: Handlers = {
   ...chromeHandlers,
   ...controlHandlers,
@@ -64,23 +68,27 @@ const handlers: Handlers = {
   'text-edit': (args, { id, push, onClose }) => {
     const element = addressed(args)
     let ended = false
-    const cancel =
+    const edit =
       element &&
       openTextEdit(
         element,
         (end, restore) => {
           ended = true
+          carets.delete(id)
           if (end.kind === 'commit') committed.set(id, restore)
           push(end)
         },
         args.at,
       )
-    if (!cancel) return false
+    if (!edit) return false
+    carets.set(id, edit.caretAt)
     onClose(() => {
-      if (!ended) cancel()
+      carets.delete(id)
+      if (!ended) edit.cancel()
     })
     return true
   },
+  'text-caret': ({ edit, at }) => carets.get(edit)?.(at) ?? false,
   'text-written': ({ edit, written }) => {
     const restore = committed.get(edit)
     committed.delete(edit)

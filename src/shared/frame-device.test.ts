@@ -5,6 +5,7 @@ import {
   bezelReach,
   deviceForWidth,
   DEVICES,
+  FOLDABLE_ISLAND,
   foldBand,
   islandCenter,
   islandOf,
@@ -345,7 +346,7 @@ describe('shownBox', () => {
   })
 })
 
-describe('a turned phone or tablet', () => {
+describe('a turned phone, tablet, or foldable', () => {
   const landscape = { x: 100, y: 40, width: 844, height: 390 }
 
   it.each([
@@ -427,12 +428,43 @@ describe('a turned phone or tablet', () => {
   it.each([
     ['tablet', 'left'],
     ['tablet', 'right'],
-    ['foldable', 'left'],
-    ['foldable', 'right'],
+    ['foldable', 'upright'],
     ['phone', 'upright'],
   ] as const)('keeps a %s’s page its full width held %s', (device, turn) => {
     expect(sideInset(device, turn)).toBe(0)
     expect(pageBox(landscape, device, turn).width).toBe(landscape.width)
+  })
+
+  it.each([
+    ['closed', 'left', { x: 154, width: 570 }, 678, 466],
+    ['closed', 'right', { x: 154, width: 570 }, 678, 466],
+    ['half', 'left', { x: 154, width: 518 }, 626, 890],
+    ['open', 'right', { x: 154, width: 518 }, 626, 890],
+  ] as const)(
+    'insets a %s foldable’s page 54 on both side edges turned %s, past its island',
+    (_pose, turn, page, width, height) => {
+      const box = { x: 100, y: 40, width, height }
+      const { top, height: across } = FOLDABLE_ISLAND
+      expect(sideInset('foldable', turn)).toBe(54)
+      expect(sideInset('foldable', turn)).toBeGreaterThan(top + across)
+      expect(topInset('foldable', turn)).toBe(0)
+      expect(pageBox(box, 'foldable', turn)).toEqual({
+        ...page,
+        y: 40,
+        height,
+      })
+    },
+  )
+
+  it.each(['left', 'right'] as const)(
+    'squares a foldable’s page between its strips turned %s',
+    (turn) => {
+      expect(pageCorners('foldable', turn)).toBe('0')
+    },
+  )
+
+  it('keeps an upright foldable’s page rounded to its screen', () => {
+    expect(pageCorners('foldable', 'upright')).toBe('48px')
   })
 
   it('leaves no page in a turned phone box narrower than both insets', () => {

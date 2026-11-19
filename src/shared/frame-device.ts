@@ -245,15 +245,19 @@ export function topInset(
 }
 
 /**
- * The width a turned phone's page stands in from each short side, the status
- * bar's height, so the island on one side never covers it and the page stays
- * centered. 0 for any other device or hold, a turned foldable included.
+ * The width a turned phone's or foldable's page stands in from each side edge
+ * its island can stand on, 10 past the island as a phone's status bar ends,
+ * so the island never covers it and the page stays centered. 0 otherwise.
  */
 export function sideInset(
   device: Device | null | undefined,
   turn: Turn | undefined,
 ): number {
-  return device === 'phone' && isTurned(device, turn) ? STATUS_BAR.height : 0
+  if (!isTurned(device, turn)) return 0
+  if (device === 'phone') return STATUS_BAR.height
+  return device === 'foldable'
+    ? FOLDABLE_ISLAND.top + FOLDABLE_ISLAND.height + 10
+    : 0
 }
 
 /** Whether a page stands in from its box, so the strips around it paint the page's fill. */
@@ -266,7 +270,7 @@ export function insetsPage(
 
 /**
  * The page's box inside a frame's box, less an upright phone's status bar or
- * a turned phone's side insets. A frame's box keeps the screen's size, and
+ * a turned phone's or foldable's side insets. A frame's box keeps the screen's size, and
  * every surface reads the page through this.
  */
 export function pageBox(
@@ -317,11 +321,12 @@ export function shownBox<B extends { width: number; height: number }>(frame: {
 
 /**
  * The page's corners as a CSS `border-radius`, square on top under an upright
- * phone's status bar and square all round between a turned phone's strips.
+ * phone's status bar and square all round between a turned phone's or
+ * foldable's strips.
  */
 export function pageCorners(device: Device, turn: Turn | undefined): string {
+  if (sideInset(device, turn) > 0) return '0'
   if (device !== 'phone') return screenCorners(device)
-  if (isTurned(device, turn)) return '0'
   const { screenRadius } = BEZELS.phone
   return `0 0 ${screenRadius}px ${screenRadius}px`
 }

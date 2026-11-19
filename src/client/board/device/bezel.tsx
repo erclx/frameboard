@@ -55,9 +55,9 @@ export function Bezel({
   pose?: Pose
   /** The phone's island width, which no other device reads. */
   island?: Island
-  /** How a phone, tablet, or foldable is held, which moves an island, a phone's buttons, and a fold, and trades a phone's status bar for side strips. */
+  /** How a phone, tablet, or foldable is held, which moves an island, a phone's buttons, and a fold, and gives a turned phone or foldable side strips. */
   turn?: Turn
-  /** The page's fill and text color, which a phone's status bar or side strips paint, its theme's own until the page reports them. */
+  /** The page's fill and text color, which a phone's status bar or a turned phone's or foldable's side strips paint, its theme's own until the page reports them. */
   colors?: PageColors | null
   /** The frame's theme, which a page painting no fill shows through the status bar. */
   theme?: Theme
@@ -83,13 +83,22 @@ export function Bezel({
       ) : null}
       {device === 'phone' && turned && turn !== 'upright' ? (
         <>
-          <SideStrips colors={colors ?? null} theme={theme} />
+          <SideStrips device="phone" colors={colors ?? null} theme={theme} />
           <TurnedPhoneMarks island={island} turn={turn} />
         </>
       ) : null}
       {laptop ? <LaptopBody width={width} height={height} /> : null}
       {device === 'foldable' ? (
-        <FoldableMarks pose={pose} turn={turnOf(turn)} />
+        <>
+          {turned ? (
+            <SideStrips
+              device="foldable"
+              colors={colors ?? null}
+              theme={theme}
+            />
+          ) : null}
+          <FoldableMarks pose={pose} turn={turnOf(turn)} />
+        </>
       ) : null}
     </div>
   )
@@ -164,19 +173,21 @@ function StatusBar({
 }
 
 /**
- * A turned phone's two strips down its short sides, each the side inset wide
- * in the page's fill, rounded on the screen's outer corners, so the page
- * between them clears the island as the status bar clears it upright.
+ * A turned phone's or foldable's two strips down the side edges its island
+ * stands on, each the side inset wide in the page's fill, rounded on the
+ * screen's outer corners, so the page between them clears the island.
  */
 function SideStrips({
+  device,
   colors,
   theme,
 }: {
+  device: 'phone' | 'foldable'
   colors: PageColors | null
   theme?: Theme
 }) {
-  const { screenRadius } = BEZELS.phone
-  const width = sideInset('phone', 'left')
+  const { screenRadius } = BEZELS[device]
+  const width = sideInset(device, 'left')
   return (
     <>
       {(['left', 'right'] as const).map((side) => (
