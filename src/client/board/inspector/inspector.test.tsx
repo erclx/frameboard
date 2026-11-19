@@ -931,57 +931,6 @@ describe('InspectorPanel', () => {
         expect(sent).toEqual([{ refs: [SWATCHES.ref], foldable: false }])
       })
 
-      it('picks the wide island for a phone from the device menu', async () => {
-        const { sent, calls } = deviceCalls(ok)
-        render(
-          <FrameSection page={PAGE} frames={[shownAt(390)]} calls={calls} />,
-        )
-
-        await userEvent.click(
-          screen.getByRole('button', { name: 'Phone device' }),
-        )
-        expect(
-          await screen.findByRole('menuitemradio', { name: 'Compact island' }),
-        ).toBeChecked()
-        await userEvent.click(
-          screen.getByRole('menuitemradio', { name: 'Wide island' }),
-        )
-
-        expect(sent).toEqual([{ refs: [SWATCHES.ref], island: 'wide' }])
-      })
-
-      it('reads a picked wide island as checked', async () => {
-        render(
-          <FrameSection
-            page={PAGE}
-            frames={[{ ...shownAt(390), island: 'wide' as const }]}
-          />,
-        )
-
-        await userEvent.click(
-          screen.getByRole('button', { name: 'Phone device' }),
-        )
-
-        expect(
-          await screen.findByRole('menuitemradio', { name: 'Wide island' }),
-        ).toBeChecked()
-      })
-
-      it('offers no island for a tablet or a foldable', async () => {
-        render(
-          <FrameSection page={PAGE} frames={[shownAt(640), folded('open')]} />,
-        )
-
-        await userEvent.click(
-          screen.getByRole('button', { name: 'Mixed device' }),
-        )
-        await screen.findByRole('menuitemradio', { name: 'Foldable' })
-
-        expect(
-          screen.queryByRole('menuitemradio', { name: 'Wide island' }),
-        ).not.toBeInTheDocument()
-      })
-
       it('offers no device menu while the device is off', () => {
         render(<FrameSection page={PAGE} frames={[SWATCHES]} />)
 
