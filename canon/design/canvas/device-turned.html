@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>rotate-phone-tablet-720</title>
+    <style>
+      :root {
+        --canvas: #ececec;
+        --panel: #fff;
+        --raised: #f2f2f2;
+        --hover: #f5f5f5;
+        --border: #e4e4e4;
+        --text: #1a1a1a;
+        --muted: #6e6e6e;
+        --faint: #a5a5a5;
+        --accent: #2f7bf0;
+        --accentfill: #1f6fe5;
+        --accentfg: #fff;
+        --destructive: #d92d2d;
+        --good: #1a7f45;
+      }
+      [data-theme='dark'] {
+        --canvas: #1f1f1f;
+        --panel: #2a2a2a;
+        --raised: #363636;
+        --hover: #323232;
+        --border: #353535;
+        --text: #e6e6e6;
+        --muted: #a0a0a0;
+        --faint: #6b6b6b;
+        --accent: #4e92f6;
+        --accentfill: #2068dc;
+        --accentfg: #fff;
+        --destructive: #ff6b6b;
+        --good: #5fc48a;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      body {
+        font-family: Geist, 'DejaVu Sans', sans-serif;
+        font-size: 12px;
+        color: var(--text);
+        background: var(--canvas);
+        -webkit-font-smoothing: antialiased;
+        padding: 10px 20px 20px;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 0;
+        cursor: default;
+      }
+      .cap {
+        font-size: 10px;
+        color: var(--muted);
+        line-height: 1.4;
+        margin-bottom: 8px;
+        min-height: 42px;
+      }
+      .cap b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .left {
+        width: 240px;
+        background: var(--panel);
+        box-shadow: 0 0 0 1px var(--border);
+        padding-bottom: 8px;
+      }
+      .tabs {
+        display: flex;
+        margin: 8px;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 7px;
+      }
+      .left > .tabs:first-child {
+        margin-top: 0;
+        padding-top: 2px;
+        position: relative;
+        top: 8px;
+        margin-bottom: 16px;
+      }
+      .tabs button {
+        flex: 1;
+        height: 24px;
+        border-radius: 5px;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .tabs .on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .sec {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px 4px;
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 11px;
+      }
+      .search {
+        margin: 4px 8px 6px;
+        height: 26px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 6px;
+        background: var(--raised);
+        padding: 0 8px;
+        font-size: 11px;
+      }
+      .search.focus {
+        box-shadow: 0 0 0 1.5px var(--accent);
+      }
+      .search svg {
+        flex: none;
+        color: var(--muted);
+      }
+      .search span {
+        color: var(--muted);
+      }
+      .search b {
+        font-weight: 400;
+        color: var(--text);
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 0 8px 6px;
+      }
+      .chips span {
+        display: inline-flex;
+        height: 24px;
+        min-width: 24px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 0 8px;
+        font-size: 10px;
+        background: var(--raised);
+        color: var(--muted);
+      }
+      .chips span.on {
+        background: var(--text);
+        color: var(--panel);
+      }
+      .agrid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 4px 8px;
+      }
+      .at {
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--raised);
+        position: relative;
+      }
+      .at .th {
+        height: 72px;
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .at .nm {
+        padding: 5px 7px;
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .at .nm span {
+        display: block;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .at.hov {
+        box-shadow: 0 0 0 1.5px var(--accent);
+      }
+      .at .cp {
+        position: absolute;
+        right: 5px;
+        top: 5px;
+        padding: 2px 6px;
+        border-radius: 5px;
+        background: var(--panel);
+        font-size: 10px;
+        color: var(--text);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+      .at .lic {
+        position: absolute;
+        left: 5px;
+        top: 54px;
+        padding: 0 4px;
+        border-radius: 3px;
+        background: rgba(0, 0, 0, 0.65);
+        font:
+          500 9px 'Geist Mono',
+          monospace;
+        color: #fff;
+        line-height: 14px;
+      }
+      .at.sk .th {
+        background: var(--raised);
+      }
+      .at.sk .nm {
+        height: 38px;
+      }
+      .at.sk i {
+        display: block;
+        height: 8px;
+        border-radius: 3px;
+        background: var(--border);
+        margin: 3px 0;
+        width: 70%;
+      }
+      .at.sk i + i {
+        width: 45%;
+      }
+      .drop {
+        margin: 8px;
+        padding: 12px;
+        border: 1.5px dashed var(--border);
+        border-radius: 10px;
+        color: var(--muted);
+        text-align: center;
+        line-height: 1.5;
+      }
+      code {
+        font-family: 'Geist Mono', monospace;
+        font-size: 11px;
+        color: var(--text);
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 2px 12px 6px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .sw {
+        flex: none;
+        width: 26px;
+        height: 15px;
+        border-radius: 8px;
+        background: var(--border);
+        position: relative;
+      }
+      .sw::after {
+        content: '';
+        position: absolute;
+        left: 2px;
+        top: 2px;
+        width: 11px;
+        height: 11px;
+        border-radius: 6px;
+        background: var(--panel);
+      }
+      .sw.on {
+        background: var(--accentfill);
+      }
+      .sw.on::after {
+        left: 13px;
+      }
+      .p {
+        margin: 6px 12px;
+        color: var(--muted);
+        line-height: 1.45;
+        font-size: 11px;
+      }
+      .p b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .p.err {
+        color: var(--destructive);
+      }
+      .p u {
+        color: var(--text);
+        text-underline-offset: 2px;
+      }
+      .foot {
+        margin: 6px 12px 2px;
+        color: var(--faint);
+        font-size: 10px;
+        line-height: 1.4;
+      }
+      .ta {
+        margin: 4px 8px 6px;
+        min-height: 64px;
+        border-radius: 6px;
+        background: var(--raised);
+        padding: 6px 8px;
+        font-size: 11px;
+        line-height: 1.45;
+      }
+      .ta.focus {
+        box-shadow: 0 0 0 1.5px var(--accent);
+      }
+      .ta span {
+        color: var(--muted);
+      }
+      .cost {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin: 2px 8px 6px 12px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+      .cost b {
+        display: block;
+        color: var(--text);
+        font-weight: 500;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        height: 26px;
+        padding: 0 10px;
+        border-radius: 7px;
+        font-weight: 500;
+        background: var(--accentfill);
+        color: var(--accentfg);
+        flex: none;
+      }
+      .btn.off {
+        background: var(--raised);
+        color: var(--faint);
+      }
+
+      .stage {
+        background: var(--canvas);
+        padding: 22px 10px 16px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: center;
+        box-shadow: 0 0 0 1px var(--border);
+        border-radius: 4px;
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+      .col small {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .body {
+        position: relative;
+        background: #17181b;
+        box-shadow:
+          0 0 0 1px #2e3035,
+          0 10px 22px rgba(0, 0, 0, 0.22);
+      }
+      .scr {
+        position: absolute;
+        background: #fff;
+        color: #16161a;
+        overflow: hidden;
+        font-size: 9px;
+        padding: 8px 10px;
+      }
+      .scr b {
+        display: block;
+        font-size: 13px;
+        margin-bottom: 4px;
+      }
+      .scr i {
+        display: block;
+        font-style: normal;
+        color: #777;
+        padding: 4px 0;
+        border-top: 1px solid #e3e3e3;
+      }
+      .isl {
+        position: absolute;
+        background: #050506;
+        border-radius: 8px;
+      }
+      .btn2 {
+        position: absolute;
+        background: #2a2c31;
+        border-radius: 2px;
+      }
+      .fold {
+        position: absolute;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(0, 0, 0, 0.14),
+          transparent
+        );
+      }
+      .foldh {
+        position: absolute;
+        background: linear-gradient(
+          180deg,
+          transparent,
+          rgba(0, 0, 0, 0.14),
+          transparent
+        );
+      }
+      .pbar {
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        padding: 3px;
+        border-radius: 9px;
+        background: var(--panel);
+        box-shadow:
+          0 0 0 1px var(--border),
+          0 4px 12px rgba(0, 0, 0, 0.12);
+        font-size: 10px;
+      }
+      .pbar span {
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        height: 22px;
+        padding: 0 6px;
+        border-radius: 6px;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .pbar span.on {
+        background: var(--raised);
+        color: var(--text);
+      }
+      .pbar em {
+        width: 1px;
+        height: 14px;
+        background: var(--border);
+        margin: 0 3px;
+      }
+      .pbar u {
+        text-decoration: none;
+        font-size: 9px;
+        color: var(--faint);
+        padding: 0 4px 0 6px;
+      }
+      .banner {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 12px;
+        border-radius: 9px;
+        background: var(--accentfill);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .banner span {
+        background: rgba(255, 255, 255, 0.18);
+        padding: 2px 8px;
+        border-radius: 6px;
+      }
+      .pres {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        padding: 7px 12px;
+        border-radius: 8px;
+        background: #1b1c1f;
+        color: #a4a6ab;
+        font-size: 11px;
+      }
+      .pres span.hi {
+        color: #fff;
+        background: #2e3035;
+        padding: 2px 8px;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="cap">
+      <b>rotate-phone-tablet-720.</b> The phone and the tablet turned left, each
+      selected with Rotate alone under its body. The phone's island stands on
+      the left short side, its buttons lie on the long edges, and its status bar
+      is gone.
+    </p>
+    <div class="stage">
+      <div class="col">
+        <div
+          class="body"
+          style="width: 228px; height: 112px; border-radius: 26px"
+        >
+          <div
+            class="scr"
+            style="inset: 6px; border-radius: 21px; padding-left: 30px"
+          >
+            <b>Inbox</b><i>Design review</i><i>Release 0.42.0</i
+            ><i>Invoice 2231</i>
+          </div>
+          <div
+            class="isl"
+            style="
+              top: 50%;
+              left: 11px;
+              width: 11px;
+              height: 34px;
+              transform: translateY(-50%);
+            "
+          ></div>
+          <div
+            class="btn2"
+            style="bottom: -2px; left: 52px; height: 2px; width: 22px"
+          ></div>
+          <div
+            class="btn2"
+            style="top: -2px; left: 70px; height: 2px; width: 34px"
+          ></div>
+        </div>
+        <div class="pbar"><span>⟳ Rotate</span></div>
+        <small>phone, 844 by 390</small>
+      </div>
+      <div class="col">
+        <div
+          class="body"
+          style="width: 250px; height: 180px; border-radius: 16px"
+        >
+          <div class="scr" style="inset: 10px; border-radius: 6px">
+            <b>Inbox</b><i>Design review</i><i>Release 0.42.0</i
+            ><i>Invoice 2231</i>
+          </div>
+        </div>
+        <div class="pbar"><span>⟳ Rotate</span></div>
+        <small>tablet</small>
+      </div>
+    </div>
+  </body>
+</html>

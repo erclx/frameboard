@@ -30,6 +30,7 @@
     "canvas/guide-agent": "design/12-canvas/guide-agent",
     "canvas/device": "drive-52/26-phone/phone-status-bar-280",
     "canvas/device-island-wide": "drive-52/26-phone/phone-island-wide-280",
+    "canvas/device-turned": "groundwork-53/q12-rotate/rotate-phone-tablet-720",
     "canvas/foldable-buttons": "drive-47/06-fold-device/fold-device-canvas-buttons-720",
     "canvas/foldable-poses": "drive-47/06-fold-device/fold-device-poses-720",
     "canvas/kit-chip": "drive-47/02-kits/kit-place-per-frame-720",
@@ -131,6 +132,7 @@
     "canvas/speaker-notes": "drive-47/12-slide-features/speaker-notes-strip-720",
     "toolbar/present": "drive-30/04-present-enter/present-enter-button-900",
     "present/bar": "drive-47/12-slide-features/present-bar-presenter-960",
+    "present/rotate": "groundwork-53/q12-rotate/rotate-bars-play-present-720",
     "present/steps": "drive-32/28-present-steps/present-steps-marked-720",
     "present/overview": "drive-47/12-slide-features/slide-overview-720",
     "present/presenter/view": "drive-47/12-slide-features/presenter-view-720"
