@@ -1,10 +1,9 @@
 import type { CSSProperties } from 'react'
 
 import { cn } from '@/client/lib/cn'
-import type { StepEffect } from '@/shared/present-transition'
+import { STEP_MS, type StepEffect } from '@/shared/present-transition'
 
 import { EASING, layerStyle } from '../present/keyframes'
-import { STEP_MS } from '../present/steps'
 import type { Travel } from '../present/travel'
 
 /**

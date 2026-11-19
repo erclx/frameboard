@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { frameElements } from '@/shared/frame-bridge/elements'
+import { STEP_MS } from '@/shared/present-transition'
 
 import {
   clearSteps,
   previewStep,
   readSteps,
   showSteps,
-  STEP_MS,
   touchesSteps,
 } from './steps'
 

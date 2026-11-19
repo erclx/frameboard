@@ -1,6 +1,8 @@
 import {
   STEP_ATTRIBUTES,
   STEP_EFFECTS,
+  STEP_KEYFRAMES,
+  STEP_MS,
   STEP_STARTS,
   type StepEffect,
   type StepStart,
@@ -17,22 +19,10 @@ export interface StepItem {
 /** The elements one press reveals together. */
 export type StepGroup = StepItem[]
 
-/** How long one step's entrance runs. Appear runs none. */
-export const STEP_MS = 400
-
 /** The board's own marks in a presented document, so nothing it writes lands on a key the file uses. */
 const SHOWN = 'data-frameboard-step'
 const DELAY = '--frameboard-step-delay'
 const STYLE_ID = 'frameboard-present-steps'
-
-/** Each effect's keyframes, which the inspector's tiles also mount in the board's document. */
-export const STEP_KEYFRAMES = `
-@keyframes frameboard-step-appear { from { visibility: hidden } to { visibility: visible } }
-@keyframes frameboard-step-fade { from { opacity: 0 } to { opacity: 1 } }
-@keyframes frameboard-step-fly { from { opacity: 0; translate: 0 40px } to { opacity: 1; translate: 0 0 } }
-@keyframes frameboard-step-wipe { from { clip-path: inset(0 100% 0 0) } to { clip-path: inset(0 0 0 0) } }
-@keyframes frameboard-step-zoom { from { opacity: 0; scale: 0.6 } to { opacity: 1; scale: 1 } }
-`
 
 /**
  * The style hiding a step not yet revealed and playing each effect as one
