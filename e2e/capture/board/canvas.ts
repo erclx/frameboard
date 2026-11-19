@@ -251,8 +251,8 @@ async function homePushes(page: Page): Promise<void> {
 }
 
 /**
- * Gives hero a two-line speaker note and turns notes on, so every frame on
- * the page draws its strip, taking the layout back when the page closes.
+ * Gives hero a two-line speaker note, so it draws a strip while notes are
+ * shown and a label mark while hidden, taking the layout back on close.
  */
 async function heroHoldsNote(page: Page): Promise<void> {
   const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
@@ -262,6 +262,10 @@ async function heroHoldsNote(page: Page): Promise<void> {
     'Open on the price, then the plan picker.\nPause before the demo.'
   writeFileSync(layoutPath, JSON.stringify(layout))
   page.once('close', () => writeFileSync(layoutPath, originalLayout))
+}
+
+/** Turns the Notes button on before the board loads, so every frame draws its strip. */
+async function notesShownOnLoad(page: Page): Promise<void> {
   await page.addInitScript(() =>
     localStorage.setItem('frameboard.speakerNotes', 'shown'),
   )
@@ -955,11 +959,30 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       setup: themed(
         both(
           heroHoldsNote,
+          notesShownOnLoad,
           noAgentChanges,
           asWriter,
           onCanvas({ select: ['webapp/home/hero'] }),
           inspectorTab('Slides'),
           readyWhen('[data-speaker-notes] textarea'),
+        ),
+      ),
+    },
+    {
+      // Notes hidden, the first-visit default, so hero's label carries its note mark.
+      section: 'speaker-notes-hidden',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          heroHoldsNote,
+          noAgentChanges,
+          asWriter,
+          inspectorTab('Slides'),
+          readyWhen('[data-note-mark]'),
         ),
       ),
     },
