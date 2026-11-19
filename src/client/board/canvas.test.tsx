@@ -13,6 +13,7 @@ import { EDITING } from '@/shared/frame-bridge/messages'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
+import { request } from './bridge/channel'
 import { Canvas } from './canvas'
 import { trees } from './element/tree'
 import { modeStore } from './mode'
@@ -1749,6 +1750,83 @@ describe('double-clicking an element in a frame', () => {
 
     await expect.poll(() => selectionStore.getState().element?.index).toBe(3)
     expect(heading.parentElement?.hasAttribute(EDITING)).toBe(false)
+  })
+
+  /** A primary press at the point, answering the event so a test reads whether it was cancelled. */
+  function pressAt(hit: HTMLElement, at: { clientX: number; clientY: number }) {
+    const event = new PointerEvent('pointerdown', {
+      bubbles: true,
+      cancelable: true,
+      button: 0,
+      isPrimary: true,
+      ...at,
+    })
+    act(() => {
+      hit.dispatchEvent(event)
+    })
+    return event
+  }
+
+  /** Opens the heading for typing by a double-click, once its outline draws. */
+  async function openHeading() {
+    const card = await renderCard()
+    const scale = card.drawn.width / CARD.box.width
+    const on = (x: number, y: number) => ({
+      clientX: card.drawn.left + x * scale,
+      clientY: card.drawn.top + y * scale,
+    })
+    click(card.hit, on(60, 50), 1)
+    click(card.hit, on(60, 50), 2)
+    await expect.poll(() => card.heading.hasAttribute(EDITING)).toBe(true)
+    await expect
+      .poll(() => document.querySelector('[data-element-selection]'))
+      .not.toBeNull()
+    return { ...card, on }
+  }
+
+  it('keeps the edit open and moves its caret on a press inside the text', async () => {
+    const { hit, heading, on } = await openHeading()
+    const text = heading.firstChild
+    const shown = heading.ownerDocument
+    if (!text) throw new Error('the heading holds no text')
+    const range = shown.createRange()
+    range.setStart(text, 2)
+    range.setEnd(text, 3)
+    const char = range.getBoundingClientRect()
+
+    const press = pressAt(hit, on(char.left + 1, char.top + char.height / 2))
+
+    expect(press.defaultPrevented).toBe(true)
+    await expect.poll(() => shown.getSelection()?.isCollapsed).toBe(true)
+    expect(shown.getSelection()?.anchorOffset).toBe(2)
+    expect(heading.hasAttribute(EDITING)).toBe(true)
+  })
+
+  it('keeps the edit open through a double-click inside the text', async () => {
+    const { hit, heading, on } = await openHeading()
+    heading.textContent = 'Typed'
+
+    pressAt(hit, on(60, 50))
+    click(hit, on(60, 50), 1)
+    pressAt(hit, on(60, 50))
+    click(hit, on(60, 50), 2)
+    // A reopen reads the box, then cancels, so two answers later it would show.
+    const iframe = heading.ownerDocument.defaultView?.frameElement
+    if (!(iframe instanceof HTMLIFrameElement)) throw new Error('no frame')
+    await request(iframe, 'element-box', { index: 0, hash: '' })
+    await request(iframe, 'element-box', { index: 0, hash: '' })
+
+    expect(heading.hasAttribute(EDITING)).toBe(true)
+    expect(heading.textContent).toBe('Typed')
+    expect(selectionStore.getState().element?.index).toBe(4)
+  })
+
+  it('leaves a press outside the open text to the board', async () => {
+    const { hit, on } = await openHeading()
+
+    const press = pressAt(hit, on(20, 20))
+
+    expect(press.defaultPrevented).toBe(false)
   })
 
   it('only selects a text on a Cmd-click', async () => {

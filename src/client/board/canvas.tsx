@@ -49,6 +49,8 @@ import {
   editTextWhenShown,
   framePoint,
   overElement,
+  pressInEdit,
+  type TextEditing,
   type WriteText,
 } from './element/text-in-place'
 import { readTree } from './element/tree'
@@ -186,15 +188,31 @@ export function Canvas({
   const picks = useRef(0)
   // Kept, since a double-click's first press selects the frame before it arrives.
   const pressedOn = useRef<ElementKey | null>(null)
-  // Ends the in-place text edit open or waiting on a frame's reload.
-  const stopEditing = useRef<(() => void) | null>(null)
+  // The in-place text edit open or waiting on a frame's reload, which a press inside keeps.
+  const editing = useRef<{ key: ElementKey; edit: TextEditing } | null>(null)
   useEffect(
     () => () => {
-      stopEditing.current?.()
-      stopEditing.current = null
+      editing.current?.edit.cancel()
+      editing.current = null
     },
     [page.ref],
   )
+  /** Where a Move press lands in the text open for typing, null for a press anywhere else. */
+  const caretPointOf = (
+    event: MouseEvent,
+    viewport: HTMLElement,
+    layer: HTMLElement,
+  ): { edit: TextEditing; at: FramePoint } | null => {
+    const open = editing.current
+    const { tool, spacePan } = modeStore.getState()
+    if (!open?.edit.isOpen() || tool !== 'move' || spacePan) return null
+    const [x, y] = zoomTransform(viewport).invert(pointer(event, viewport))
+    const at = pressInEdit(layer, withDrawn(framesRef.current), open.key, {
+      x,
+      y,
+    })
+    return at ? { edit: open.edit, at } : null
+  }
   const playing = useMode((state) => state.mode === 'play')
   const hand = useMode((state) => state.tool === 'hand')
   const noting = useMode((state) => state.tool === 'note')
@@ -453,13 +471,14 @@ export function Canvas({
           null,
       )
       // Set here, since the marks' layer takes no pointer and cannot carry a cursor.
-      viewport.style.cursor =
-        cursorAtRef.current?.(event) ??
-        (hovered !== null &&
-        modeStore.getState().mode === 'play' &&
-        enteredStore.getState().ref !== hovered
-          ? 'pointer'
-          : '')
+      viewport.style.cursor = caretPointOf(event, viewport, layer)
+        ? 'text'
+        : (cursorAtRef.current?.(event) ??
+          (hovered !== null &&
+          modeStore.getState().mode === 'play' &&
+          enteredStore.getState().ref !== hovered
+            ? 'pointer'
+            : ''))
     }
     const leave = () => {
       hover(null)
@@ -565,6 +584,28 @@ export function Canvas({
       if (pressRail(layer, event)) event.stopPropagation()
     }
     viewport.addEventListener('pointerdown', railPress, { capture: true })
+    // A press in the text open for typing moves its caret. Cancelled, it sends
+    // no mousedown, so the frame keeps focus and the edit stays open.
+    let kept = false
+    const keepPress = (event: PointerEvent) => {
+      const press =
+        event.button === 0 ? caretPointOf(event, viewport, layer) : null
+      kept = press !== null
+      if (!press) return
+      event.preventDefault()
+      event.stopPropagation()
+      void press.edit.caretAt(press.at)
+    }
+    // Its click and double-click follow, which would select or reopen the edit.
+    const keepFollowing = (event: MouseEvent) => {
+      if (!kept) return
+      event.preventDefault()
+      event.stopPropagation()
+    }
+    viewport.addEventListener('pointerdown', keepPress, { capture: true })
+    for (const type of ['mousedown', 'click', 'dblclick'] as const) {
+      viewport.addEventListener(type, keepFollowing, { capture: true })
+    }
     const { detach, cursorAt } = attachGestures(hit, {
       viewport,
       layer,
@@ -580,6 +621,10 @@ export function Canvas({
     })
     return () => {
       viewport.removeEventListener('pointerdown', railPress, { capture: true })
+      viewport.removeEventListener('pointerdown', keepPress, { capture: true })
+      for (const type of ['mousedown', 'click', 'dblclick'] as const) {
+        viewport.removeEventListener(type, keepFollowing, { capture: true })
+      }
       stopMode()
       detach()
       cursorAtRef.current = null
@@ -649,20 +694,18 @@ export function Canvas({
               page.ref,
               [change, ...rest].map((each) => ({ key, change: each })),
             )
-    stopEditing.current?.()
-    stopEditing.current = null
+    editing.current?.edit.cancel()
+    editing.current = null
     if (waits) {
-      stopEditing.current = editTextWhenShown(
-        layer,
+      editing.current = {
         key,
-        write,
-        selectionStore,
-      ).cancel
+        edit: editTextWhenShown(layer, key, write, selectionStore),
+      }
       return Promise.resolve(true)
     }
     selectElement(selectionStore, page.ref, key)
     const edit = editTextInPlace(layer, key, write, at)
-    stopEditing.current = edit.cancel
+    editing.current = { key, edit }
     return edit.opened
   }
 
