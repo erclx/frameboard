@@ -1,13 +1,13 @@
 ---
 title: Left panel
-description: The left panel's header, its Design, Theme, and Assets tabs, the page and layers lists, and the first-run guide
+description: The left panel's header, its Design, Theme, and Assets tabs, the page and layers lists, find, and the first-run guide
 ---
 
 # Left panel
 
 ## Overview
 
-Owns the board's left side, being the project header, the page list, the layers tree, the Theme and Assets tabs, and the first-run guide a new board shows. Find, which takes the panel's place under Cmd+F, is in `canon/context/board/shell.md`.
+Owns the board's left side, being the project header, the page list, the layers tree, the Theme and Assets tabs, and the first-run guide a new board shows. It also owns find, which takes the panel's place under Cmd+F.
 
 ## Layout
 
@@ -42,6 +42,16 @@ Owns Find, searching Openverse's images or Poly Haven's CC0 models, picked in th
 ### `src/client/board/assets/generate/`
 
 Owns Generate, which shows the provider and its price from `GET sourcing/provider` before anything runs, so one press is the consent. The button holds while a run is out.
+
+### `src/client/board/find/`
+
+Owns find, being the panel Cmd+F puts in place of the left panel's tabs under the same header, its query, and the pick, which change together.
+
+- `GET /api/find` searches the frame files through `src/server/edit/find.ts`, so a culled frame is found, matching frame names, element names, and each element's own text
+- A hidden frame is left out, and an element named by its own text hits as text alone, so it is listed once
+- Hits group by page, the page on the canvas when they arrived first, and a pick runs `board/jump.ts`, shared with the palette, selecting by the index and hash the search read
+- The field owns Esc, since the registry skips keys typed in a field, and Cmd+F turns Hide UI off
+- A hit draws the glyph its Layers row draws, read from the frame's cached tree at the hash the search read, and a frame hit draws the Frame `#`
 
 ### `src/client/board/guide/`
 

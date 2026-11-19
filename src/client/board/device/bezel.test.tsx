@@ -436,6 +436,80 @@ describe('Bezel', () => {
     })
   })
 
+  describe('a turned foldable', () => {
+    const rectOf = (container: HTMLElement, selector: string) =>
+      container.querySelector(selector)?.getBoundingClientRect()
+    const centerOf = (rect: DOMRect | undefined) => ({
+      x: (rect?.left ?? 0) + (rect?.width ?? 0) / 2,
+      y: (rect?.top ?? 0) + (rect?.height ?? 0) / 2,
+    })
+
+    it('stands the closed island on end at the middle of the left side, with no fold', () => {
+      const { container } = render(
+        <Framed
+          device="foldable"
+          width={678}
+          height={466}
+          pose="closed"
+          turn="left"
+        />,
+      )
+
+      const island = rectOf(container, '[data-bezel-island]')
+
+      expect(island?.width).toBeCloseTo(30)
+      expect(island?.height).toBeCloseTo(100)
+      expect(centerOf(island).x).toBeCloseTo(100 + 14 + 15)
+      expect(centerOf(island).y).toBeCloseTo(100 + 233)
+      expect(container.querySelector('[data-bezel-fold]')).toBeNull()
+      expect(container.querySelector('[data-bezel-status]')).toBeNull()
+    })
+
+    it('sets the open island a quarter down the left side turned left, the crease across the middle', () => {
+      const { container } = render(
+        <Framed
+          device="foldable"
+          width={626}
+          height={890}
+          pose="open"
+          turn="left"
+        />,
+      )
+
+      const island = rectOf(container, '[data-bezel-island]')
+      const fold = rectOf(container, '[data-bezel-fold]')
+
+      expect(centerOf(island).x).toBeCloseTo(100 + 29)
+      expect(centerOf(island).y).toBeCloseTo(100 + 222.5)
+      expect(fold?.left).toBeCloseTo(100)
+      expect(fold?.width).toBeCloseTo(626)
+      expect(fold?.height).toBeCloseTo(26)
+      expect(centerOf(fold).y).toBeCloseTo(100 + 445)
+    })
+
+    it('sets the half island three quarters down the right side turned right, the shaded fold across the body', () => {
+      const { container } = render(
+        <Framed
+          device="foldable"
+          width={626}
+          height={890}
+          pose="half"
+          turn="right"
+        />,
+      )
+
+      const island = rectOf(container, '[data-bezel-island]')
+      const fold = rectOf(container, '[data-bezel-fold]')
+
+      expect(centerOf(island).x).toBeCloseTo(100 + 626 - 29)
+      expect(centerOf(island).y).toBeCloseTo(100 + 667.5)
+      expect(fold?.left).toBeCloseTo(100 - 20)
+      expect(fold?.width).toBeCloseTo(626 + 40)
+      expect(fold?.height).toBeCloseTo(150)
+      expect(centerOf(fold).y).toBeCloseTo(100 + 445)
+    })
+  })
+
   it.each([0.3, 3])('scales the island with the canvas at %f zoom', (zoom) => {
     const { container } = render(
       <Framed device="phone" width={390} height={844} zoom={zoom} />,

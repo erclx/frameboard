@@ -380,9 +380,16 @@ export const Frame = memo(function Frame({
           pose={frame.pose}
           below={below}
           off={frame.locked ? `Unlock ${frame.name} to fold it` : undefined}
+          rotate={
+            canWrite ? { turn: frame.turn, off: turnRefusal(frame) } : undefined
+          }
         />
       ) : null}
-      {turnsWith(frame.device) && selectedAlone && !playing && canWrite ? (
+      {turnsWith(frame.device) &&
+      frame.device !== 'foldable' &&
+      selectedAlone &&
+      !playing &&
+      canWrite ? (
         <RotateButtons
           frameRef={frame.ref}
           name={frame.name}

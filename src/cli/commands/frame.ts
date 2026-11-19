@@ -315,7 +315,7 @@ export function registerFrame(
   act<CommonOptions & FoldFlags>(
     verb(
       'device',
-      'Show or hide the device the board draws around a frame, the phone, tablet, or laptop its width names or the foldable the frame names, fold a foldable, pick a phone’s island, and turn a phone or tablet, leaving the frame file as it is',
+      'Show or hide the device the board draws around a frame, the phone, tablet, or laptop its width names or the foldable the frame names, fold a foldable, pick a phone’s island, and turn a phone, tablet, or foldable, leaving the frame file as it is',
     )
       .addArgument(
         new Argument(
@@ -332,7 +332,7 @@ export function registerFrame(
       .addOption(
         new Option(
           '--no-foldable',
-          'hand the pick back to the width, leaving the box at its size',
+          'hand the pick back to the width, leaving the box at its size, or at its pose’s upright screen while turned',
         ),
       )
       .addOption(
@@ -350,7 +350,7 @@ export function registerFrame(
       .addOption(
         new Option(
           '--turn <turn>',
-          'turn a phone or tablet a quarter, laying its page out landscape at its upright height wide with no status bar, left with the island on the left and right with it on the right, or upright to restore the size it held',
+          'turn a phone, tablet, or foldable a quarter, laying its page out landscape at its upright height wide with no status bar, a foldable at its pose’s screen with the sides swapped through every fold, left with the island on the left and right with it on the right, or upright to restore the size it held',
         ).choices(TURNS),
       ),
     context,

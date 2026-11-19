@@ -307,6 +307,13 @@
       .poses svg {
         display: block;
       }
+      .poses em {
+        align-self: center;
+        width: 1px;
+        height: 14px;
+        background: var(--border);
+        margin: 0 3px;
+      }
       .box {
         background: var(--panel);
         box-shadow: 0 0 0 1px var(--border);
@@ -415,7 +422,8 @@
     <div class="stage">
       <p class="cap">
         <b>fold-device-canvas-buttons-720.</b> Option A. A selected foldable
-        shows its three pose buttons under the body on the canvas.
+        shows its three pose buttons, a divider, then Rotate under the body on
+        the canvas.
       </p>
       <div class="cols">
         <div class="view">
@@ -532,6 +540,21 @@
                   <rect x=".65" y=".65" width="13.7" height="11.7" rx="2" />
                   <path d="M7.5 1v11" stroke-dasharray="1.6 1.6" /></svg
                 >Open</span
+              ><em></em
+              ><span
+                ><svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" /></svg
+                >Rotate</span
               ></span
             ><span class="lb">inbox · Open · 890 by 626</span>
           </div>
