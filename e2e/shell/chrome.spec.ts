@@ -16,16 +16,21 @@ function leftPanel(page: Page) {
   return page.getByRole('complementary', { name: 'Pages and layers' })
 }
 
+/**
+ * Answers -1 while the panel has no box, since a throw would end the
+ * `expect.poll` around it at once rather than let it poll again.
+ */
 async function widthOf(page: Page): Promise<number> {
   const box = await leftPanel(page).boundingBox()
-  if (!box) throw new Error('The left panel is not on screen')
-  return Math.round(box.width)
+  return box ? Math.round(box.width) : -1
 }
 
 async function edgeCenter(page: Page): Promise<[number, number]> {
-  const edge = await page
-    .getByRole('separator', { name: 'Resize the left panel' })
-    .boundingBox()
+  const separator = page.getByRole('separator', {
+    name: 'Resize the left panel',
+  })
+  await expect(separator).toBeVisible()
+  const edge = await separator.boundingBox()
   if (!edge) throw new Error('The left panel has no edge to drag')
   return [edge.x + edge.width / 2, edge.y + edge.height / 2]
 }
