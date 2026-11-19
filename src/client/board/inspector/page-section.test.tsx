@@ -10,6 +10,7 @@ import type { Transition } from '@/shared/present-transition'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { stopPreview } from '../present/preview'
+import { notesShownStore } from '../speaker-notes/shown'
 import { PageSection } from './page-section'
 
 /** The bodies the section posts, answered as the server would answer a page. */
@@ -218,5 +219,44 @@ describe('a hovered page tile', () => {
     await userEvent.hover(screen.getByRole('radio', { name: 'Push' }))
 
     expect(iframe.getAttribute('style')).toBeNull()
+  })
+})
+
+describe('the Notes button', () => {
+  afterEach(() => {
+    notesShownStore.setState({ shown: false })
+  })
+
+  it('reads Notes hidden, not pressed, and shows every note on a press', async () => {
+    mount()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Notes hidden', pressed: false }),
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Notes shown', pressed: true }),
+    ).toBeVisible()
+    expect(notesShownStore.getState().shown).toBe(true)
+  })
+
+  it('reads Notes shown, pressed, and hides every note on a press', async () => {
+    notesShownStore.setState({ shown: true })
+    mount()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Notes shown', pressed: true }),
+    )
+
+    expect(notesShownStore.getState().shown).toBe(false)
+  })
+
+  it('works in a reader tab, since it writes no file', async () => {
+    liveStore.setState({ canWrite: false })
+    mount()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Notes hidden' }))
+
+    expect(notesShownStore.getState().shown).toBe(true)
   })
 })

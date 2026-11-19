@@ -53,10 +53,10 @@ Owns the presenter view, a second copy of the app at `/p/:project/:page/presente
 
 ### `src/client/board/speaker-notes/`
 
-Owns the strip under one selected slide where the presenter writes its speaker note, shown while the Slides tab is open or the slide holds one, and never in Play or present mode. The note lives on the frame's `layout.json` entry as `speakerNotes`, never in its file, apart from the pinned notes in `src/client/board/notes/`.
+Owns the strip for a slide's speaker note, drawn under every slide while the Notes button shows notes, never in Play or present mode. `shown.ts` keeps that choice per browser, hidden at first. The note lives on the frame's `layout.json` entry as `speakerNotes`, never in its file, apart from the pinned notes in `src/client/board/notes/`.
 
 - `strip.tsx` mounts in the canvas's notes layer beside the label's rename field, since the hit layer covers the frames' layer and would take the press
 - A typed note writes once, on blur or Ctrl or Cmd with Enter, as one undo step, refused `stale-layout` and kept in the field when an agent changed the note meanwhile
 - A note past 10,000 characters is refused with the count shown rather than cut, and a held frame or a reader tab shows the note and takes no typing
-- The strip hides while a move or resize drag carries its frame, read from the selection's move chip, and below 200 px of on-screen width
-- `room.ts` publishes the strip's screen height, which `geometry/overlay.tsx` adds to the size chip's offset so the chip sits below the strip
+- A selected frame's strip hides while a move or resize drag carries it, read from the selection's move chip, and any strip hides below 200 px of on-screen width
+- `room.ts` publishes each strip's screen height by ref, which `geometry/overlay.tsx` adds to the selected frame's size chip offset so the chip sits below its strip

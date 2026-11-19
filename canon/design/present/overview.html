@@ -284,12 +284,23 @@
         font-size: 9px;
         margin-top: 4px;
       }
-      .grid .cell.on .sl {
-        outline: 2px solid #4e92f6;
-        outline-offset: 2px;
+      .grid .cell.at .sl {
+        box-shadow:
+          0 0 0 3px #0c0c0d,
+          0 0 0 6px #4e92f6;
       }
-      .grid .cell.on span {
-        color: #f1f1ee;
+      .now {
+        position: absolute;
+        left: 6px;
+        bottom: 6px;
+        padding: 0 6px;
+        border-radius: 999px;
+        background: #16161a;
+        color: #fff;
+        font:
+          500 9px Geist,
+          sans-serif;
+        line-height: 14px;
       }
       .kbd {
         display: inline-block;
@@ -334,10 +345,11 @@
             </div>
             <span>2</span>
           </div>
-          <div class="cell on">
+          <div class="cell">
             <div class="sl">
               <h5>One frame that folds</h5>
-              <i style="width: 80%"></i><i style="width: 60%"></i>
+              <i style="width: 80%"></i><i style="width: 60%"></i
+              ><span class="now">Now</span>
             </div>
             <span>3</span>
           </div>
@@ -362,7 +374,7 @@
             </div>
             <span>6</span>
           </div>
-          <div class="cell">
+          <div class="cell at">
             <div class="sl">
               <h5>Open</h5>
               <i style="width: 80%"></i><i style="width: 60%"></i>
@@ -407,8 +419,9 @@
         </div>
       </div>
       <p class="note">
-        <b>Find a slide without stepping through the deck.</b> The slide you are
-        on is marked, and typing a number then Enter jumps there too.
+        <b>Find a slide without stepping through the deck.</b> The ring is where
+        the arrows are, the slide you are on reads Now, and typing a number then
+        Enter jumps there too.
       </p>
     </div>
   </body>

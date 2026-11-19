@@ -26,6 +26,7 @@ import {
 import { enteredStore, enterFrame, leaveFrame } from './play/entered'
 import { endPreview, setPreview } from './preview/store'
 import { clear, select, selectElement, selectionStore } from './selection'
+import { notesShownStore } from './speaker-notes/shown'
 import {
   renamingFrame,
   startFrameRename,
@@ -609,6 +610,46 @@ describe('Frame', () => {
     )
 
     expect(getByTitle('checkout')).not.toHaveTextContent(/kit/i)
+  })
+
+  describe('the speaker note mark', () => {
+    afterEach(() => {
+      act(() => notesShownStore.setState({ shown: false }))
+    })
+
+    it('marks the label of a frame holding a note while notes are hidden', () => {
+      const { getByTitle } = render(
+        <Frame
+          frame={{ ...frame('checkout'), speakerNotes: 'Open on the price.' }}
+          live={false}
+          version={0}
+        />,
+      )
+
+      expect(getByTitle('checkout')).toHaveTextContent('Speaker note')
+    })
+
+    it('marks no label once notes are shown, since the strip holds the note', () => {
+      notesShownStore.setState({ shown: true })
+
+      const { getByTitle } = render(
+        <Frame
+          frame={{ ...frame('checkout'), speakerNotes: 'Open on the price.' }}
+          live={false}
+          version={0}
+        />,
+      )
+
+      expect(getByTitle('checkout')).not.toHaveTextContent('Speaker note')
+    })
+
+    it('marks no label on a frame holding no note', () => {
+      const { getByTitle } = render(
+        <Frame frame={frame('checkout')} live={false} version={0} />,
+      )
+
+      expect(getByTitle('checkout')).not.toHaveTextContent('Speaker note')
+    })
   })
 
   it('names the frame above it', () => {

@@ -302,43 +302,175 @@
           monospace;
         line-height: 15px;
       }
+
+      .state {
+        margin-top: 12px;
+      }
+      .state:first-of-type {
+        margin-top: 0;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        border-radius: 10px;
+        box-shadow: 0 0 0 1px var(--border);
+        padding: 20px 12px 12px;
+      }
+      .cs {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .cs .sl {
+        font-size: 8px;
+      }
+      .strip h4 {
+        font-size: 10px;
+      }
+      .strip p {
+        font-size: 10px;
+      }
+      .strip.empty p {
+        color: var(--faint);
+      }
+      .glyph {
+        display: inline-block;
+        margin-left: 5px;
+        padding: 0 4px;
+        border-radius: 4px;
+        background: var(--raised);
+        color: var(--muted);
+        font-size: 8px;
+        line-height: 11px;
+        vertical-align: 0;
+      }
+      .npill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 22px;
+        margin-bottom: 8px;
+        padding: 0 8px;
+        border-radius: 7px;
+        background: var(--raised);
+        color: var(--text);
+        font-weight: 500;
+        font-size: 10px;
+      }
+      .npill.on {
+        background: var(--text);
+        color: var(--panel);
+      }
     </style>
   </head>
   <body>
     <div class="stage">
       <p class="cap">
-        <b>speaker-notes-strip-720.</b> Speaker notes, option B. A notes strip
-        sits under the selected slide on the canvas, as a slide tool's notes
-        pane does.
+        <b>speaker-notes-strip-720.</b> Speaker notes. One Notes button in the
+        Slides tab shows a strip under every slide of the page, or puts every
+        strip away.
       </p>
-      <div class="cols">
-        <div class="view">
-          <div class="sl sel" style="font-size: 11px">
-            <span class="nm">slide-3</span>
-            <h5>One frame that folds</h5>
-            <i style="width: 86%"></i><i style="width: 72%"></i
-            ><i style="width: 58%"></i>
+      <div class="state">
+        <span class="npill on"
+          ><svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="4" y="4" width="16" height="16" rx="2" />
+            <path d="M8 9h8M8 13h8M8 17h5" /></svg
+          >Notes shown</span
+        >
+        <div class="row">
+          <div class="cs">
+            <div class="sl">
+              <span class="nm">01-intro</span>
+              <h5>What is new on the board</h5>
+              <i style="width: 80%"></i><i style="width: 60%"></i>
+            </div>
+            <div class="strip">
+              <h4>Speaker notes <span>only you see these</span></h4>
+              <p>
+                Open on the release number, then the three headline features.
+              </p>
+            </div>
           </div>
-          <div class="strip hl">
-            <h4>Speaker notes <span>only you see these</span></h4>
-            <p>
-              Start with the problem: two frames for one phone. Then fold it
-              live. Pause on Half open.
-            </p>
+          <div class="cs">
+            <div class="sl sel">
+              <span class="nm">02-build</span>
+              <h5>Three steps, three effects</h5>
+              <i style="width: 80%"></i><i style="width: 60%"></i>
+            </div>
+            <div class="strip">
+              <h4>Speaker notes <span>only you see these</span></h4>
+              <p>Press the arrow three times, one per step. Then move on.</p>
+            </div>
+          </div>
+          <div class="cs">
+            <div class="sl">
+              <span class="nm">03-closing</span>
+              <h5>Press G for the grid</h5>
+              <i style="width: 80%"></i><i style="width: 60%"></i>
+            </div>
+            <div class="strip empty">
+              <h4>Speaker notes <span>only you see these</span></h4>
+              <p>What you’ll say over this slide</p>
+            </div>
           </div>
         </div>
-        <div class="box">
-          <div class="tabs">
-            <span>Design</span><span class="on">Slides</span><span>Export</span>
+      </div>
+      <div class="state">
+        <span class="npill"
+          ><svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="4" y="4" width="16" height="16" rx="2" />
+            <path d="M8 9h8M8 13h8M8 17h5" /></svg
+          >Notes hidden</span
+        >
+        <div class="row">
+          <div class="cs">
+            <div class="sl">
+              <span class="nm">01-intro<span class="glyph">note</span></span>
+              <h5>What is new on the board</h5>
+              <i style="width: 80%"></i><i style="width: 60%"></i>
+            </div>
           </div>
-          <h4>This slide</h4>
-          <div class="f"><span>Transition</span><em>Page · Fade</em></div>
-          <p class="hint">Notes are written under the slide.</p>
+          <div class="cs">
+            <div class="sl sel">
+              <span class="nm">02-build<span class="glyph">note</span></span>
+              <h5>Three steps, three effects</h5>
+              <i style="width: 80%"></i><i style="width: 60%"></i>
+            </div>
+          </div>
+          <div class="cs">
+            <div class="sl">
+              <span class="nm">03-closing</span>
+              <h5>Press G for the grid</h5>
+              <i style="width: 80%"></i><i style="width: 60%"></i>
+            </div>
+          </div>
         </div>
       </div>
       <p class="note">
-        <b>Room to write, next to the slide.</b> One more thing floats on the
-        canvas under a selected frame.
+        <b>Read a deck’s notes together.</b> An empty strip invites a note.
+        While notes are hidden, a slide holding one keeps a small mark on its
+        label, and the choice is kept per browser.
       </p>
     </div>
   </body>

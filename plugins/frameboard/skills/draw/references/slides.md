@@ -28,9 +28,10 @@ A deck's words for the presenter belong in speaker notes, so keep them out of th
 
 - Set a note with `frameboard frame speaker-notes <page>/<frame> <text>`, which refuses text past the limit in the `present` block of `frameboard docs --json` rather than cutting it
 - The note lives on the frame's layout entry and never enters the frame file, so a rewrite of the slide keeps it and a duplicate carries it
-- The presenter view's own window shows the note beside the slide, and the slide itself never does. The `present` block's line that present mode never shows it means the slide and not that window, so a note is not a caption.
+- The presenter view's own window shows the note beside the slide, and the slide the audience sees never does, so a note is not a caption
 - Write a note for a slide whose point is spoken, and leave the rest bare
 - Read a slide's note before rewriting the slide, since the developer may have typed one in the strip under it
+- Expect that strip under every slide of the page or none, set by the Notes button in the Slides tab, with a hidden note marked on the slide's label
 
 ## Capture a stepped slide
 
