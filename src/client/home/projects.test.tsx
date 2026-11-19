@@ -3,6 +3,7 @@ import '../styles.css'
 import {
   act,
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -382,6 +383,22 @@ describe('Projects by the arrow keys', () => {
   })
 })
 
+/** A skeleton box's capture state and whether it runs the loading pulse. */
+function boxState(container: HTMLElement): [string | null, boolean] {
+  const box = container.querySelector('[data-skeleton] rect')
+  return [
+    box?.getAttribute('data-capture') ?? null,
+    box?.getAttribute('class')?.includes('animate-frame-loading') ?? false,
+  ]
+}
+
+/** Settles the first capture image, since only the browser fires its load. */
+function settleCapture(container: HTMLElement, outcome: 'load' | 'error') {
+  const image = container.querySelector('[data-skeleton] image')
+  if (!image) throw new Error('No capture image to settle')
+  fireEvent[outcome](image)
+}
+
 describe('FrameSkeleton in a card', () => {
   it('draws a box for each visible frame', () => {
     const { container } = renderOne(
@@ -490,6 +507,56 @@ describe('FrameSkeleton in a card', () => {
       container.querySelectorAll('[data-skeleton] rect').length,
       container.querySelectorAll('[data-skeleton] image').length,
     ]).toEqual([1, 0])
+  })
+
+  it('pulses a stamped box grey until its capture loads, then draws it', () => {
+    liveStore.setState({
+      thumbnails: { light: { 'sketch/home/hero': 'r1-0-1440x900' }, dark: {} },
+    })
+    const { container } = renderOne(
+      withFrames([frame('hero', { x: 0, y: 0, width: 1440, height: 900 })]),
+    )
+    const waiting = boxState(container)
+
+    settleCapture(container, 'load')
+
+    expect([waiting, boxState(container)]).toEqual([
+      ['waiting', true],
+      ['drawn', false],
+    ])
+  })
+
+  it('settles a box whose capture fails to load to still grey', () => {
+    liveStore.setState({
+      thumbnails: { light: { 'sketch/home/hero': 'r1-0-1440x900' }, dark: {} },
+    })
+    const { container } = renderOne(
+      withFrames([frame('hero', { x: 0, y: 0, width: 1440, height: 900 })]),
+    )
+
+    settleCapture(container, 'error')
+
+    expect([
+      boxState(container),
+      container.querySelector('[data-skeleton] image'),
+    ]).toEqual([['none', false], null])
+  })
+
+  it('holds a box with no stamp grey and still', () => {
+    const { container } = renderOne(
+      withFrames([frame('hero', { x: 0, y: 0, width: 1440, height: 900 })]),
+    )
+
+    expect(boxState(container)).toEqual(['none', false])
+  })
+
+  it("keeps the white boxes of a list row's mark", () => {
+    const { container } = renderOne(
+      withFrames([frame('hero', { x: 0, y: 0, width: 1440, height: 900 })]),
+      'list',
+    )
+
+    expect(boxState(container)).toEqual([null, false])
   })
 
   it("fills the row's mark with the frames in the list", () => {
