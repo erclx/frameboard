@@ -6,10 +6,11 @@ import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import { linkedBoxes } from '@/shared/frame-widths'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
-import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
+import { frameThemeUrl } from '@/shared/theme'
 
 import { FINDINGS_MARK, severityOf } from '../findings/level'
 import { FindingsCount } from '../findings/mark'
+import { useThemeInFrame } from '../frame-theme'
 import { useDrawnBox } from '../geometry/write'
 import { useHiddenScrollbar } from '../hidden-scrollbar'
 import { useMode } from '../mode'
@@ -89,18 +90,7 @@ export function LinkedBox({
     [loaded],
   )
 
-  useEffect(() => {
-    const element = iframe.current
-    if (!live || !element) return
-    const write = () => {
-      const root = element.contentDocument?.documentElement
-      if (root) setFrameTheme(root, theme)
-    }
-    write()
-    element.addEventListener('load', write)
-    return () => element.removeEventListener('load', write)
-  }, [theme, live])
-
+  useThemeInFrame(iframe, theme, live)
   useHiddenScrollbar(iframe, live, frame.scroll)
 
   useEffect(() => {

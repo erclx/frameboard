@@ -26,7 +26,7 @@ import { referenceHeight } from '@/shared/frame-sizes'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
-import { frameThemeUrl, setFrameTheme, type Theme } from '@/shared/theme'
+import { frameThemeUrl, type Theme } from '@/shared/theme'
 
 import { useCompare } from './changes/compare'
 import { CompareControl, CompareView } from './changes/compare-view'
@@ -40,6 +40,7 @@ import { FindingsCount } from './findings/mark'
 import { openFindings, useFindingsOpen } from './findings/open'
 import { RESTAMPED } from './frame-dom'
 import { useWaitingOnFirstLoad } from './frame-loading'
+import { useThemeInFrame } from './frame-theme'
 import { useDrawnBox, usePendingBox } from './geometry/write'
 import { useHiddenScrollbar } from './hidden-scrollbar'
 import { LoadingBlock } from './loading-block'
@@ -124,17 +125,7 @@ export const Frame = memo(function Frame({
     [loaded],
   )
 
-  useEffect(() => {
-    const element = iframe.current
-    if (!live || !element) return
-    const write = () => {
-      const root = element.contentDocument?.documentElement
-      if (root) setFrameTheme(root, theme)
-    }
-    write()
-    element.addEventListener('load', write)
-    return () => element.removeEventListener('load', write)
-  }, [theme, live])
+  useThemeInFrame(iframe, theme, live)
 
   // Stamps the rendered file, so a pick made before an agent's reload is refused.
   useEffect(() => {

@@ -11,6 +11,7 @@ import { flipFrame, themeStore } from '@/client/theme/store'
 import type { FrameChange } from '@/shared/records/changes'
 import type { FrameRecord } from '@/shared/records/list'
 import { ringFocused } from '@/test/focus-ring'
+import { bridgeIn } from '@/test/frame-bridge'
 
 import { Frame } from '../frame'
 import { modeStore } from '../mode'
@@ -297,7 +298,10 @@ describe('compare', () => {
     await userEvent.click(
       screen.getByRole('button', { name: 'Compare pricing with before' }),
     )
-    await waitFor(() => expect(before()).not.toBeNull())
+    await waitFor(() =>
+      expect(before()?.contentDocument?.URL).toContain('/frames/'),
+    )
+    await bridgeIn(before() as HTMLIFrameElement)
 
     act(() => flipFrame(PRICING, themeStore))
 

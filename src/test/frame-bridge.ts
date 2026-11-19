@@ -62,6 +62,42 @@ export function ask<O extends BridgeOp>(
   })
 }
 
+/**
+ * Stamps the page an iframe already loaded and starts the bridge in it, as the
+ * frame route would have, resolved once the bridge announces the stamp. The
+ * board's frames load an empty page under the test server, which routes no
+ * frame, and a reload brings one back with no bridge, so call it per page.
+ */
+export function bridgeIn(
+  iframe: HTMLIFrameElement,
+  { hash = 'c'.repeat(64) } = {},
+): Promise<void> {
+  const view = iframe.contentWindow
+  const head = iframe.contentDocument?.head
+  if (!view || !head) throw new Error('The iframe holds no page')
+  const announced = new Promise<void>((resolve) => {
+    const heard = (event: MessageEvent) => {
+      const data = event.data as { tag?: unknown; kind?: unknown } | null
+      if (event.source !== view || data?.tag !== BRIDGE_TAG) return
+      if (data.kind !== 'shown') return
+      removeEventListener('message', heard)
+      resolve()
+    }
+    addEventListener('message', heard)
+  })
+  head.insertAdjacentHTML(
+    'beforeend',
+    `<style data-frameboard data-hash="${hash}"></style>`,
+  )
+  // A script parsed from markup never runs, so it is made as an element.
+  const script = head.ownerDocument.createElement('script')
+  script.type = 'module'
+  script.setAttribute('data-frameboard', '')
+  script.src = '/src/frame-bridge/main.ts'
+  head.append(script)
+  return announced
+}
+
 /** An iframe showing `body` beside the stamp and the bridge, resolved once it has loaded. */
 export async function bridgedFrame(
   body: string,

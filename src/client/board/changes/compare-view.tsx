@@ -3,8 +3,9 @@ import { type KeyboardEvent, useEffect, useMemo, useRef } from 'react'
 
 import { cn } from '@/client/lib/cn'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
-import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
+import { frameThemeUrl } from '@/shared/theme'
 
+import { useThemeInFrame } from '../frame-theme'
 import {
   type CompareMode,
   compareStore,
@@ -37,17 +38,7 @@ export function CompareView({ frameRef: ref, name, hash }: CompareViewProps) {
     [ref, hash],
   )
 
-  useEffect(() => {
-    const element = iframe.current
-    if (!element) return
-    const write = () => {
-      const root = element.contentDocument?.documentElement
-      if (root) setFrameTheme(root, theme)
-    }
-    write()
-    element.addEventListener('load', write)
-    return () => element.removeEventListener('load', write)
-  }, [theme])
+  useThemeInFrame(iframe, theme)
 
   const splitting = mode === 'split'
   const percent = `${Math.round(split * 1000) / 10}%`

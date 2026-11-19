@@ -12,6 +12,7 @@ import { frameElements } from '@/shared/frame-bridge/elements'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 import { ringFocused } from '@/test/focus-ring'
+import { bridgeIn } from '@/test/frame-bridge'
 
 import { holdShown } from './bridge/shown'
 import { openFindings } from './findings/open'
@@ -100,6 +101,15 @@ function loaded(iframe: HTMLIFrameElement): Promise<void> {
   return new Promise((resolve) =>
     iframe.addEventListener('load', () => resolve(), { once: true }),
   )
+}
+
+/** Waits for a just rendered frame's page and starts the bridge in it, as the frame route would. */
+async function bridged(
+  iframe: HTMLIFrameElement,
+  hash?: string,
+): Promise<void> {
+  await loaded(iframe)
+  await bridgeIn(iframe, { hash })
 }
 
 describe('Frame in Play', () => {
@@ -834,15 +844,15 @@ describe('Frame theme', () => {
   it("writes a theme change into the frame's root with no reload", async () => {
     const { container } = render(<Frame frame={frame('a')} live version={0} />)
     const iframe = iframeOf(container, 'a')
-    await loaded(iframe)
+    await bridged(iframe)
     const src = iframe.getAttribute('src')
     let loads = 0
     iframe.addEventListener('load', () => (loads += 1))
 
     act(() => chooseTheme('dark'))
 
+    await expect.poll(() => themeOfRoot(iframe)).toBe('dark')
     const root = iframe.contentDocument?.documentElement
-    expect(root?.getAttribute('data-theme')).toBe('dark')
     expect(root?.style.colorScheme).toBe('dark')
     expect(root?.classList.contains('dark')).toBe(true)
     expect(iframe.style.colorScheme).toBe('dark')
@@ -863,17 +873,29 @@ describe('Frame theme', () => {
     )
   })
 
+  it('sends the theme a page missed while it was loading', async () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+
+    act(() => chooseTheme('dark'))
+    await bridgeIn(iframe)
+
+    await expect.poll(() => themeOfRoot(iframe)).toBe('dark')
+  })
+
   it('shows a flipped frame in the opposite theme and leaves the others', async () => {
     act(() => chooseTheme('dark'))
     const { container } = render(<Pair a={0} b={0} />)
     await Promise.all([
-      loaded(iframeOf(container, 'a')),
-      loaded(iframeOf(container, 'b')),
+      bridged(iframeOf(container, 'a')),
+      bridged(iframeOf(container, 'b')),
     ])
+    await expect.poll(() => themeOfRoot(iframeOf(container, 'b'))).toBe('dark')
 
     act(() => flipFrame('studio/home/a'))
 
-    expect(themeOfRoot(iframeOf(container, 'a'))).toBe('light')
+    await expect.poll(() => themeOfRoot(iframeOf(container, 'a'))).toBe('light')
     expect(iframeOf(container, 'a').style.colorScheme).toBe('light')
     expect(themeOfRoot(iframeOf(container, 'b'))).toBe('dark')
   })
