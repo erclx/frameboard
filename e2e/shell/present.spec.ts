@@ -165,9 +165,10 @@ test.describe('a phone frame as tall as its page', () => {
     await page.keyboard.press('ArrowRight')
     await expect(shown(page)).toHaveAttribute('title', 'about')
     const scrollY = () =>
-      shown(page).evaluate(
-        (frame: HTMLIFrameElement) => frame.contentWindow?.scrollY ?? -1,
-      )
+      shown(page)
+        .contentFrame()
+        .locator('html')
+        .evaluate(() => window.scrollY)
     // The page stands under the 54 tall status bar on an 844 tall screen.
     await expect
       .poll(() =>

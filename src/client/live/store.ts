@@ -19,6 +19,11 @@ export interface LiveState {
    */
   kept: Readonly<Record<string, number>>
   connected: boolean
+  /**
+   * The port frames load from, null until the socket's first hello, and kept
+   * across a dropped socket, since a restarted server's hello replaces it.
+   */
+  framePort: number | null
   /** Whether this tab may write, false until the server's `access` answer and again whenever the socket drops. */
   canWrite: boolean
   /** Whether a note this tab sends can start a session, cleared with `canWrite`. */
@@ -54,6 +59,7 @@ export function createLiveStore(): LiveStore {
     reloads: {},
     kept: {},
     connected: false,
+    framePort: null,
     canWrite: false,
     dispatch: false,
     accessKnown: false,
@@ -408,6 +414,11 @@ export function receiveFindings(
   findings: Readonly<Record<string, readonly Finding[]>>,
 ): void {
   store.setState({ findings: { ...store.getState().findings, ...findings } })
+}
+
+/** Holds the port frames load from, which each hello sends ahead of the board. */
+export function receiveFrames(store: LiveStore, port: number): void {
+  store.setState({ framePort: port })
 }
 
 /** Records the server's answer on whether this tab may write, and whether its notes can start a session. */

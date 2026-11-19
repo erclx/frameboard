@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { liveStore } from '@/client/live/store'
 import type { AssetFile } from '@/shared/records/assets'
 
 import {
@@ -88,10 +89,18 @@ describe('linkPath', () => {
 })
 
 describe('assetUrl', () => {
-  it('points at the frame route for the project assets', () => {
+  it("points at the frame port's route for the project assets", () => {
+    liveStore.setState({ framePort: 47123 })
+
     expect(assetUrl('my studio', 'img/a b.png')).toBe(
-      '/frames/my%20studio/assets/img/a%20b.png',
+      `http://${location.hostname}:47123/frames/my%20studio/assets/img/a%20b.png`,
     )
+  })
+
+  it("stays on the board's own port before the frame port arrives", () => {
+    liveStore.setState({ framePort: null })
+
+    expect(assetUrl('studio', 'a.png')).toBe('/frames/studio/assets/a.png')
   })
 })
 

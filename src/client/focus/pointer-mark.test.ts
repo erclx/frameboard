@@ -1,7 +1,7 @@
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { markPointerFocus } from './pointer-mark'
+import { type HearFrame, markPointerFocus } from './pointer-mark'
 
 const MARK = 'data-pointer-focus'
 
@@ -110,35 +110,6 @@ describe('markPointerFocus', () => {
     expect(track).toHaveAttribute(MARK)
   })
 
-  it('reads the window losing focus to a frame as a pointer press', async () => {
-    const first = button('First')
-    const frame = document.createElement('iframe')
-    document.body.append(frame)
-    await userEvent.keyboard('{Escape}')
-    await new Promise((settled) => setTimeout(settled))
-
-    frame.focus()
-    first.focus()
-
-    expect(first).toHaveAttribute(MARK)
-  })
-
-  it('leaves a control a key inside a frame moved focus to unmarked', async () => {
-    const first = button('First')
-    const frame = document.createElement('iframe')
-    document.body.append(frame)
-    await userEvent.keyboard('{Escape}')
-    await new Promise((settled) => setTimeout(settled))
-    frame.focus()
-
-    frame.contentWindow?.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Tab' }),
-    )
-    first.focus()
-
-    expect(first).not.toHaveAttribute(MARK)
-  })
-
   it('leaves a control reached by Tab out of a frame unmarked', () => {
     const first = button('First')
     const frame = document.createElement('iframe')
@@ -149,5 +120,77 @@ describe('markPointerFocus', () => {
     first.focus()
 
     expect(first).not.toHaveAttribute(MARK)
+  })
+})
+
+/** A frame's keys as the bridge would push them, pressed by the test. */
+function fakeFrameKeys(): { hear: HearFrame; press: () => void } {
+  let heard: (() => void) | null = null
+  return {
+    hear: (_iframe, onKey) => {
+      heard = onKey
+      return () => {
+        heard = null
+      }
+    },
+    press: () => heard?.(),
+  }
+}
+
+describe('markPointerFocus beside a frame', () => {
+  let stop: () => void
+  let keys: ReturnType<typeof fakeFrameKeys>
+  let first: HTMLButtonElement
+  let frame: HTMLIFrameElement
+
+  beforeEach(async () => {
+    keys = fakeFrameKeys()
+    stop = markPointerFocus(window, keys.hear)
+    first = button('First')
+    frame = document.createElement('iframe')
+    document.body.append(frame)
+    // Ends the key task, so leaving for the frame reads as a pointer press.
+    await userEvent.keyboard('{Escape}')
+    await new Promise((settled) => setTimeout(settled))
+  })
+
+  afterEach(() => {
+    stop()
+    document.body.replaceChildren()
+  })
+
+  it('reads the window losing focus to a frame as a pointer press', () => {
+    frame.focus()
+    first.focus()
+
+    expect(first).toHaveAttribute(MARK)
+  })
+
+  it('leaves a control a key inside the frame moved focus to unmarked', () => {
+    frame.focus()
+
+    keys.press()
+    first.focus()
+
+    expect(first).not.toHaveAttribute(MARK)
+  })
+
+  it('clears the mark when the key that left the frame is heard after focus came back', () => {
+    frame.focus()
+    first.focus()
+
+    keys.press()
+
+    expect(first).not.toHaveAttribute(MARK)
+  })
+
+  it('hears no key from a frame once stopped', () => {
+    frame.focus()
+    first.focus()
+    stop()
+
+    keys.press()
+
+    expect(first).toHaveAttribute(MARK)
   })
 })

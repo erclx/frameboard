@@ -17,7 +17,7 @@ export const BOARD_ROUTE_RULES: RuleDoc[] = [
     tier: 'exact',
     severity: 'error',
     description:
-      "A frame's scripts and event handlers name no path under /api/, which on the board's origin reaches the board's own server",
+      "A frame's scripts and event handlers name no path under /api/, which fails from a frame on its own port, apart from the board's server",
   },
 ]
 
@@ -53,7 +53,7 @@ export function checkBoardRoutes(source: FrameSource): Finding[] {
       return finding('board-route', {
         frame: source.ref,
         path: boardPath(source.root, code.path),
-        message: `${code.via} names ${match[2]}, a route of the board's own server, which a frame on the board's origin reaches. Mock an app's calls with data kept in the script, or list board-route in the project's checks.off if its frames mean to call /api/.`,
+        message: `${code.via} names ${match[2]}, a route of the board's own server, which fails from a frame on its own port. Mock an app's calls with data kept in the script, or list board-route in the project's checks.off if its frames mean to call /api/.`,
         location:
           start === null
             ? code.at

@@ -8,6 +8,7 @@ import { THEME_SCRIPT } from '@/server/look/inject'
 
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { History } from '../history/stack'
+import { boardKitsDir } from '../kits/list'
 import { kitRoutes } from './kits'
 
 const TOKEN = 'a'.repeat(64)
@@ -237,6 +238,28 @@ describe('kitRoutes', () => {
       `script-src 'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'`,
     )
   })
+
+  it.each([
+    ['another page', 'notes.html'],
+    ['an SVG', 'logo.svg'],
+  ])(
+    "runs no script from a saved kit's %s, which a frame could embed on the board's origin",
+    async (_case, file) => {
+      writeFileSync(join(board.root, 'acme/tokens.css'), ':root { --a: 1 }\n')
+      await post('/api/kits/save', { project: 'acme', name: 'mine' })
+      writeFileSync(
+        join(boardKitsDir(board.root), 'mine', file),
+        '<svg xmlns="http://www.w3.org/2000/svg"><script>parent.x=1</script></svg>',
+      )
+
+      const response = await app.request(`/frameboard/kits/mine/${file}`)
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-security-policy')).toBe(
+        `script-src 'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'`,
+      )
+    },
+  )
 
   it("serves a kit's stylesheet byte for byte", async () => {
     const response = await app.request('/frameboard/kits/sketch/kit.css')

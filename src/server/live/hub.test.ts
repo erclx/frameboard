@@ -106,6 +106,34 @@ describe('createHub', () => {
     expect(board).toEqual({ type: 'board', data: SNAPSHOT })
   })
 
+  it('sends the frame port first on a board hello, ahead of the board', async () => {
+    const withFrames = createHub({
+      tabs,
+      port: () => port,
+      access,
+      snapshot: async () => SNAPSHOT,
+      framePort: () => 47123,
+    })
+    server.removeAllListeners('upgrade')
+    server.on('upgrade', (request, socket, head) =>
+      withFrames.handleUpgrade(request, socket, head),
+    )
+    const socket = connect()
+    const received: ServerMessage[] = []
+    socket.on('message', (data) => received.push(JSON.parse(String(data))))
+
+    await new Promise((resolve) => socket.once('open', resolve))
+    socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
+
+    await expect
+      .poll(() => received.slice(0, 2))
+      .toEqual([
+        { type: 'frames', port: 47123 },
+        { type: 'board', data: SNAPSHOT },
+      ])
+    await withFrames.close()
+  })
+
   describe('access', () => {
     const own = () => `http://127.0.0.1:${port}`
 
@@ -436,6 +464,7 @@ describe('createHub', () => {
         snapshot: async () => SNAPSHOT,
         notes: async () => ({ 'studio/home': [] }),
         delivery,
+        framePort: () => 47123,
       })
       inboxServer.on('upgrade', (request, socket, head) =>
         inboxHub.handleUpgrade(request, socket, head),
@@ -485,6 +514,15 @@ describe('createHub', () => {
       })
     })
 
+    it('never sends an inbox the frame port', async () => {
+      const socket = connectInbox({ authorization: `Bearer ${TOKEN}` })
+
+      const received = nextMessage(socket)
+      await helloAsInbox(socket)
+
+      expect((await received).type).toBe('note')
+    })
+
     it('never counts an inbox as a board tab', async () => {
       const socket = connectInbox({ authorization: `Bearer ${TOKEN}` })
       const received = nextMessage(socket)
@@ -520,17 +558,19 @@ describe('createHub', () => {
       const socket = connectInbox({})
       await new Promise((resolve) => socket.once('open', resolve))
       const received: ServerMessage[] = []
-      const four = new Promise<void>((resolve) =>
+      const five = new Promise<void>((resolve) =>
         socket.on('message', (data) => {
           received.push(JSON.parse(String(data)))
-          if (received.length === 4) resolve()
+          if (received.length === 5) resolve()
         }),
       )
 
       socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
-      await four
+      await five
 
-      expect(received.slice(1).map((message) => message.type)).toEqual([
+      expect(received.map((message) => message.type)).toEqual([
+        'frames',
+        'board',
         'access',
         'notes',
         'listeners',

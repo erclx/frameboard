@@ -131,3 +131,42 @@ describe('keys', () => {
     await expect.poll(() => pushes).toHaveLength(1)
   })
 })
+
+describe('focus-keys', () => {
+  it('pushes once for every key pressed in the page, whatever the key', async () => {
+    const frame = await frameOf('<input>')
+    const field = frame.contentDocument?.querySelector('input') ?? undefined
+    const { reply, pushes } = await ask(frame, 'focus-keys', {})
+
+    const prevented = press(frame, 'Tab', field)
+    press(frame, 'Shift')
+
+    expect(reply).toEqual({ value: true })
+    expect(prevented).toBe(false)
+    await expect.poll(() => pushes).toEqual([true, true])
+  })
+
+  it('hears a key the page stops before it reaches the window', async () => {
+    const frame = await frameOf('<input onkeydown="event.stopPropagation()">')
+    const field = frame.contentDocument?.querySelector('input') ?? undefined
+    const { pushes } = await ask(frame, 'focus-keys', {})
+
+    press(frame, 'Tab', field)
+
+    await expect.poll(() => pushes).toEqual([true])
+  })
+
+  it('pushes nothing once closed', async () => {
+    const frame = await frameOf('<p>Hi</p>')
+    const { pushes, close } = await ask(frame, 'focus-keys', {})
+    press(frame, 'Tab')
+    await expect.poll(() => pushes).toHaveLength(1)
+
+    close()
+    await ask(frame, 'content-height', {})
+    press(frame, 'Tab')
+    await ask(frame, 'content-height', {})
+
+    expect(pushes).toHaveLength(1)
+  })
+})

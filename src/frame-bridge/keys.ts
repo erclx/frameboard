@@ -54,4 +54,11 @@ export const keyHandlers: Handlers = {
     onClose(unbind)
     return true
   },
+  'focus-keys': (_args, { push, onClose }) => {
+    // The capture phase, so a page stopping its own keys still has them heard.
+    const heard = () => push(true)
+    window.addEventListener('keydown', heard, true)
+    onClose(() => window.removeEventListener('keydown', heard, true))
+    return true
+  },
 }

@@ -39,6 +39,8 @@ export interface LookOptions {
 export interface ServedFrames {
   /** A project's token sheets, as the frame route imports them. */
   look: FrameLook
+  /** The look routes alone, which the board's own pages read faces from. */
+  lookRoutes: Hono
   /** The look routes and the frame routes, in the order a server mounts them. */
   routes: Hono
 }
@@ -64,13 +66,14 @@ export function servedFrames(
   const look: FrameLook = {
     sheets: (project) => tokenSheetPaths(root, project, tokens),
   }
+  const looks = lookRoutes({
+    facesDir,
+    boardSheet: () => boardSheetPath(root, tokens),
+  })
   const routes = new Hono()
-  routes.route(
-    '/',
-    lookRoutes({ facesDir, boardSheet: () => boardSheetPath(root, tokens) }),
-  )
+  routes.route('/', looks)
   routes.route('/', frameRoutes(root, look, version, base))
-  return { look, routes }
+  return { look, lookRoutes: looks, routes }
 }
 
 /**

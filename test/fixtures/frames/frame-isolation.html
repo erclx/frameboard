@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Isolation</title>
+  </head>
+  <body>
+    <h1>Isolation</h1>
+    <iframe name="sink" hidden></iframe>
+    <script>
+      // An agent's frame trying to act as the board: a write per area with the
+      // board's cookie, a form post, the live socket, and two embeds that would
+      // run on the board's origin. The spec reads what the server answered.
+      ;(async () => {
+        const board = new URL(document.referrer).origin
+        const writes = [
+          '/api/frames/edit',
+          '/api/frame/delete',
+          '/api/frame/height',
+          '/api/page/add',
+          '/api/section/add',
+          '/api/project/delete',
+          '/api/projects/studio/assets',
+          '/api/projects/studio/sourcing/save',
+          '/api/notes',
+          '/api/tokens/edit',
+          '/api/kits/install',
+          '/api/clipboard/paste',
+          '/api/claims/release',
+          '/api/selection',
+          '/api/author',
+          '/api/access/ticket',
+          '/api/preview',
+          '/api/checks',
+          '/api/show',
+          '/api/open',
+          '/api/redo',
+        ]
+        for (const path of writes) {
+          await fetch(board + path, {
+            method: 'POST',
+            mode: 'no-cors',
+            credentials: 'include',
+            headers: { 'content-type': 'text/plain' },
+            body: '{}',
+          }).catch(() => {})
+        }
+
+        const form = document.createElement('form')
+        form.method = 'post'
+        form.enctype = 'text/plain'
+        form.action = board + '/api/undo'
+        form.target = 'sink'
+        document.body.append(form)
+        form.submit()
+
+        document.body.dataset.socket = await new Promise((resolve) => {
+          const socket = new WebSocket(board.replace('http', 'ws') + '/api/live')
+          socket.onopen = () => resolve('open')
+          socket.onerror = () => resolve('refused')
+        })
+
+        for (const src of [
+          board + '/frames/studio/home/mobile.html',
+          board + '/frameboard/kits/evil/notes.html',
+        ]) {
+          const embed = document.createElement('iframe')
+          embed.src = src
+          document.body.append(embed)
+        }
+        document.body.dataset.done = ''
+      })()
+    </script>
+  </body>
+</html>

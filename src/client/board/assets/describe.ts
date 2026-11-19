@@ -1,3 +1,4 @@
+import { heldFramePath } from '@/client/live/frame-url'
 import type { AssetFile } from '@/shared/records/assets'
 
 const KIND_LABELS: Record<AssetFile['kind'], string> = {
@@ -68,10 +69,12 @@ export function linkPath(path: string): string {
   return `../assets/${path.split('/').map(encodeURIComponent).join('/')}`
 }
 
-/** Where the frame route serves a project's asset from, for a thumbnail. */
+/** Where the frame port serves a project's asset from, for a thumbnail. */
 export function assetUrl(project: string, path: string): string {
   const segments = path.split('/').map(encodeURIComponent).join('/')
-  return `/frames/${encodeURIComponent(project)}/assets/${segments}`
+  return heldFramePath(
+    `/frames/${encodeURIComponent(project)}/assets/${segments}`,
+  )
 }
 
 /**

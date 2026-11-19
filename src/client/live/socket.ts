@@ -27,6 +27,7 @@ import {
   receiveClaims,
   receiveDisconnect,
   receiveFindings,
+  receiveFrames,
   receiveHistory,
   receiveListeners,
   receiveNotes,
@@ -94,7 +95,9 @@ export function connectLive(
     })
     socket.addEventListener('message', (event) => {
       const message = JSON.parse(String(event.data)) as ServerMessage
-      if (message.type === 'board') {
+      if (message.type === 'frames') {
+        receiveFrames(store, message.port)
+      } else if (message.type === 'board') {
         receiveBoard(store, message.data)
         pruneUnseen(unseen, message.data)
       } else if (message.type === 'changes') {

@@ -15,6 +15,7 @@ import { VIEWER_FILE } from '@/shared/model-viewer'
 import type { ListResult } from '@/shared/records/list'
 
 import type { CaptureCase } from '../types'
+import { probeFrames, type ProbeWindow } from './frame-probe'
 import {
   asWriter,
   AVATAR,
@@ -140,8 +141,11 @@ async function modelOnHero(page: Page): Promise<void> {
  * bytes selects nothing, so the press repeats rather than trusting one.
  */
 async function modelSelected(page: Page): Promise<void> {
+  await probeFrames(page, ['model-viewer'], PRESS_FRAMES)
   await page.addInitScript(
     ({ frames, gap }) => {
+      if (window !== window.top) return
+      const { frameReport } = window as unknown as ProbeWindow
       let left = frames
       let wait = 0
       const pick = () => {
@@ -155,7 +159,7 @@ async function modelSelected(page: Page): Promise<void> {
         const shown = document.querySelector('[data-frame="webapp/home/hero"]')
         const iframe = shown?.querySelector('iframe')
         const model = iframe?.dataset.renderedAt
-          ? iframe.contentDocument?.querySelector('model-viewer')
+          ? frameReport(iframe)?.elements['model-viewer']
           : null
         const hit = document.querySelector('[data-hit-layer]')
         const layer = [
@@ -166,7 +170,7 @@ async function modelSelected(page: Page): Promise<void> {
         wait = gap
         const k = Number(layer.style.getPropertyValue('--zoom') || 1)
         const frame = shown.getBoundingClientRect()
-        const inner = model.getBoundingClientRect()
+        const inner = model
         const at = {
           bubbles: true,
           cancelable: true,
@@ -224,8 +228,11 @@ async function turningModel(page: Page): Promise<void> {
  * paused there, since the Held chip draws before the seek lands.
  */
 async function heldMidway(page: Page): Promise<void> {
+  await probeFrames(page, [], PRESS_FRAMES)
   await page.addInitScript(
     ({ frames }) => {
+      if (window !== window.top) return
+      const { frameReport } = window as unknown as ProbeWindow
       let left = frames
       let set = false
       const step = () => {
@@ -244,7 +251,7 @@ async function heldMidway(page: Page): Promise<void> {
         const hero = document.querySelector<HTMLIFrameElement>(
           '[data-frame="webapp/home/hero"] > iframe',
         )
-        const animation = hero?.contentDocument?.getAnimations()[0]
+        const animation = hero ? frameReport(hero)?.animation : null
         if (
           set &&
           animation?.playState === 'paused' &&
@@ -269,12 +276,12 @@ async function heldMidway(page: Page): Promise<void> {
 async function slideFinished(page: Page): Promise<void> {
   await page.addInitScript(
     ({ frames }) => {
+      // Run in the hero frame itself, which sits on its own port.
+      if (window === window.top) return
+      if (!location.pathname.endsWith('/webapp/home/hero.html')) return
       let left = frames
       const step = () => {
-        const hero = document.querySelector<HTMLIFrameElement>(
-          '[data-frame="webapp/home/hero"] > iframe',
-        )
-        const animations = hero?.contentDocument?.getAnimations() ?? []
+        const animations = document.getAnimations()
         if (animations.length > 0) {
           for (const animation of animations) animation.finish()
           return

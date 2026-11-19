@@ -9,6 +9,12 @@ import {
   PopoverTrigger,
 } from '@/client/components/ui/popover'
 import { cn } from '@/client/lib/cn'
+import {
+  FRAME_ALLOW,
+  frameAloneUrl,
+  framePageUrl,
+  useFramePort,
+} from '@/client/live/frame-url'
 import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
@@ -18,7 +24,6 @@ import {
   useFrameTheme,
   useShownTheme,
 } from '@/client/theme/store'
-import { frameUrl } from '@/shared/board-urls'
 import {
   BEZELS,
   pageCorners,
@@ -31,7 +36,7 @@ import { referenceHeight } from '@/shared/frame-sizes'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
-import { frameThemeUrl, type Theme } from '@/shared/theme'
+import type { Theme } from '@/shared/theme'
 
 import { request } from './bridge/channel'
 import { followPage, shownHashOf } from './bridge/shown'
@@ -131,13 +136,19 @@ export const Frame = memo(function Frame({
   if (loaded.version !== version || loaded.live !== live) {
     setLoaded({ ref: frame.ref, version, live })
   }
+  const framePort = useFramePort()
   // Not on a theme change, which rewrites the root rather than restart the frame.
   const src = useMemo(
     () =>
       loaded.live
-        ? frameThemeUrl(loaded.ref, frameTheme(loaded.ref), loaded.version)
+        ? framePageUrl(
+            framePort,
+            loaded.ref,
+            frameTheme(loaded.ref),
+            loaded.version,
+          )
         : null,
-    [loaded],
+    [loaded, framePort],
   )
 
   useThemeInFrame(iframe, theme, live)
@@ -345,6 +356,7 @@ export const Frame = memo(function Frame({
           ref={iframe}
           title={frame.name}
           src={src ?? undefined}
+          allow={FRAME_ALLOW}
           aria-busy={waiting || undefined}
           // A flipped frame with no background paints its own theme's color.
           style={{ colorScheme: theme, ...page }}
@@ -541,6 +553,8 @@ function OpenAlone({
   /** Board units past the frame's top right, the width of any device body. */
   inset: number
 }) {
+  const href = frameAloneUrl(useFramePort(), frameRef)
+  if (href === null) return null
   const label = `Open ${name} alone`
   return (
     <div
@@ -548,7 +562,7 @@ function OpenAlone({
       style={inset ? { bottom: `calc(100% + ${inset}px)`, right: -inset } : {}}
     >
       <a
-        href={frameUrl(frameRef)}
+        href={href}
         target="_blank"
         rel="noopener"
         data-label-control

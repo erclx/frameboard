@@ -162,6 +162,11 @@ export interface BridgeOps {
    * press there and pushing which one fired, answering whether it bound them.
    */
   keys: { args: KeyBindings; value: boolean; push: KeyFired }
+  /**
+   * Pushes `true` for every key pressed in the frame until closed, leaving the
+   * press to the page, so the board learns focus left the frame by a key.
+   */
+  'focus-keys': { args: Record<string, never>; value: boolean; push: true }
   /** The page's content height at its viewport, as the server's fit reads it, null for a page with no body. */
   'content-height': {
     args: Record<string, never>
@@ -393,6 +398,7 @@ const OPS: readonly string[] = [
   'controls-edits',
   'element-box',
   'element-boxes',
+  'focus-keys',
   'gap-at',
   'hide-controls',
   'hide-scrollbar',
@@ -564,6 +570,11 @@ const SCHEMAS: {
     }),
     value: z.boolean(),
     push: z.object({ key: z.string(), repeat: z.boolean() }),
+  },
+  'focus-keys': {
+    args: noArgsSchema,
+    value: z.boolean(),
+    push: z.literal(true),
   },
   'content-height': {
     args: noArgsSchema,

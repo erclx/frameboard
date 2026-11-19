@@ -9,6 +9,7 @@ import {
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
 import { liveLayer } from '../support/canvas'
+import { framePages, framesLoaded } from '../support/frames'
 import { undo } from '../support/history'
 
 test.describe('page structure by hand, and its undo', () => {
@@ -88,42 +89,29 @@ test.describe('page structure by hand, and its undo', () => {
     expect(pageOrder()).toEqual(['home', 'pricing'])
   })
 
+  const canvasFrames = (page: Page) => framePages(page, '[data-frame] iframe')
+
   // Marks each frame's window, so a later read tells a kept iframe from a reloaded one.
   async function markFrames(page: Page): Promise<number> {
-    const frames = page.locator('[data-frame] iframe')
-    await expect(frames).toHaveCount(2)
+    await expect(page.locator('[data-frame] iframe')).toHaveCount(2)
     await expect
-      .poll(() =>
-        frames.evaluateAll((all) =>
-          all.every(
-            (frame) =>
-              (frame as HTMLIFrameElement).contentDocument?.readyState ===
-              'complete',
-          ),
-        ),
-      )
+      .poll(() => framesLoaded(page, '[data-frame] iframe'))
       .toBe(true)
-    return frames.evaluateAll((all) => {
-      for (const frame of all) {
-        const view = (frame as HTMLIFrameElement).contentWindow
-        if (view) Object.assign(view, { kept: true })
-      }
-      return all.length
-    })
+    const frames = await canvasFrames(page)
+    for (const frame of frames) {
+      await frame?.evaluate(() => Object.assign(window, { kept: true }))
+    }
+    return frames.length
   }
 
   /** How many frames on the canvas still hold the mark `markFrames` set. */
-  function keptFrames(page: Page): Promise<number> {
-    return page
-      .locator('[data-frame] iframe')
-      .evaluateAll(
-        (all) =>
-          all.filter(
-            (frame) =>
-              (frame as HTMLIFrameElement).contentWindow &&
-              'kept' in ((frame as HTMLIFrameElement).contentWindow ?? {}),
-          ).length,
-      )
+  async function keptFrames(page: Page): Promise<number> {
+    const kept = await Promise.all(
+      (await canvasFrames(page)).map((frame) =>
+        frame?.evaluate(() => 'kept' in window).catch(() => false),
+      ),
+    )
+    return kept.filter(Boolean).length
   }
 
   /** The `src` of every frame on the canvas, which a reload changes at once. */

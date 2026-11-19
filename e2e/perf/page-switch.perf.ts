@@ -11,6 +11,7 @@ import { join } from 'node:path'
 import { expect, type Page, test } from '@playwright/test'
 
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { framesLoaded } from '../support/frames'
 
 /** The two page sizes the switch is timed between, the larger the heaviest page the probe measured. */
 const PAGES = { forty: 40, seventy: 74 } as const
@@ -79,17 +80,9 @@ async function waitForSettledPage(page: Page, name: PageName): Promise<void> {
   })
   await expect
     .poll(
-      () =>
-        page.evaluate((count) => {
-          const iframes = [...document.querySelectorAll('iframe')]
-          return (
-            iframes.length > 0 &&
-            iframes.length <= count &&
-            iframes.every(
-              (iframe) => iframe.contentDocument?.readyState === 'complete',
-            )
-          )
-        }, PAGES[name]),
+      async () =>
+        (await page.locator('iframe').count()) <= PAGES[name] &&
+        (await framesLoaded(page)),
       { timeout: 30_000 },
     )
     .toBe(true)

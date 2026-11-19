@@ -405,18 +405,65 @@ async function tunerHero(page: Page): Promise<void> {
 }
 
 /**
+ * The hero frame's half of a slider capture, run in the frame on its own
+ * port. It tells the board once the frame holds a slider, then on the board's
+ * word moves the slider to 130 or presses Esc on it.
+ */
+async function answerInHero(page: Page, act: 'slide' | 'esc'): Promise<void> {
+  await page.addInitScript(
+    ({ frames, act }) => {
+      if (window === window.top) return
+      if (!location.pathname.endsWith('/webapp/home/hero.html')) return
+      const control = () =>
+        document.querySelector<HTMLInputElement>('[data-binds]')
+      addEventListener('message', (event) => {
+        const field = control()
+        if (event.source !== parent || event.data !== `capture:${act}`) return
+        if (!field) return
+        if (act === 'slide') {
+          field.value = '130'
+          field.dispatchEvent(new Event('input', { bubbles: true }))
+          return
+        }
+        field.focus()
+        field.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'Escape',
+            code: 'Escape',
+            bubbles: true,
+            cancelable: true,
+          }),
+        )
+      })
+      let left = frames
+      const announce = () => {
+        if (control()) parent.postMessage('capture:control', '*')
+        else if (--left > 0) requestAnimationFrame(announce)
+      }
+      document.addEventListener('DOMContentLoaded', announce)
+    },
+    { frames: PRESS_FRAMES, act },
+  )
+}
+
+/**
  * Enters hero in Play and drags its first slider so Keep values draws. Play is
  * pressed late, since the loading chrome's Play does nothing, and a reload resets.
+ * The hero frame sits on its own port, so its half of the script moves the slider.
  */
 async function slideOnLoad(page: Page): Promise<void> {
+  await answerInHero(page, 'slide')
   await page.addInitScript((frames) => {
+    if (window !== window.top) return
     let left = frames
+    let control = false
+    addEventListener('message', (event) => {
+      if (event.data === 'capture:control') control = true
+    })
     const slide = () => {
       const iframe = document.querySelector<HTMLIFrameElement>(
         '[data-frame="webapp/home/hero"] iframe',
       )
-      const control =
-        iframe?.contentDocument?.querySelector<HTMLInputElement>('[data-binds]')
       const shield = document.querySelector('[data-play-shield]')
       const entered = document.body?.textContent?.includes(
         'In frame, Esc to leave',
@@ -435,9 +482,8 @@ async function slideOnLoad(page: Page): Promise<void> {
             clientY: box.top + box.height / 2,
           }),
         )
-      } else if (control && entered && !bar) {
-        control.value = '130'
-        control.dispatchEvent(new Event('input', { bubbles: true }))
+      } else if (iframe && control && entered && !bar) {
+        iframe.contentWindow?.postMessage('capture:slide', '*')
       }
       if (--left > 0) requestAnimationFrame(slide)
       else if (!bar) console.error('No slider in the entered hero to move')
@@ -448,19 +494,23 @@ async function slideOnLoad(page: Page): Promise<void> {
 
 /**
  * Enters hero in Play, focuses its first slider, and presses Esc there, marking
- * the root `data-esc-left` once the frame is left with Play still on.
+ * the root `data-esc-left` once the frame is left with Play still on. The
+ * hero frame's half of the script presses the key.
  */
 async function escFromSliderOnLoad(page: Page): Promise<void> {
+  await answerInHero(page, 'esc')
   await page.addInitScript((frames) => {
+    if (window !== window.top) return
     let left = frames
     let pressed = false
+    let control = false
+    addEventListener('message', (event) => {
+      if (event.data === 'capture:control') control = true
+    })
     const leave = () => {
       const iframe = document.querySelector<HTMLIFrameElement>(
         '[data-frame="webapp/home/hero"] iframe',
       )
-      const inner = iframe?.contentWindow as typeof window | null | undefined
-      const control =
-        iframe?.contentDocument?.querySelector<HTMLInputElement>('[data-binds]')
       const shield = document.querySelector('[data-play-shield]')
       const entered = document.body?.textContent?.includes(
         'In frame, Esc to leave',
@@ -478,16 +528,8 @@ async function escFromSliderOnLoad(page: Page): Promise<void> {
             clientY: box.top + box.height / 2,
           }),
         )
-      } else if (inner && control && entered && !pressed) {
-        control.focus()
-        control.dispatchEvent(
-          new inner.KeyboardEvent('keydown', {
-            key: 'Escape',
-            code: 'Escape',
-            bubbles: true,
-            cancelable: true,
-          }),
-        )
+      } else if (iframe && control && entered && !pressed) {
+        iframe.contentWindow?.postMessage('capture:esc', '*')
         pressed = true
       } else if (pressed && shield && !entered) {
         document.documentElement.dataset.escLeft = ''

@@ -522,11 +522,30 @@ describe('Frame', () => {
     })
   })
 
+  it('loads its page from the frame port the socket handed over', () => {
+    liveStore.setState({ framePort: 47123 })
+
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+
+    expect(iframeOf(container, 'a').getAttribute('src')).toBe(
+      `http://${location.hostname}:47123/frames/studio/home/a.html?theme=light&v=0`,
+    )
+  })
+
+  it('loads no page and links no page alone before the frame port arrives', () => {
+    liveStore.setState({ framePort: null })
+
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+
+    expect(iframeOf(container, 'a').hasAttribute('src')).toBe(false)
+    expect(container.querySelector('a[aria-label="Open a alone"]')).toBeNull()
+  })
+
   it('loads its frame url with its reload counter', () => {
     const { container } = render(<Pair a={2} b={0} />)
 
     expect(iframeOf(container, 'a').getAttribute('src')).toBe(
-      '/frames/studio/home/a.html?theme=light&v=2',
+      `${location.origin}/frames/studio/home/a.html?theme=light&v=2`,
     )
   })
 
@@ -555,7 +574,7 @@ describe('Frame', () => {
     )
 
     expect(container.querySelector('iframe')?.getAttribute('src')).toBe(
-      '/frames/studio/home/a.html?theme=light&v=0',
+      `${location.origin}/frames/studio/home/a.html?theme=light&v=0`,
     )
   })
 
@@ -569,7 +588,7 @@ describe('Frame', () => {
     rerender(<Frame frame={renamed} live version={1} />)
 
     expect(container.querySelector('iframe')?.getAttribute('src')).toBe(
-      '/frames/studio/start/a.html?theme=light&v=1',
+      `${location.origin}/frames/studio/start/a.html?theme=light&v=1`,
     )
   })
 
@@ -1009,7 +1028,7 @@ describe('Frame theme', () => {
     rerender(<Frame frame={frame('a')} live version={1} />)
 
     expect(iframeOf(container, 'a').getAttribute('src')).toBe(
-      '/frames/studio/home/a.html?theme=dark&v=1',
+      `${location.origin}/frames/studio/home/a.html?theme=dark&v=1`,
     )
   })
 
@@ -1175,7 +1194,7 @@ describe('Frame open-alone link', () => {
 
     expect(link(container)).toHaveAttribute(
       'href',
-      '/frames/studio/home/a.html',
+      `${location.origin}/frames/studio/home/a.html`,
     )
     expect(link(container)).toHaveAttribute('target', '_blank')
     expect(link(container)).toHaveAttribute('rel', 'noopener')

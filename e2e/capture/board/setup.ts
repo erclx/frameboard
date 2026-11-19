@@ -6,6 +6,8 @@ import { type Page } from '@playwright/test'
 import { scanBoard } from '@/server/board/scan'
 import type { FrameChange } from '@/shared/records/changes'
 
+import { probeFrames, type ProbeWindow } from './frame-probe'
+
 /**
  * The board the preview serves, under the checkout `CANON_PREVIEW_ROOT`
  * names as `scripts/preview.ts` reads it, so a run against a copy outside the
@@ -497,6 +499,8 @@ export function readyWhen(
     })
     await page.addInitScript(
       ({ target, missing, frames }) => {
+        // A frame's held image would hold the load that stamps its iframe.
+        if (window !== window.top) return
         let left = frames
         const painted = () =>
           requestAnimationFrame(() =>
@@ -545,14 +549,17 @@ export function readyWhen(
  * layers rows opened down to it.
  */
 export async function headlineOnHero(page: Page): Promise<void> {
+  await probeFrames(page, ['h1'], PRESS_FRAMES)
   await page.addInitScript((frames) => {
+    if (window !== window.top) return
+    const { frameReport } = window as unknown as ProbeWindow
     let left = frames
     const pick = () => {
       const hero = document.querySelector('[data-frame="webapp/home/hero"]')
       const iframe = hero?.querySelector('iframe')
       // A frame names the file it shows only once its load has stamped it.
       const heading = iframe?.dataset.renderedAt
-        ? iframe.contentDocument?.querySelector('h1')
+        ? frameReport(iframe)?.elements.h1
         : null
       const hit = document.querySelector('[data-hit-layer]')
       const layer = document.querySelector<HTMLElement>('[data-layer]')
@@ -563,7 +570,7 @@ export async function headlineOnHero(page: Page): Promise<void> {
       }
       const k = Number(layer.style.getPropertyValue('--zoom') || 1)
       const frame = hero.getBoundingClientRect()
-      const inner = heading.getBoundingClientRect()
+      const inner = heading
       const at = {
         bubbles: true,
         cancelable: true,
@@ -589,14 +596,17 @@ export function elementInFrame(
   low = false,
 ): (page: Page) => Promise<void> {
   return async (page) => {
+    await probeFrames(page, [selector], PRESS_FRAMES)
     await page.addInitScript(
       ({ owner, target, frames, low }) => {
+        if (window !== window.top) return
+        const { frameReport } = window as unknown as ProbeWindow
         let left = frames
         const pick = () => {
           const shown = document.querySelector(`[data-frame="${owner}"]`)
           const iframe = shown?.querySelector('iframe')
           const element = iframe?.dataset.renderedAt
-            ? iframe.contentDocument?.querySelector(target)
+            ? frameReport(iframe)?.elements[target]
             : null
           const hit = document.querySelector('[data-hit-layer]')
           // The page just left stays mounted and hidden, so check the shown layer.
@@ -608,10 +618,9 @@ export function elementInFrame(
           const decoded =
             layer !== null &&
             !layer.hasAttribute('data-staging') &&
-            [...document.querySelectorAll('iframe')].every((each) =>
-              [
-                ...(each.contentDocument?.querySelectorAll('video') ?? []),
-              ].every((video) => video.readyState >= 2),
+            [...document.querySelectorAll('iframe')].every(
+              // A frame yet to report shows no video, as a blank page does.
+              (each) => frameReport(each)?.videosDecoded !== false,
             )
           if (!shown || !element || !hit || !layer || !decoded) {
             if (--left > 0) requestAnimationFrame(pick)
@@ -620,7 +629,7 @@ export function elementInFrame(
           }
           const k = Number(layer.style.getPropertyValue('--zoom') || 1)
           const frame = shown.getBoundingClientRect()
-          const inner = element.getBoundingClientRect()
+          const inner = element
           const at = {
             bubbles: true,
             cancelable: true,

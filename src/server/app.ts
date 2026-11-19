@@ -70,6 +70,8 @@ export interface AppOptions {
   root: string
   /** The port the server bound, read per request since it is known only once listening. */
   port: () => number
+  /** The frame listener's port, which a frame path on this port is sent to. */
+  framePort: () => number
   /** What the API's write routes do. */
   actions: BoardActions
   /** The single-use tickets the redeem route trades for the board's cookie. */
@@ -114,6 +116,7 @@ export function createApp({
   clientDir,
   root,
   port,
+  framePort,
   actions,
   tickets,
   openRoute,
@@ -188,7 +191,14 @@ export function createApp({
   if (checks) app.route('/', checkRoutes(actions.access, checks))
   if (thumbnails) app.route('/', thumbnailRoutes(root, thumbnails))
   if (preview) app.route('/', previewRoutes(root, actions.access, preview))
-  app.route('/', frames.routes)
+  // A frame page here would write as the board, so frames redirect away.
+  app.route('/', frames.lookRoutes)
+  app.on(['GET', 'HEAD'], '/frames/*', (c) => {
+    const url = new URL(c.req.url)
+    url.port = String(framePort())
+    return c.redirect(url.href, 307)
+  })
+  app.all('/frames/*', (c) => c.notFound())
   app.use('*', serveStatic({ root: clientDir }))
   // A board route reloaded in the browser gets the client, which routes it.
   app.get(

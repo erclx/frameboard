@@ -111,7 +111,10 @@ describe('AssetsTab', () => {
     await screen.findByText('assets/ · 5 files')
 
     const image = container.querySelector('img[src$="hero.png"]')
-    expect(image).toHaveAttribute('src', '/frames/my%20studio/assets/hero.png')
+    expect(image).toHaveAttribute(
+      'src',
+      `${location.origin}/frames/my%20studio/assets/hero.png`,
+    )
     expect(image).toHaveAttribute('loading', 'lazy')
   })
 
