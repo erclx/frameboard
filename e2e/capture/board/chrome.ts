@@ -153,6 +153,38 @@ async function kitAssets(page: Page): Promise<void> {
   ])
 }
 
+/** Answers a file's frames read with these refs, so Delete's confirm names them without a write. */
+function linkingFrames(frames: string[]): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.route('**/api/projects/*/assets/*', (route) =>
+      route.fulfill({
+        json: { ok: true, data: { path: 'hero.png', frames } },
+      }),
+    )
+  }
+}
+
+/** Presses the open menu's item reading `label` once it draws. */
+function menuItemOnLoad(label: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ label, frames }) => {
+        let left = frames
+        const press = () => {
+          const item = [
+            ...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+          ].find((candidate) => candidate.textContent?.trim() === label)
+          if (item) item.click()
+          else if (--left > 0) requestAnimationFrame(press)
+          else console.error(`No ${label} item`)
+        }
+        document.addEventListener('DOMContentLoaded', press)
+      },
+      { label, frames: PRESS_FRAMES },
+    )
+  }
+}
+
 async function answerAssets(page: Page, files: unknown[]): Promise<void> {
   await page.route('**/api/projects/*/assets', (route) =>
     route.fulfill({ json: { ok: true, data: { files } } }),
@@ -740,6 +772,60 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
           countedAssets,
           leftTab('Assets'),
           readyWhen('[data-video-length]'),
+        ),
+      ),
+    },
+    {
+      section: 'assets-menu',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          countedAssets,
+          asWriter,
+          leftTab('Assets'),
+          pointerPressOnLoad('button[aria-label="Actions for hero.png"]'),
+          readyWhen('[role="menu"] [role="menuitem"]'),
+        ),
+      ),
+    },
+    {
+      section: 'assets-rename',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          countedAssets,
+          asWriter,
+          leftTab('Assets'),
+          pointerPressOnLoad('button[aria-label="Actions for hero.png"]'),
+          menuItemOnLoad('Rename'),
+          readyWhen('input[aria-label="Rename hero.png"]'),
+        ),
+      ),
+    },
+    {
+      section: 'assets-delete',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          countedAssets,
+          linkingFrames(['webapp/home/hero', 'webapp/home/about']),
+          asWriter,
+          leftTab('Assets'),
+          pointerPressOnLoad('button[aria-label="Actions for hero.png"]'),
+          menuItemOnLoad('Delete'),
+          readyWhen('[role="dialog"] [data-slot="dialog-footer"]'),
         ),
       ),
     },
