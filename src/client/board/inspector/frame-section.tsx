@@ -430,9 +430,19 @@ const POSE_NAMES = {
   open: 'Open',
 } as const satisfies Record<Pose, string>
 
+/**
+ * The device a frame's width picks, its upright width while turned, which
+ * the record names while the device shows, since a turned box is wider.
+ */
+function widthDevice(frame: FrameRecord): Device | null {
+  return frame.device && frame.device !== 'foldable'
+    ? frame.device
+    : deviceForWidth(frame.box.width)
+}
+
 /** The device a frame's width picks, as the row names it. */
-function widthDeviceName({ box }: FrameRecord): string {
-  const device = deviceForWidth(box.width)
+function widthDeviceName(frame: FrameRecord): string {
+  const device = widthDevice(frame)
   return device ? DEVICE_NAMES[device] : 'No device fits'
 }
 
@@ -476,7 +486,7 @@ function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
     write: (refs, picked) => calls.setIsland(refs, picked ? 'wide' : 'compact'),
   })
   const phones = frames.every(
-    (frame) => !frame.pose && deviceForWidth(frame.box.width) === 'phone',
+    (frame) => !frame.pose && widthDevice(frame) === 'phone',
   )
 
   return (
