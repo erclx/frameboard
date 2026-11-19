@@ -14,6 +14,7 @@ import {
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { undo } from '../support/history'
 
 const HERO = 'webapp/home/hero'
 const ROW =
@@ -227,6 +228,112 @@ test.describe('video and audio placed by hand', () => {
           '<audio data-name="voice.ogg" src="../assets/voice.ogg" controls style="width: 300px"></audio><div data-name="Two"',
         ),
       )
+  })
+})
+
+test.describe('an asset renamed, replaced, and deleted from its tile menu', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  const at = (path: string) => join(board.root, 'webapp', path)
+  const hero = () => readFileSync(at('home/hero.html'), 'utf8')
+
+  test.beforeEach(async () => {
+    board = copyFixtureBoard('basic')
+    mkdirSync(at('assets'), { recursive: true })
+    copyFileSync(
+      join(board.root, 'marketing/assets/tile.png'),
+      at('assets/lake.png'),
+    )
+    writeFileSync(
+      at('home/hero.html'),
+      hero().replace(
+        '</h1>',
+        '</h1>\n    <img src="../assets/lake.png" alt="Lake">',
+      ),
+    )
+    server = await serveBoard(board.root)
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  async function openMenu(page: Page) {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    await page.getByRole('tab', { name: 'Assets' }).click()
+    await page
+      .getByRole('button', { name: /^Copy path of lake\.png/ })
+      .click({ button: 'right' })
+    return page.getByRole('menu')
+  }
+
+  test('a rename moves the file and points the frame linking it at the new name', async ({
+    page,
+  }) => {
+    const menu = await openMenu(page)
+
+    await menu.getByRole('menuitem', { name: 'Rename' }).click()
+    const field = page.getByRole('textbox', { name: 'Rename lake.png' })
+    await expect(field).toHaveValue('lake')
+    await field.fill('shore')
+    await field.press('Enter')
+
+    await expect.poll(() => existsSync(at('assets/shore.png'))).toBe(true)
+    expect(existsSync(at('assets/lake.png'))).toBe(false)
+    await expect
+      .poll(hero)
+      .toContain('<img src="../assets/shore.png" alt="Lake">')
+    await expect(
+      page.getByRole('button', { name: /^Copy path of shore\.png/ }),
+    ).toBeVisible()
+  })
+
+  test('a replace writes the picked bytes under the same path and reloads the thumbnail', async ({
+    page,
+  }) => {
+    const menu = await openMenu(page)
+    const chooser = page.waitForEvent('filechooser')
+
+    await menu.getByRole('menuitem', { name: 'Replace file…' }).click()
+    await (
+      await chooser
+    ).setFiles({
+      name: 'sunset.png',
+      mimeType: 'image/png',
+      buffer: readFileSync(
+        join(board.root, 'marketing/assets/tile.png'),
+      ).subarray(0, 64),
+    })
+
+    await expect.poll(() => readFileSync(at('assets/lake.png')).length).toBe(64)
+    await expect(
+      page
+        .getByRole('button', { name: /^Copy path of lake\.png/ })
+        .locator('img'),
+    ).toHaveAttribute('src', /lake\.png\?v=1$/)
+  })
+
+  test('a delete asks first naming the frame linking it, and one undo brings the file back', async ({
+    page,
+  }) => {
+    const menu = await openMenu(page)
+
+    await menu.getByRole('menuitem', { name: 'Delete' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Delete lake.png?' })
+    await expect(dialog).toContainText('Its link in home / hero breaks')
+    await dialog.getByRole('button', { name: 'Delete' }).click()
+    await expect.poll(() => existsSync(at('assets/lake.png'))).toBe(false)
+    await expect(page.getByText('assets/ · 0 files')).toBeVisible()
+
+    await undo(page)
+
+    await expect.poll(() => existsSync(at('assets/lake.png'))).toBe(true)
+    await expect(
+      page.getByRole('button', { name: /^Copy path of lake\.png/ }),
+    ).toBeVisible()
   })
 })
 
