@@ -386,7 +386,7 @@ describe('placeFile', () => {
       },
     )
 
-    // Capped at the main's 400px, a 1600 by 900 photo lands at 400 by 225, placed free.
+    // Capped at the 350px left to the frame's right edge, a 1600 by 900 photo lands at 350 by 197, placed free.
     expect(sent).toEqual([
       {
         ref: HERO.ref,
@@ -396,10 +396,70 @@ describe('placeFile', () => {
         element: {
           kind: 'asset',
           path: 'photos/hero.png',
-          width: 400,
-          height: 225,
+          width: 350,
+          height: 197,
         },
         at: { left: 50, top: 30, orFlow: true },
+      },
+    ])
+  })
+
+  it('fits an image dropped near the right edge inside the frame at its ratio', async () => {
+    const container = await mount(COLUMN)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 5, hash: ANSWERED },
+    })
+
+    await placeFile(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 360, y: HERO.box.y + 30 },
+      PHOTO,
+      {
+        selection: createSelectionStore(),
+        mode: createModeStore(1280),
+        live: createLiveStore(),
+        send,
+        measure: async () => ({ width: 1023, height: 768 }),
+      },
+    )
+
+    expect(sent).toMatchObject([
+      {
+        element: { kind: 'asset', width: 40, height: 30 },
+        at: { left: 360, top: 30 },
+      },
+    ])
+  })
+
+  it('steps a drop at the very edge back so its smallest size lands inside', async () => {
+    const container = await mount(COLUMN)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, index: 5, hash: ANSWERED },
+    })
+
+    await placeFile(
+      container,
+      'studio/home',
+      [HERO],
+      { x: HERO.box.x + 390, y: HERO.box.y + 30 },
+      PHOTO,
+      {
+        selection: createSelectionStore(),
+        mode: createModeStore(1280),
+        live: createLiveStore(),
+        send,
+        measure: async () => ({ width: 400, height: 400 }),
+      },
+    )
+
+    expect(sent).toMatchObject([
+      {
+        element: { kind: 'asset', width: 24, height: 24 },
+        at: { left: 376, top: 30 },
       },
     ])
   })

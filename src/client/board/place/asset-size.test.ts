@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { naturalSize, placedSize } from './asset-size'
+import { fitFromPointer, naturalSize, placedSize } from './asset-size'
 
 const svg = (attributes: string) =>
   `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" ${attributes}></svg>`)}`
@@ -14,6 +14,13 @@ async function pixelPng(width: number, height: number): Promise<string> {
 }
 
 describe('placedSize', () => {
+  it('caps a tall file at the height of room with its ratio kept', () => {
+    expect(placedSize({ width: 1000, height: 800 }, 1440, 400)).toEqual({
+      width: 500,
+      height: 400,
+    })
+  })
+
   it('keeps a file narrower than its container at its natural size', () => {
     expect(placedSize({ width: 320, height: 180 }, 600)).toEqual({
       width: 320,
@@ -115,5 +122,50 @@ describe('naturalSize', () => {
 
   it('answers null for a video whose metadata never loads', async () => {
     expect(await naturalSize('/nothing-here.mp4', 'video', 200)).toBeNull()
+  })
+})
+
+describe('fitFromPointer', () => {
+  it('keeps a file that fits past the pointer whole and in place', () => {
+    expect(
+      fitFromPointer({ width: 320, height: 180 }, 1440, { x: 600, y: 400 }),
+    ).toEqual({ size: { width: 320, height: 180 }, back: { x: 0, y: 0 } })
+  })
+
+  it('caps a file by the width left to the right edge', () => {
+    expect(
+      fitFromPointer({ width: 1023, height: 768 }, 1440, { x: 432, y: 900 }),
+    ).toEqual({ size: { width: 432, height: 324 }, back: { x: 0, y: 0 } })
+  })
+
+  it('caps a file by the height left to the bottom edge', () => {
+    expect(
+      fitFromPointer({ width: 1023, height: 768 }, 1440, { x: 1200, y: 192 }),
+    ).toEqual({ size: { width: 256, height: 192 }, back: { x: 0, y: 0 } })
+  })
+
+  it('caps a file by the container width before the edge', () => {
+    expect(
+      fitFromPointer({ width: 1000, height: 500 }, 300, { x: 900, y: 900 }),
+    ).toEqual({ size: { width: 300, height: 150 }, back: { x: 0, y: 0 } })
+  })
+
+  it('lands 40 pixels wide where only 40 are left', () => {
+    expect(
+      fitFromPointer({ width: 1023, height: 768 }, 1440, { x: 40, y: 900 }),
+    ).toEqual({ size: { width: 40, height: 30 }, back: { x: 0, y: 0 } })
+  })
+
+  it('caps the fallback a model takes the same way', () => {
+    expect(fitFromPointer(null, 1440, { x: 120, y: 900 })).toEqual({
+      size: { width: 120, height: 68 },
+      back: { x: 0, y: 0 },
+    })
+  })
+
+  it('shifts back from an edge with under 24 pixels left, landing at its smallest', () => {
+    expect(
+      fitFromPointer({ width: 400, height: 400 }, 1440, { x: 10, y: 4 }),
+    ).toEqual({ size: { width: 24, height: 24 }, back: { x: 14, y: 20 } })
   })
 })

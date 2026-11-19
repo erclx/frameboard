@@ -38,7 +38,12 @@ import {
   selectionStore,
 } from '../selection'
 import { canvasView } from '../view'
-import { type AssetSize, naturalSize, placedSize } from './asset-size'
+import {
+  type AssetSize,
+  fitFromPointer,
+  naturalSize,
+  placedSize,
+} from './asset-size'
 import type { FlowGuess } from './flow-guess'
 import { type FrameGap, gapUnder, moveGapUnder } from './gap'
 import { placesFree } from './tool'
@@ -92,20 +97,22 @@ export async function placeElement(
   const under = await gapUnder(container, frames, at)
   if (!under || (kind === 'asset' && !asset)) return null
   const { gap } = under
-  const spot =
-    kind !== 'divider' && placesFree(gap)
-      ? {
-          ...spotFor(kind, corner ?? at, under, !corner && !size),
-          // The gap chose a free spot on its own, so a parent that cannot take it joins the flow instead.
-          orFlow: true,
-        }
-      : undefined
+  const free = kind !== 'divider' && placesFree(gap)
+  const point = corner ?? at
+  const fit = free && asset && !size ? fitAt(asset.natural, point, under) : null
+  const spot = free
+    ? {
+        ...spotFor(kind, fit?.corner ?? point, under, !corner && !size),
+        // The gap chose a free spot on its own, so a parent that cannot take it joins the flow instead.
+        orFlow: true,
+      }
+    : undefined
   const element =
     kind === 'asset' && asset
       ? {
           kind,
           path: asset.path,
-          ...(size ?? placedSize(asset.natural, gap.room)),
+          ...(size ?? fit?.size ?? placedSize(asset.natural, gap.room)),
         }
       : kind === 'divider'
         ? { kind, vertical: gap.row }
@@ -135,6 +142,24 @@ export async function placeElement(
 }
 
 /**
+ * A file dropped free at `point`, fitted to its container and to the frame
+ * past the point, with the board corner it lands at once stepped back from
+ * an edge too near to hold it.
+ */
+export function fitAt(
+  natural: AssetSize | null,
+  point: BoardPoint,
+  { frame, gap }: FrameGap,
+): { size: AssetSize; corner: BoardPoint } {
+  const page = pageBox(frame.box, frame.device, frame.turn)
+  const { size, back } = fitFromPointer(natural, gap.room, {
+    x: page.x + page.width - point.x,
+    y: page.y + page.height - point.y,
+  })
+  return { size, corner: { x: point.x - back.x, y: point.y - back.y } }
+}
+
+/**
  * The `left` and `top` an element placed out of the flow at `point` takes,
  * against the box the gap's container anchors it to. A clicked shape centers
  * on the point, so it sits under the pointer.
@@ -158,7 +183,8 @@ function spotFor(
 /**
  * Places `file` into the frame under a board point as `placeElement` places
  * an asset, at the size a drag drew, else at its natural size read first,
- * capped at its container's width.
+ * capped at its container's width and, placed free, at the frame past the
+ * point.
  */
 export async function placeFile(
   container: ParentNode,
