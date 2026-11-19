@@ -233,6 +233,10 @@ describe.skipIf(shell === null)(
       faces = mkdtempSync(join(tmpdir(), 'frameboard-faces-'))
       board = writeBoard({
         'studio/home/hero.html': '<p>Hello</p>',
+        // A red line at the page's very top, on a green fill the status bar takes.
+        'studio/home/edge.html':
+          '<style>body{margin:0;background:rgb(0,128,0)}</style>' +
+          '<div style="height:10px;background:rgb(255,0,0)"></div>',
         // The body's red fill would show in the corner of a shot not isolated.
         'studio/home/badge.html':
           '<style>body{margin:0;background:red}</style>' +
@@ -313,6 +317,52 @@ describe.skipIf(shell === null)(
       expect(button).toEqual([42, 44, 49, 255])
     })
 
+    it("starts a phone page under a status bar in the page's fill, the box still its size", async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/edge',
+          box: { width: 200, height: 400 },
+          device: 'phone',
+        },
+        'light',
+      )
+      // The body's top is 16 down the PNG, the status bar 54 tall below it.
+      const bar = await pixelAt(requireShell(shell), bytes, 120, 16 + 50)
+      const line = await pixelAt(requireShell(shell), bytes, 120, 16 + 54 + 5)
+
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        240, 432,
+      ])
+      expect(bar).toEqual([0, 128, 0, 255])
+      expect(line).toEqual([255, 0, 0, 255])
+    })
+
+    it('starts a tablet page at its box top', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/edge',
+          box: { width: 600, height: 400 },
+          device: 'tablet',
+        },
+        'light',
+      )
+      const line = await pixelAt(requireShell(shell), bytes, 300, 44 + 5)
+
+      expect(line).toEqual([255, 0, 0, 255])
+    })
+
     it.each([
       ['compact', 255],
       ['wide', 5],
@@ -326,14 +376,14 @@ describe.skipIf(shell === null)(
       const bytes = await render(
         {
           ref: 'studio/home/hero',
-          box: { width: 200, height: 400 },
+          box: { width: 320, height: 568 },
           device: 'phone',
           island,
         },
         'light',
       )
-      // Inside the wide island's left end, past the compact one's, on the island's middle line.
-      const [shown] = await pixelAt(requireShell(shell), bytes, 63, 45)
+      // Inside the wide island's left end, past the compact one's and the time, on the island's middle line.
+      const [shown] = await pixelAt(requireShell(shell), bytes, 125, 45)
 
       expect(shown).toBe(red)
     })
