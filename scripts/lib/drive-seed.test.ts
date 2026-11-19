@@ -208,6 +208,7 @@ describe('the raw colors page', () => {
         'device',
         'fold',
         'phone-feed',
+        'widths',
         'hug',
       ],
     })
@@ -257,6 +258,7 @@ describe('the scroll feed page', () => {
         'device',
         'fold',
         'phone-feed',
+        'widths',
         'hug',
       ],
     })
@@ -546,6 +548,25 @@ describe('the Drives folder', () => {
 
     expect(seeded.folder).toBe('kept')
     expect(readdirSync(root)).not.toContain('drive-site')
+  })
+})
+
+describe('the extra width page', () => {
+  it('lays one desktop frame that also shows at 834', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.widths).toBe('laid')
+    expect(readJson('webapp/widths/layout.json')).toMatchObject({
+      frames: { panel: { widths: [{ width: 834, height: 1194 }] } },
+    })
+  })
+
+  it('leaves the page alone on a second seed', async () => {
+    await seedDrive(root, new Date())
+
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.widths).toBe('kept')
   })
 })
 
