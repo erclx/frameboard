@@ -102,6 +102,23 @@ async function tiltedHero(page: Page): Promise<void> {
   page.once('close', () => writeFileSync(path, original))
 }
 
+/**
+ * Serves hero with its headline padded on one axis, as the padding row writes a
+ * pair edit, and puts the file back once the page closes.
+ */
+async function paddedHero(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/hero.html')
+  const original = readFileSync(path, 'utf8')
+  writeFileSync(
+    path,
+    original.replace(
+      '<h1 data-name="Headline">',
+      '<h1 data-name="Headline" style="padding-left: 24px; padding-right: 24px">',
+    ),
+  )
+  page.once('close', () => writeFileSync(path, original))
+}
+
 /** The Model section once the viewer lists its clip, which it does only after the model draws. */
 const MODEL_READ =
   'section[aria-labelledby="inspector-model"] button[aria-label="Clip"]:not(:disabled)'
@@ -612,6 +629,24 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
           readyWhen(
             'body:has(#inspector-tilt):has(#inspector-selection-colors ~ ul li)',
           ),
+        ),
+      ),
+    },
+    {
+      section: 'element-padding',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      // Hero's headline padded 24 on its horizontal pair alone, its vertical pair at 0.
+      setup: themed(
+        both(
+          paddedHero,
+          noAgentChanges,
+          asWriter,
+          headlineOnHero,
+          readyWhen('#inspector-selection-colors ~ ul li'),
         ),
       ),
     },
