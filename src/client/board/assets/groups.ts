@@ -1,3 +1,4 @@
+import { PROJECT_KITS } from '@/shared/kits'
 import type { AssetFile } from '@/shared/records/assets'
 
 /** The kind filters above the tiles, in the order they draw. */
@@ -84,6 +85,29 @@ export function groupAssets(
   return [...groups]
     .map(([folder, grouped]) => ({ folder, files: grouped }))
     .sort((a, b) => byFolder(a.folder, b.folder))
+}
+
+const KITS_PREFIX = `${PROJECT_KITS}/`
+
+/**
+ * The files the Files view lists, leaving out each kit's own under
+ * `assets/kits/`, which the Theme tab manages, and how many kits those were.
+ */
+export function withoutKits(files: readonly AssetFile[]): {
+  files: AssetFile[]
+  kits: number
+} {
+  const kits = new Set<string>()
+  const kept: AssetFile[] = []
+  for (const file of files) {
+    if (!file.path.startsWith(KITS_PREFIX)) {
+      kept.push(file)
+      continue
+    }
+    const kit = file.path.slice(KITS_PREFIX.length).split('/')[0]
+    if (kit) kits.add(kit)
+  }
+  return { files: kept, kits: kits.size }
 }
 
 /** The part of a path before its last `/`, empty at the root. */

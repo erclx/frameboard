@@ -1,7 +1,16 @@
-import { Search } from 'lucide-react'
+import { ChevronDown, Search } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 
+import { ChromeMenuContent, MENU_ROW } from '@/client/board/chrome/menu'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/client/components/ui/dropdown-menu'
 import { Skeleton } from '@/client/components/ui/skeleton'
 import { useLive } from '@/client/live/store'
 import { BoardWriteError } from '@/client/live/write'
@@ -43,7 +52,7 @@ interface FindViewProps {
 
 /**
  * Find in the Assets tab: an Openverse search for public domain images,
- * widened to credited licenses by a switch. A newer search abandons an older
+ * widened to credited licenses from the filter menu in the search field. A newer search abandons an older
  * one, so an older answer never replaces a newer.
  */
 export function FindView({
@@ -113,46 +122,8 @@ export function FindView({
           onChange={(event) => setText(event.target.value)}
           className="min-w-0 flex-1 bg-transparent text-label font-normal outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
         />
+        <FilterMenu credited={credited} onCredited={widen} />
       </form>
-      <div
-        role="group"
-        aria-label="What to find"
-        className="flex flex-wrap gap-1 px-2 pb-1.5"
-      >
-        <button
-          type="button"
-          aria-pressed
-          className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-foreground px-2 text-[10px] text-background outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          Images
-        </button>
-        <button
-          type="button"
-          aria-pressed={false}
-          disabled
-          aria-describedby="find-models-later"
-          className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-muted px-2 text-[10px] text-muted-foreground disabled:opacity-60"
-        >
-          Models
-        </button>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={credited}
-        onClick={() => widen(!credited)}
-        className="mx-1.5 flex min-h-6 items-center justify-between gap-2 rounded-md px-1.5 pb-1.5 text-label font-normal text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
-      >
-        Include credited licenses
-        <span
-          aria-hidden
-          className={`relative h-[15px] w-[26px] shrink-0 rounded-full ${credited ? 'bg-primary' : 'bg-border'}`}
-        >
-          <span
-            className={`absolute top-0.5 size-[11px] rounded-full bg-card ${credited ? 'left-[13px]' : 'left-0.5'}`}
-          />
-        </span>
-      </button>
       <Body
         project={project}
         search={search}
@@ -167,10 +138,61 @@ export function FindView({
           void save({ project, result, query, credited }).catch(() => undefined)
         }
       />
-      <p id="find-models-later" className={FOOT}>
-        3D models arrive in a later release.
-      </p>
     </div>
+  )
+}
+
+/**
+ * The kind and the license choice, folded into one control at the end of the
+ * search field so results start right under it. Models stays off with its
+ * reason until model search ships.
+ */
+function FilterMenu({
+  credited,
+  onCredited,
+}: {
+  credited: boolean
+  onCredited: (next: boolean) => void
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label="Filter: Images"
+        className="-mr-1 flex h-5 shrink-0 items-center gap-0.5 rounded-[5px] px-1 text-label font-normal text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        Images
+        <ChevronDown aria-hidden className="size-2.5 text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <ChromeMenuContent align="end" sideOffset={6} className="w-[200px]">
+        <DropdownMenuRadioGroup value="images">
+          <DropdownMenuRadioItem value="images" className={MENU_ROW}>
+            Images
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem
+            value="models"
+            disabled
+            aria-describedby="find-models-later"
+            className={MENU_ROW}
+          >
+            Models
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+        <p
+          id="find-models-later"
+          className="px-2 pb-1 text-[10px] leading-[1.4] text-muted-foreground"
+        >
+          3D models arrive in a later release.
+        </p>
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
+          checked={credited}
+          onCheckedChange={onCredited}
+          className={MENU_ROW}
+        >
+          Include credited licenses
+        </DropdownMenuCheckboxItem>
+      </ChromeMenuContent>
+    </DropdownMenu>
   )
 }
 

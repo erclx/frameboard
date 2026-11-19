@@ -114,12 +114,53 @@ describe('reloadRefs', () => {
     ])
   })
 
-  it('reloads every frame in the project when an asset changed', async () => {
-    expect(await refsFor('studio/assets/dot.svg')).toEqual([
+  describe('a file under assets/', () => {
+    const PROJECT = [
       'studio/home/hero',
       'studio/home/mobile',
       'studio/pricing/plans',
-    ])
+    ]
+
+    it('reloads only the frame linking an image that changed', async () => {
+      expect(await refsFor('studio/assets/dot.svg')).toEqual([
+        'studio/home/hero',
+      ])
+    })
+
+    it('reloads no frame for a new image no frame links', async () => {
+      writeFileSync(join(board.root, 'studio/assets/lake.jpg'), 'jpg')
+
+      expect(await refsFor('studio/assets/lake.jpg')).toEqual([])
+    })
+
+    it('reloads a frame showing the image as a background from its own style', async () => {
+      writeFileSync(
+        join(board.root, 'studio/pricing/plans.html'),
+        '<div style="background: url(../assets/lake.jpg)"></div>',
+      )
+
+      expect(await refsFor('studio/assets/lake.jpg')).toEqual([
+        'studio/pricing/plans',
+      ])
+    })
+
+    it('reloads no frame for a license sidecar saved beside an image no frame links', async () => {
+      expect(
+        await refsFor(
+          'studio/assets/lake.jpg',
+          'studio/assets/lake.jpg.license.json',
+        ),
+      ).toEqual([])
+    })
+
+    it.each([
+      ['a stylesheet', 'studio/assets/shared.css'],
+      ['a script', 'studio/assets/menu.js'],
+      ['a font', 'studio/assets/brand.woff2'],
+      ["an image inside a kit's folder", 'studio/assets/kits/clean/paper.png'],
+    ])('reloads every frame in the project for %s', async (_case, path) => {
+      expect(await refsFor(path)).toEqual(PROJECT)
+    })
   })
 
   it.each([

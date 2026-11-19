@@ -67,3 +67,17 @@ describe('Thumbnail for a video', () => {
     expect(container.querySelector('video')).toBeNull()
   })
 })
+
+describe('Thumbnail for an image', () => {
+  it('leaves the drag to its tile, so a press on the picture starts no image drag', () => {
+    const { container } = render(
+      <Thumbnail
+        project="studio"
+        file={{ path: 'lake.jpg', kind: 'image', size: 2_000 }}
+        url="data:image/gif;base64,R0lGODlhAQABAAAAACw="
+      />,
+    )
+
+    expect(container.querySelector('img')?.draggable).toBe(false)
+  })
+})

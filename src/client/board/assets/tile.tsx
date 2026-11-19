@@ -141,6 +141,7 @@ export function Thumbnail({
             alt=""
             loading="lazy"
             decoding="async"
+            draggable={false}
             className="h-[72px] w-full object-cover"
           />
         </span>
@@ -211,6 +212,7 @@ function VideoThumbnail({ url, playing }: { url: string; playing: boolean }) {
         loop
         playsInline
         aria-hidden
+        draggable={false}
         onLoadedMetadata={(event) => {
           const { videoWidth, duration } = event.currentTarget
           setMedia(

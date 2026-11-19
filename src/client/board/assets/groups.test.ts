@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { AssetFile } from '@/shared/records/assets'
 
-import { chipCounts, chipOf, groupAssets } from './groups'
+import { chipCounts, chipOf, groupAssets, withoutKits } from './groups'
 
 function file(path: string, kind: AssetFile['kind'] = 'image'): AssetFile {
   return { path, kind, size: 1 }
@@ -100,5 +100,37 @@ describe('groupAssets', () => {
 
   it('answers no groups when nothing matches', () => {
     expect(groupAssets(FILES, { chip: 'video', search: 'logo' })).toEqual([])
+  })
+})
+
+describe('withoutKits', () => {
+  it("leaves out every kit's files and counts the kits they came from", () => {
+    const listed = withoutKits([
+      file('lake.jpg'),
+      file('kits/clean/kit.css', 'stylesheet'),
+      file('kits/clean/kit.json', 'other'),
+      file('kits/sketch/kit.css', 'stylesheet'),
+      file('icons/star.svg', 'svg'),
+    ])
+
+    expect(listed).toEqual({
+      files: [file('lake.jpg'), file('icons/star.svg', 'svg')],
+      kits: 2,
+    })
+  })
+
+  it('keeps a file named like the kits folder outside it', () => {
+    const listed = withoutKits([file('kits.png'), file('art/kits/a.png')])
+
+    expect(listed).toEqual({
+      files: [file('kits.png'), file('art/kits/a.png')],
+      kits: 0,
+    })
+  })
+
+  it('answers no files and the kit count for a folder holding only kits', () => {
+    const listed = withoutKits([file('kits/clean/kit.css', 'stylesheet')])
+
+    expect(listed).toEqual({ files: [], kits: 1 })
   })
 })

@@ -142,6 +142,17 @@ async function countedAssets(page: Page): Promise<void> {
   await answerAssets(page, COUNTED_ASSETS)
 }
 
+/** Two files beside two kits' own, which Files leaves out for the kits line. */
+async function kitAssets(page: Page): Promise<void> {
+  await answerAssets(page, [
+    { path: 'hero.png', kind: 'image', size: 1_200_000, frames: 1 },
+    { path: 'logo.svg', kind: 'svg', size: 198, frames: 0 },
+    { path: 'kits/clean/kit.css', kind: 'stylesheet', size: 900, frames: 0 },
+    { path: 'kits/clean/kit.json', kind: 'other', size: 120, frames: 0 },
+    { path: 'kits/sketch/kit.css', kind: 'stylesheet', size: 900, frames: 0 },
+  ])
+}
+
 async function answerAssets(page: Page, files: unknown[]): Promise<void> {
   await page.route('**/api/projects/*/assets', (route) =>
     route.fulfill({ json: { ok: true, data: { files } } }),
@@ -205,6 +216,14 @@ async function foundImages(page: Page): Promise<void> {
             thumbnail: `https://images.example.org/${id}.svg`,
             width: 1024,
             height: 768,
+            // One line too long for its tile, so the capture shows the ellipsis.
+            ...(id === 'glass'
+              ? {
+                  width: 5334,
+                  height: 3772,
+                  landingUrl: 'https://www.rawpixel.com/image/glass',
+                }
+              : {}),
           })),
         },
       },
@@ -722,6 +741,17 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
           leftTab('Assets'),
           readyWhen('[data-video-length]'),
         ),
+      ),
+    },
+    {
+      section: 'assets-kits',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(kitAssets, leftTab('Assets'), readyWhen('img[src$="hero.png"]')),
       ),
     },
     {
