@@ -55,6 +55,8 @@ export interface HubOptions {
   closeTab?: (tab: string) => void
   /** Whether `serve` holds a command a note can start a session with. */
   dispatch?: boolean
+  /** The frame listener's port, sent to a board client first on its hello. */
+  framePort?: () => number
 }
 
 /**
@@ -74,6 +76,7 @@ export function createHub({
   changes,
   closeTab,
   dispatch = false,
+  framePort,
 }: HubOptions): LiveHub {
   const server = new WebSocketServer({ noServer: true })
   const boards = new Map<WebSocket, boolean>()
@@ -119,6 +122,7 @@ export function createHub({
       boards.set(socket, writer)
       if (typeof message.tab === 'string') tabIds.set(socket, message.tab)
       tabs.open(writer)
+      if (framePort) send(socket, { type: 'frames', port: framePort() })
       void snapshot()
         .then(async (board) => {
           send(socket, { type: 'board', data: board })

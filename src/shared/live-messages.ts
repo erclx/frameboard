@@ -39,6 +39,11 @@ export type ClientMessage = HelloMessage | AckMessage
 
 /** Messages the server sends, as types alone so the client bundle takes no schema library. */
 export type ServerMessage =
+  /**
+   * The port frames load from, first on each board hello, since a frame on
+   * the board's own port could write as the board.
+   */
+  | { type: 'frames'; port: number }
   /** The whole board, on hello and after every watch batch. */
   | { type: 'board'; data: ListResult }
   /**
