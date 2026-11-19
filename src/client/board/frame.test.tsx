@@ -15,7 +15,7 @@ import { bridgeIn } from '@/test/frame-bridge'
 
 import { openFindings } from './findings/open'
 import { Frame, LabelRename } from './frame'
-import { stampRenderedHash } from './frame-dom'
+import { RESTAMPED, stampRenderedHash } from './frame-dom'
 import { modeStore } from './mode'
 import {
   holdMotion,
@@ -375,15 +375,73 @@ describe('Frame', () => {
       expect(container.querySelector('[data-bezel]')).toBeNull()
     })
 
-    it('rounds a phone page to the bezel screen, so no square corner shows past it', () => {
+    it('rounds a phone page at its foot to the bezel screen, square under the status bar', () => {
       const { container } = render(
         <Frame frame={{ ...frame('a'), device: 'phone' }} live version={0} />,
       )
 
       const style = getComputedStyle(iframeOf(container, 'a'))
 
-      expect(style.borderTopLeftRadius).toBe('62px')
+      expect(style.borderTopLeftRadius).toBe('0px')
       expect(style.borderBottomRightRadius).toBe('62px')
+    })
+
+    it('starts a phone page 54 down its box, under the status bar', () => {
+      const { container } = render(
+        <Frame frame={{ ...frame('a'), device: 'phone' }} live version={0} />,
+      )
+
+      const box = container
+        .querySelector('[data-frame]')
+        ?.getBoundingClientRect()
+      const page = iframeOf(container, 'a').getBoundingClientRect()
+
+      expect(page.top).toBeCloseTo((box?.top ?? 0) + 54)
+      expect(page.height).toBeCloseTo(844 - 54)
+      expect(page.bottom).toBeCloseTo(box?.bottom ?? 0)
+    })
+
+    it.each(['tablet', 'laptop'] as const)(
+      'gives a %s page its whole box',
+      (device) => {
+        const { container } = render(
+          <Frame frame={{ ...frame('a'), device }} live version={0} />,
+        )
+
+        const box = container
+          .querySelector('[data-frame]')
+          ?.getBoundingClientRect()
+        const page = iframeOf(container, 'a').getBoundingClientRect()
+
+        expect(page.top).toBeCloseTo(box?.top ?? 0)
+        expect(page.height).toBeCloseTo(844)
+      },
+    )
+
+    it("paints the status bar in the page's fill and text color, again after a hand edit", async () => {
+      const { container } = render(
+        <Frame frame={{ ...frame('a'), device: 'phone' }} live version={0} />,
+      )
+      const iframe = iframeOf(container, 'a')
+      await loaded(iframe)
+      const body = iframe.contentDocument?.body
+      if (!body) throw new Error('no frame body')
+
+      body.style.background = 'rgb(12, 34, 56)'
+      body.style.color = 'rgb(210, 220, 230)'
+      act(() => {
+        iframe.dispatchEvent(new Event(RESTAMPED))
+      })
+
+      const status = container.querySelector<HTMLElement>('[data-bezel-status]')
+      await vi.waitFor(() => {
+        expect(status && getComputedStyle(status).backgroundColor).toBe(
+          'rgb(12, 34, 56)',
+        )
+      })
+      expect(status && getComputedStyle(status).color).toBe(
+        'rgb(210, 220, 230)',
+      )
     })
 
     it('rounds a far phone frame placeholder to the bezel screen', () => {

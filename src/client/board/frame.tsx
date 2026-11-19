@@ -19,7 +19,12 @@ import {
   useShownTheme,
 } from '@/client/theme/store'
 import { frameUrl } from '@/shared/board-urls'
-import { BEZELS, screenCorners } from '@/shared/frame-device'
+import {
+  BEZELS,
+  pageCorners,
+  screenCorners,
+  topInset,
+} from '@/shared/frame-device'
 import { referenceHeight } from '@/shared/frame-sizes'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
@@ -32,6 +37,7 @@ import { CompareControl, CompareView } from './changes/compare-view'
 import { UnseenDot } from './changes/dot'
 import { ClaimTag } from './claims/tag'
 import { Bezel } from './device/bezel'
+import { usePageColors } from './device/page-colors'
 import { PoseButtons } from './device/poses'
 import { FINDINGS_MARK, severityOf } from './findings/level'
 import { FindingsList } from './findings/list'
@@ -160,6 +166,8 @@ export const Frame = memo(function Frame({
   // Read at the width's reference height, as the server's fit reads it.
   const previewWidth = preview?.width
   const { hugHeight } = frame
+  // The page starts under a phone's status bar, so the box holds the page and the bar.
+  const statusBar = topInset(frame.device)
   useEffect(() => {
     const element = iframe.current
     if (!live || !element || previewWidth === undefined || !hugHeight) return
@@ -169,7 +177,12 @@ export const Frame = memo(function Frame({
       const run = ++latest
       void measureHeight(element, referenceHeight(previewWidth)).then(
         (height) => {
-          if (run === latest) measurePreview(frame.ref, previewWidth, height)
+          if (run !== latest) return
+          measurePreview(
+            frame.ref,
+            previewWidth,
+            height === null ? null : height + statusBar,
+          )
         },
       )
     }
@@ -183,8 +196,9 @@ export const Frame = memo(function Frame({
       stop()
       element.removeEventListener(RESTAMPED, measure)
     }
-  }, [live, previewWidth, hugHeight, frame.ref])
+  }, [live, previewWidth, hugHeight, frame.ref, statusBar])
 
+  const colors = usePageColors(iframe, live && statusBar > 0, theme)
   const waiting = useWaitingOnFirstLoad(iframe, live)
   useHiddenScrollbar(iframe, live, frame.scroll)
   useMotionDriver(iframe, frame.ref, live, playing)
@@ -209,6 +223,15 @@ export const Frame = memo(function Frame({
   const below = frame.device ? BEZELS[frame.device].bottom : 0
   // The screen rounds under its bezel, whose body cannot cover a square corner.
   const corners = frame.device ? screenCorners(frame.device) : undefined
+  // The page stands under a phone's status bar, square where the two meet.
+  const page = frame.device
+    ? {
+        borderRadius: pageCorners(frame.device),
+        ...(statusBar
+          ? { marginTop: statusBar, height: `calc(100% - ${statusBar}px)` }
+          : {}),
+      }
+    : {}
 
   return (
     <div
@@ -289,7 +312,7 @@ export const Frame = memo(function Frame({
           src={src ?? undefined}
           aria-busy={waiting || undefined}
           // A flipped frame with no background paints its own theme's color.
-          style={{ colorScheme: theme, borderRadius: corners }}
+          style={{ colorScheme: theme, ...page }}
           className="block size-full border-0 bg-[color:Canvas]"
         />
       ) : (
@@ -307,6 +330,8 @@ export const Frame = memo(function Frame({
           height={height}
           pose={frame.pose}
           island={frame.island}
+          colors={colors}
+          theme={theme}
         />
       ) : null}
       {frame.device === 'foldable' &&

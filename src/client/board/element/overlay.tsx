@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 
+import { pageBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { subscribe } from '../bridge/channel'
@@ -85,6 +86,7 @@ function ElementGhosts({ frames, container }: ElementOverlayProps) {
   return ghosts.map(({ key, box }) => {
     const frame = drawn.find(({ ref }) => ref === key.frame)
     if (!frame) return null
+    const page = pageBox(frame.box, frame.device)
     return (
       <div
         key={`${key.frame}:${key.index}`}
@@ -94,13 +96,13 @@ function ElementGhosts({ frames, container }: ElementOverlayProps) {
         data-ghost-hash={key.hash}
         className="pointer-events-none absolute bg-primary/28"
         style={{
-          left: frame.box.x + box.x,
-          top: frame.box.y + box.y,
+          left: page.x + box.x,
+          top: page.y + box.y,
           width: box.width,
           height: box.height,
           outline: `${screen(1.5)} dashed var(--primary)`,
           outlineOffset: screen(2),
-          clipPath: outsideOf(box, frame.box),
+          clipPath: outsideOf(box, page),
           zIndex: OVERLAY_Z,
         }}
       />
@@ -151,7 +153,8 @@ function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
   const frame = frames.find((candidate) => candidate.ref === elements[0]?.frame)
   const pending = usePendingBox(frame?.ref ?? '')
   const measured = useMeasures(container, elements)
-  const at = pending ?? frame?.box
+  const shown = pending ?? frame?.box
+  const at = shown && pageBox(shown, frame?.device)
   if (!at || !measured) return null
   const members: GroupMember[] = measured.map(
     ({ index, box, read, placed, nested }) => ({
@@ -231,7 +234,8 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
   const [measure] = useMeasures(container, element ? [element] : []) ?? []
   const rect = measure?.box ?? null
   const held = useStore(heldStore, (state) => state.held)
-  const at = pending ?? frame?.box
+  const shown = pending ?? frame?.box
+  const at = shown && pageBox(shown, frame?.device)
   const holds = held !== null && held.key.frame === element?.frame
   // A box measured under another key ends the hold.
   const settled = holds && rect !== null && !sameKey(held.key, element)

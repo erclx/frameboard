@@ -12,13 +12,19 @@ import { findAction, isEnabled } from '@/client/actions/registry'
 import { useLive } from '@/client/live/store'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import { HIDE_CONTROLS_CSS } from '@/shared/bindings'
-import { bezelBox, type Device, screenCorners } from '@/shared/frame-device'
+import {
+  bezelBox,
+  pageCorners,
+  screenCorners,
+  topInset,
+} from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, LOOK_MARKER, setFrameTheme } from '@/shared/theme'
 
 import { focusWithoutTooltip } from '../chrome/quiet-focus'
 import { PRESENT } from '../chrome/toolbar-tools'
 import { Bezel } from '../device/bezel'
+import { usePageColors } from '../device/page-colors'
 import { useWaitingOnFirstLoad } from '../frame-loading'
 import { LoadingBlock } from '../loading-block'
 import { PresentBar } from './bar'
@@ -421,15 +427,6 @@ export function ScaledFrame({
       }}
     >
       <PresentedFrame frame={frame} {...live} />
-      {frame.device ? (
-        <Bezel
-          device={frame.device}
-          width={width}
-          height={height}
-          pose={frame.pose}
-          island={frame.island}
-        />
-      ) : null}
     </div>
   )
 }
@@ -558,24 +555,38 @@ function useStepWalk(
 
 /**
  * One frame's live page through the same `/frames/` address the canvas
- * loads, in the theme the frame shows on the board, never a capture.
+ * loads, in the theme the frame shows on the board, never a capture, inside
+ * its device with the page under a phone's status bar.
  */
-export function PresentedFrame({
+function PresentedFrame({
   frame,
   walk,
   keys,
   held,
   wake,
 }: {
-  frame: { ref: string; name: string; device?: Device | null }
+  frame: Pick<
+    FrameRecord,
+    'ref' | 'name' | 'box' | 'device' | 'pose' | 'island'
+  >
 } & LiveProps) {
   const iframe = useRef<HTMLIFrameElement>(null)
   // The screen rounds under its bezel, whose body cannot cover a square corner.
   const corners = frame.device ? screenCorners(frame.device) : undefined
+  const statusBar = topInset(frame.device)
+  const page = frame.device
+    ? {
+        borderRadius: pageCorners(frame.device),
+        ...(statusBar
+          ? { marginTop: statusBar, height: `calc(100% - ${statusBar}px)` }
+          : {}),
+      }
+    : {}
   const loaded = useStepWalk(iframe, walk)
   // The iframe stays mounted across slides, so only its first page waits.
   const waiting = useWaitingOnFirstLoad(iframe, true)
   const theme = useFrameTheme(frame.ref)
+  const colors = usePageColors(iframe, statusBar > 0, theme)
   const version = useLive((state) => state.reloads[frame.ref] ?? 0)
   // Read at load, since a later flip rewrites the root rather than restart the page.
   const src = useMemo(
@@ -627,11 +638,22 @@ export function PresentedFrame({
         title={frame.name}
         src={src}
         aria-busy={waiting || undefined}
-        style={{ colorScheme: theme, borderRadius: corners }}
+        style={{ colorScheme: theme, ...page }}
         // Hidden until its steps are hidden, so a stepped slide never flashes whole.
         className={`block size-full border-0 bg-[color:Canvas] ${loaded ? '' : 'invisible'}`}
       />
       {waiting ? <LoadingBlock theme={theme} corners={corners} /> : null}
+      {frame.device ? (
+        <Bezel
+          device={frame.device}
+          width={frame.box.width}
+          height={frame.box.height}
+          pose={frame.pose}
+          island={frame.island}
+          colors={colors}
+          theme={theme}
+        />
+      ) : null}
     </>
   )
 }

@@ -144,6 +144,80 @@ export const PHONE_BUTTONS = [
   height: number
 }[]
 
+/**
+ * The phone's status bar, drawn over the top of its screen while the device
+ * shows, ending 10 below the island so a page starting under it clears the
+ * island. Its time and marks sit in the island's band, `side` in from each
+ * edge, past the screen's corner arc.
+ */
+export const STATUS_BAR = {
+  height: PHONE_ISLAND.top + PHONE_ISLAND.height + 10,
+  band: { top: PHONE_ISLAND.top, height: PHONE_ISLAND.height },
+  side: 40,
+  time: '9:41',
+  font: 16,
+} as const
+
+/** The face the status bar and the wide island draw in, a system face every surface holds. */
+export const STATUS_FONT = 'system-ui, -apple-system, sans-serif'
+
+/** The status bar's signal bars, shortest first, and its battery, each in points. */
+export const SIGNAL_BARS = [4, 6.5, 9, 11.5] as const
+export const BATTERY = { width: 25, height: 12, radius: 3.5, cap: 2 } as const
+
+/** The height the device's status bar takes off the top of a frame's box, 0 for any device but the phone. */
+export function topInset(device: Device | null | undefined): number {
+  return device === 'phone' ? STATUS_BAR.height : 0
+}
+
+/**
+ * The page's box inside a frame's box, the box less the status bar while a
+ * phone shows and the box itself on every other device or none. A frame's
+ * box keeps the screen's size, and every surface reads the page through this.
+ */
+export function pageBox(box: Box, device: Device | null | undefined): Box {
+  const inset = topInset(device)
+  return {
+    x: box.x,
+    y: box.y + inset,
+    width: box.width,
+    height: Math.max(0, box.height - inset),
+  }
+}
+
+/** The page's corners as a CSS `border-radius`, square on top under a phone's status bar. */
+export function pageCorners(device: Device): string {
+  if (device !== 'phone') return screenCorners(device)
+  const { screenRadius } = BEZELS.phone
+  return `0 0 ${screenRadius}px ${screenRadius}px`
+}
+
+/** A page's fill and text color as its status bar paints them, the fill null where the page paints none. */
+export interface PageColors {
+  fill: string | null
+  ink: string
+}
+
+/**
+ * The fill a page shows at its top and its text color, read off its root and
+ * then its body as the browser paints the canvas. Self-contained, so a
+ * browser runs it in the page by its source alone.
+ */
+export function pageColors(doc: Document = document): PageColors {
+  const view = doc.defaultView
+  const read = (element: Element | null) =>
+    element && view ? view.getComputedStyle(element) : null
+  const root = read(doc.documentElement)
+  const body = read(doc.body)
+  const painted = (color: string | undefined) =>
+    color !== undefined &&
+    color !== 'transparent' &&
+    !/^rgba\(.*,\s*0\)$/.test(color)
+  const fill =
+    [root?.backgroundColor, body?.backgroundColor].find(painted) ?? null
+  return { fill, ink: body?.color ?? root?.color ?? 'CanvasText' }
+}
+
 /** The ways a foldable is held, each a screen the frame's box takes the size of. */
 export const POSES = ['closed', 'half', 'open'] as const
 

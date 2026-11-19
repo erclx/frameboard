@@ -3,6 +3,7 @@ import { type LiveStore, liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
 import { assetKind, isPlaceableKind } from '@/shared/asset-kinds'
+import { pageBox } from '@/shared/frame-device'
 import { NAME_MAX_LENGTH, nextFreeName } from '@/shared/names'
 import type {
   InsertResult,
@@ -146,9 +147,10 @@ function spotFor(
   const centered = clicked && (kind === 'rectangle' || kind === 'ellipse')
   const inset = centered ? SHAPE_SIDE / 2 : 0
   const round = (value: number) => Math.round(value * 100) / 100
+  const page = pageBox(frame.box, frame.device)
   return {
-    left: round(point.x - frame.box.x - gap.origin.x - inset),
-    top: round(point.y - frame.box.y - gap.origin.y - inset),
+    left: round(point.x - page.x - gap.origin.x - inset),
+    top: round(point.y - page.y - gap.origin.y - inset),
   }
 }
 

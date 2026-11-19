@@ -2,6 +2,7 @@ import { type RefObject, useEffect, useState } from 'react'
 import { useStore } from 'zustand'
 
 import type { GapLine } from '@/shared/frame-bridge/gap'
+import { pageBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { screen } from '../geometry/draw'
@@ -100,10 +101,11 @@ export function DropLine({
 
 /** A gap's line where it draws on the board, offset by its frame's place. */
 function boardLine({ frame, gap }: FrameGap): GapLine {
+  const page = pageBox(frame.box, frame.device)
   return {
     ...gap.line,
-    x: frame.box.x + gap.line.x,
-    y: frame.box.y + gap.line.y,
+    x: page.x + gap.line.x,
+    y: page.y + gap.line.y,
   }
 }
 

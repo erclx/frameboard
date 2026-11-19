@@ -10,11 +10,15 @@ import {
   islandOf,
   laptopParts,
   nearestPose,
+  pageBox,
   PHONE_BUTTONS,
+  PHONE_ISLAND,
   phoneIsland,
   POSE_SIZES,
   poseOf,
   screenCorners,
+  STATUS_BAR,
+  topInset,
 } from './frame-device'
 import { drawnExtent } from './frame-widths'
 
@@ -181,6 +185,35 @@ describe('the phone body', () => {
     [true, 'compact'],
   ] as const)('reads an island key of %s as %s', (value, island) => {
     expect(islandOf(value)).toBe(island)
+  })
+})
+
+describe('pageBox', () => {
+  const phone = { x: 100, y: 40, width: 466, height: 678 }
+
+  it('starts a phone page 54 down its box, 10 past the island, a 624 tall page in a 678 box', () => {
+    expect(STATUS_BAR.height).toBe(54)
+    expect(STATUS_BAR.height - (PHONE_ISLAND.top + PHONE_ISLAND.height)).toBe(
+      10,
+    )
+    expect(pageBox(phone, 'phone')).toEqual({
+      x: 100,
+      y: 94,
+      width: 466,
+      height: 624,
+    })
+  })
+
+  it.each([null, undefined, 'tablet', 'laptop', 'foldable'] as const)(
+    'keeps the box as the page with %s',
+    (device) => {
+      expect(pageBox(phone, device)).toEqual(phone)
+      expect(topInset(device)).toBe(0)
+    },
+  )
+
+  it('leaves no page in a phone box shorter than the status bar', () => {
+    expect(pageBox({ ...phone, height: 40 }, 'phone').height).toBe(0)
   })
 })
 
