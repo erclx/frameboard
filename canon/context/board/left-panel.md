@@ -23,17 +23,17 @@ Owns the left panel, being `project-header.tsx` with the way home, the name, and
 
 ### `src/client/board/assets/`
 
-Owns the Assets tab, whose Files, Find, and Generate row sits in `tab.tsx`. Files in `files.tsx` lists the project's `assets/` files as tiles grouped by folder in `groups.ts`, under a name search and kind chips.
+Owns the Assets tab, whose Files, Find, and Generate row sits in `tab.tsx`. Files in `files.tsx` lists the project's `assets/` files as tiles grouped by folder in `groups.ts`, under a name search and kind chips. A kit's files under `kits/` stay out of the list and the counts, and one line sends the reader to the Theme tab instead.
 
 - Root files come first, each folder's group collapses from its heading, and a chip with no files hides
 - A tile's `<type> · <frames>` line reads `Unused` for a file no frame links, and its size stays in its accessible name
 - A tile click copies `../assets/<path>`, each segment encoded
 - A drop on the tab, or the header's `+` picker, posts the files through `writeBoard`, and a tab with no write access says why and adds nothing
-- Refusals show as an inline line under the drop hint rather than a toast, and a drop reloads every frame through the existing `assets/` watch
+- Refusals show as an inline line under the drop hint rather than a toast, and a drop reloads only the frames linking a dropped file, through the `assets/` watch
 
 ### `src/client/board/assets/find/`
 
-Owns Find, an Openverse search run on Enter, with a switch adding credited licenses that searches again. A newer search aborts the older, so an older answer never replaces it. `saveStore` in `../sourcing.ts` keys each save by project and Openverse id, so a Save click and a drag of one result land one file.
+Owns Find, an Openverse search run on Enter, with a filter menu at the end of the search field whose credited licenses item searches again. A newer search aborts the older, so an older answer never replaces it. `saveStore` in `../sourcing.ts` keys each save by project and Openverse id, so a Save click and a drag of one result land one file.
 
 - A result's thumbnail loads straight from the source in the board's chrome, over http or https alone, and falls back to its grey block
 - Save keeps its Saved mark once the file lands, so the grid never jumps, and a read-only tab lists results with Save off and says why
