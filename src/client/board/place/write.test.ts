@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { createLiveStore } from '@/client/live/store'
+import type { Gap } from '@/shared/frame-bridge/gap'
 import type { ElementTree, TreeElement } from '@/shared/records/elements'
 import { frameOf } from '@/test/board'
 import { BRIDGE } from '@/test/frame-bridge'
@@ -9,9 +10,11 @@ import { request } from '../bridge/channel'
 import { writeElement } from '../inspector/element/write'
 import { createModeStore } from '../mode'
 import { createSelectionStore, selectElement } from '../selection'
+import type { FrameGap } from './gap'
 import {
   deleteElement,
   fileFrameName,
+  ghostFor,
   moveElement,
   moveElementTo,
   placeElement,
@@ -1446,5 +1449,60 @@ describe('placeResult', () => {
     )
 
     expect(placed).toEqual([])
+  })
+})
+
+const GHOST_FRAME = frameOf('hero', {
+  box: { x: 100, y: 50, width: 400, height: 300 },
+})
+
+/** The gap under a point in `GHOST_FRAME`, free unless `flow` says the container lays out flex or grid. */
+function gapIn(flow: boolean): FrameGap {
+  const gap: Gap = {
+    parent: 2,
+    before: null,
+    row: false,
+    flow,
+    origin: { x: 0, y: 0 },
+    room: 400,
+    line: { x: 0, y: 120, width: 400, height: 0 },
+  }
+  return { frame: GHOST_FRAME, hash: 'c'.repeat(64), gap }
+}
+
+describe('ghostFor', () => {
+  it('puts a Text box at the pointer in a free frame', () => {
+    expect(ghostFor('text', { x: 300, y: 200 }, gapIn(false))).toEqual({
+      kind: 'text',
+      x: 300,
+      y: 200,
+    })
+  })
+
+  it('centers a clicked shape on the pointer at the side it lands at', () => {
+    expect(ghostFor('ellipse', { x: 300, y: 200 }, gapIn(false))).toEqual({
+      kind: 'ellipse',
+      x: 250,
+      y: 150,
+      width: 100,
+      height: 100,
+    })
+  })
+
+  it('fits a file to the frame past the pointer as its drop would', () => {
+    expect(
+      ghostFor('asset', { x: 460, y: 80 }, gapIn(false), {
+        width: 1023,
+        height: 768,
+      }),
+    ).toEqual({ kind: 'asset', x: 460, y: 80, width: 40, height: 30 })
+  })
+
+  it('draws nothing over a flow container, where the line shows the gap', () => {
+    expect(ghostFor('text', { x: 300, y: 200 }, gapIn(true))).toBeNull()
+  })
+
+  it('draws nothing for a divider, which always joins the flow', () => {
+    expect(ghostFor('divider', { x: 300, y: 200 }, gapIn(false))).toBeNull()
   })
 })

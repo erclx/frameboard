@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { tileDragStore } from './asset-drop'
-import { DropGhost } from './drop-ghost'
+import { DropGhost, PlaceGhost } from './drop-ghost'
 
 afterEach(() => {
   act(() => tileDragStore.setState({ at: null, ghost: null }))
@@ -58,5 +58,35 @@ describe('DropGhost', () => {
     act(() => tileDragStore.setState({ at: { x: 400, y: 300 }, ghost: null }))
 
     expect(container.querySelector('[data-drop-ghost]')).toBeNull()
+  })
+})
+
+describe('PlaceGhost', () => {
+  it('draws a dashed Text box at the pointer', () => {
+    const { container } = render(
+      <PlaceGhost spot={{ kind: 'text', x: 300, y: 200 }} />,
+    )
+
+    expect(screen.getByText('Text')).toBeVisible()
+    expect(
+      container.querySelector<HTMLElement>('[data-place-ghost]')?.style,
+    ).toMatchObject({ left: '300px', top: '200px' })
+  })
+
+  it('draws a shape at the box it would land at', () => {
+    const { container } = render(
+      <PlaceGhost
+        spot={{ kind: 'rectangle', x: 250, y: 150, width: 100, height: 100 }}
+      />,
+    )
+
+    expect(
+      container.querySelector<HTMLElement>('[data-place-ghost]')?.style,
+    ).toMatchObject({
+      left: '250px',
+      top: '150px',
+      width: '100px',
+      height: '100px',
+    })
   })
 })

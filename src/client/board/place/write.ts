@@ -160,6 +160,47 @@ export function fitAt(
 }
 
 /**
+ * Where a free placement lands on the board, a Text at its corner alone,
+ * since its size comes from its word, and a shape or file at its box.
+ */
+export type GhostSpot =
+  | { kind: 'text'; x: number; y: number }
+  | {
+      kind: Exclude<PlacedKind, 'text' | 'divider'>
+      x: number
+      y: number
+      width: number
+      height: number
+    }
+
+/**
+ * The spot a click of the tool placing `kind` lands at under `at`, read as
+ * `placeElement` reads it, null where the element joins the flow and the
+ * drop line shows the gap instead.
+ */
+export function ghostFor(
+  kind: PlacedKind,
+  at: BoardPoint,
+  under: FrameGap,
+  natural: AssetSize | null = null,
+): GhostSpot | null {
+  if (kind === 'divider' || !placesFree(under.gap)) return null
+  if (kind === 'text') return { kind, x: at.x, y: at.y }
+  if (kind === 'asset') {
+    const { size, corner } = fitAt(natural, at, under)
+    return { kind, ...corner, ...size }
+  }
+  const half = SHAPE_SIDE / 2
+  return {
+    kind,
+    x: at.x - half,
+    y: at.y - half,
+    width: SHAPE_SIDE,
+    height: SHAPE_SIDE,
+  }
+}
+
+/**
  * The `left` and `top` an element placed out of the flow at `point` takes,
  * against the box the gap's container anchors it to. A clicked shape centers
  * on the point, so it sits under the pointer.
