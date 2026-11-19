@@ -7,11 +7,8 @@ import { request } from '../bridge/channel'
 import { shownHashOf, subscribeShown } from '../bridge/shown'
 
 /**
- * The fill and text color of the page an iframe shows, which the phone's
- * status bar paints, asked of the frame on each page and each hand edit's
- * restamp and again when the theme flips, null while `active` is off or
- * nothing answered. A theme flip is asked after the theme's own request, so
- * a caller sends the theme first.
+ * The page's fill and text color for a phone's status bar, asked on each page,
+ * restamp, and theme flip, null while off. A caller sends the theme first.
  */
 export function usePageColors(
   iframe: RefObject<HTMLIFrameElement | null>,

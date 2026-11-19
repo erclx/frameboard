@@ -449,10 +449,8 @@ function enabledPresentKeys(): string[] {
 }
 
 /**
- * Has a presented page take the present keys enabled now, opened again on
- * each present store change that turns one on or off, so an arrow whose
- * action is off reaches the page. The single-key shortcuts switch is not
- * read, since the board's own window takes `f` and `KeyG` whatever it says.
+ * Has a presented page take the present keys enabled now, reopened as one
+ * turns on or off, ignoring the single-key switch the board's window ignores.
  */
 function bindPresentKeys(iframe: HTMLIFrameElement): () => void {
   let taken = enabledPresentKeys()
