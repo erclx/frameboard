@@ -25,7 +25,7 @@ Owns finding, generating, and saving, apart from `src/cli/` because the board's 
 
 Owns talking to a ComfyUI server the developer starts, apart from the providers because 3D generation reuses it.
 
-- `client.ts` posts `/prompt`, polls `/history/<id>`, reads the first saved image from `/view`, and posts `/free`, resolving each route under any path the address carries
+- `client.ts` posts `/prompt`, polls `/history/<id>`, reads the first saved image from `/view`, and posts `/free`, resolving each route under any path the address carries. It waits up to `RUN_TIMEOUT_MS`, since a first call loads the model for 20 seconds or more.
 - `workflow.ts` reads an API-format workflow and fills `{{prompt}}`, `{{width}}`, `{{height}}`, and `{{seed}}`, a number placeholder standing alone becoming a number, and refuses `usage` for a file with no `{{prompt}}`
 - `flux2-klein.json` is the bundled FLUX.2 klein 4B workflow a run takes without `--workflow`
 
@@ -55,7 +55,6 @@ Owns `model find`, which takes the flags `image find` takes plus `--size`, resol
 ## Gotchas
 
 - A key set to an empty string reads as unset, and `providerFailed` scrubs the key from a provider's echoed message
-- A ComfyUI run waits up to `RUN_TIMEOUT_MS` for its history, since a first call loads the model for 20 seconds or more, so only a stalled queue times out
 - `listAssets` skips `*.license.json`, so the Assets tab and the usage counts never draw a license file as a tile
 - A CLI test hands the network in through `cli(argv, { fetch })`, which reaches the verbs as `CliIo.fetch`, and the fake Poly Haven lives in `test/support/polyhaven.ts`
 - The board's `POST sourcing/generate` answers 403 `generate-off` until `sourcingRoutes` takes `generate: true`, since a frame's script still passes the writer guard and would spend the key
