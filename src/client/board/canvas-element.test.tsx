@@ -222,6 +222,23 @@ describe('double-clicking an element in a frame', () => {
     expect(press.defaultPrevented).toBe(false)
   })
 
+  it('leaves a keyboard click to the board after a press inside the open text', async () => {
+    const { hit, on } = await openHeading()
+    pressAt(hit, on(60, 50))
+    // Enter or Space on a focused button clicks with a detail of 0 and no press.
+    const key = new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      detail: 0,
+    })
+
+    act(() => {
+      hit.dispatchEvent(key)
+    })
+
+    expect(key.defaultPrevented).toBe(false)
+  })
+
   it('only selects a text on a Cmd-click', async () => {
     const { drawn, hit, heading } = await renderCard()
     const scale = drawn.width / CARD.box.width

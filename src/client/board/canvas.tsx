@@ -595,9 +595,9 @@ export function Canvas({
       event.stopPropagation()
       void press.edit.caretAt(press.at)
     }
-    // Its click and double-click follow, which would select or reopen the edit.
+    // Its click and double-click follow. A keyboard click has a detail of 0 and no press of its own.
     const keepFollowing = (event: MouseEvent) => {
-      if (!kept) return
+      if (!kept || event.detail === 0) return
       event.preventDefault()
       event.stopPropagation()
     }
