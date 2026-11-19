@@ -12,6 +12,7 @@ import { frameOf } from '@/test/board'
 
 import { inspectorTabStore } from '../inspector/tab-store'
 import { clear, select, selectionStore } from '../selection'
+import { notesShownStore } from './shown'
 import { SpeakerNotesStrip } from './strip'
 
 const SLIDE = 'studio/home/slide'
@@ -53,14 +54,14 @@ const notes = () => screen.getByRole('textbox', { name: 'Speaker notes' })
 
 beforeEach(() => {
   liveStore.setState({ canWrite: true })
-  inspectorTabStore.setState({ tab: 'slides' })
-  select(selectionStore, 'studio/home', [SLIDE])
+  notesShownStore.setState({ shown: true })
 })
 
 afterEach(() => {
   act(() => {
     clear(selectionStore)
     inspectorTabStore.setState({ tab: 'design' })
+    notesShownStore.setState({ shown: false })
     liveStore.setState({ canWrite: false })
   })
 })
@@ -221,28 +222,66 @@ describe('the speaker notes strip', () => {
     ).toBeVisible()
     expect(posted).toEqual([])
   })
+})
 
-  it('shows no strip on the Design tab while the slide holds no note', () => {
-    inspectorTabStore.setState({ tab: 'design' })
+describe('which slides draw a strip', () => {
+  it('draws one under every slide while notes are shown, none selected', () => {
+    mount([
+      frameOf('one', { speakerNotes: 'Open on it.' }),
+      frameOf('two'),
+      frameOf('three', { speakerNotes: 'Close on it.' }),
+    ])
 
-    mount([frameOf('slide')])
-
-    expect(screen.queryByRole('textbox')).toBeNull()
+    expect(
+      screen
+        .getAllByRole('textbox', { name: 'Speaker notes' })
+        .map((field) => (field as HTMLTextAreaElement).value),
+    ).toEqual(['Open on it.', '', 'Close on it.'])
   })
 
-  it('shows the strip on the Design tab once the slide holds a note', () => {
-    inspectorTabStore.setState({ tab: 'design' })
+  it('draws none while notes are hidden, a selected slide on the Slides tab included', () => {
+    notesShownStore.setState({ shown: false })
+    inspectorTabStore.setState({ tab: 'slides' })
+    select(selectionStore, 'studio/home', [SLIDE])
 
     mount([frameOf('slide', { speakerNotes: 'Stored.' })])
 
-    expect(notes()).toHaveValue('Stored.')
+    expect(screen.queryByRole('textbox')).toBeNull()
   })
 
-  it('shows no strip while several frames are selected', () => {
-    select(selectionStore, 'studio/home', [SLIDE, 'studio/home/other'])
+  it('draws every strip once notes are shown after mounting hidden', () => {
+    notesShownStore.setState({ shown: false })
+    mount([frameOf('one'), frameOf('two')])
 
-    mount([frameOf('slide'), frameOf('other')])
+    act(() => notesShownStore.setState({ shown: true }))
 
-    expect(screen.queryByRole('textbox')).toBeNull()
+    expect(
+      screen.getAllByRole('textbox', { name: 'Speaker notes' }),
+    ).toHaveLength(2)
+  })
+
+  it('keeps a draft in one strip while another slide changes', async () => {
+    const { calls } = recording()
+    const { rerender } = render(
+      <SpeakerNotesStrip
+        frames={[frameOf('one'), frameOf('two')]}
+        calls={calls}
+      />,
+    )
+    const [first] = screen.getAllByRole('textbox', { name: 'Speaker notes' })
+    await userEvent.type(first as HTMLElement, 'Half a thought')
+
+    rerender(
+      <SpeakerNotesStrip
+        frames={[
+          frameOf('one'),
+          frameOf('two', { speakerNotes: 'Agent wrote.' }),
+        ]}
+        calls={calls}
+      />,
+    )
+
+    expect(first).toHaveFocus()
+    expect(first).toHaveValue('Half a thought')
   })
 })

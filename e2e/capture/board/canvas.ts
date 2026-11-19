@@ -251,8 +251,8 @@ async function homePushes(page: Page): Promise<void> {
 }
 
 /**
- * Gives hero a two-line speaker note, so a selected hero shows its strip,
- * taking the layout back when the page closes.
+ * Gives hero a two-line speaker note and turns notes on, so every frame on
+ * the page draws its strip, taking the layout back when the page closes.
  */
 async function heroHoldsNote(page: Page): Promise<void> {
   const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
@@ -262,6 +262,9 @@ async function heroHoldsNote(page: Page): Promise<void> {
     'Open on the price, then the plan picker.\nPause before the demo.'
   writeFileSync(layoutPath, JSON.stringify(layout))
   page.once('close', () => writeFileSync(layoutPath, originalLayout))
+  await page.addInitScript(() =>
+    localStorage.setItem('frameboard.speakerNotes', 'shown'),
+  )
 }
 
 /**
