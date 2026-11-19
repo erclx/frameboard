@@ -48,7 +48,7 @@ describe('ThemeTab', () => {
     render(<ThemeTab project="studio" load={async () => table([])} />)
 
     expect(await screen.findByText(/^From board/)).toHaveTextContent(
-      /^From board tokens\.css\.$/,
+      /^From board tokens\.css$/,
     )
   })
 
@@ -63,29 +63,23 @@ describe('ThemeTab', () => {
     render(<ThemeTab project="studio" load={async () => both} />)
 
     expect(await screen.findByText(/^From board/)).toHaveTextContent(
-      'From board tokens.css, overridden by project studio/tokens.css.',
+      'From board tokens.css, overridden by project tokens.css',
     )
   })
 
-  it('wraps a long board path inside the note', async () => {
-    // One segment wider than the note, which no slash break rescues.
-    const path =
-      '/home/someone/averyverylongboardfolderthatnevershortens/tokens.css'
+  it('keeps the full path in the help mark and out of the line', async () => {
+    const path = '/home/someone/boards/tokens.css'
     const long = table([row('primary')], {
       sheets: [{ path, kind: 'board', error: null, hash: 'h' }],
     })
 
-    render(
-      <div style={{ width: 240 }}>
-        <ThemeTab project="studio" load={async () => long} />
-      </div>,
-    )
+    render(<ThemeTab project="studio" load={async () => long} />)
 
     const note = await screen.findByText(/^From board/)
-    const code = within(note).getByText(path)
-    expect(code.getBoundingClientRect().right).toBeLessThanOrEqual(
-      note.getBoundingClientRect().right,
-    )
+    expect(note).toHaveTextContent(/^From board tokens\.css$/)
+    expect(
+      screen.getByRole('button', { name: 'About token source' }),
+    ).toHaveAccessibleDescription(`${path}.`)
   })
 
   it('draws each color with a light and a dark swatch', async () => {
@@ -331,12 +325,15 @@ describe('ThemeTab', () => {
       act(() => liveStore.setState({ canWrite: false }))
     })
 
-    it('ends the note on how to edit', async () => {
+    it('keeps how to edit in the help mark', async () => {
       render(<ThemeTab project="studio" load={async () => both([])} />)
 
       expect(await screen.findByText(/^From board/)).toHaveTextContent(
-        /overridden by project studio\/tokens\.css\. Click a value to edit it\.$/,
+        /^From board tokens\.css, overridden by project tokens\.css$/,
       )
+      expect(
+        screen.getByRole('button', { name: 'About token source' }),
+      ).toHaveAccessibleDescription(/Click a value to edit it\.$/)
     })
 
     it('tags a project value Project and any other Board', async () => {
@@ -438,7 +435,8 @@ describe('ThemeTab', () => {
       )
       await screen.findByText('primary')
 
-      // Add kit takes the first stop, above the tokens.
+      // Add kit and the source note's help mark take the first two stops, above the tokens.
+      await userEvent.tab()
       await userEvent.tab()
       await userEvent.tab()
       await userEvent.keyboard('{Enter}')
@@ -731,7 +729,9 @@ describe('ThemeTab', () => {
       render(<ThemeTab project="studio" load={async () => broken} />)
 
       expect(await screen.findByText(/^From board/)).toBeInTheDocument()
-      expect(screen.queryByText(/Click a value to edit it/)).toBeNull()
+      expect(
+        screen.getByRole('button', { name: 'About token source' }),
+      ).not.toHaveAccessibleDescription(/Click a value to edit it/)
     })
 
     it('keeps the board rows editable while the project sheet does not parse', async () => {
@@ -788,7 +788,12 @@ describe('ThemeTab', () => {
         screen.getByRole('button', { name: 'Light: #e11d48' }),
       ).toBeInTheDocument()
       expect(screen.getByText(/^From board/)).toHaveTextContent(
-        'From board /work/app/tokens.css, overridden by project studio/tokens.css. Click a value to edit it. Board values stay read-only here, since that sheet sits outside the board folder.',
+        'From board tokens.css, overridden by project tokens.css, read only',
+      )
+      expect(
+        screen.getByRole('button', { name: 'About token source' }),
+      ).toHaveAccessibleDescription(
+        '/work/app/tokens.css. studio/tokens.css. Click a value to edit it. Board values stay read-only here, since that sheet sits outside the board folder.',
       )
     })
 
