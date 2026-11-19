@@ -8,6 +8,7 @@ import { liveStore } from '@/client/live/store'
 import type { Transition } from '@/shared/present-transition'
 import type { FrameRecord } from '@/shared/records/list'
 import { boardOf, frameOf, pageOf } from '@/test/board'
+import { bridgeIn } from '@/test/frame-bridge'
 import { emulateReducedMotion } from '@/test/motion'
 
 import { useBoardActions } from '../board-actions'
@@ -15,7 +16,12 @@ import { selectionStore } from '../selection'
 import { fitScale, presentScale } from './fit'
 import { PresentOverlay } from './overlay'
 import type { LoadTransitions } from './own-transitions'
-import { presentStore, startPresenting, stepPresenting } from './store'
+import {
+  presentStore,
+  startPresenting,
+  stepPresenting,
+  toggleOverview,
+} from './store'
 import { type AudienceMessage, joinAudience, presentationIdOf } from './sync'
 
 /** One row on the canvas, laid left to right in the order named, so reading order follows it. */
@@ -687,20 +693,86 @@ describe('a transition between slides', () => {
   })
 })
 
-/** The loaded document of the presented frame named `name`, once it is the frame's own. */
+/** The pages a test already bridged, since the test server routes no frame. */
+const bridged = new WeakSet<Document>()
+
+/**
+ * The loaded document of the presented frame named `name`, once it is the
+ * frame's own, with the bridge the frame route would inject.
+ */
 async function documentOf(name: string): Promise<Document> {
-  return vi.waitFor(() => {
-    const doc = screen
+  const { iframe, doc } = await vi.waitFor(() => {
+    const iframe = screen
       .getByRole('dialog')
-      .querySelector<HTMLIFrameElement>(
-        `iframe[title="${name}"]`,
-      )?.contentDocument
-    if (!doc || doc.URL === 'about:blank' || doc.readyState !== 'complete') {
+      .querySelector<HTMLIFrameElement>(`iframe[title="${name}"]`)
+    const doc = iframe?.contentDocument
+    if (
+      !iframe ||
+      !doc ||
+      doc.URL === 'about:blank' ||
+      doc.readyState !== 'complete'
+    ) {
       throw new Error(`${name} is still loading`)
     }
-    return doc
+    return { iframe, doc }
   })
+  if (!bridged.has(doc)) {
+    bridged.add(doc)
+    await bridgeIn(iframe)
+  }
+  return doc
 }
+
+describe('a key pressed inside a slide', () => {
+  /** Presses `key` at `target` in the slide's own window, answering whether the page's handler was prevented. */
+  function pressIn(doc: Document, key: string, target: Element = doc.body) {
+    const view = doc.defaultView as (Window & typeof globalThis) | null
+    if (!view) throw new Error('The slide holds no window')
+    const event = new view.KeyboardEvent('keydown', {
+      key,
+      code: key,
+      bubbles: true,
+      cancelable: true,
+    })
+    target.dispatchEvent(event)
+    return event.defaultPrevented
+  }
+
+  it('steps the presentation on an arrow', async () => {
+    present(framesOf('first', 'second'))
+    const doc = await documentOf('first')
+
+    const prevented = pressIn(doc, 'ArrowRight')
+
+    expect(prevented).toBe(true)
+    await expect.poll(() => shownFrame()?.title).toBe('second')
+  })
+
+  it('leaves an arrow to the page while the overview holds the keys', async () => {
+    present(framesOf('first', 'second'))
+    const doc = await documentOf('first')
+
+    act(() => toggleOverview())
+
+    await expect.poll(() => pressIn(doc, 'ArrowRight')).toBe(false)
+    expect(shownFrame()?.title).toBe('first')
+  })
+
+  it('leaves a Space on a button in the slide to the page', async () => {
+    present(framesOf('first', 'second'))
+    const doc = await documentOf('first')
+    doc.body.innerHTML = '<button>Go</button>'
+
+    const prevented = pressIn(
+      doc,
+      'Space',
+      doc.querySelector('button') as Element,
+    )
+
+    expect(prevented).toBe(false)
+    expect(shownFrame()?.title).toBe('first')
+  })
+})
 
 describe('a press back during a transition', () => {
   it('keeps the document of the slide it returns to', async () => {
@@ -1020,6 +1092,20 @@ describe('a presented frame still loading', () => {
     await act(() => load)
 
     expect(block()).toBeNull()
+  })
+
+  it('shows a loaded page whose bridge never answers once the reply wait passes', async () => {
+    present(framesOf('a'))
+    const load = loaded(shownFrame())
+    await act(() => load)
+    const before = shownFrame()?.classList.contains('invisible')
+
+    act(() => vi.advanceTimersByTime(5000))
+
+    expect([before, shownFrame()?.classList.contains('invisible')]).toEqual([
+      true,
+      false,
+    ])
   })
 
   it('draws the block under the device bezel', () => {
