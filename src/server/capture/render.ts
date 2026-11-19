@@ -181,7 +181,7 @@ export type RenderFrame = (
     pose?: Pose
     /** The phone's island width, compact when absent. */
     island?: Island
-    /** How a phone or tablet is turned, upright when absent. */
+    /** How a phone, tablet, or foldable is turned, upright when absent. */
     turn?: Turn
     element?: number
   },
@@ -377,7 +377,7 @@ async function drawBezel(
         : laptop
           ? laptopMarks(box)
           : device === 'foldable'
-            ? foldableMarks(pose)
+            ? foldableMarks(pose, sideways)
             : ''
     const radius = screenCorners(device)
     await tab.setContent(
@@ -527,21 +527,24 @@ function turnedPhoneMarks(island: Island, turn: 'left' | 'right'): string {
   )
 }
 
-/** The foldable's fold band, island, and home bar as the board draws them for a pose. */
-function foldableMarks(pose: Pose): string {
-  const band = foldBand(pose)
+/** The foldable's fold band, island, and home bar as the board draws them for a pose and a turn. */
+function foldableMarks(pose: Pose, turn: Turn): string {
+  const band = foldBand(pose, turn)
   const reach = pose === 'half' ? -BEZELS.foldable.border : 0
-  const island = pill(
-    FOLDABLE_ISLAND.width,
-    FOLDABLE_ISLAND.height,
-    BEZEL_COLORS.island,
-    islandCenter(pose),
-  )
-  return (
-    (band
+  const place = islandCenter(pose, turn)
+  const { width, height, top } = FOLDABLE_ISLAND
+  const island =
+    place.edge === 'top'
+      ? `${pill(width, height, BEZEL_COLORS.island, place.along)}top:${top}px`
+      : `position:absolute;${place.edge}:${top}px;top:${place.along * 100}%;transform:translateY(-50%);width:${height}px;height:${width}px;border-radius:${height / 2}px;background:${BEZEL_COLORS.island}`
+  const fold = !band
+    ? ''
+    : band.runs === 'down'
       ? `<span style="position:absolute;left:50%;transform:translateX(-50%);top:${reach}px;bottom:${reach}px;width:${band.width}px;background:${band.background}"></span>`
-      : '') +
-    `<span style="${island}top:${FOLDABLE_ISLAND.top}px"></span>` +
+      : `<span style="position:absolute;top:50%;transform:translateY(-50%);left:${reach}px;right:${reach}px;height:${band.width}px;background:${band.background}"></span>`
+  return (
+    fold +
+    `<span style="${island}"></span>` +
     `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
   )
 }

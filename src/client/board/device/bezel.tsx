@@ -1,3 +1,4 @@
+import { cn } from '@/client/lib/cn'
 import {
   BATTERY,
   BEZEL_COLORS,
@@ -22,6 +23,7 @@ import {
   STATUS_BAR,
   STATUS_FONT,
   type Turn,
+  turnOf,
   WIDE_ISLAND_LEVEL,
   WIDE_ISLAND_TIMER,
 } from '@/shared/frame-device'
@@ -52,7 +54,7 @@ export function Bezel({
   pose?: Pose
   /** The phone's island width, which no other device reads. */
   island?: Island
-  /** How a phone or tablet is held, which moves a phone's island and buttons and hides its status bar. */
+  /** How a phone, tablet, or foldable is held, which moves an island, a phone's buttons, and a fold, and hides a phone's status bar. */
   turn?: Turn
   /** The page's fill and text color, which the phone's status bar paints, its theme's own until the page reports them. */
   colors?: PageColors | null
@@ -82,7 +84,9 @@ export function Bezel({
         <TurnedPhoneMarks island={island} turn={turn} />
       ) : null}
       {laptop ? <LaptopBody width={width} height={height} /> : null}
-      {device === 'foldable' ? <FoldableMarks pose={pose} /> : null}
+      {device === 'foldable' ? (
+        <FoldableMarks pose={pose} turn={turnOf(turn)} />
+      ) : null}
     </div>
   )
 }
@@ -156,34 +160,63 @@ function StatusBar({
 }
 
 /**
- * A foldable's island and home bar, with the band down the inner screen's
- * middle. Half open's band runs over the body too, which darkens at the fold.
+ * A foldable's island and home bar, with the band through the inner screen's
+ * middle, down it upright and across it turned. Half open's band runs over
+ * the body too, which darkens at the fold.
  */
-function FoldableMarks({ pose }: { pose: Pose }) {
-  const band = foldBand(pose)
+function FoldableMarks({ pose, turn }: { pose: Pose; turn: Turn }) {
+  const band = foldBand(pose, turn)
   const reach = pose === 'half' ? -BEZELS.foldable.border : 0
+  const place = islandCenter(pose, turn)
+  const onSide = place.edge !== 'top'
   return (
     <>
       {band ? (
         <span
           data-bezel-fold={pose}
-          className="absolute left-1/2 -translate-x-1/2"
-          style={{
-            top: reach,
-            bottom: reach,
-            width: band.width,
-            background: band.background,
-          }}
+          className={cn(
+            'absolute',
+            band.runs === 'down'
+              ? 'left-1/2 -translate-x-1/2'
+              : 'top-1/2 -translate-y-1/2',
+          )}
+          style={
+            band.runs === 'down'
+              ? {
+                  top: reach,
+                  bottom: reach,
+                  width: band.width,
+                  background: band.background,
+                }
+              : {
+                  left: reach,
+                  right: reach,
+                  height: band.width,
+                  background: band.background,
+                }
+          }
         />
       ) : null}
       <span
         data-bezel-island
-        className="absolute -translate-x-1/2"
+        className={cn(
+          'absolute',
+          onSide ? '-translate-y-1/2' : '-translate-x-1/2',
+        )}
         style={{
-          left: `${islandCenter(pose) * 100}%`,
-          top: FOLDABLE_ISLAND.top,
-          width: FOLDABLE_ISLAND.width,
-          height: FOLDABLE_ISLAND.height,
+          ...(onSide
+            ? {
+                [place.edge]: FOLDABLE_ISLAND.top,
+                top: `${place.along * 100}%`,
+                width: FOLDABLE_ISLAND.height,
+                height: FOLDABLE_ISLAND.width,
+              }
+            : {
+                left: `${place.along * 100}%`,
+                top: FOLDABLE_ISLAND.top,
+                width: FOLDABLE_ISLAND.width,
+                height: FOLDABLE_ISLAND.height,
+              }),
           borderRadius: FOLDABLE_ISLAND.height / 2,
           background: BEZEL_COLORS.island,
         }}

@@ -260,22 +260,52 @@ describe('a foldable pose', () => {
   })
 
   it.each([
-    ['closed', 0.5],
-    ['half', 0.75],
-    ['open', 0.75],
-  ] as const)('centers the %s island at %f of the screen', (pose, center) => {
-    expect(islandCenter(pose)).toBe(center)
-  })
+    ['closed', 'upright', { edge: 'top', along: 0.5 }],
+    ['half', 'upright', { edge: 'top', along: 0.75 }],
+    ['open', 'upright', { edge: 'top', along: 0.75 }],
+    ['closed', 'left', { edge: 'left', along: 0.5 }],
+    ['half', 'left', { edge: 'left', along: 0.25 }],
+    ['open', 'left', { edge: 'left', along: 0.25 }],
+    ['closed', 'right', { edge: 'right', along: 0.5 }],
+    ['half', 'right', { edge: 'right', along: 0.75 }],
+    ['open', 'right', { edge: 'right', along: 0.75 }],
+  ] as const)(
+    'places the %s island turned %s where a quarter turn puts it',
+    (pose, turn, place) => {
+      expect(islandCenter(pose, turn)).toEqual(place)
+    },
+  )
 
-  it('draws no fold on the cover screen', () => {
-    expect(foldBand('closed')).toBeNull()
-  })
+  it.each(['upright', 'left', 'right'] as const)(
+    'draws no fold on the cover screen held %s',
+    (turn) => {
+      expect(foldBand('closed', turn)).toBeNull()
+    },
+  )
 
   it('shades the half open fold wider than the open crease', () => {
-    expect(foldBand('half')?.width).toBeGreaterThan(
-      foldBand('open')?.width ?? 0,
+    expect(foldBand('half', 'upright')?.width).toBeGreaterThan(
+      foldBand('open', 'upright')?.width ?? 0,
     )
   })
+
+  it.each([
+    ['half', 'upright', 'down', '90deg'],
+    ['open', 'upright', 'down', '90deg'],
+    ['half', 'left', 'across', '180deg'],
+    ['open', 'left', 'across', '180deg'],
+    ['half', 'right', 'across', '180deg'],
+    ['open', 'right', 'across', '180deg'],
+  ] as const)(
+    'runs the %s fold turned %s %s the screen, shaded at %s',
+    (pose, turn, runs, angle) => {
+      const band = foldBand(pose, turn)
+      expect(band?.runs).toBe(runs)
+      expect(band?.background).toMatch(
+        new RegExp(`^linear-gradient\\(${angle},`),
+      )
+    },
+  )
 })
 
 describe('shownBox', () => {

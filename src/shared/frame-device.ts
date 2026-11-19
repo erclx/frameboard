@@ -363,30 +363,47 @@ export function nearestPose(width: number): Pose {
  */
 export const FOLDABLE_ISLAND = { width: 100, height: 30, top: 14 } as const
 
-/** Where the island's center sits across a pose's screen, as a share of its width. */
-export function islandCenter(pose: Pose): number {
-  return pose === 'closed' ? 0.5 : 0.75
+/** The island's place on a foldable's screen: the edge it stands on and its center along that edge, as a share from the left or the top. */
+export interface IslandPlace {
+  edge: 'top' | 'left' | 'right'
+  along: number
 }
 
 /**
- * The band drawn down the middle of the inner screen, a faint crease open
- * and a shaded fold half open, null on the cover screen, which has no fold.
+ * Where the island sits on a pose's screen, where a quarter turn puts it: a
+ * turn left lays the top edge down the left side, so a share across the top
+ * reads from the bottom, and a turn right lays it down the right side.
+ */
+export function islandCenter(pose: Pose, turn: Turn): IslandPlace {
+  const across = pose === 'closed' ? 0.5 : 0.75
+  if (turn === 'left') return { edge: 'left', along: 1 - across }
+  if (turn === 'right') return { edge: 'right', along: across }
+  return { edge: 'top', along: across }
+}
+
+/**
+ * The band drawn through the middle of the inner screen, a faint crease open
+ * and a shaded fold half open, running down the screen upright and across it
+ * turned, null on the cover screen, which has no fold.
  */
 export function foldBand(
   pose: Pose,
-): { width: number; background: string } | null {
+  turn: Turn,
+): { width: number; background: string; runs: 'down' | 'across' } | null {
   if (pose === 'closed') return null
+  const runs = turn === 'upright' ? 'down' : 'across'
+  const angle = runs === 'down' ? '90deg' : '180deg'
   if (pose === 'open') {
     return {
       width: 26,
-      background:
-        'linear-gradient(90deg, transparent, rgba(0,0,0,.05) 35%, rgba(0,0,0,.11) 50%, rgba(255,255,255,.5) 56%, transparent)',
+      runs,
+      background: `linear-gradient(${angle}, transparent, rgba(0,0,0,.05) 35%, rgba(0,0,0,.11) 50%, rgba(255,255,255,.5) 56%, transparent)`,
     }
   }
   return {
     width: 150,
-    background:
-      'linear-gradient(90deg, transparent, rgba(0,0,0,.10) 30%, rgba(0,0,0,.34) 49%, rgba(0,0,0,.34) 51%, rgba(0,0,0,.08) 70%, transparent)',
+    runs,
+    background: `linear-gradient(${angle}, transparent, rgba(0,0,0,.10) 30%, rgba(0,0,0,.34) 49%, rgba(0,0,0,.34) 51%, rgba(0,0,0,.08) 70%, transparent)`,
   }
 }
 
