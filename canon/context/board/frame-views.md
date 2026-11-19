@@ -22,12 +22,12 @@ Owns `linked-box.tsx`, the views of a frame at each width its entry lists, drawn
 
 ### `src/client/board/device/`
 
-Owns `bezel.tsx`, the body around a frame showing a `device`, `page-colors.ts`, a status bar's colors, `poses.tsx`, the bar under a selected device, and `turn.ts`, the Rotate action. All read `src/shared/frame-device.ts`, as capture does, and a board point maps into a phone's page through `pageBox`.
+Owns `bezel.tsx`, the body around a `device`, `page-colors.ts`, the fill its bar and strips paint, `poses.tsx`, the bar under a selected device, and `turn.ts`, Rotate. All read `src/shared/frame-device.ts`. A board point maps into a phone's page through `pageBox`, but the frame and present overlay offset their iframe by `topInset` and `sideInset`.
 
-- The body is a `box-shadow` spread that misses a square corner, so the page rounds to `pageCorners`, square on top under a phone's status bar, and every other box on its screen to `screenCorners`
+- The body is a `box-shadow` spread that misses a square corner, so the page rounds to `pageCorners`, square where a status bar or side strip meets it, and other boxes to `screenCorners`
 - A laptop's lid is that spread, its chin and base boxes from `laptopParts`, and the body scales with the canvas, its edge one screen pixel at any zoom, taking no pointer events
 - The label, the open-alone link, and the rail stand past the border, a laptop's lid, and the In frame tag below the body, a laptop's base, and a linked width draws no device
-- Every geometry helper takes the frame's `turn`, so a turned phone drops its status bar and puts its buttons on its long edges, and a turned foldable runs its fold across in `foldBand`
+- Every geometry helper takes the `turn`, so a turned phone trades its status bar for a `sideInset` strip on each short side, and a turned foldable runs its fold across in `foldBand`
 - Present and Play show a page-tall phone one screen tall through `shownBox`, centered by `bezelBox` and fit by `bezelReach`
 
 ### `src/client/board/scroll/`
