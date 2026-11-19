@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.45.0](https://github.com/erclx/frameboard/compare/v0.44.0...v0.45.0) (2026-11-19)
+
+
+### Features
+
+* **assets:** find and save Poly Haven models from the Find tab ([#416](https://github.com/erclx/frameboard/issues/416)) ([b3e56ec](https://github.com/erclx/frameboard/commit/b3e56ec9c9aa3fe35f32f3daaa2fb78204bbaa04))
+* **bridge:** move the motion, present, and Play reads behind the bridge ([#413](https://github.com/erclx/frameboard/issues/413)) ([db394cd](https://github.com/erclx/frameboard/commit/db394cdd8280894e89f09c481fc0c88686bb158e))
+* **device:** turn a foldable through each pose with Rotate and --turn ([#418](https://github.com/erclx/frameboard/issues/418)) ([a31250b](https://github.com/erclx/frameboard/commit/a31250b24d1f431bcb3b38e24be8e6add7d3ac25))
+* **device:** turn a phone or tablet landscape with Rotate and --turn ([#414](https://github.com/erclx/frameboard/issues/414)) ([92e2e4a](https://github.com/erclx/frameboard/commit/92e2e4a7ba195649779a31497bab7f165dfdab83))
+* **image:** generate images on a local ComfyUI server ([#417](https://github.com/erclx/frameboard/issues/417)) ([3d13f6b](https://github.com/erclx/frameboard/commit/3d13f6bbe2e76a451a87cddffb0aa250bc7e5c89))
+* **models:** generate a 3D model from a picture on a local ComfyUI ([#419](https://github.com/erclx/frameboard/issues/419)) ([370952d](https://github.com/erclx/frameboard/commit/370952d7fdeae6be992f4eaed81ad3566492f28b))
+* **server:** serve frames from their own port so a frame cannot write ([#420](https://github.com/erclx/frameboard/issues/420)) ([a00a9a4](https://github.com/erclx/frameboard/commit/a00a9a4c3877c2e873b08e74c41dbb9580de0fd5))
+
 ## [0.44.0](https://github.com/erclx/frameboard/compare/v0.43.0...v0.44.0) (2026-11-19)
 
 
