@@ -552,6 +552,42 @@ describe.skipIf(shell === null)(
       expect(start).toEqual([255, 0, 0, 255])
     })
 
+    it('draws the body around a frame placed away from the canvas origin', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+      // A frame's record carries its canvas place beside its size, as the PNG route passes it.
+      const placed = { x: 1520, y: 40, width: 678, height: 466 }
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/edge',
+          box: placed,
+          device: 'foldable',
+          pose: 'closed',
+          turn: 'left',
+        },
+        'light',
+      )
+      const body = await pixelAt(requireShell(shell), bytes, 10, 20 + 233)
+      const island = await pixelAt(
+        requireShell(shell),
+        bytes,
+        20 + 29,
+        20 + 233,
+      )
+      const strip = await pixelAt(requireShell(shell), bytes, 20 + 50, 20 + 5)
+
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        718, 506,
+      ])
+      expect(body).toEqual([23, 24, 27, 255])
+      expect(island).toEqual([5, 5, 6, 255])
+      expect(strip).toEqual([0, 128, 0, 255])
+    })
+
     it('runs a turned half open foldable’s fold across the screen', async () => {
       const render = createWarmRenderer({
         baseUrl: () => host.url,

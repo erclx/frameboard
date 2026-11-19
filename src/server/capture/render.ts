@@ -361,8 +361,10 @@ async function drawBezel(
   },
   scale: number,
 ): Promise<Buffer> {
-  const outer = bezelBox({ x: 0, y: 0, ...box }, device, turn)
-  const page = pageBox({ x: 0, y: 0, ...box }, device, turn)
+  // A frame record's box also carries its canvas place, which the PNG drops.
+  const screen = { x: 0, y: 0, width: box.width, height: box.height }
+  const outer = bezelBox(screen, device, turn)
+  const page = pageBox(screen, device, turn)
   const laptop = device === 'laptop'
   const context = await browser.newContext({
     viewport: { width: outer.width, height: outer.height },
