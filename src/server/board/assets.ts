@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto'
+import { existsSync } from 'node:fs'
 import {
   link,
   mkdir,
@@ -19,10 +20,17 @@ import {
   type PlaceableKind,
 } from '@/shared/asset-kinds'
 import { ASSETS_FOLDER } from '@/shared/board-files'
+import { FrameboardError } from '@/shared/errors'
+import { PROJECT_KITS } from '@/shared/kits'
 import { NAME_MAX_LENGTH, nextFreeName } from '@/shared/names'
-import type { AssetAddResult, AssetFile } from '@/shared/records/assets'
+import type {
+  AssetAddResult,
+  AssetFile,
+  AssetWriteResult,
+} from '@/shared/records/assets'
 import { LICENSE_FILE_SUFFIX } from '@/shared/records/sourcing'
 
+import type { JournalOptions } from './journal'
 import { isCode, LOCK_SUFFIX, TEMP_SUFFIX } from './json-record'
 
 /** One dropped file, by the name it came with. */
@@ -105,30 +113,12 @@ export async function resolveAsset(
   projectDir: string,
   path: string,
 ): Promise<ResolvedAsset> {
-  const missing = {
-    ok: false,
-    code: 'asset-missing',
-    message: `assets/${path} is not a file in the project's assets folder`,
-  } as const
-  const segments = path.split('/')
-  if (
-    segments.some(
-      (segment) =>
-        segment === '' || segment.startsWith('.') || isScratch(segment),
-    )
-  ) {
-    return missing
-  }
-  const folder = join(projectDir, ASSETS_FOLDER)
-  try {
-    const real = await realpath(folder)
-    const target = await realpath(join(folder, ...segments))
-    if (!target.startsWith(real + sep) || !(await stat(target)).isFile()) {
-      return missing
+  if ((await confinedAsset(projectDir, path)) === null) {
+    return {
+      ok: false,
+      code: 'asset-missing',
+      message: `assets/${path} is not a file in the project's assets folder`,
     }
-  } catch (error) {
-    if (isCode(error, 'ENOENT') || isCode(error, 'ENOTDIR')) return missing
-    throw error
   }
   const kind = assetKind(path)
   if (!isPlaceableKind(kind)) {
@@ -139,6 +129,86 @@ export async function resolveAsset(
     }
   }
   return { ok: true, kind }
+}
+
+/**
+ * The absolute path of a file under the project's `assets/`, or null for a
+ * path naming a dot, lock, or temp segment, or whose real path leaves the
+ * folder or is not a file.
+ */
+async function confinedAsset(
+  projectDir: string,
+  path: string,
+): Promise<string | null> {
+  const segments = path.split('/')
+  if (
+    segments.some(
+      (segment) =>
+        segment === '' || segment.startsWith('.') || isScratch(segment),
+    )
+  ) {
+    return null
+  }
+  const folder = join(projectDir, ASSETS_FOLDER)
+  const file = join(folder, ...segments)
+  try {
+    const real = await realpath(folder)
+    const target = await realpath(file)
+    if (!target.startsWith(real + sep) || !(await stat(target)).isFile()) {
+      return null
+    }
+  } catch (error) {
+    if (isCode(error, 'ENOENT') || isCode(error, 'ENOTDIR')) return null
+    throw error
+  }
+  return file
+}
+
+/**
+ * A file a hand write may change, refusing `asset-not-found` for one
+ * `confinedAsset` refuses, a license file, or a kit's file, which the Theme
+ * tab owns.
+ */
+async function writableAsset(
+  projectDir: string,
+  path: string,
+): Promise<string> {
+  const file =
+    path.split('/')[0] === PROJECT_KITS || path.endsWith(LICENSE_FILE_SUFFIX)
+      ? null
+      : await confinedAsset(projectDir, path)
+  if (file === null) {
+    throw new FrameboardError(
+      'asset-not-found',
+      `assets/${path} is not a file in the project's assets folder.`,
+      { path },
+    )
+  }
+  return file
+}
+
+/** The license file beside an asset, when it has one. */
+function licenseOf(file: string): string | null {
+  const license = `${file}${LICENSE_FILE_SUFFIX}`
+  return existsSync(license) ? license : null
+}
+
+/**
+ * Deletes an asset and its license file, each taken out through the journal
+ * where one is given, so an undo brings both back.
+ */
+export async function removeAsset(
+  projectDir: string,
+  path: string,
+  { journal }: JournalOptions = {},
+): Promise<AssetWriteResult> {
+  const file = await writableAsset(projectDir, path)
+  for (const each of [file, licenseOf(file)]) {
+    if (each === null) continue
+    if (journal) await journal.removed(each)
+    else await rm(each)
+  }
+  return { path, frames: [] }
 }
 
 function isScratch(name: string): boolean {

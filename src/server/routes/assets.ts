@@ -5,12 +5,19 @@ import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 
 import type { AssetUsage } from '@/server/board/asset-usage'
-import { addAssets, listAssets } from '@/server/board/assets'
+import { addAssets, listAssets, removeAsset } from '@/server/board/assets'
 import { listTransitions, ownKeyframes } from '@/server/board/transitions'
+import type { History } from '@/server/history/stack'
+import { FrameboardError } from '@/shared/errors'
 import { isValidName } from '@/shared/names'
-import type { TransitionKeyframesList } from '@/shared/records/assets'
+import type {
+  AssetWriteResult,
+  TransitionKeyframesList,
+} from '@/shared/records/assets'
 
 import { type Access, requireWriter } from '../access/guard'
+import { answerRefusal } from './envelope'
+import { decodeSegments } from './frames'
 
 /** The most a drop may carry, multipart overhead included. */
 export const ASSET_BODY_LIMIT = 64 * 1024 * 1024
@@ -24,16 +31,59 @@ export interface AssetsRoutesOptions {
 
 /**
  * A project's `assets/` routes, the drop held in memory, so the body limit is
- * its only bound.
+ * its only bound. A rename, replace, or delete names its file after
+ * `assets/` in the URL, each segment encoded, and records one undo step.
  */
 export function assetsRoutes(
   root: string,
   access: Access,
+  history: History,
   { limit = ASSET_BODY_LIMIT, usage }: AssetsRoutesOptions = {},
 ): Hono {
   const app = new Hono()
   const authorized = requireWriter(access)
   const path = '/api/projects/:project/assets'
+  const file = `${path}/*`
+
+  /** The project folder and the file's path under `assets/`, refusing a missing project or a path segment that leaves the folder. */
+  const target = (url: string, project: string) => {
+    const projectDir = projectFolder(root, project)
+    if (projectDir === null) {
+      throw new FrameboardError(
+        'project-not-found',
+        `No project named ${project} in this board.`,
+      )
+    }
+    const prefix = `/api/projects/${encodeURIComponent(project)}/assets/`
+    const raw = new URL(url).pathname
+    const segments = raw.startsWith(prefix)
+      ? decodeSegments(raw.slice(prefix.length).split('/'))
+      : null
+    if (segments === null || segments.length === 0) {
+      throw new FrameboardError(
+        'asset-not-found',
+        "Name a file in the project's assets folder.",
+      )
+    }
+    return { projectDir, asset: segments.join('/') }
+  }
+
+  /** Runs one write with a fresh journal and records it as a step that moves no page. */
+  const recorded = async (
+    write: (
+      journal: ReturnType<History['journal']>,
+    ) => Promise<AssetWriteResult>,
+  ): Promise<AssetWriteResult> => {
+    const journal = history.journal()
+    const result = await write(journal)
+    history.record({
+      id: journal.id,
+      changes: journal.changes,
+      page: null,
+      frames: result.frames,
+    })
+    return result
+  }
 
   app.get(path, async (c) => {
     const projectDir = projectFolder(root, c.req.param('project'))
@@ -117,6 +167,16 @@ export function assetsRoutes(
       return c.json({ ok: true, data: await addAssets(projectDir, uploads) })
     },
   )
+
+  app.delete(file, authorized, async (c) => {
+    const { projectDir, asset } = target(c.req.url, c.req.param('project'))
+    const data = await recorded((journal) =>
+      removeAsset(projectDir, asset, { journal }),
+    )
+    return c.json({ ok: true, data })
+  })
+
+  app.onError(answerRefusal)
 
   return app
 }

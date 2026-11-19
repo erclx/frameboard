@@ -1,7 +1,12 @@
 import type { z } from 'zod'
 
 import { addressFileSchema } from './address'
-import { assetAddResultSchema, assetListSchema } from './assets'
+import {
+  assetAddResultSchema,
+  assetListSchema,
+  assetRenameSchema,
+  assetWriteResultSchema,
+} from './assets'
 import { boardFileSchema, layoutFileSchema, projectFileSchema } from './board'
 import { captureResultSchema, fitResultSchema } from './capture'
 import { checkResultSchema } from './check'
@@ -51,6 +56,8 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   claim: claimSchema,
   assetList: assetListSchema,
   assetAdd: assetAddResultSchema,
+  assetRename: assetRenameSchema,
+  assetWrite: assetWriteResultSchema,
   elements: elementTreeSchema,
   selection: selectionResultSchema,
   find: findResultSchema,

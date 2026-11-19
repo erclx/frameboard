@@ -8,6 +8,7 @@ import {
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
 import { type AssetUsage, createAssetUsage } from '../board/asset-usage'
+import { History } from '../history/stack'
 import { assetsRoutes } from './assets'
 
 const TOKEN = 'a'.repeat(64)
@@ -15,9 +16,11 @@ const PORT = 4173
 
 describe('assetsRoutes', () => {
   let board: FixtureBoard
+  let history: History
 
   beforeEach(() => {
     board = copyFixtureBoard('basic')
+    history = new History(board.root)
   })
 
   afterEach(() => {
@@ -33,6 +36,7 @@ describe('assetsRoutes', () => {
         cookieName: 'frameboard-key-111111111111',
         isOwnOrigin: (host) => host === `127.0.0.1:${PORT}`,
       },
+      history,
       { limit, usage },
     )
   }
@@ -162,6 +166,107 @@ describe('assetsRoutes', () => {
         error: { code: 'asset-too-large' },
       })
       expect(existsSync(join(board.root, 'webapp/assets'))).toBe(false)
+    })
+  })
+
+  function asset(path: string): string {
+    return join(board.root, 'webapp/assets', path)
+  }
+
+  function writeAsset(path: string, content: string): void {
+    mkdirSync(join(asset(path), '..'), { recursive: true })
+    writeFileSync(asset(path), content)
+  }
+
+  function write(
+    method: 'DELETE' | 'PATCH' | 'PUT',
+    path: string,
+    {
+      token = TOKEN as string | null,
+      body = undefined as BodyInit | undefined,
+      project = 'webapp',
+    } = {},
+  ) {
+    return routes().request(`/api/projects/${project}/assets/${path}`, {
+      method,
+      headers: token === null ? {} : { authorization: `Bearer ${token}` },
+      body,
+    })
+  }
+
+  describe('DELETE', () => {
+    it('deletes the file and answers its path', async () => {
+      writeAsset('lake.jpg', 'pixels')
+
+      const response = await write('DELETE', 'lake.jpg')
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { path: 'lake.jpg', frames: [] },
+      })
+      expect(existsSync(asset('lake.jpg'))).toBe(false)
+    })
+
+    it('takes the license file with it, and one undo brings both back', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeAsset('lake.jpg.license.json', '{"license":"CC0"}')
+
+      await write('DELETE', 'lake.jpg')
+      expect(existsSync(asset('lake.jpg.license.json'))).toBe(false)
+      await history.undo()
+
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('pixels')
+      expect(readFileSync(asset('lake.jpg.license.json'), 'utf8')).toBe(
+        '{"license":"CC0"}',
+      )
+      expect(history.counts()).toEqual({ undo: 0, redo: 1 })
+    })
+
+    it('deletes a file in a subfolder named by encoded segments', async () => {
+      writeAsset('img/my logo.svg', '<svg/>')
+
+      const response = await write('DELETE', 'img/my%20logo.svg')
+
+      expect(response.status).toBe(200)
+      expect(existsSync(asset('img/my logo.svg'))).toBe(false)
+    })
+
+    it('answers 404 asset-not-found for a file that is not there and records nothing', async () => {
+      const response = await write('DELETE', 'gone.png')
+
+      expect(response.status).toBe(404)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'asset-not-found' },
+      })
+      expect(history.counts()).toEqual({ undo: 0, redo: 0 })
+    })
+
+    it('refuses an encoded path leaving the folder and leaves the file outside alone', async () => {
+      writeFileSync(join(board.root, 'webapp/outside.css'), 'x')
+
+      const response = await write('DELETE', '..%2Foutside.css')
+
+      expect(response.status).toBe(404)
+      expect(existsSync(join(board.root, 'webapp/outside.css'))).toBe(true)
+    })
+
+    it("refuses a kit's file, which the Theme tab owns", async () => {
+      writeAsset('kits/clean/kit.css', 'x')
+
+      const response = await write('DELETE', 'kits/clean/kit.css')
+
+      expect(response.status).toBe(404)
+      expect(existsSync(asset('kits/clean/kit.css'))).toBe(true)
+    })
+
+    it('refuses a caller that is not a writer with 401 and keeps the file', async () => {
+      writeAsset('lake.jpg', 'pixels')
+
+      const response = await write('DELETE', 'lake.jpg', { token: null })
+
+      expect(response.status).toBe(401)
+      expect(existsSync(asset('lake.jpg'))).toBe(true)
     })
   })
 
