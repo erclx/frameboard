@@ -80,6 +80,31 @@ describe('BindingLinks', () => {
     expect(container.querySelector('[data-binding-link]')).toBeNull()
   })
 
+  it("tags a control in a phone frame's page, 54 below where the bare frame tags it", async () => {
+    const mounted = await mountFrame(TUNER)
+    act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+    const tagTop = (container: HTMLElement) =>
+      parseFloat(
+        /calc\(([\d.]+)px/.exec(
+          container.querySelector<HTMLElement>('[data-binding-link] > span')
+            ?.style.top ?? '',
+        )?.[1] ?? '',
+      )
+    const bare = render(<BindingLinks frames={[HERO]} container={mounted} />)
+    await waitFor(() => expect(tagTop(bare.container)).not.toBeNaN())
+    const plain = tagTop(bare.container)
+    bare.unmount()
+
+    const phone = render(
+      <BindingLinks
+        frames={[{ ...HERO, showDevice: true, device: 'phone' }]}
+        container={mounted}
+      />,
+    )
+
+    await waitFor(() => expect(tagTop(phone.container)).toBe(plain + 54))
+  })
+
   it('moves a link when its target moves in a page the board kept', async () => {
     const mounted = await mountFrame(TUNER)
     act(() => select(selectionStore, 'studio/home', [HERO.ref]))
