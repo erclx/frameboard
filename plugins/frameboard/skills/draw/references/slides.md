@@ -22,6 +22,16 @@ A transition and a step answer different questions, so pick by what moves.
 - Set it by name with `frameboard page transition <page> <name>`, or on one slide with `frameboard frame transition <page>/<frame> <name>`
 - Run `frameboard check` after the write, since a file breaking the block's rules is refused whole and reported as `transition-file`, and every slide naming it cuts
 
+## Write speaker notes beside the slide
+
+A deck's words for the presenter belong in speaker notes, so keep them out of the slide's own text.
+
+- Set a note with `frameboard frame speaker-notes <page>/<frame> <text>`, which refuses text past the limit in the `present` block of `frameboard docs --json` rather than cutting it
+- The note lives on the frame's layout entry and never enters the frame file, so a rewrite of the slide keeps it and a duplicate carries it
+- The presenter view's own window shows the note beside the slide, and the slide itself never does. The `present` block's line that present mode never shows it means the slide and not that window, so a note is not a caption.
+- Write a note for a slide whose point is spoken, and leave the rest bare
+- Read a slide's note before rewriting the slide, since the developer may have typed one in the strip under it
+
 ## Capture a stepped slide
 
 A capture shows every step at once, so a plain capture is the slide at its last press. Check the earlier moments by reading the step numbers back in document order, and ask the developer to press through the slide in present mode when a build's order matters.
