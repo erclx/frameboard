@@ -16,6 +16,7 @@ import {
   bezelBox,
   pageCorners,
   screenCorners,
+  shownBox,
   topInset,
 } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
@@ -26,6 +27,7 @@ import { PRESENT } from '../chrome/toolbar-tools'
 import { Bezel } from '../device/bezel'
 import { usePageColors } from '../device/page-colors'
 import { useWaitingOnFirstLoad } from '../frame-loading'
+import { useHiddenScrollbar } from '../hidden-scrollbar'
 import { LoadingBlock } from '../loading-block'
 import { PresentBar } from './bar'
 import { presentScale } from './fit'
@@ -411,7 +413,7 @@ export function ScaledFrame({
   frame: FrameRecord
   room: { width: number; height: number }
 } & LiveProps) {
-  const { width, height } = frame.box
+  const { width, height } = shownBox(frame)
   const body = bezelBox({ x: 0, y: 0, width, height }, frame.device)
   const scale = presentScale(frame, room)
   // Centers by the body, which a laptop's reaches further below than above.
@@ -567,10 +569,13 @@ function PresentedFrame({
 }: {
   frame: Pick<
     FrameRecord,
-    'ref' | 'name' | 'box' | 'device' | 'pose' | 'island'
+    'ref' | 'name' | 'box' | 'scroll' | 'device' | 'pose' | 'island'
   >
 } & LiveProps) {
   const iframe = useRef<HTMLIFrameElement>(null)
+  const shown = shownBox(frame)
+  // A page-tall phone shown one screen tall scrolls with no bar, as a scroll frame does on the board.
+  useHiddenScrollbar(iframe, true, shown.height < frame.box.height)
   // The screen rounds under its bezel, whose body cannot cover a square corner.
   const corners = frame.device ? screenCorners(frame.device) : undefined
   const statusBar = topInset(frame.device)
@@ -646,8 +651,8 @@ function PresentedFrame({
       {frame.device ? (
         <Bezel
           device={frame.device}
-          width={frame.box.width}
-          height={frame.box.height}
+          width={shown.width}
+          height={shown.height}
           pose={frame.pose}
           island={frame.island}
           colors={colors}

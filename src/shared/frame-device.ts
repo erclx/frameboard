@@ -195,7 +195,7 @@ export function pageBox(box: Box, device: Device | null | undefined): Box {
 export function shownBox<B extends { width: number; height: number }>(frame: {
   box: B
   device?: Device | null
-  scroll: boolean
+  scroll?: boolean
 }): B {
   const { box, device, scroll } = frame
   if (device !== 'phone' || scroll) return { ...box }
