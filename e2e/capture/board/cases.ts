@@ -45,6 +45,7 @@ const WRITING_SECTIONS = [
   'device-bezel',
   'device-island-wide',
   'device-turned',
+  'device-upright-overflow',
   'device-turned-overflow',
   'device-foldable-closed',
   'device-foldable-half',
