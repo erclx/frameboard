@@ -228,10 +228,6 @@ export function ownReloadRefs(
  * What a batch's paths reach: frame refs, `<page>/*` and `<project>/*`
  * wildcards, whether a board-wide sheet reaches every frame, and per project
  * the placeable media under `assets/` that reach only the frames loading them.
- *
- * A stylesheet, script, font, or anything in a kit's folder keeps the project
- * reload, since a frame can reach one through a sheet's `url()` or the kit
- * the frame route imports, neither of which the frame's own loads list.
  */
 function reloadCauses(
   root: string,
@@ -255,6 +251,7 @@ function reloadCauses(
     if (folder === ASSETS_FOLDER) {
       const name = rest.at(-1) ?? ''
       if (name.endsWith(LICENSE_FILE_SUFFIX)) continue
+      // A sheet's url() or the kit the frame route imports reaches a frame unlisted in its own loads.
       const inKit = rest[0] === PROJECT_KITS || rest[0] === KIT_ASSETS
       if (inKit || !isPlaceableKind(assetKind(name))) {
         refs.add(`${project}/*`)
