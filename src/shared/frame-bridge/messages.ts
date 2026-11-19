@@ -69,6 +69,8 @@ export interface FramePoint {
 /** The element a text edit opens, and the point double-clicked in it, which picks a run of text beside a child element. */
 export interface TextEditArgs extends ElementAddress {
   at?: FramePoint
+  /** Opens an element holding no text, which the board asks only of a placed Text. */
+  empty?: boolean
 }
 
 /**
@@ -656,7 +658,10 @@ const SCHEMAS: {
   },
   restamp: { args: z.object({ hash: z.string() }), value: z.boolean() },
   'text-edit': {
-    args: addressSchema.extend({ at: pointSchema.optional() }),
+    args: addressSchema.extend({
+      at: pointSchema.optional(),
+      empty: z.boolean().optional(),
+    }),
     value: z.boolean(),
     push: textEditEndSchema,
   },
@@ -775,10 +780,11 @@ export function isElementAddress(value: unknown): value is ElementAddress {
 /** Whether a value is what `text-edit` takes, an address with an optional point. */
 export function isTextEditArgs(value: unknown): value is TextEditArgs {
   if (!isElementAddress(value)) return false
-  const { at } = value as { at?: unknown }
+  const { at, empty } = value as { at?: unknown; empty?: unknown }
   return (
-    at === undefined ||
-    (isRecord(at) && Number.isFinite(at.x) && Number.isFinite(at.y))
+    (empty === undefined || typeof empty === 'boolean') &&
+    (at === undefined ||
+      (isRecord(at) && Number.isFinite(at.x) && Number.isFinite(at.y)))
   )
 }
 

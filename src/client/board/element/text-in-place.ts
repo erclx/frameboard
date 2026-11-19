@@ -1,3 +1,5 @@
+import { createStore } from 'zustand/vanilla'
+
 import {
   type FramePoint,
   isElementBox,
@@ -28,6 +30,16 @@ export interface TextEditing {
   caretAt: (at: FramePoint) => Promise<boolean>
 }
 
+/** Where an in-place text edit opens, and whether an element with no text may. */
+export interface TextEditOptions {
+  /** A frame point picking the run of text beside child elements. */
+  at?: FramePoint
+  /** Opens an element holding no text, as only a placed Text is, holding a caret. */
+  empty?: boolean
+  /** Takes an end leaving no text, in place of a write, which a placed Text is removed on. */
+  blank?: () => void
+}
+
 /** An in-place text edit the board asked a frame to open. */
 export interface TextEdit extends TextEditing {
   /** Whether the frame opened it, false for an element holding anything but text. */
@@ -53,7 +65,7 @@ export function editTextInPlace(
   container: ParentNode,
   key: ElementKey,
   write: WriteText,
-  at?: FramePoint,
+  { at, empty = false, blank }: TextEditOptions = {},
 ): TextEdit {
   const iframe = shownFrame(container, key.frame)
   if (!iframe) {
@@ -71,12 +83,25 @@ export function editTextInPlace(
   const edit = subscribe(
     iframe,
     'text-edit',
-    { index: key.index, hash: key.hash, ...(at ? { at } : {}) },
+    {
+      index: key.index,
+      hash: key.hash,
+      ...(at ? { at } : {}),
+      ...(empty ? { empty } : {}),
+    },
     (end) => {
       if (!isTextEditEnd(end)) return
       open = false
       edit.close()
-      if (end.kind === 'closed') return
+      if (end.kind === 'closed') {
+        blank?.()
+        return
+      }
+      if (blank && end.text.trim() === '') {
+        blank()
+        void request(iframe, 'text-written', { edit: edit.id, written: false })
+        return
+      }
       const changes: ElementChange[] = [
         end.run === undefined
           ? { kind: 'text', value: end.text }
@@ -179,18 +204,40 @@ export function framePoint(
 }
 
 /**
- * Opens an element for typing once its frame shows the key's bytes, as a
- * placed Text waits, and stops waiting once the selection moves on. The
- * answer reads the edit that opened, as one opened at once is read.
+ * The placed Text open for typing or waiting on its frame, which draws a
+ * caret alone, with no outline, marks, or chip, until its edit ends.
+ */
+export const newTextStore = createStore<{ key: ElementKey | null }>()(() => ({
+  key: null,
+}))
+
+/**
+ * Opens a placed Text, empty, once its frame shows the key's bytes. It ends
+ * written, or blank and handed to `remove` once, by an end with no text, a
+ * cancel, or a selection moving on before it opens.
  */
 export function editTextWhenShown(
   container: HTMLElement,
   key: ElementKey,
   write: WriteText,
   selection: SelectionStore,
+  remove: () => void,
 ): TextEditing {
   let current: TextEdit | null = null
   let waiting = true
+  let ended = false
+  newTextStore.setState({ key })
+  const end = (empty: boolean) => {
+    if (ended) return
+    ended = true
+    if (newTextStore.getState().key === key)
+      newTextStore.setState({ key: null })
+    if (empty) remove()
+  }
+  const written: WriteText = (changes) => {
+    end(false)
+    return write(changes)
+  }
   const stop = () => {
     waiting = false
     container.removeEventListener('load', attempt, true)
@@ -198,7 +245,10 @@ export function editTextWhenShown(
   }
   function attempt() {
     current?.cancel()
-    const edit = editTextInPlace(container, key, write)
+    const edit = editTextInPlace(container, key, written, {
+      empty: true,
+      blank: () => end(true),
+    })
     current = edit
     void edit.opened.then((opened) => {
       if (!opened) return
@@ -208,7 +258,9 @@ export function editTextWhenShown(
     })
   }
   const unsubscribe = selection.subscribe(({ element }) => {
-    if (element?.frame !== key.frame || element.index !== key.index) stop()
+    if (element?.frame === key.frame && element.index === key.index) return
+    stop()
+    end(true)
   })
   // A load does not bubble, so a frame reloading is caught on the way down.
   container.addEventListener('load', attempt, true)
@@ -217,6 +269,7 @@ export function editTextWhenShown(
     cancel: () => {
       stop()
       current?.cancel()
+      end(true)
     },
     isOpen: () => current?.isOpen() ?? false,
     caretAt: (at) => current?.caretAt(at) ?? Promise.resolve(false),

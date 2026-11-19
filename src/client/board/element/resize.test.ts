@@ -18,6 +18,7 @@ import {
   startElementResize,
   startGroupEdit,
 } from './resize'
+import { newTextStore } from './text-in-place'
 
 const BOX = { x: 100, y: 100, width: 200, height: 100 }
 
@@ -311,6 +312,7 @@ describe('a live element', () => {
     stop = () => {}
     container?.remove()
     container = undefined
+    newTextStore.setState({ key: null })
   })
 
   /** Resolves once the frame ran every preview sent before now, since it answers a later request after them. */
@@ -390,6 +392,15 @@ describe('a live element', () => {
       await measure(shown, [stale])
 
       expect(shownResize(shown, stale)).toBeNull()
+    })
+
+    it('reads nothing for a placed Text open for typing, whose corners draw no marks', async () => {
+      const shown = await mount('<p>Words</p>')
+      await measure(shown, [KEY])
+
+      newTextStore.setState({ key: KEY })
+
+      expect(shownResize(shown, KEY)).toBeNull()
     })
   })
 

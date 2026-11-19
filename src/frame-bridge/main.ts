@@ -79,6 +79,7 @@ const handlers: Handlers = {
           push(end)
         },
         args.at,
+        args.empty,
       )
     if (!edit) return false
     carets.set(id, edit.caretAt)
