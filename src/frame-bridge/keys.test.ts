@@ -100,4 +100,34 @@ describe('keys', () => {
 
     await expect.poll(() => press(frame, 'Escape')).toBe(false)
   })
+
+  it('leaves a Space on a button to the page while buttons are kept', async () => {
+    const frame = await frameOf('<button>Go</button>')
+    const button = frame.contentDocument?.querySelector('button') ?? undefined
+    const { pushes } = await ask(frame, 'keys', {
+      keys: ['Space'],
+      keepTyping: false,
+      keepButtons: true,
+    })
+
+    const prevented = press(frame, 'Space', button)
+    press(frame, 'Space')
+
+    expect(prevented).toBe(false)
+    await expect.poll(() => pushes).toHaveLength(1)
+  })
+
+  it('takes a Space on a button when buttons are not kept', async () => {
+    const frame = await frameOf('<button>Go</button>')
+    const button = frame.contentDocument?.querySelector('button') ?? undefined
+    const { pushes } = await ask(frame, 'keys', {
+      keys: ['Space'],
+      keepTyping: false,
+    })
+
+    const prevented = press(frame, 'Space', button)
+
+    expect(prevented).toBe(true)
+    await expect.poll(() => pushes).toHaveLength(1)
+  })
 })

@@ -1,11 +1,16 @@
+import { elementAt } from '@/shared/frame-bridge/elements'
 import {
   STEP_ATTRIBUTES,
   STEP_EFFECTS,
+  STEP_KEYFRAMES,
+  STEP_MS,
   STEP_STARTS,
   type StepEffect,
   type StepStart,
 } from '@/shared/present-transition'
 import { LOOK_MARKER } from '@/shared/theme'
+
+import type { Handlers } from './handler'
 
 /** One element a press reveals, with its entrance and how long after the press it starts. */
 export interface StepItem {
@@ -17,22 +22,10 @@ export interface StepItem {
 /** The elements one press reveals together. */
 export type StepGroup = StepItem[]
 
-/** How long one step's entrance runs. Appear runs none. */
-export const STEP_MS = 400
-
-/** The board's own marks in a presented document, so nothing it writes lands on a key the file uses. */
+/** Frameboard's own marks in a presented document, so nothing it writes lands on a key the file uses. */
 const SHOWN = 'data-frameboard-step'
 const DELAY = '--frameboard-step-delay'
 const STYLE_ID = 'frameboard-present-steps'
-
-/** Each effect's keyframes, which the inspector's tiles also mount in the board's document. */
-export const STEP_KEYFRAMES = `
-@keyframes frameboard-step-appear { from { visibility: hidden } to { visibility: visible } }
-@keyframes frameboard-step-fade { from { opacity: 0 } to { opacity: 1 } }
-@keyframes frameboard-step-fly { from { opacity: 0; translate: 0 40px } to { opacity: 1; translate: 0 0 } }
-@keyframes frameboard-step-wipe { from { clip-path: inset(0 100% 0 0) } to { clip-path: inset(0 0 0 0) } }
-@keyframes frameboard-step-zoom { from { opacity: 0; scale: 0.6 } to { opacity: 1; scale: 1 } }
-`
 
 /**
  * The style hiding a step not yet revealed and playing each effect as one
@@ -57,13 +50,10 @@ ${STEP_KEYFRAMES}
 }
 `
 
-/**
- * An element's inline style, read without `instanceof`, since the element
- * lives in the frame's own window, whose classes are not this one's.
- */
+/** An element's inline style, undefined for one in a namespace with none. */
 function inlineStyleOf(element: Element): CSSStyleDeclaration | undefined {
-  return 'style' in element
-    ? (element as Element & ElementCSSInlineStyle).style
+  return element instanceof HTMLElement || element instanceof SVGElement
+    ? element.style
     : undefined
 }
 
@@ -203,7 +193,7 @@ export function previewStep(element: Element, effect: StepEffect): () => void {
   return end
 }
 
-/** Takes every mark the board wrote out of `doc`, so it shows each step as the file does. */
+/** Takes every mark a walk wrote out of `doc`, so it shows each step as the file does. */
 export function clearSteps(doc: Document): void {
   doc.getElementById(STYLE_ID)?.remove()
   for (const element of doc.querySelectorAll(`[${SHOWN}]`)) {
@@ -211,4 +201,59 @@ export function clearSteps(doc: Document): void {
     element.removeAttribute(`${SHOWN}-effect`)
     inlineStyleOf(element)?.removeProperty(DELAY)
   }
+}
+
+/** The step attributes an agent's write can change, which read the steps again. */
+const STEP_KEYS = Object.values(STEP_ATTRIBUTES)
+
+/** A walk the board holds open, by its request id: the step it shows and the groups last read. */
+interface Walk {
+  shown: number
+  entering: number | null
+  groups: StepGroup[]
+}
+
+const walks = new Map<string, Walk>()
+
+/**
+ * A presented page's steps, walked here so the board never reads its
+ * document. A reread on an agent's write shows the step the walk holds at
+ * once, since new groups would otherwise show unhidden until the board's word.
+ */
+export const stepHandlers: Handlers = {
+  steps: ({ shown }, { id, push, onClose }) => {
+    const walk: Walk = { shown, entering: null, groups: readSteps(document) }
+    showSteps(document, walk.groups, walk.shown)
+    walks.set(id, walk)
+    const observer = new MutationObserver((records) => {
+      if (!touchesSteps(records)) return
+      walk.groups = readSteps(document)
+      showSteps(document, walk.groups, walk.shown, walk.entering)
+      push(walk.groups.length)
+    })
+    observer.observe(document.documentElement, {
+      subtree: true,
+      childList: true,
+      attributeFilter: STEP_KEYS,
+    })
+    onClose(() => {
+      observer.disconnect()
+      walks.delete(id)
+    })
+    return walk.groups.length
+  },
+  'steps-show': ({ steps, shown, entering }) => {
+    const walk = walks.get(steps)
+    if (!walk) return false
+    walk.shown = shown
+    walk.entering = entering
+    showSteps(document, walk.groups, shown, entering)
+    return true
+  },
+  'step-preview': ({ index, effect }, { onClose }) => {
+    const target = elementAt(document, index)
+    if (!target) return false
+    onClose(previewStep(target, effect))
+    return true
+  },
 }

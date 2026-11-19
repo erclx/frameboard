@@ -2,22 +2,16 @@ import { useCallback, useSyncExternalStore } from 'react'
 
 import type { FrameRecord } from '@/shared/records/list'
 
-import { pageReach } from '../play/reach'
-
-/** A frame's load reaches a capturing listener on its host document, though it never bubbles. */
-function onFrameLoad(listener: () => void): () => void {
-  document.addEventListener('load', listener, true)
-  return () => document.removeEventListener('load', listener, true)
-}
+import { pageReach, watchReach } from '../play/reach'
 
 /**
  * The notice centered atop the canvas column while the board is in Play. It
- * adds that nothing takes a click only once it has read every shown frame,
- * so a culled frame it could not read never lets it claim so.
+ * adds that nothing takes a click only once every shown frame answered, so
+ * a culled or loading frame never lets it claim so.
  */
 export function PlayBanner({ frames }: { frames: readonly FrameRecord[] }) {
   const reach = useSyncExternalStore(
-    onFrameLoad,
+    watchReach,
     useCallback(() => pageReach(frames), [frames]),
     () => 'unread' as const,
   )

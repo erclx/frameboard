@@ -11,11 +11,11 @@ import { chooseTheme, flipFrame, themeStore } from '@/client/theme/store'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 import { ringFocused } from '@/test/focus-ring'
-import { bridgeIn } from '@/test/frame-bridge'
+import { ask, bridgeIn } from '@/test/frame-bridge'
 
 import { openFindings } from './findings/open'
 import { Frame, LabelRename } from './frame'
-import { RESTAMPED, stampRenderedHash } from './frame-dom'
+import { stampRenderedHash } from './frame-dom'
 import { modeStore } from './mode'
 import {
   holdMotion,
@@ -424,15 +424,13 @@ describe('Frame', () => {
         <Frame frame={{ ...frame('a'), device: 'phone' }} live version={0} />,
       )
       const iframe = iframeOf(container, 'a')
-      await loaded(iframe)
+      await bridged(iframe)
       const body = iframe.contentDocument?.body
       if (!body) throw new Error('no frame body')
 
       body.style.background = 'rgb(12, 34, 56)'
       body.style.color = 'rgb(210, 220, 230)'
-      act(() => {
-        iframe.dispatchEvent(new Event(RESTAMPED))
-      })
+      await ask(iframe, 'restamp', { hash: 'd'.repeat(64) })
 
       const status = container.querySelector<HTMLElement>('[data-bezel-status]')
       await vi.waitFor(() => {

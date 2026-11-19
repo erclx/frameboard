@@ -1,13 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { frameElements } from '@/shared/frame-bridge/elements'
+import { STEP_MS } from '@/shared/present-transition'
+import { ask, bridgedFrame } from '@/test/frame-bridge'
 
 import {
   clearSteps,
   previewStep,
   readSteps,
   showSteps,
-  STEP_MS,
   touchesSteps,
 } from './steps'
 
@@ -273,5 +274,122 @@ describe('previewStep', () => {
     vi.advanceTimersByTime(STEP_MS)
 
     expect([held, marksOf(doc, 'a').state]).toEqual(['hidden', null])
+  })
+})
+
+describe('the step ops', () => {
+  const STEPPED =
+    '<p id="a" data-step="1">One</p><p id="b" data-step="2">Two</p>'
+
+  let iframe: HTMLIFrameElement | undefined
+
+  afterEach(() => {
+    iframe?.remove()
+    iframe = undefined
+  })
+
+  async function frameOf(body: string): Promise<Document> {
+    iframe = await bridgedFrame(body)
+    const doc = iframe.contentDocument
+    if (!doc) throw new Error('The iframe holds no page')
+    return doc
+  }
+
+  function frame(): HTMLIFrameElement {
+    if (!iframe) throw new Error('No frame open')
+    return iframe
+  }
+
+  it('answers how many presses a page holds and shows the first it is asked to', async () => {
+    const doc = await frameOf(STEPPED)
+
+    const { reply } = await ask(frame(), 'steps', { shown: 1 })
+
+    expect(reply).toEqual({ value: 2 })
+    expect(visibility(doc)).toEqual({ a: 'shown', b: 'hidden' })
+  })
+
+  it('shows a walk at the step the board names, playing its entrance', async () => {
+    const doc = await frameOf(STEPPED)
+    const walk = await ask(frame(), 'steps', { shown: 0 })
+
+    const { reply } = await ask(frame(), 'steps-show', {
+      steps: walk.id,
+      shown: 2,
+      entering: 1,
+    })
+
+    expect(reply).toEqual({ value: true })
+    expect(visibility(doc)).toEqual({ a: 'shown', b: 'enter' })
+  })
+
+  it('refuses to show a walk the board never opened', async () => {
+    await frameOf(STEPPED)
+
+    const { reply } = await ask(frame(), 'steps-show', {
+      steps: 'gone',
+      shown: 1,
+      entering: null,
+    })
+
+    expect(reply).toEqual({ value: false })
+  })
+
+  it('hides a step an agent adds at once, keeping the step it holds, and pushes the new count', async () => {
+    const doc = await frameOf(STEPPED)
+    const { pushes } = await ask(frame(), 'steps', { shown: 1 })
+
+    doc.body.insertAdjacentHTML(
+      'beforeend',
+      '<p id="c" data-step="3">Three</p>',
+    )
+
+    await expect.poll(() => pushes).toEqual([3])
+    expect(visibility(doc)).toEqual({ a: 'shown', b: 'hidden', c: 'hidden' })
+  })
+
+  it('reads nothing again once closed', async () => {
+    const doc = await frameOf(STEPPED)
+    const { pushes, close } = await ask(frame(), 'steps', { shown: 0 })
+    close()
+    await ask(frame(), 'live-body', {})
+
+    doc.body.insertAdjacentHTML(
+      'beforeend',
+      '<p id="c" data-step="3">Three</p>',
+    )
+    await ask(frame(), 'live-body', {})
+
+    expect(pushes).toEqual([])
+    expect(visibility(doc).c).toBe('unmarked')
+  })
+
+  it('plays a preview on the element at an index and takes it back on close', async () => {
+    const doc = await frameOf('<p id="a" data-step="1">One</p>')
+    const index = frameElements(doc).findIndex((element) => element.id === 'a')
+
+    const { reply, close } = await ask(frame(), 'step-preview', {
+      index,
+      effect: 'fade',
+    })
+    const playing = doc
+      .getElementById('a')
+      ?.getAttribute('data-frameboard-step')
+    close()
+    await ask(frame(), 'live-body', {})
+
+    expect([reply, playing]).toEqual([{ value: true }, 'enter'])
+    expect(visibility(doc).a).toBe('unmarked')
+  })
+
+  it('answers false for a preview at no element', async () => {
+    await frameOf('<p>Plain</p>')
+
+    const { reply } = await ask(frame(), 'step-preview', {
+      index: 99,
+      effect: 'fade',
+    })
+
+    expect(reply).toEqual({ value: false })
   })
 })

@@ -10,6 +10,8 @@ export const BRIDGE =
 
 /** The frame's answer to one request, and what it pushed under it so far. */
 export interface Asked<O extends BridgeOp> {
+  /** The request's id, which an act op names to reach its subscription. */
+  id: string
   /** The reply value, or the refusal's message under `error`. */
   reply: { value: BridgeOps[O]['value'] } | { error: string }
   pushes: BridgeOps[O]['push'][]
@@ -46,6 +48,7 @@ export function ask<O extends BridgeOp>(
       }
       if (data.kind !== 'reply') return
       resolve({
+        id,
         reply:
           data.ok === true
             ? { value: data.value as BridgeOps[O]['value'] }

@@ -190,3 +190,25 @@ describe('content-height', () => {
     expect(reply).toEqual({ value: 900 })
   })
 })
+
+describe('page-colors', () => {
+  it("answers the fill and ink the page's body paints", async () => {
+    const frame = await frameOf(
+      '<style>body { background: rgb(1, 2, 3); color: rgb(4, 5, 6) }</style><p>Hi</p>',
+    )
+
+    const { reply } = await ask(frame, 'page-colors', {})
+
+    expect(reply).toEqual({
+      value: { fill: 'rgb(1, 2, 3)', ink: 'rgb(4, 5, 6)' },
+    })
+  })
+
+  it('answers no fill for a page that paints none', async () => {
+    const frame = await frameOf('<p>Hi</p>')
+
+    const { reply } = await ask(frame, 'page-colors', {})
+
+    expect(reply).toMatchObject({ value: { fill: null } })
+  })
+})

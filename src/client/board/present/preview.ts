@@ -1,10 +1,9 @@
-import { elementAt } from '@/shared/frame-bridge/elements'
 import type { StepEffect } from '@/shared/present-transition'
 
+import { subscribe } from '../bridge/channel'
 import { liveIframe } from '../frame-dom'
 import type { ElementKey } from '../selection'
 import { EASING, layerStyle } from './keyframes'
-import { previewStep } from './steps'
 import { prefersReducedMotion, type Travel } from './travel'
 
 let ending: (() => void) | null = null
@@ -113,12 +112,18 @@ export function previewTransition(
 
 /**
  * Plays `effect` once on the selected element in its frame's live page, one
- * preview at a time, and nothing while the page does not show it.
+ * preview at a time, the frame ending it on its own and the board closing it
+ * to end it early. Nothing plays while the page does not show the element.
  */
 export function previewStepOn(element: ElementKey, effect: StepEffect): void {
   playPreview(() => {
-    const doc = liveIframe(element.frame)?.contentDocument
-    const target = doc ? elementAt(doc, element.index) : null
-    return target ? previewStep(target, effect) : () => {}
+    const iframe = liveIframe(element.frame)
+    if (!iframe) return () => {}
+    return subscribe(
+      iframe,
+      'step-preview',
+      { index: element.index, effect },
+      () => {},
+    ).close
   })
 }
