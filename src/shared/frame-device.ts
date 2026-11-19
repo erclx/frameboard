@@ -187,10 +187,9 @@ export function pageBox(box: Box, device: Device | null | undefined): Box {
 }
 
 /**
- * The box a frame is shown at outside Edit, in present mode and once entered
- * in Play: one screen tall for a phone frame as tall as its whole page, so
- * the page scrolls inside, and the stored box for any other frame. A scroll
- * frame's box is already its screen, and the decision names the phone alone.
+ * The box a frame is shown at in present mode and entered in Play, one screen
+ * tall for a page-tall phone so its page scrolls, else the stored box, which
+ * a scroll frame already holds at its screen.
  */
 export function shownBox<B extends { width: number; height: number }>(frame: {
   box: B
