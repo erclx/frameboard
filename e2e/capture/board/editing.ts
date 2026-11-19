@@ -341,6 +341,60 @@ function textLinesHeld(ref: string): (page: Page) => Promise<void> {
   }
 }
 
+/** A placed Text while it is open for typing, never one an earlier case left in the copy. */
+const OPEN_TEXT = '[data-name="Text"][data-frameboard-editing]'
+
+/**
+ * Clicks the armed Text tool into `ref` at 40 by 45 percent of its box, and
+ * marks the page once the frame holds the placed paragraph open for typing.
+ */
+function newTextOpen(ref: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await probeFrames(page, [OPEN_TEXT], PRESS_FRAMES)
+    await page.addInitScript(
+      ({ owner, frames, open }) => {
+        if (window !== window.top) return
+        const { frameReport } = window as unknown as ProbeWindow
+        let left = frames
+        let clicked = false
+        const run = () => {
+          const iframe = document.querySelector<HTMLIFrameElement>(
+            `[data-frame="${owner}"] iframe`,
+          )
+          const hit = document.querySelector('[data-hit-layer]')
+          const armed = document.querySelector(
+            '[aria-label="Tools"] button[aria-label="Text"][aria-pressed="true"]',
+          )
+          const placed = iframe ? frameReport(iframe)?.elements[open] : null
+          if (placed?.editing) {
+            document.documentElement.setAttribute('data-new-text-open', '')
+            return
+          }
+          if (!clicked && iframe?.dataset.renderedAt && hit && armed) {
+            const box = iframe.getBoundingClientRect()
+            hit.dispatchEvent(
+              new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX: box.left + box.width * 0.4,
+                clientY: box.top + box.height * 0.45,
+              }),
+            )
+            clicked = true
+          }
+          if (--left > 0) requestAnimationFrame(run)
+          else console.error(`No placed Text in ${owner} opened for typing`)
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(run),
+        )
+      },
+      { owner: ref, frames: PRESS_FRAMES, open: OPEN_TEXT },
+    )
+  }
+}
+
 /**
  * Opens the hero's headline by one double-click, presses at the start of its
  * text, and types there, holding the write so the shot shows the edit open.
@@ -884,6 +938,28 @@ export function editingCases(theme: 'light' | 'dark'): CaptureCase[] {
         ),
       ),
     },
+    // Light alone, since the empty Text it leaves in the copy would list in a later dark shot.
+    ...(theme === 'light'
+      ? [
+          {
+            // A Text clicked into the landing, open for typing as a caret with no outline, marks, or chip.
+            section: 'new-text-caret',
+            theme,
+            route: '/p/marketing/launch',
+            evidence: true,
+            excludeViewports: STATE_ONLY,
+            mask: [AVATAR],
+            setup: themed(
+              both(
+                asWriter,
+                pressOnLoad('^Text$'),
+                newTextOpen('marketing/launch/landing'),
+                readyWhen('[data-new-text-open]'),
+              ),
+            ),
+          },
+        ]
+      : []),
     {
       // The hero's headline opened by one double-click, a line added with Enter.
       section: 'text-edit-lines',
@@ -1061,7 +1137,7 @@ export function editingCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     ...(
       [
-        // Text wearing its marks, its chip naming the height as hugging.
+        // Text 21px tall, its outline and hugging chip with no marks under 24px.
         ['corner-marks-text', 'free', '[data-name="Free text"]'],
         // An image and a video wearing their marks, both sides in px.
         ['corner-marks-image', 'free', '[data-name="Free image"]'],
