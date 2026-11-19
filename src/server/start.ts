@@ -32,6 +32,7 @@ import { landReserved } from './claims/land'
 import { type ClaimsPush, createClaimsPush } from './claims/push'
 import { clipboardFiles } from './clipboard/files'
 import { contentHash } from './edit/address'
+import { startFrameOrigin } from './frame-origin/listener'
 import { History } from './history/stack'
 import { emptyTrash } from './history/trash'
 import {
@@ -158,6 +159,8 @@ export interface RunningServer {
   hostname: string
   /** The port actually bound, which differs from the requested one when that was 0 or taken. */
   port: number
+  /** The port frames load from, a free one on each start, apart from the board's. */
+  framePort: number
   tabs: BoardTabs
   /** The board folder's watcher, whose batches any later check can follow without a second one. */
   watcher: BoardWatcher
@@ -300,9 +303,18 @@ async function listen({
     },
   )
   const selection = createSelectionHolder(() => tabs.writers)
+  // Frames load from their own port, whose `Origin` the write guard refuses,
+  // so a frame's script cannot write as the board.
+  const frameOrigin = await startFrameOrigin({
+    root,
+    facesDir,
+    tokens,
+    version: tracker.version,
+  })
   const hub = createHub({
     tabs,
     port: boundPort,
+    framePort: () => frameOrigin.port,
     access,
     snapshot: () =>
       inTurn(async () => {
@@ -329,7 +341,9 @@ async function listen({
       launch,
     }),
   )
-  const baseUrl = () => `http://${HOSTNAME}:${bound}`
+  // The warm browser reads frames where a tab does, so a render, a check, and
+  // a fit see what the board shows.
+  const baseUrl = () => `http://${HOSTNAME}:${frameOrigin.port}`
   const renderFrame = createWarmRenderer({ baseUrl, browser, scale: 2 })
   const renderFilmstrip = createWarmFilmstripRenderer({ baseUrl, browser })
   const thumbnails = createThumbnailStore({
@@ -467,6 +481,10 @@ async function listen({
       },
     )
     created.once('error', reject)
+  }).catch(async (error: unknown) => {
+    // A taken board port retries the whole start, which binds frames anew.
+    await frameOrigin.close()
+    throw error
   })
   server.on('upgrade', hub.handleUpgrade)
 
@@ -551,6 +569,7 @@ async function listen({
   return {
     hostname: HOSTNAME,
     port: bound,
+    framePort: frameOrigin.port,
     tabs,
     watcher,
     authorize: (next) => {
@@ -573,6 +592,7 @@ async function listen({
           emptyTrash(root),
           // No phone link outlives the board that opened it.
           preview.stop(),
+          frameOrigin.close(),
         ])
         await new Promise<void>((done, fail) => {
           server.close((error) => (error ? fail(error) : done()))

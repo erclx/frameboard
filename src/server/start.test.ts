@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import {
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
@@ -89,6 +90,20 @@ describe('startServer', () => {
     const second = await start(first.port, false)
 
     expect(second.port).not.toBe(first.port)
+  })
+
+  it('serves a frame from a second loopback port until closed', async () => {
+    mkdirSync(join(root, 'studio/home'), { recursive: true })
+    writeFileSync(join(root, 'studio/home/hero.html'), '<h1>Studio</h1>')
+    const server = await start(0)
+    const url = `http://127.0.0.1:${server.framePort}/frames/studio/home/hero.html`
+
+    const response = await fetch(url)
+    await server.close()
+
+    expect(server.framePort).not.toBe(server.port)
+    expect(await response.text()).toContain('<h1>Studio</h1>')
+    await expect(fetch(url)).rejects.toThrow()
   })
 
   it('fails on a taken port given explicitly', async () => {
@@ -236,11 +251,11 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     socket.on('message', (data) => messages.push(JSON.parse(String(data))))
     await new Promise((resolve) => socket.once('open', resolve))
     socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
-    // A push can land before the poll looks again, so the hello is the first seven.
+    // A push can land before the poll looks again, so the hello is the first eight.
     await expect
       .poll(() => messages.length, { timeout: 5000 })
-      .toBeGreaterThanOrEqual(7)
-    hello = messages.slice(0, 7)
+      .toBeGreaterThanOrEqual(8)
+    hello = messages.slice(0, 8)
     messages = []
   })
 
@@ -251,8 +266,9 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     rmSync(clientDir, { recursive: true, force: true })
   })
 
-  it('sends the board, whether it may write, the history, the claims, the changes, the listeners, and then every frame checked on hello', () => {
+  it('sends the frame port, the board, whether it may write, the history, the claims, the changes, the listeners, and then every frame checked on hello', () => {
     expect(hello.map((message) => message.type)).toEqual([
+      'frames',
       'board',
       'access',
       'history',
@@ -261,12 +277,13 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
       'listeners',
       'findings',
     ])
-    expect(hello[1]).toEqual({ type: 'access', write: false, dispatch: false })
-    expect(hello[2]).toEqual({ type: 'history', undo: 0, redo: 0 })
-    expect(hello[3]).toEqual({ type: 'claims', claims: [] })
-    expect(hello[4]).toEqual({ type: 'changes', changes: [] })
-    expect(hello[5]).toEqual({ type: 'listeners', listeners: [] })
-    expect(hello[6]).toMatchObject({
+    expect(hello[0]).toEqual({ type: 'frames', port: server.framePort })
+    expect(hello[2]).toEqual({ type: 'access', write: false, dispatch: false })
+    expect(hello[3]).toEqual({ type: 'history', undo: 0, redo: 0 })
+    expect(hello[4]).toEqual({ type: 'claims', claims: [] })
+    expect(hello[5]).toEqual({ type: 'changes', changes: [] })
+    expect(hello[6]).toEqual({ type: 'listeners', listeners: [] })
+    expect(hello[7]).toMatchObject({
       findings: { 'studio/home/hero': expect.any(Array) },
     })
   })
