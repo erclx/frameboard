@@ -74,6 +74,19 @@ export function assetUrl(project: string, path: string): string {
   return `/frames/${encodeURIComponent(project)}/assets/${segments}`
 }
 
+/**
+ * A tile's accessible name, holding its visible name and caption in the order
+ * they draw, per WCAG 2.5.3, with the size after them.
+ */
+export function tileLabel(file: AssetFile): string {
+  const usage = describeUsage(file)
+  const caption =
+    usage === null
+      ? describeAsset(file)
+      : `${kindLabel(file.kind)} · ${usage}, ${formatSize(file.size)}`
+  return `Copy path of ${file.path}, ${caption}`
+}
+
 /** A file name split at its last dot, the dot kept with the extension, and a dot-less name taken whole as the stem. */
 export function stemOf(name: string): { stem: string; extension: string } {
   const dot = name.lastIndexOf('.')

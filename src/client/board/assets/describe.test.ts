@@ -11,6 +11,7 @@ import {
   frameLabel,
   linkPath,
   stemOf,
+  tileLabel,
 } from './describe'
 
 describe('describeAsset', () => {
@@ -105,6 +106,25 @@ describe('stemOf', () => {
   it('takes a name with no dot, or a leading dot alone, whole as the stem', () => {
     expect(stemOf('LICENSE')).toEqual({ stem: 'LICENSE', extension: '' })
     expect(stemOf('.env')).toEqual({ stem: '.env', extension: '' })
+  })
+})
+
+describe('tileLabel', () => {
+  it('holds the caption as drawn ahead of the size, so the name contains the visible text', () => {
+    expect(
+      tileLabel({
+        path: 'img/lake.jpg',
+        kind: 'image',
+        size: 2_000,
+        frames: 1,
+      }),
+    ).toBe('Copy path of img/lake.jpg, image · 1 frame, 2 KB')
+  })
+
+  it('uses the kind and size caption a listing with no counts draws', () => {
+    expect(tileLabel({ path: 'lake.jpg', kind: 'image', size: 2_000 })).toBe(
+      'Copy path of lake.jpg, image · 2 KB',
+    )
   })
 })
 

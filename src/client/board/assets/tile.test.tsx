@@ -258,10 +258,63 @@ describe('an asset tile menu in a writing tab', () => {
     )
     await waitFor(() =>
       expect(
-        container.querySelector('img[src$="lake.jpg?v=1"]'),
+        container.querySelector('img[src$="lake.jpg?v=2000-1"]'),
       ).not.toBeNull(),
     )
     click.mockRestore()
+  })
+
+  it('loads the thumbnail afresh when an undo brings back bytes of another size', async () => {
+    const user = userEvent.setup()
+    let files: AssetFile[] = [LAKE]
+    const { container } = render(
+      <FilesView
+        project="studio"
+        load={async () => ({ files })}
+        writes={fakeWrites().writes}
+      />,
+    )
+    const click = vi
+      .spyOn(HTMLInputElement.prototype, 'click')
+      .mockImplementation(() => {})
+    await user.click(
+      within(await rightClick('lake.jpg')).getByRole('menuitem', {
+        name: 'Replace file…',
+      }),
+    )
+    files = [{ ...LAKE, size: 5_000 }]
+    await user.upload(
+      screen.getByLabelText('Choose a file to replace it with'),
+      new File(['new'], 'sunset.jpg', { type: 'image/jpeg' }),
+    )
+    await waitFor(() =>
+      expect(
+        container.querySelector('img[src$="lake.jpg?v=5000-1"]'),
+      ).not.toBeNull(),
+    )
+
+    files = [LAKE]
+    act(() => liveStore.setState({ board: { root: '/board', projects: [] } }))
+
+    await waitFor(() =>
+      expect(
+        container.querySelector('img[src$="lake.jpg?v=2000-1"]'),
+      ).not.toBeNull(),
+    )
+    click.mockRestore()
+  })
+
+  it('rings the tile while the menu its ⋯ opened is open', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+    const tile = await tileButton('lake.jpg')
+    tile.focus()
+
+    await user.tab()
+    await user.keyboard('{Enter}')
+    await screen.findByRole('menu')
+
+    expect(getComputedStyle(tile).boxShadow).not.toBe('none')
   })
 })
 

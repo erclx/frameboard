@@ -23,11 +23,11 @@ import {
   describeAsset,
   describeUsage,
   formatLength,
-  formatSize,
   frameLabel,
   kindLabel,
   linkPath,
   stemOf,
+  tileLabel,
 } from './describe'
 import { tileDragData } from './drag'
 import { fileName } from './groups'
@@ -96,7 +96,8 @@ export function Tile({
     copy: () => void copyPath(),
     showFrames: loadFrames ? showFrames : undefined,
   }
-  const url = `${assetUrl(project, path)}${version > 0 ? `?v=${version}` : ''}`
+  // The size moves the address on both sides of a replace's undo, which a counter alone would leave cached.
+  const url = `${assetUrl(project, path)}${version > 0 ? `?v=${file.size}-${version}` : ''}`
 
   async function copyPath() {
     let next: Copy = 'copied'
@@ -164,8 +165,8 @@ export function Tile({
             onPointerLeave={() => setActive(false)}
             onFocus={() => setActive(true)}
             onBlur={() => setActive(false)}
-            aria-label={`Copy path of ${[file.path, kindLabel(kind), formatSize(file.size), usage].filter(Boolean).join(', ')}`}
-            className="group relative block w-full overflow-hidden rounded-lg bg-muted text-left outline-none hover:ring-[1.5px] hover:ring-primary focus-visible:ring-[1.5px] focus-visible:ring-primary data-[popup-open]:ring-[1.5px] data-[popup-open]:ring-primary"
+            aria-label={tileLabel(file)}
+            className="group relative block w-full overflow-hidden rounded-lg bg-muted text-left outline-none group-has-[[data-popup-open]]/tile:ring-[1.5px] group-has-[[data-popup-open]]/tile:ring-primary hover:ring-[1.5px] hover:ring-primary focus-visible:ring-[1.5px] focus-visible:ring-primary data-[popup-open]:ring-[1.5px] data-[popup-open]:ring-primary"
           >
             <Thumbnail
               project={project}
