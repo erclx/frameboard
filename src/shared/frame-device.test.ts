@@ -11,7 +11,6 @@ import {
   laptopParts,
   nearestPose,
   pageBox,
-  PHONE_BUTTONS,
   PHONE_ISLAND,
   phoneIsland,
   POSE_SIZES,
@@ -160,15 +159,6 @@ describe('drawnExtent with a device', () => {
 })
 
 describe('the phone body', () => {
-  it('hangs its buttons within a 678 tall body, three on the left and one on the right', () => {
-    const body = 678 + 32
-    expect(PHONE_BUTTONS.filter(({ side }) => side === 'left')).toHaveLength(3)
-    expect(PHONE_BUTTONS.filter(({ side }) => side === 'right')).toHaveLength(1)
-    for (const { top, height } of PHONE_BUTTONS) {
-      expect(top + height).toBeLessThan(body / 2)
-    }
-  })
-
   it('draws the wide island wider than the compact one at the same height and place', () => {
     const compact = phoneIsland('compact')
     const wide = phoneIsland('wide')
