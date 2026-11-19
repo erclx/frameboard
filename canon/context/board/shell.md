@@ -1,17 +1,18 @@
 ---
 title: Board shell
-description: The board screen and canvas, Edit and Play, the panels, find, and the toolbar
+description: The board screen and canvas, Edit and Play, the panels, sections, and the toolbar
 ---
 
 # Board shell
 
 ## Overview
 
-Owns the browser app around the frames, being the board screen and canvas, widths, devices, scroll, sections, find, and the toolbar. Its look belongs to `canon/DESIGN.md`.
+Owns the browser app around the frames, being the board screen and canvas, sections, and the toolbar. Its look belongs to `canon/DESIGN.md`.
 
 The rest of the app sits in its own entries:
 
-- Playback in `canon/context/board/playback.md`, the placement tools in `canon/context/board/placing.md`, and the left panel in `canon/context/board/left-panel.md`
+- A frame's linked widths, device body, and scroll rail in `canon/context/board/frame-views.md`
+- Playback in `canon/context/board/playback.md`, the placement tools in `canon/context/board/placing.md`, and the left panel with find in `canon/context/board/left-panel.md`
 - The home view in `canon/context/board/home.md`, commands in `canon/context/board/commands.md`, agent work in `canon/context/board/agent-work.md`, and the server in `canon/context/board/server.md`
 
 ## Layout
@@ -26,33 +27,6 @@ Owns the board screen and canvas, with `mode.ts` holding Edit, Play, the tool, a
 - The loading shell and the board both read `panels.ts` and `mode.ts`, since a width or Hide UI read differently jumps the page on arrival. Its menus stay shut, since the swap remounts the chrome.
 - A double-click in the label strip opens `LabelRename` in the notes layer, since the hit layer would take the caret's click, and it skips a `[data-label-control]`
 
-### `src/client/board/widths/`
-
-Owns `linked-box.tsx`, the views of a frame at each width its entry lists, drawn after the frame in a row past its drawn box, so a drag carries them along.
-
-- A linked box is a view and never a frame. `frameAt` and `framesIn` answer the frame for a point or marquee on one, and `pickAt` reads the frame's own box alone, so no element picks inside it
-- It loads the frame's URL at the frame's reload version and theme, flips with it, and in Play takes the pointer while its frame is entered, binding Esc into its window
-- Its label names its width and counts the findings tagged with that width, and `mountedRefs` tests `drawnExtent` so a frame and its row mount together
-- Its row moves out by a laptop base's reach past the lid, so a linked box taller than the frame never meets the base
-
-### `src/client/board/device/`
-
-Owns `bezel.tsx`, the body around a frame showing a `device`, `page-colors.ts`, a status bar's colors, `poses.tsx`, the bar under a selected device, and `turn.ts`, the Rotate action. All read `src/shared/frame-device.ts`, as capture does, and a board point maps into a phone's page through `pageBox`.
-
-- The body is a `box-shadow` spread that misses a square corner, so the page rounds to `pageCorners`, square on top under a phone's status bar, and every other box on its screen to `screenCorners`
-- A laptop's lid is that spread, its chin and base boxes from `laptopParts`, and the body scales with the canvas, its edge one screen pixel at any zoom, taking no pointer events
-- The label, the open-alone link, and the rail stand past the border, a laptop's lid, and the In frame tag below the body, a laptop's base, and a linked width draws no device
-- Every geometry helper takes the frame's `turn`, so a turned phone drops its status bar and puts its buttons on its long edges, and a turned foldable runs its fold across in `foldBand`
-- Present and Play show a page-tall phone one screen tall through `shownBox`, centered by `bezelBox` and fit by `bezelReach`
-
-### `src/client/board/scroll/`
-
-Owns `rail.tsx`, the rail a scroll frame draws in Edit 8px past its right edge, or past its device body, at a constant 6px, and `page.ts`, which reads and scrolls the page behind it.
-
-- The rail draws inside the frame's box and each linked box, and only while the page is taller than its box and readable, so a page on another origin draws none
-- A frame's rail shows on hover or selection, and a linked box's while its frame is selected, since the pointer marks the frame alone
-- The scroll offset lives on the iframe's window and is never written to the layout or to undo
-
 ### `src/client/board/sections/`
 
 Owns a page's sections on the canvas, apart from `left-panel/section.tsx`, which is the panel's section heading and shares only the word.
@@ -62,16 +36,6 @@ Owns a page's sections on the canvas, apart from `left-panel/section.tsx`, which
 - `actions.ts` registers Wrap in section on `$mod+Alt+KeyG`, rename on F2, delete on Delete, the arrow nudges, and the Section tool
 - A wrap pads the selected frames' bounds by 40, with 200 on top so the name clears the frames' labels down to about 25% zoom. Delete keeps every frame.
 - The Section tool, Shift+S, draws a section at a dragged box or at 800 by 600 on a click, then selects it and returns to Move
-
-### `src/client/board/find/`
-
-Owns find, being the panel Cmd+F puts in place of the left panel's tabs under the same header, its query, and the pick, which change together.
-
-- `GET /api/find` searches the frame files through `src/server/edit/find.ts`, so a culled frame is found, matching frame names, element names, and each element's own text
-- A hidden frame is left out, and an element named by its own text hits as text alone, so it is listed once
-- Hits group by page, the page on the canvas when they arrived first, and a pick runs `board/jump.ts`, shared with the palette, selecting by the index and hash the search read
-- The field owns Esc, since the registry skips keys typed in a field, and Cmd+F turns Hide UI off
-- A hit draws the glyph its Layers row draws, read from the frame's cached tree at the hash the search read, and a frame hit draws the Frame `#`
 
 ### `src/client/board/chrome/`
 
