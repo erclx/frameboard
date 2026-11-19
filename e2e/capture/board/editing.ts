@@ -5,6 +5,11 @@ import type { ListResult } from '@/shared/records/list'
 
 import type { CaptureCase } from '../types'
 import {
+  type ProbedElement,
+  probeFrames,
+  type ProbeWindow,
+} from './frame-probe'
+import {
   actWhen,
   asWriter,
   AVATAR,
@@ -50,8 +55,11 @@ function elementsInFrame(
   selectors: readonly string[],
 ): (page: Page) => Promise<void> {
   return async (page) => {
+    await probeFrames(page, [...selectors], PRESS_FRAMES)
     await page.addInitScript(
       ({ owner, targets, frames }) => {
+        if (window !== window.top) return
+        const { frameReport } = window as unknown as ProbeWindow
         let left = frames
         let picked = 0
         const pick = () => {
@@ -67,10 +75,9 @@ function elementsInFrame(
           const decoded =
             layer !== null &&
             !layer.hasAttribute('data-staging') &&
-            [...document.querySelectorAll('iframe')].every((each) =>
-              [
-                ...(each.contentDocument?.querySelectorAll('video') ?? []),
-              ].every((video) => video.readyState >= 2),
+            [...document.querySelectorAll('iframe')].every(
+              // A frame yet to report shows no video, as a blank page does.
+              (each) => frameReport(each)?.videosDecoded !== false,
             )
           const drawn = document.querySelectorAll(
             '[data-element-selection]',
@@ -82,12 +89,12 @@ function elementsInFrame(
           const target = targets[picked]
           const element =
             target && drawn === picked && iframe?.dataset.renderedAt
-              ? iframe.contentDocument?.querySelector(target)
+              ? frameReport(iframe)?.elements[target]
               : null
           if (shown && element && hit && layer && decoded) {
             const k = Number(layer.style.getPropertyValue('--zoom') || 1)
             const frame = shown.getBoundingClientRect()
-            const inner = element.getBoundingClientRect()
+            const inner = element
             const at = {
               bubbles: true,
               cancelable: true,
@@ -261,8 +268,11 @@ function ellipseHeld(ref: string): (page: Page) => Promise<void> {
  */
 function textLinesHeld(ref: string): (page: Page) => Promise<void> {
   return async (page) => {
+    await probeFrames(page, ['h1'], PRESS_FRAMES)
     await page.addInitScript(
       ({ owner, frames }) => {
+        if (window !== window.top) return
+        const { frameReport, frameAct } = window as unknown as ProbeWindow
         let left = frames
         const sent = window.fetch.bind(window)
         window.fetch = (...args) =>
@@ -273,13 +283,12 @@ function textLinesHeld(ref: string): (page: Page) => Promise<void> {
           document.querySelector<HTMLIFrameElement>(
             `[data-frame="${owner}"] iframe`,
           )
-        const doubleClick = (heading: HTMLElement) => {
+        const doubleClick = (own: ProbedElement, width: number) => {
           const frame = iframe()
           const hit = document.querySelector('[data-hit-layer]')
           if (!frame || !hit) return
           const box = frame.getBoundingClientRect()
-          const k = box.width / (frame.contentWindow?.innerWidth || box.width)
-          const own = heading.getBoundingClientRect()
+          const k = box.width / (width || box.width)
           const clientX = box.left + (own.left + own.width / 2) * k
           const clientY = box.top + (own.top + own.height / 2) * k
           const send = (type: string, detail: number) =>
@@ -300,34 +309,25 @@ function textLinesHeld(ref: string): (page: Page) => Promise<void> {
           }
           send('dblclick', 2)
         }
-        const type = (heading: HTMLElement) => {
-          const shown = heading.ownerDocument
-          const end = shown.createRange()
-          end.selectNodeContents(heading)
-          end.collapse(false)
-          shown.getSelection()?.removeAllRanges()
-          shown.getSelection()?.addRange(end)
-          heading.dispatchEvent(
-            new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
-          )
-          const data = new DataTransfer()
-          data.setData('text/plain', 'Ship it')
-          heading.dispatchEvent(
-            new ClipboardEvent('paste', { clipboardData: data, bubbles: true }),
-          )
-          document.documentElement.setAttribute('data-text-lines-held', '')
-        }
         let asked = 0
+        let typed = false
         const run = () => {
           const frame = iframe()
-          const heading = frame?.contentDocument?.querySelector('h1')
-          if (frame?.dataset.renderedAt && heading) {
-            if (heading.hasAttribute('data-frameboard-editing')) {
-              type(heading)
+          const report = frame ? frameReport(frame) : null
+          const heading = report?.elements.h1
+          if (frame && report && heading && frame.dataset.renderedAt) {
+            // The frame types in its own page, so the shot waits for the line.
+            if (typed && heading.text.includes('Ship it')) {
+              document.documentElement.setAttribute('data-text-lines-held', '')
               return
             }
-            // The pick waits on the frame's tree, so the press repeats slowly.
-            if (asked++ % 60 === 0) doubleClick(heading)
+            if (heading.editing && !typed) {
+              frameAct(frame, { type: 'h1', text: 'Ship it' })
+              typed = true
+            } else if (!heading.editing && asked++ % 60 === 0) {
+              // The pick waits on the frame's tree, so the press repeats slowly.
+              doubleClick(heading, report.width)
+            }
           }
           if (--left > 0) requestAnimationFrame(run)
           else console.error(`No headline in ${owner} opened for typing`)
@@ -363,14 +363,19 @@ async function wordsAroundCommandOnHero(page: Page): Promise<void> {
   })
 }
 
+const CAPTION = '[data-name="Caption"]'
+
 /**
  * Double-clicks the words after `ref`'s caption command, holding the write
  * back so the edit stays open on that run with its words selected.
  */
 function textRunHeld(ref: string): (page: Page) => Promise<void> {
   return async (page) => {
+    await probeFrames(page, [CAPTION], PRESS_FRAMES)
     await page.addInitScript(
-      ({ owner, frames }) => {
+      ({ owner, frames, caption: named }) => {
+        if (window !== window.top) return
+        const { frameReport } = window as unknown as ProbeWindow
         let left = frames
         const sent = window.fetch.bind(window)
         window.fetch = (...args) =>
@@ -381,16 +386,15 @@ function textRunHeld(ref: string): (page: Page) => Promise<void> {
           document.querySelector<HTMLIFrameElement>(
             `[data-frame="${owner}"] iframe`,
           )
-        const doubleClick = (run: Node) => {
+        const doubleClick = (
+          own: { left: number; top: number; width: number; height: number },
+          width: number,
+        ) => {
           const frame = iframe()
           const hit = document.querySelector('[data-hit-layer]')
-          const shown = frame?.contentDocument
-          if (!frame || !hit || !shown) return
-          const words = shown.createRange()
-          words.selectNodeContents(run)
-          const own = words.getBoundingClientRect()
+          if (!frame || !hit) return
           const box = frame.getBoundingClientRect()
-          const k = box.width / (frame.contentWindow?.innerWidth || box.width)
+          const k = box.width / (width || box.width)
           const clientX = box.left + (own.left + own.width / 2) * k
           const clientY = box.top + (own.top + own.height / 2) * k
           const send = (type: string, detail: number) =>
@@ -414,17 +418,16 @@ function textRunHeld(ref: string): (page: Page) => Promise<void> {
         let asked = 0
         const run = () => {
           const frame = iframe()
-          const caption = frame?.contentDocument?.querySelector(
-            '[data-name="Caption"]',
-          )
-          const after = caption?.lastChild
-          if (frame?.dataset.renderedAt && caption && after) {
-            if (caption.hasAttribute('data-frameboard-editing')) {
+          const report = frame ? frameReport(frame) : null
+          const caption = report?.elements[named]
+          const after = caption?.lastRun
+          if (frame?.dataset.renderedAt && report && caption && after) {
+            if (caption.editing) {
               document.documentElement.setAttribute('data-text-run-held', '')
               return
             }
             // The pick waits on the frame's tree, so the press repeats slowly.
-            if (asked++ % 60 === 0) doubleClick(after)
+            if (asked++ % 60 === 0) doubleClick(after, report.width)
           }
           if (--left > 0) requestAnimationFrame(run)
           else console.error(`No caption run in ${owner} opened for typing`)
@@ -433,7 +436,7 @@ function textRunHeld(ref: string): (page: Page) => Promise<void> {
           requestAnimationFrame(run),
         )
       },
-      { owner: ref, frames: PRESS_FRAMES },
+      { owner: ref, frames: PRESS_FRAMES, caption: CAPTION },
     )
   }
 }
@@ -468,7 +471,10 @@ async function freeDragReleased(page: Page): Promise<void> {
     }
     await route.fulfill({ json: { ok: true, data: { ref, index, hash } } })
   })
+  await probeFrames(page, ['h1'], PRESS_FRAMES)
   await page.addInitScript((frames) => {
+    if (window !== window.top) return
+    const { frameReport } = window as unknown as ProbeWindow
     let left = frames
     const send = (
       target: EventTarget | null,
@@ -503,7 +509,7 @@ async function freeDragReleased(page: Page): Promise<void> {
       const hero = document.querySelector('[data-frame="webapp/home/hero"]')
       const iframe = hero?.querySelector('iframe')
       const box = iframe?.dataset.renderedAt
-        ? iframe.contentDocument?.querySelector('h1')
+        ? frameReport(iframe)?.elements.h1
         : null
       const hit = document.querySelector('[data-hit-layer]')
       const layer = document.querySelector<HTMLElement>('[data-layer]')
@@ -518,7 +524,7 @@ async function freeDragReleased(page: Page): Promise<void> {
       }
       const k = Number(layer.style.getPropertyValue('--zoom') || 1)
       const frame = hero.getBoundingClientRect()
-      const inner = box.getBoundingClientRect()
+      const inner = box
       const x = frame.left + (inner.left + inner.width / 2) * k
       const y = frame.top + (inner.top + inner.height / 2) * k
       const outline = document.querySelector('[data-element-selection]')

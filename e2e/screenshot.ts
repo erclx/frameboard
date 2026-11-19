@@ -144,22 +144,27 @@ async function settle(
       const staging = document.querySelectorAll('[data-staging]')
       if ([...staging].some((layer) => layer.checkVisibility())) return false
       for (const image of document.images) if (!image.complete) return false
-      for (const frame of document.querySelectorAll('iframe')) {
-        try {
-          const inner = frame.contentDocument
-          if (inner === null) continue
-          if (inner.readyState !== 'complete') return false
-          // A frame's fonts load after its `readyState`, outside the outer document's.
-          if (inner.fonts.status !== 'loaded') return false
-        } catch {
-          // A cross-origin frame has nothing to read or wait on.
-        }
-      }
       return true
     },
     undefined,
     { timeout: SETTLE_TIMEOUT },
   )
+  // Each frame sits on its own port, so its page is waited on from inside it.
+  // A frame's fonts load after its `readyState`, outside the outer document's.
+  for (const frame of page.mainFrame().childFrames()) {
+    await frame
+      .waitForFunction(
+        () =>
+          document.readyState === 'complete' &&
+          document.fonts.status === 'loaded',
+        undefined,
+        { timeout: SETTLE_TIMEOUT },
+      )
+      .catch((error: unknown) => {
+        // A frame the board unmounted meanwhile has nothing left to wait on.
+        if (!frame.isDetached()) throw error
+      })
+  }
   return present
 }
 
