@@ -25,7 +25,9 @@ import {
   imageFindSchema,
   imageGenerateSchema,
   licenseFileSchema,
+  modelFindSchema,
   savedImageSchema,
+  savedModelSchema,
 } from './sourcing'
 import { tokenTableSchema } from './tokens'
 
@@ -63,4 +65,6 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   licenseFile: licenseFileSchema,
   imageGenerate: imageGenerateSchema,
   imageDoctor: imageDoctorSchema,
+  modelFind: modelFindSchema,
+  savedModel: savedModelSchema,
 }

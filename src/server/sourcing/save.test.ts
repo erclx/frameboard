@@ -12,6 +12,7 @@ import {
   imageExtension,
   savedStem,
   saveImage,
+  saveModel,
 } from './save'
 
 function foundLicense(): LicenseFile {
@@ -31,6 +32,24 @@ function foundLicense(): LicenseFile {
     landingUrl: null,
     url: 'https://images.example.org/abc.jpg',
     savedAt: '2026-11-18T12:00:00.000Z',
+  }
+}
+
+function modelLicense(): LicenseFile {
+  return {
+    version: 1,
+    origin: 'found',
+    source: 'polyhaven',
+    id: 'wooden_stool_01',
+    query: 'stool',
+    title: 'Wooden Stool 01',
+    authors: ['Kuutti Siitonen'],
+    license: 'cc0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    landingUrl: 'https://polyhaven.com/a/wooden_stool_01',
+    url: 'https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/wooden_stool_01/wooden_stool_01_1k.gltf',
+    size: '1k',
+    savedAt: '2026-11-19T12:00:00.000Z',
   }
 }
 
@@ -106,6 +125,44 @@ describe('save', () => {
       ).rejects.toThrow()
 
       expect(readdirSync(assets)).toEqual(['house.jpg.license.json'])
+    })
+  })
+
+  describe('saveModel', () => {
+    it('writes one .glb and its license file under the same name', async () => {
+      const saved = await saveModel(
+        project,
+        'stool',
+        new Uint8Array([4, 5, 6]),
+        modelLicense(),
+      )
+
+      expect(saved).toMatchObject({
+        path: 'stool.glb',
+        licensePath: 'stool.glb.license.json',
+      })
+      expect(readdirSync(assets).sort()).toEqual([
+        'stool.glb',
+        'stool.glb.license.json',
+      ])
+      expect(
+        JSON.parse(
+          readFileSync(join(assets, 'stool.glb.license.json'), 'utf8'),
+        ),
+      ).toEqual(modelLicense())
+    })
+
+    it('lands on the next free name, its license file taking that name', async () => {
+      await saveModel(project, 'stool', new Uint8Array([1]), modelLicense())
+
+      const saved = await saveModel(
+        project,
+        'stool',
+        new Uint8Array([1]),
+        modelLicense(),
+      )
+
+      expect(saved.licensePath).toBe('stool-2.glb.license.json')
     })
   })
 
@@ -235,6 +292,10 @@ describe('save', () => {
 
     it('falls back to image for a query holding no name characters', () => {
       expect(savedStem(undefined, '!!!')).toBe('image')
+    })
+
+    it('falls back to the given word for a model', () => {
+      expect(savedStem(undefined, '!!!', 'model')).toBe('model')
     })
 
     it('refuses invalid-name for a name breaking the board rule', () => {

@@ -22,6 +22,11 @@ import {
   DEFAULT_LICENSES,
   PAGE_SIZE,
 } from '@/server/sourcing/openverse'
+import {
+  DEFAULT_MODEL_SIZE,
+  POLYHAVEN_SOURCE,
+  RESULT_LIMIT,
+} from '@/server/sourcing/polyhaven'
 import { DOWNLOAD_LIMIT } from '@/server/sourcing/save'
 import { FOREIGN_MODELS } from '@/shared/asset-kinds'
 import { BINDS_ATTRIBUTE, UNIT_ATTRIBUTE } from '@/shared/bindings'
@@ -70,7 +75,7 @@ import {
   TRANSITIONS_FOLDER,
 } from '@/shared/present-transition'
 import { SPEAKER_NOTES_MAX } from '@/shared/records/board'
-import { LICENSE_FILE_SUFFIX } from '@/shared/records/sourcing'
+import { LICENSE_FILE_SUFFIX, MODEL_SIZES } from '@/shared/records/sourcing'
 import { LOOK_MARKER } from '@/shared/theme'
 
 /** The content format `docs` prints, built from the constants the verbs run on. */
@@ -146,6 +151,7 @@ export function contentFormat() {
       `The element draws only in a frame whose head loads the viewer, as ${VIEWER_SCRIPT}. Placing a model on the board copies ${VIEWER_FILE} into the project's ${ASSETS_FOLDER}/ once and adds that tag to a head loading no viewer, and removing the last model leaves both. The file ships with the tool at ${shippedViewerPath()}, so copy it to the project's ${ASSETS_FOLDER}/${VIEWER_FILE} before writing the element in a project that holds none. A frame loads nothing over the network, so never link the viewer from a CDN.`,
       `Every staging control is an attribute on the element, set with edit --attr. camera-orbit="<theta>deg <phi>deg <radius>" places the camera, across and then down from the top, and defaults to 0deg 75deg auto. The viewer holds the camera inside max-camera-orbit, so state both once the radius passes the model's own framing, as camera-orbit="30deg 70deg 6m" max-camera-orbit="auto auto 6m". orientation="<roll>deg <pitch>deg <yaw>deg" turns the model itself, scale="<x> <y> <z>" sizes it, animation-name picks one of its clips, and autoplay starts it. The board's Model section writes these same attributes, the angle as both orbit attributes in one undo step, and a double-click on a selected model turns it by drag.`,
       `check reports missing-file at error for a ${VIEWER_TAG} whose ${MODEL_LOADS.join(', ')} names no file, as it does for the viewer script. capture waits for each model to draw inside the frame's load budget and holds its clip at the start, and --at seeks every clip to that moment, so two captures match. A model that fails to load, or is still loading when the budget ends, never refuses: the image lists it under models with state error or pending.`,
+      `model find searches ${POLYHAVEN_SOURCE.name}'s CC0 models, which ask no credit, and writes nothing. ${POLYHAVEN_SOURCE.name} has no search, so it reads the whole list in one request and ranks it here: by how many distinct query words match a word of the name, the tags, or the categories, then by download count, then by id, listing up to ${RESULT_LIMIT} numbered from 1 and none for a query matching nothing. Its results and human output name ${POLYHAVEN_SOURCE.name}, as its terms ask of any surface showing its content. --save <number> runs the search again, and --save <id> saves that ${POLYHAVEN_SOURCE.name} model with no search. A saved model is one .glb packed from the glTF, its buffer, and its textures, at ${DEFAULT_MODEL_SIZE} textures unless --size names one of ${MODEL_SIZES.join(', ')}, refusing usage with the sizes it offers for one the model lacks. A larger size weighs more, about 1 MB at 1k and 40 MB at 8k for a stool. Every file is held whole before anything is written, and its license file records the authors and the model's page.`,
     ],
     assets: `A frame links files in its own page folder or in its project's ${ASSETS_FOLDER}/ folder. frame duplicate and frame move carry the ${FRAME_EXTENSION} file alone, so keep files shared between frames or pages in ${ASSETS_FOLDER}/.`,
     look: [

@@ -1,6 +1,6 @@
 ---
 title: Models
-description: When a frame shows a 3D model, the viewer script its head loads, the attributes that stage it, and how to build a simple model with a kept script
+description: When a frame shows a 3D model, finding one on Poly Haven, the viewer script its head loads, the attributes that stage it, and how to build a simple model with a kept script
 ---
 
 # Models
@@ -13,7 +13,16 @@ A model costs a script of about 1 MB in the project and a wait on every capture,
 
 - Place a model when the developer names a 3D object, or asks for one they can turn or that plays a clip
 - Tilt a flat card with a CSS `transform` instead, since a tilt needs no model and no script
-- Use a `.glb` the project's `assets/` already holds before building one
+- Use a `.glb` the project's `assets/` already holds, then a found one, before building one
+
+## Find a model before building one
+
+`frameboard model find <query>` searches Poly Haven's 522 public domain models and saves one into the project's `assets/` as a single `.glb` with its license file. Take the ranking and the flags from the `models` block of `frameboard docs --json`.
+
+- Search for an everyday object, since the library is mostly props, furniture, plants, rocks, and industrial parts, with almost no named product such as a phone, a laptop, or a shoe
+- Answer a product search that comes back empty by building the shape from boxes, below, rather than searching again with other words
+- Save at the default `1k` unless the developer asks for detail, and say what a larger `--size` weighs before taking it, since a stool is about 1 MB at `1k` and 40 MB at `8k`
+- Name Poly Haven to the developer when showing results, which its terms ask of anything listing its models
 
 ## Write the element and its script
 

@@ -12,6 +12,7 @@ import {
   LICENSE_FILE_SUFFIX,
   type LicenseFile,
   type SavedImage,
+  type SavedModel,
 } from '@/shared/records/sourcing'
 import { version } from '@/shared/version'
 
@@ -62,6 +63,35 @@ export async function downloadImage(
   send: typeof fetch,
   limit = DOWNLOAD_LIMIT,
 ): Promise<ImageBytes> {
+  const { bytes, mediaType, status } = await download(url, send, limit)
+  const extension = imageExtension(mediaType, url)
+  if (extension === null) {
+    throw new FrameboardError(
+      'source-failed',
+      'The download is not an image a frame shows.',
+      { url, status },
+    )
+  }
+  return { bytes, extension }
+}
+
+/** A whole response body held in memory, with the media type the host named. */
+export interface Downloaded {
+  bytes: Uint8Array
+  mediaType: string | null
+  status: number
+}
+
+/**
+ * Downloads one file whole into memory, carrying the Frameboard user agent.
+ * Refuses `source-failed` on a failed request or a body past `limit`, with
+ * the URL and the status in the details.
+ */
+export async function download(
+  url: string,
+  send: typeof fetch,
+  limit = DOWNLOAD_LIMIT,
+): Promise<Downloaded> {
   const failed = (message: string, status: number | null) =>
     new FrameboardError('source-failed', message, { url, status })
   let response: Response
@@ -71,28 +101,29 @@ export async function downloadImage(
     })
   } catch (error) {
     throw failed(
-      `The image did not download: ${error instanceof Error ? error.message : String(error)}`,
+      `${url} did not download: ${error instanceof Error ? error.message : String(error)}`,
       null,
     )
   }
   if (!response.ok) {
-    throw failed(`The image host answered ${response.status}.`, response.status)
-  }
-  const extension = imageExtension(response.headers.get('content-type'), url)
-  if (extension === null) {
-    throw failed('The download is not an image a frame shows.', response.status)
-  }
-  let bytes: Uint8Array
-  try {
-    bytes = await readCapped(response, limit)
-  } catch (error) {
-    if (error instanceof FrameboardError) throw error
     throw failed(
-      `The image stopped downloading: ${error instanceof Error ? error.message : String(error)}`,
+      `The host of ${url} answered ${response.status}.`,
       response.status,
     )
   }
-  return { bytes, extension }
+  try {
+    return {
+      bytes: await readCapped(response, limit),
+      mediaType: response.headers.get('content-type'),
+      status: response.status,
+    }
+  } catch (error) {
+    if (error instanceof FrameboardError) throw error
+    throw failed(
+      `${url} stopped downloading: ${error instanceof Error ? error.message : String(error)}`,
+      response.status,
+    )
+  }
 }
 
 /** Reads the body chunk by chunk and stops once it passes `limit`, whatever length the host declared. */
@@ -126,18 +157,22 @@ async function readCapped(
 function tooLarge(limit: number): FrameboardError {
   return new FrameboardError(
     'source-failed',
-    `The image is past ${limit / 1024 / 1024} MiB.`,
+    `The download is past ${limit / 1024 / 1024} MiB.`,
     { limit },
   )
 }
 
 /**
  * The stem a saved file takes: `--name` when given, else the query or prompt
- * as a lowercase dashed name, else `image`. Refuses `invalid-name` for a
- * `--name` breaking the board name rule.
+ * as a lowercase dashed name, else `fallback`. Refuses `invalid-name` for
+ * a `--name` breaking the board name rule.
  */
-export function savedStem(name: string | undefined, text: string): string {
-  if (name === undefined) return folderName(text) || 'image'
+export function savedStem(
+  name: string | undefined,
+  text: string,
+  fallback = 'image',
+): string {
+  if (name === undefined) return folderName(text) || fallback
   if (!isValidName(name)) {
     throw new FrameboardError(
       'invalid-name',
@@ -153,20 +188,46 @@ export function savedStem(name: string | undefined, text: string): string {
  * from the stem, then its license file as `<landed name>.license.json`. A
  * license file that fails to land takes the image back out.
  */
-export async function saveImage(
+export function saveImage(
   project: { name: string; path: string },
   stem: string,
   image: ImageBytes,
   license: LicenseFile,
 ): Promise<SavedImage> {
-  const { added, refused } = await addAssets(project.path, [
-    { name: `${stem}.${image.extension}`, bytes: image.bytes },
-  ])
+  return saveWithLicense(
+    project,
+    `${stem}.${image.extension}`,
+    image.bytes,
+    license,
+  )
+}
+
+/**
+ * Writes a packed model into the project's `assets/` as `<stem>.glb`, or the
+ * first free name from it, with its license file beside it as `saveImage`
+ * writes an image's.
+ */
+export function saveModel(
+  project: { name: string; path: string },
+  stem: string,
+  glb: Uint8Array,
+  license: LicenseFile,
+): Promise<SavedModel> {
+  return saveWithLicense(project, `${stem}.glb`, glb, license)
+}
+
+async function saveWithLicense(
+  project: { name: string; path: string },
+  name: string,
+  bytes: Uint8Array,
+  license: LicenseFile,
+): Promise<SavedImage> {
+  const { added, refused } = await addAssets(project.path, [{ name, bytes }])
   const landed = added[0]
   if (landed === undefined) {
     throw new FrameboardError(
       'asset-type-refused',
-      refused[0]?.message ?? 'The image was refused.',
+      refused[0]?.message ?? `${name} was refused.`,
     )
   }
   const folder = join(project.path, ASSETS_FOLDER)

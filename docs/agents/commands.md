@@ -73,6 +73,13 @@ The `image` commands put a picture into a project's `assets/` with a `<file>.lic
 - `image generate "<prompt>"` runs on fal or Google, whichever key the environment holds first, and spends on that key at once, so `--dry-run` answers the provider and price first
 - `image doctor` reports the GPU, a local ComfyUI server, and which keys are set, and installs nothing
 
+## Models
+
+`model find "<query>"` searches Poly Haven's public domain 3D models with no key and writes nothing, listing them with Poly Haven named as their source.
+
+- `--save <number-or-id>` saves one as a single `.glb` with its license file beside it, and `--name <stem>` names the file
+- `--size <size>` picks the texture size, `1k` by default, and a size the model lacks is refused with the sizes it has
+
 ## Design references
 
 `references sync <folder>` fills a folder of design references from the frames its `frames.json` maps, and `--check` exits 14 when the folder has drifted. It needs `oxfmt` installed in that project or beside Frameboard, an optional peer, and prints the install command without it.
