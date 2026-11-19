@@ -138,6 +138,33 @@ describe('FindView', () => {
     ).toBeInTheDocument()
   })
 
+  it('ends a result line too long for its tile in an ellipsis, with the full line as its title', async () => {
+    const meta = '5334 × 3772 · Rawpixel'
+    render(
+      <div className="w-[240px]">
+        <FindView
+          project="webapp"
+          find={async (_, query) =>
+            answer(query, [
+              result('a1', {
+                width: 5334,
+                height: 3772,
+                landingUrl: 'https://www.rawpixel.com/image/a1',
+              }),
+            ])
+          }
+        />
+      </div>,
+    )
+
+    await searchFor('paper texture')
+
+    const line = await screen.findByText(meta)
+    expect(line).toHaveAttribute('title', meta)
+    expect(getComputedStyle(line).textOverflow).toBe('ellipsis')
+    expect(line.scrollWidth).toBeGreaterThan(line.clientWidth)
+  })
+
   it('says nothing matched and widens to credited licenses from the same line', async () => {
     const find = vi.fn(async (_: string, query: string) => answer(query, []))
     render(<FindView project="webapp" find={find} />)

@@ -77,7 +77,12 @@ export function ResultTile({
       ) : null}
       <span className="block truncate px-[7px] py-[5px] text-label font-normal">
         {title}
-        <span className="block text-[10px] text-muted-foreground">{meta}</span>
+        <span
+          title={meta}
+          className="block truncate text-[10px] text-muted-foreground"
+        >
+          {meta}
+        </span>
       </span>
     </li>
   )
