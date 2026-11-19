@@ -5,7 +5,7 @@ import type { Browser } from 'playwright-core'
 
 import { COMPOSITE_MARGIN, filmstripWidth } from '@/shared/capture-limits'
 import { FrameboardError } from '@/shared/errors'
-import { type Device, topInset, type Turn } from '@/shared/frame-device'
+import { type Device, insetsPage, type Turn } from '@/shared/frame-device'
 import { drawnExtent, linkedBoxes } from '@/shared/frame-widths'
 import type { FrameRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
@@ -18,7 +18,7 @@ import {
   openFrame,
   pageSize,
   readPageColors,
-  underStatusBar,
+  underPageInsets,
   type WarmBrowser,
 } from './render'
 import { filmstripMoments, findMotion, type Motion, seekMotion } from './seek'
@@ -561,8 +561,9 @@ async function holdShots(
   try {
     // Each theme's context seeks on its own, so no shot waits on another.
     const motion = await findMotion(opened.page, ref, motionTimeoutMs)
-    const colors =
-      topInset(device, turn) > 0 ? await readPageColors(opened.page) : null
+    const colors = insetsPage(device, turn)
+      ? await readPageColors(opened.page)
+      : null
     const held: { held: number; bytes: Buffer }[] = []
     for (const moment of moments(motion)) {
       const at = await seekMotion(opened.page, motion, moment)
@@ -570,7 +571,13 @@ async function holdShots(
       held.push({
         held: at,
         bytes: colors
-          ? await underStatusBar(browser, shot, view, { colors, theme }, scale)
+          ? await underPageInsets(
+              browser,
+              shot,
+              view,
+              { turn, colors, theme },
+              scale,
+            )
           : shot,
       })
     }
@@ -617,16 +624,19 @@ async function renderFrame(
         ? undefined
         : await opened.page.evaluate(scrollAndSettle, scroll)
     const shot = await opened.page.screenshot(SCREENSHOT)
-    const bytes =
-      topInset(device, frame.turn) > 0
-        ? await underStatusBar(
-            browser,
-            shot,
-            box,
-            { colors: await readPageColors(opened.page), theme },
-            scale,
-          )
-        : shot
+    const bytes = insetsPage(device, frame.turn)
+      ? await underPageInsets(
+          browser,
+          shot,
+          box,
+          {
+            turn: frame.turn,
+            colors: await readPageColors(opened.page),
+            theme,
+          },
+          scale,
+        )
+      : shot
     return {
       bytes,
       scrollY,
