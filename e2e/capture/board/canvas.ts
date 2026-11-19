@@ -116,6 +116,21 @@ async function devicesShown(page: Page): Promise<void> {
 }
 
 /**
+ * Shows the phone on the about frame with its wide island, putting the
+ * layout back when the page closes.
+ */
+async function wideIslandShown(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  Object.assign(layout.frames.about, { showDevice: true, island: 'wide' })
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+  })
+}
+
+/**
  * Names the about frame a foldable in `pose`, at that pose's screen size,
  * putting the layout back when the page closes.
  */
@@ -582,6 +597,22 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           readyWhen(
             'body:has([data-bezel="phone"]):has([data-bezel="laptop"])',
           ),
+        ),
+      ),
+    },
+    {
+      section: 'device-island-wide',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          wideIslandShown,
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          readyWhen('[data-bezel="phone"] [data-bezel-timer]'),
         ),
       ),
     },
