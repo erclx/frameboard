@@ -416,11 +416,12 @@ export function receiveFindings(
   store.setState({ findings: { ...store.getState().findings, ...findings } })
 }
 
-/** Records the server's answer on whether this tab may write, and whether its notes can start a session. */
+/** Holds the port frames load from, which each hello sends ahead of the board. */
 export function receiveFrames(store: LiveStore, port: number): void {
   store.setState({ framePort: port })
 }
 
+/** Records the server's answer on whether this tab may write, and whether its notes can start a session. */
 export function receiveAccess(
   store: LiveStore,
   write: boolean,

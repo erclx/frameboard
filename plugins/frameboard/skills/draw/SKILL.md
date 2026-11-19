@@ -50,7 +50,7 @@ Run these on each frame once it is placed.
    - A finding at error means the frame renders wrong or cannot load, and a warning is a style call the frame still renders through
    - Read the findings from the envelope's `data.findings` in both answers, each naming its rule, file, line, and column
    - An error finding exits 8 and warnings alone exit 0, so branch on the exit and read `data.findings` either way
-   - A frame runs on the board's own origin, so `board-route` reports a script naming a path under `/api/`. Mock an app's calls with data kept in the script rather than calling the board's server.
+   - A frame runs on its own port, apart from the board, so a call to the board's `/api/` fails and `board-route` reports a script naming one. Mock an app's calls with data kept in the script.
 3. Run that check with `frameboard serve` up before handing back, since the hook reports static findings alone.
    - Only a running server adds clipping, scrollbars, viewport sizing, and minimum font size, and the result's `browser.ran` says whether those rules ran
 4. Capture the frame in both themes with `frameboard capture <page>/<frame> --json` and look at each image before handing back, since a theme you never saw is a theme nobody checked.
