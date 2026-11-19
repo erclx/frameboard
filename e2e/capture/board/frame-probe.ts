@@ -38,6 +38,8 @@ export interface FrameAct {
   /** Puts the caret at the end of `selector`, presses Enter, then pastes `text`. */
   type: string
   text: string
+  /** Pastes at the caret where it already sits, with no Enter, as a typist does after placing it. */
+  atCaret?: boolean
 }
 
 const PROBE = 'capture-probe'
@@ -95,19 +97,21 @@ export async function probeFrames(
       addEventListener('message', (event) => {
         const data = event.data as {
           tag?: unknown
-          act?: { type: string; text: string }
+          act?: { type: string; text: string; atCaret?: boolean }
         }
         if (event.source !== parent || data?.tag !== ACT || !data.act) return
         const element = document.querySelector<HTMLElement>(data.act.type)
         if (!element) return
-        const end = document.createRange()
-        end.selectNodeContents(element)
-        end.collapse(false)
-        getSelection()?.removeAllRanges()
-        getSelection()?.addRange(end)
-        element.dispatchEvent(
-          new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
-        )
+        if (!data.act.atCaret) {
+          const end = document.createRange()
+          end.selectNodeContents(element)
+          end.collapse(false)
+          getSelection()?.removeAllRanges()
+          getSelection()?.addRange(end)
+          element.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }),
+          )
+        }
         const pasted = new DataTransfer()
         pasted.setData('text/plain', data.act.text)
         element.dispatchEvent(
