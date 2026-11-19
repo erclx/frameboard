@@ -34,6 +34,25 @@ describe('project', () => {
     expect(projectRecordSchema.safeParse(result.json().data).success).toBe(true)
   })
 
+  it('add --group writes the folder into project.json', async () => {
+    const result = await run('project', 'add', 'brand', '--group', 'Drives')
+
+    expect(result.exitCode).toBe(0)
+    expect(
+      JSON.parse(
+        readFileSync(join(board.root, 'brand', 'project.json'), 'utf8'),
+      ).group,
+    ).toBe('Drives')
+  })
+
+  it('add --group fails invalid-name on a blank folder, writing nothing', async () => {
+    const result = await run('project', 'add', 'brand', '--group', '  ')
+
+    expect(result.exitCode).toBe(2)
+    expect(result.json().error?.code).toBe('invalid-name')
+    expect(existsSync(join(board.root, 'brand'))).toBe(false)
+  })
+
   it('add fails invalid-name with exit 2', async () => {
     const result = await run('project', 'add', 'two words')
 

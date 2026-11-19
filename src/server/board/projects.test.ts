@@ -66,6 +66,26 @@ describe('projects', () => {
       })
     })
 
+    it('files the project under the folder it is given', async () => {
+      await addProject(board.root, 'brand', new Date(), { group: 'Drives' })
+
+      expect(
+        JSON.parse(
+          readFileSync(join(board.root, 'brand', 'project.json'), 'utf8'),
+        ).group,
+      ).toBe('Drives')
+    })
+
+    it('writes no group key when given no folder', async () => {
+      await addProject(board.root, 'brand')
+
+      expect(
+        JSON.parse(
+          readFileSync(join(board.root, 'brand', 'project.json'), 'utf8'),
+        ),
+      ).not.toHaveProperty('group')
+    })
+
     it('fails name-taken on a name held in another case', async () => {
       await expect(addProject(board.root, 'WebApp')).rejects.toMatchObject({
         code: 'name-taken',

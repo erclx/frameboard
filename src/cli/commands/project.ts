@@ -33,15 +33,31 @@ export function registerProject(
   const { io } = context
   const project = program.command('project').description('Manage projects')
 
-  act<CommonOptions>(
-    addVerb(project, 'add', 'Add a project holding one empty page').argument(
-      '<name>',
-      'the new project',
-    ),
+  act<CommonOptions & { group?: string }>(
+    addVerb(project, 'add', 'Add a project holding one empty page')
+      .argument('<name>', 'the new project')
+      .option(
+        '--group <folder>',
+        'file the project under a home folder, created when no project holds it',
+      ),
     context,
     async ([name = ''], options) => {
-      const record = await addProject(await boardOf(options, io), name)
-      return { data: record, human: `Added project ${record.name}` }
+      const group =
+        options.group === undefined ? undefined : validFolder(options.group)
+      const record = await addProject(
+        await boardOf(options, io),
+        name,
+        undefined,
+        {
+          group,
+        },
+      )
+      return {
+        data: record,
+        human: group
+          ? `Added project ${record.name} under ${group}`
+          : `Added project ${record.name}`,
+      }
     },
   )
 
@@ -205,6 +221,11 @@ function folderOf(folder: string | undefined, clear: boolean): string | null {
       'Give a folder, or --clear to leave one.',
     )
   }
+  return validFolder(folder)
+}
+
+/** The trimmed folder, refusing a blank or overlong one. */
+function validFolder(folder: string): string {
   const name = folder.trim()
   if (name === '' || name.length > MAX_FOLDER) {
     throw new FrameboardError(
