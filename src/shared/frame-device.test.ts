@@ -16,6 +16,7 @@ import {
   POSE_SIZES,
   poseOf,
   screenCorners,
+  shownBox,
   STATUS_BAR,
   topInset,
 } from './frame-device'
@@ -268,5 +269,41 @@ describe('a foldable pose', () => {
     expect(foldBand('half')?.width).toBeGreaterThan(
       foldBand('open')?.width ?? 0,
     )
+  })
+})
+
+describe('shownBox', () => {
+  const at = (height: number) => ({ x: 100, y: 40, width: 390, height })
+
+  it('shows a page-tall phone frame one screen tall', () => {
+    expect(shownBox({ box: at(2328), device: 'phone', scroll: false })).toEqual(
+      { x: 100, y: 40, width: 390, height: 844 },
+    )
+  })
+
+  it('shows a phone frame shorter than a screen at its stored box', () => {
+    expect(shownBox({ box: at(600), device: 'phone', scroll: false })).toEqual(
+      at(600),
+    )
+  })
+
+  it('shows a phone scroll frame at its stored box, which is already its screen', () => {
+    expect(shownBox({ box: at(1200), device: 'phone', scroll: true })).toEqual(
+      at(1200),
+    )
+  })
+
+  it('shows a foldable at its stored box, which its pose sizes', () => {
+    const box = { x: 0, y: 0, width: 466, height: 2000 }
+    expect(shownBox({ box, device: 'foldable', scroll: false })).toEqual(box)
+  })
+
+  it('shows a page-tall tablet frame at its stored box', () => {
+    const box = { x: 0, y: 0, width: 834, height: 3000 }
+    expect(shownBox({ box, device: 'tablet', scroll: false })).toEqual(box)
+  })
+
+  it('shows a phone-wide frame wearing no device at its stored box', () => {
+    expect(shownBox({ box: at(2328), scroll: false })).toEqual(at(2328))
   })
 })

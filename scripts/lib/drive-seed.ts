@@ -40,6 +40,12 @@ const FEED_PAGE = join(import.meta.dirname, 'drive-feed.html')
 /** One phone frame drawn inside its device, so the strip under a device body has a frame to select. */
 const DEVICE = { project: 'webapp', page: 'device', frame: 'phone' }
 
+/** The feed in a phone frame as tall as its page, off Scroll, so present mode and Play show one screen that scrolls. */
+const PHONE_FEED = { project: 'webapp', page: 'phone-feed', frame: 'feed' }
+
+/** The feed's twelve 172 tall sections, their gaps, and padding, 2272, under the phone's 54 tall status bar. */
+const PHONE_FEED_HEIGHT = 2326
+
 /**
  * One frame naming the foldable, closed, holding a page that goes from one
  * column to two as it opens, so the pose buttons have a frame to fold.
@@ -177,6 +183,8 @@ export interface Seeded {
   device: 'laid' | 'kept'
   /** Whether the foldable page was laid now or was already there and kept. */
   fold: 'laid' | 'kept'
+  /** Whether the page-tall phone feed page was laid now or was already there and kept. */
+  phoneFeed: 'laid' | 'kept'
   /** Whether webapp's own transition was laid now or was already there and kept. */
   transition: 'laid' | 'kept'
   /** Whether the free shapes page was laid now or was already there and kept. */
@@ -237,6 +245,11 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     foldable: true,
     pose: 'closed',
   })
+  const phoneFeed = await layOne(root, PHONE_FEED, FEED_PAGE, {
+    width,
+    height: PHONE_FEED_HEIGHT,
+    showDevice: true,
+  })
   const folder = await layFolder(root)
   const longPath = await layLongPath(root)
   const reserved = await reserveSettings(root, now)
@@ -248,6 +261,7 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     deck,
     device,
     fold,
+    phoneFeed,
     transition,
     shapes,
     stacked,

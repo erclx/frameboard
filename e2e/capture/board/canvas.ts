@@ -18,6 +18,7 @@ import {
   noAgentChanges,
   onCanvas,
   PRESS_FRAMES,
+  pressOnLoad,
   readyWhen,
   ROW_FRAMES,
   SERVED_BOARD,
@@ -112,6 +113,31 @@ async function devicesShown(page: Page): Promise<void> {
   writeFileSync(layoutPath, JSON.stringify(layout))
   page.once('close', () => {
     writeFileSync(layoutPath, originalLayout)
+  })
+}
+
+/**
+ * Shows the about frame as a phone as tall as its page, off Scroll, so
+ * present mode and an entered Play frame show one screen of it.
+ */
+async function tallPhoneShown(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const pagePath = join(SERVED_BOARD, 'webapp/home/about.html')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const originalPage = readFileSync(pagePath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  Object.assign(layout.frames.about, { showDevice: true, height: 2054 })
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  writeFileSync(
+    pagePath,
+    originalPage.replace(
+      '</body>',
+      '<div style="height:1900px;background:linear-gradient(#e8eefc,#fce8f0)"></div></body>',
+    ),
+  )
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+    writeFileSync(pagePath, originalPage)
   })
 }
 
@@ -753,6 +779,41 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           onCanvas({ select: ['webapp/home/about'] }),
           presentOnLoad,
           readyWhen('[data-presenting] [data-bezel="phone"]'),
+        ),
+      ),
+    },
+    {
+      // A phone as tall as its page presents one screen tall, its page scrolling inside.
+      section: 'present-phone-tall',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      setup: themed(
+        both(
+          tallPhoneShown,
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          presentOnLoad,
+          readyWhen('[data-presenting] [data-bezel="phone"]'),
+        ),
+      ),
+    },
+    {
+      // The same phone entered in Play shrinks to one screen, its label where it stood.
+      section: 'play-entered-phone-tall',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          tallPhoneShown,
+          noAgentChanges,
+          pressOnLoad('^Play$'),
+          pressOnLoad('^Select about$'),
+          readyWhen('[data-entered] [data-bezel="phone"]'),
         ),
       ),
     },

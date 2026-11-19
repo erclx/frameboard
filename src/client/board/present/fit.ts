@@ -1,4 +1,9 @@
-import { bezelBox, bezelReach, type Device } from '@/shared/frame-device'
+import {
+  bezelBox,
+  bezelReach,
+  type Device,
+  shownBox,
+} from '@/shared/frame-device'
 
 /** The most a frame grows, so a small one draws at twice its size rather than filling the room. */
 const MAX_SCALE = 2
@@ -18,15 +23,18 @@ export function fitScale(
 /**
  * The scale a frame presents at, holding all its device paints while the body
  * stays centered, so a shadow reaching further below never lifts the device.
+ * It fits the box the frame is shown at, one screen for a page-tall phone.
  */
 export function presentScale(
   frame: {
     box: { width: number; height: number }
     device?: Device | null
+    scroll?: boolean
   },
   room: { width: number; height: number },
 ): number {
-  const box = { x: 0, y: 0, width: frame.box.width, height: frame.box.height }
+  const { width, height } = shownBox(frame)
+  const box = { x: 0, y: 0, width, height }
   const body = bezelBox(box, frame.device)
   const reach = bezelReach(box, frame.device)
   const centerX = body.x + body.width / 2

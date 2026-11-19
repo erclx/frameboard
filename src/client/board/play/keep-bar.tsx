@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import { Button } from '@/client/components/ui/button'
 import { useLive } from '@/client/live/store'
+import { shownBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { screen } from '../geometry/draw'
@@ -32,7 +33,8 @@ export function KeepBar({
   const [keeping, setKeeping] = useState(false)
   const frame = frames.find((candidate) => candidate.ref === ref)
   if (!frame || moved === 0) return null
-  const { x, y, width, height } = frame.box
+  // The entered frame draws at its shown box, one screen tall for a page-tall phone.
+  const { x, y, width, height } = shownBox(frame)
   return (
     <div className="absolute" style={{ left: x + width, top: y + height }}>
       <div

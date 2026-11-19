@@ -23,6 +23,7 @@ import {
   BEZELS,
   pageCorners,
   screenCorners,
+  shownBox,
   topInset,
 } from '@/shared/frame-device'
 import { referenceHeight } from '@/shared/frame-sizes'
@@ -31,6 +32,7 @@ import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, type Theme } from '@/shared/theme'
 
+import { request } from './bridge/channel'
 import { followPage, shownHashOf } from './bridge/shown'
 import { useCompare } from './changes/compare'
 import { CompareControl, CompareView } from './changes/compare-view'
@@ -198,10 +200,26 @@ export const Frame = memo(function Frame({
     }
   }, [live, previewWidth, hugHeight, frame.ref, statusBar])
 
+  // An entered page-tall phone shows one screen with its page scrolling, while its label and notes keep the stored box.
+  const drawnHeight = entered
+    ? shownBox({
+        box: { width, height },
+        device: frame.device,
+        scroll: frame.scroll,
+      }).height
+    : height
   const colors = usePageColors(iframe, live && statusBar > 0, theme)
   const waiting = useWaitingOnFirstLoad(iframe, live)
-  useHiddenScrollbar(iframe, live, frame.scroll)
+  const shownShort = drawnHeight < height
+  useHiddenScrollbar(iframe, live, frame.scroll || shownShort)
   useMotionDriver(iframe, frame.ref, live, playing)
+
+  // Leaving the one-screen view forgets where the page was scrolled to.
+  useEffect(() => {
+    const element = iframe.current
+    if (!live || !shownShort || !element) return
+    return () => void request(element, 'scroll-act', { act: 'to', top: 0 })
+  }, [live, shownShort])
 
   useEffect(() => {
     const element = iframe.current
@@ -249,7 +267,13 @@ export const Frame = memo(function Frame({
           !entered &&
           'data-label-hover:[outline:calc(1px/var(--zoom,1))_solid_color-mix(in_srgb,var(--primary)_45%,transparent)]',
       )}
-      style={{ left: x, top: y, width, height, zIndex: frame.order }}
+      style={{
+        left: x,
+        top: y,
+        width,
+        height: drawnHeight,
+        zIndex: frame.order,
+      }}
     >
       <div
         className={cn(
@@ -327,7 +351,7 @@ export const Frame = memo(function Frame({
         <Bezel
           device={frame.device}
           width={width}
-          height={height}
+          height={drawnHeight}
           pose={frame.pose}
           island={frame.island}
           colors={colors}
