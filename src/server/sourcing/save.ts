@@ -12,6 +12,7 @@ import {
   LICENSE_FILE_SUFFIX,
   type LicenseFile,
   type SavedImage,
+  type SavedModel,
 } from '@/shared/records/sourcing'
 import { version } from '@/shared/version'
 
@@ -163,11 +164,15 @@ function tooLarge(limit: number): FrameboardError {
 
 /**
  * The stem a saved file takes: `--name` when given, else the query or prompt
- * as a lowercase dashed name, else `image`. Refuses `invalid-name` for a
- * `--name` breaking the board name rule.
+ * as a lowercase dashed name, else `fallback`. Refuses `invalid-name` for
+ * a `--name` breaking the board name rule.
  */
-export function savedStem(name: string | undefined, text: string): string {
-  if (name === undefined) return folderName(text) || 'image'
+export function savedStem(
+  name: string | undefined,
+  text: string,
+  fallback = 'image',
+): string {
+  if (name === undefined) return folderName(text) || fallback
   if (!isValidName(name)) {
     throw new FrameboardError(
       'invalid-name',
@@ -183,20 +188,46 @@ export function savedStem(name: string | undefined, text: string): string {
  * from the stem, then its license file as `<landed name>.license.json`. A
  * license file that fails to land takes the image back out.
  */
-export async function saveImage(
+export function saveImage(
   project: { name: string; path: string },
   stem: string,
   image: ImageBytes,
   license: LicenseFile,
 ): Promise<SavedImage> {
-  const { added, refused } = await addAssets(project.path, [
-    { name: `${stem}.${image.extension}`, bytes: image.bytes },
-  ])
+  return saveWithLicense(
+    project,
+    `${stem}.${image.extension}`,
+    image.bytes,
+    license,
+  )
+}
+
+/**
+ * Writes a packed model into the project's `assets/` as `<stem>.glb`, or the
+ * first free name from it, with its license file beside it as `saveImage`
+ * writes an image's.
+ */
+export function saveModel(
+  project: { name: string; path: string },
+  stem: string,
+  glb: Uint8Array,
+  license: LicenseFile,
+): Promise<SavedModel> {
+  return saveWithLicense(project, `${stem}.glb`, glb, license)
+}
+
+async function saveWithLicense(
+  project: { name: string; path: string },
+  name: string,
+  bytes: Uint8Array,
+  license: LicenseFile,
+): Promise<SavedImage> {
+  const { added, refused } = await addAssets(project.path, [{ name, bytes }])
   const landed = added[0]
   if (landed === undefined) {
     throw new FrameboardError(
       'asset-type-refused',
-      refused[0]?.message ?? 'The image was refused.',
+      refused[0]?.message ?? `${name} was refused.`,
     )
   }
   const folder = join(project.path, ASSETS_FOLDER)
