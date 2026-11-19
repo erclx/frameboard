@@ -1,13 +1,28 @@
 import { tinykeys } from 'tinykeys'
 
+import type { KeyBindings } from '@/shared/frame-bridge/messages'
+
 import type { Handlers } from './handler'
+
+function pressesButton(event: KeyboardEvent): boolean {
+  return (
+    (event.code === 'Space' || event.key === 'Enter') &&
+    event.target instanceof Element &&
+    event.target.closest('button') !== null
+  )
+}
 
 /**
  * Whether a press stays with the page whatever it binds: a composing one, one
- * the page already prevented, and, while typing is kept, one in a field.
+ * the page already prevented, while buttons are kept a Space or Enter on a
+ * button, and while typing is kept, one in a field.
  */
-function keptByPage(event: KeyboardEvent, keepTyping: boolean): boolean {
+function keptByPage(
+  event: KeyboardEvent,
+  { keepTyping, keepButtons }: Omit<KeyBindings, 'keys'>,
+): boolean {
   if (event.isComposing || event.defaultPrevented) return true
+  if (keepButtons && pressesButton(event)) return true
   if (!keepTyping) return false
   const target = event.target
   return (
@@ -22,7 +37,7 @@ function keptByPage(event: KeyboardEvent, keepTyping: boolean): boolean {
  * prevented on the board arrives after the page already scrolled or typed.
  */
 export const keyHandlers: Handlers = {
-  keys: ({ keys, keepTyping }, { push, onClose }) => {
+  keys: ({ keys, ...kept }, { push, onClose }) => {
     const unbind = tinykeys(
       window,
       Object.fromEntries(
@@ -34,7 +49,7 @@ export const keyHandlers: Handlers = {
           },
         ]),
       ),
-      { ignore: (event) => keptByPage(event, keepTyping) },
+      { ignore: (event) => keptByPage(event, kept) },
     )
     onClose(unbind)
     return true

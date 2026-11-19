@@ -17,6 +17,7 @@ import { liveElementHandlers } from './live-element'
 import { measureHandlers } from './measure'
 import { mediaHandlers } from './media'
 import { modelHandlers } from './model'
+import { presentHandlers } from './present'
 import { previewHandlers } from './preview'
 import { stepHandlers } from './steps'
 import { openTextEdit } from './text-edit'
@@ -46,6 +47,7 @@ const handlers: Handlers = {
   ...measureHandlers,
   ...mediaHandlers,
   ...modelHandlers,
+  ...presentHandlers,
   ...stepHandlers,
   'element-box': (address) => {
     const element = addressed(address)
