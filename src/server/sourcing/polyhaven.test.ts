@@ -177,6 +177,16 @@ describe('fetchModel', () => {
     })
   })
 
+  it('refuses source-failed rather than usage for a model Poly Haven serves as no glTF', async () => {
+    const send = (async () =>
+      Response.json({ blend: {}, fbx: {}, usd: {} })) as unknown as typeof fetch
+
+    await expect(fetchModel('book', '1k', send)).rejects.toMatchObject({
+      code: 'source-failed',
+      details: { source: 'polyhaven', id: 'book' },
+    })
+  })
+
   it('refuses source-failed when one included file fails to download', async () => {
     const { send } = polyhaven({}, '_diff_1k.jpg')
 

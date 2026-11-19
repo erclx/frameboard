@@ -112,12 +112,18 @@ export async function fetchModel(
   }
   const sizes = MODEL_SIZES.filter((each) => entryAt(each) !== null)
   const entry = entryAt(size)
+  // A model with no glTF at any size is Poly Haven's gap, not a flag to change.
+  if (sizes.length === 0) {
+    throw new FrameboardError(
+      'source-failed',
+      `Poly Haven serves ${id} as no glTF, so it cannot be saved as a GLB.`,
+      { source: 'polyhaven', id, status: null },
+    )
+  }
   if (entry === null) {
     throw new FrameboardError(
       'usage',
-      sizes.length === 0
-        ? `Poly Haven serves ${id} as no glTF.`
-        : `Poly Haven serves ${id} at ${sizes.join(', ')}, not ${size}.`,
+      `Poly Haven serves ${id} at ${sizes.join(', ')}, not ${size}.`,
       { id, size, sizes },
     )
   }
