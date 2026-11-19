@@ -18,6 +18,7 @@ import { heldStore, holdOutline } from './held'
 import { useGhosts, useMeasures } from './measures'
 import { useLiveMedia } from './media'
 import { MediaBar } from './media-bar'
+import { newTextStore } from './text-in-place'
 import { TurnSurface } from './turn-surface'
 
 const CORNERS = [
@@ -241,6 +242,7 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
   const [measure] = useMeasures(container, element ? [element] : []) ?? []
   const rect = measure?.box ?? null
   const held = useStore(heldStore, (state) => state.held)
+  const typing = useStore(newTextStore, (state) => state.key)
   const shown = pending ?? frame?.box
   const at = shown && pageBox(shown, frame?.device, frame?.turn)
   const holds = held !== null && held.key.frame === element?.frame
@@ -257,8 +259,10 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
         : null
   if (!box) return null
   const read = holds && !settled ? held.read : (measure?.read ?? null)
+  // A placed Text open for typing draws a caret alone, its box kept for a press to read.
+  const bare = typing !== null && sameKey(typing, element)
   const marked =
-    read !== null && box.width >= MARKS_MIN && box.height >= MARKS_MIN
+    !bare && read !== null && box.width >= MARKS_MIN && box.height >= MARKS_MIN
   return (
     <>
       <CanvasMediaBar element={element} box={box} container={container} />
@@ -278,7 +282,7 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
           top: box.y,
           width: box.width,
           height: box.height,
-          outline: OUTLINE,
+          outline: bare ? 'none' : OUTLINE,
           outlineOffset: screen(2),
           zIndex: OVERLAY_Z,
         }}
@@ -298,9 +302,11 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
               />
             ))
           : null}
-        <span data-chip className={CHIP}>
-          {sizeLabel(box, read?.hugsHeight ? 'height' : undefined)}
-        </span>
+        {bare ? null : (
+          <span data-chip className={CHIP}>
+            {sizeLabel(box, read?.hugsHeight ? 'height' : undefined)}
+          </span>
+        )}
       </div>
     </>
   )

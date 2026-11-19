@@ -9,6 +9,7 @@ import { createSelectionStore, selectElement } from '../selection'
 import {
   editTextInPlace,
   editTextWhenShown,
+  newTextStore,
   pressInEdit,
 } from './text-in-place'
 
@@ -24,6 +25,7 @@ let container: HTMLDivElement | undefined
 afterEach(() => {
   container?.remove()
   container = undefined
+  newTextStore.setState({ key: null })
 })
 
 function source(body: string, hash = HASH): string {
@@ -681,7 +683,7 @@ describe('editTextWhenShown', () => {
     const key = { ...KEY, hash: NEXT }
     const selection = createSelectionStore()
     selectElement(selection, 'studio/home', key)
-    editTextWhenShown(container, key, recorder().write, selection)
+    editTextWhenShown(container, key, recorder().write, selection, () => {})
 
     await show(iframe, source('<h1>Text</h1>', NEXT))
 
@@ -699,7 +701,7 @@ describe('editTextWhenShown', () => {
     const key = { ...KEY, hash: NEXT }
     const selection = createSelectionStore()
     selectElement(selection, 'studio/home', key)
-    editTextWhenShown(container, key, recorder().write, selection)
+    editTextWhenShown(container, key, recorder().write, selection, () => {})
 
     selectElement(selection, 'studio/home', { ...key, index: 2 })
     await show(iframe, source('<h1>Text</h1>', NEXT))
@@ -710,6 +712,84 @@ describe('editTextWhenShown', () => {
         ?.querySelector('h1')
         ?.hasAttribute('contenteditable'),
     ).toBe(false)
+  })
+})
+
+describe('editTextWhenShown on a placed Text', () => {
+  /** Places an empty heading under the next hash, open for typing once shown. */
+  async function placed() {
+    const mounted = await mount()
+    const key = { ...KEY, hash: NEXT }
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', key)
+    const { changes, write } = recorder()
+    let removed = 0
+    const edit = editTextWhenShown(
+      mounted.container,
+      key,
+      write,
+      selection,
+      () => {
+        removed += 1
+      },
+    )
+    await show(mounted.iframe, source('<h1></h1>', NEXT))
+    const heading = mounted.iframe.contentDocument?.querySelector('h1')
+    if (!heading) throw new Error('The frame shows no heading.')
+    await expect.poll(() => edit.isOpen()).toBe(true)
+    return { ...mounted, key, heading, edit, changes, removed: () => removed }
+  }
+
+  it('opens it empty, flagged as the new text while open', async () => {
+    const { key, heading } = await placed()
+
+    expect(heading.getAttribute('contenteditable')).toBe('plaintext-only')
+    expect(newTextStore.getState().key).toEqual(key)
+  })
+
+  it('removes it once, letting the flag go, when it ends with nothing typed', async () => {
+    const { heading, edit, changes, removed } = await placed()
+
+    press(heading, 'Escape')
+    await expect.poll(() => edit.isOpen()).toBe(false)
+
+    await expect.poll(removed).toBe(1)
+    expect(changes).toEqual([])
+    expect(newTextStore.getState().key).toBeNull()
+  })
+
+  it('removes it when it ends holding white space alone', async () => {
+    const { heading, changes, removed } = await placed()
+
+    heading.textContent = '   '
+    press(heading, 'Escape')
+
+    await expect.poll(removed).toBe(1)
+    expect(changes).toEqual([])
+  })
+
+  it('writes the typed text and keeps it, letting the flag go', async () => {
+    const { heading, changes, removed } = await placed()
+
+    heading.textContent = 'Hello'
+    press(heading, 'Escape')
+
+    await expect
+      .poll(() => changes)
+      .toEqual([[{ kind: 'text', value: 'Hello' }]])
+    expect(removed()).toBe(0)
+    expect(newTextStore.getState().key).toBeNull()
+  })
+
+  it('removes it once when cancelled with nothing written', async () => {
+    const { iframe, edit, removed } = await placed()
+
+    edit.cancel()
+    edit.cancel()
+    await settled(iframe)
+
+    expect(removed()).toBe(1)
+    expect(newTextStore.getState().key).toBeNull()
   })
 })
 

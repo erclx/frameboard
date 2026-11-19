@@ -83,7 +83,7 @@ import {
   usePlaceTools,
 } from './place/tool'
 import { takeDraft } from './place/tool'
-import { placeElement, placeFile } from './place/write'
+import { deleteElement, placeElement, placeFile } from './place/write'
 import { enteredStore } from './play/entered'
 import { KeepBar } from './play/keep-bar'
 import { PlayShield } from './play/shield'
@@ -698,7 +698,9 @@ export function Canvas({
     if (waits) {
       editing.current = {
         key,
-        edit: editTextWhenShown(layer, key, write, selectionStore),
+        edit: editTextWhenShown(layer, key, write, selectionStore, () => {
+          void deleteElement(page.ref, key)
+        }),
       }
       return Promise.resolve(true)
     }

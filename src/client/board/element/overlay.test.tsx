@@ -19,6 +19,7 @@ import {
 } from '../selection'
 import { heldOutline, holdOutline } from './held'
 import { ElementOverlay } from './overlay'
+import { newTextStore } from './text-in-place'
 
 const HASH = 'c'.repeat(64)
 const HERO = frameOf('hero', {
@@ -32,6 +33,7 @@ let layer: HTMLDivElement | undefined
 
 afterEach(() => {
   act(() => holdOutline(null))
+  act(() => newTextStore.setState({ key: null }))
   act(() => clear(selectionStore))
   layer?.remove()
   layer = undefined
@@ -295,6 +297,35 @@ describe('ElementOverlay', () => {
 
       expect(marks(drawn)).toBe(0)
       expect(chip(drawn)).toHaveTextContent(size)
+    })
+
+    it('draws the box of a placed Text open for typing with no outline, marks, or chip', async () => {
+      act(() =>
+        newTextStore.setState({
+          key: { frame: HERO.ref, index: 3, hash: HASH },
+        }),
+      )
+
+      const drawn = await selecting('<h1>Hello, world</h1>')
+
+      expect(outline(drawn)?.style.outline).toBe('none')
+      expect(marks(drawn)).toBe(0)
+      expect(chip(drawn)).toBeNull()
+    })
+
+    it('draws them again once the placed Text ends its edit', async () => {
+      act(() =>
+        newTextStore.setState({
+          key: { frame: HERO.ref, index: 3, hash: HASH },
+        }),
+      )
+      const drawn = await selecting('<h1>Hello, world</h1>')
+
+      act(() => newTextStore.setState({ key: null }))
+
+      expect(outline(drawn)?.style.outline).toContain('solid')
+      expect(marks(drawn)).toBe(4)
+      expect(chip(drawn)).toHaveTextContent(/^248 × Hug$/)
     })
 
     it('keeps four marks on a shape 24px on both sides', async () => {
