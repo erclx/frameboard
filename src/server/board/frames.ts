@@ -116,9 +116,8 @@ export interface FoldOptions {
   island?: Island
   /**
    * The turn a phone, a tablet, or a foldable takes, absolute so a retried
-   * call lands once, upright restoring the size it held or a foldable's pose's
-   * screen. A quarter turn refuses a laptop, a frame showing no device, and
-   * one holding extra widths.
+   * call lands once, upright restoring the size it held or the pose's screen.
+   * A quarter turn refuses a laptop, no device shown, and extra widths.
    */
   turn?: Turn
 }
@@ -946,9 +945,8 @@ export async function setFrameFlag(
 
 /**
  * Shows or hides a frame's device, names, folds, or turns it, never writing
- * the frame's file. Naming a foldable shows it and sets the box to its pose's
- * screen, fixed on both axes, standing a turned frame upright first. A turned
- * foldable takes its pose's screen with the sides swapped through every fold.
+ * the frame's file. A named foldable's box is its pose's screen, both axes
+ * fixed, sides swapped while turned, and a turned frame stands upright first.
  */
 export async function setFrameDevice(
   root: string,
