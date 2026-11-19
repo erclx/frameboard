@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 
 import { FrameboardError } from '@/shared/errors'
 
-import bundled from './flux2-klein.json'
+import bundled from './flux2-klein.json' with { type: 'json' }
 
 /** One node of a workflow in ComfyUI's API format, as its own export writes it. */
 export interface WorkflowNode {
