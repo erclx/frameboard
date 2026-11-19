@@ -106,6 +106,23 @@ describe('startServer', () => {
     await expect(fetch(url)).rejects.toThrow()
   })
 
+  it("serves no frame page on the board's own port", async () => {
+    mkdirSync(join(root, 'studio/home'), { recursive: true })
+    writeFileSync(join(root, 'studio/home/hero.html'), '<h1>Studio</h1>')
+    const server = await start(0)
+
+    const response = await fetch(
+      `http://127.0.0.1:${server.port}/frames/studio/home/hero.html`,
+      { redirect: 'manual' },
+    )
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('location')).toBe(
+      `http://127.0.0.1:${server.framePort}/frames/studio/home/hero.html`,
+    )
+    expect(await response.text()).not.toContain('<h1>Studio</h1>')
+  })
+
   it('fails on a taken port given explicitly', async () => {
     const first = await start(0)
 

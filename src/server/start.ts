@@ -404,6 +404,7 @@ async function listen({
     tokens,
     root,
     port: boundPort,
+    framePort: () => frameOrigin.port,
     tickets,
     openRoute,
     delivery,
