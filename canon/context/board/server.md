@@ -19,7 +19,7 @@ Owns the loopback server around the folders below. `app.ts` is the Hono app, `st
 
 Owns the board folder's watcher, the socket hub, the decision to open a tab, and the selection `selection.ts` keeps in memory from the last writing tab, forgotten once that tab's socket closes. A reload carries a frame's hash only when its own file was the batch's sole cause, so a tab keeps a page already showing those bytes.
 
-- A frame's `.html` or `.swap` reloads it, a page file the page, `assets/` media the frames linking it and any other asset the project, `layout.json` a frame whose `kit` changed, `notes.json` nothing
+- `.html` or `.swap` reloads its frame, a page file the page, non-kit `assets/` media its linking frames, other assets the project, `layout.json` a `kit` change, `notes.json` or `.license.json` nothing
 - Writes gather into batches closing 50 ms after the last event or 250 ms after the first, so one agent turn costs one rescan
 - `fs.watch` on macOS drops writes in its first tens of milliseconds, so the watch counts nothing for its first 100 ms and resolves only once warm
 - `hug.ts` measures a hugging frame under the layout lock with no undo step, before the board is sent for a frame its own write reloaded and after it for an asset or sheet reload
@@ -48,7 +48,7 @@ Owns who may write, apart from the route modules.
 Owns the HTTP route modules `app.ts` mounts, one per surface, being the frame and asset routes, access, the structure, history, token, and kit writes `api.ts` mounts behind `requireWriter`, and the element tree. Frames load same-origin and unsandboxed, since selection works inside a frame's DOM, and the board key keeps other pages from writing.
 
 - A non-frame file answers a single byte `Range` with a streamed 206, so a `<video>` seeks, while a frame is served whole since its head is spliced in memory
-- A non-frame file carries a weak `ETag` under `no-cache`, while a frame, a `?at=` version, a 206, and a 416 stay `no-store`, since an asset edit reloads every frame
+- A non-frame file carries a weak `ETag` under `no-cache`, while a frame, a `?at=` version, a 206, and a 416 stay `no-store`, since an asset edit reloads the frames it reaches
 - A file's `frames` count comes from the cache in `src/server/board/asset-usage.ts` over the link check's `frameLoads`, which a watcher batch under the project drops
 - A kit remove records the folder's take-out and every cleared `kit` key as one step, so one undo brings back the kit and the frames naming it
 - Kit files sit under `/frameboard/` and `GET /api/access/open` answers only under `serve --open-route`, since a bare `/kits` shadows the client's module folder under Vite
