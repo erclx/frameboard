@@ -42,7 +42,7 @@ Owns `bezel.tsx`, the body around a frame showing a `device`, `page-colors.ts`, 
 - The body is a `box-shadow` spread that misses a square corner, so the page rounds to `pageCorners`, square on top under a phone's status bar, and every other box on its screen to `screenCorners`
 - A laptop's lid is that spread, its chin and base boxes from `laptopParts`, and the body scales with the canvas, its edge one screen pixel at any zoom, taking no pointer events
 - The label, the open-alone link, and the rail stand past the border, a laptop's lid, and the In frame tag below the body, a laptop's base, and a linked width draws no device
-- Every geometry helper takes the frame's `turn` as a required argument, so a turned phone drops its status bar and its buttons reach past its top and bottom on every surface
+- Every geometry helper takes the frame's `turn`, so a turned phone drops its status bar and puts its buttons on its long edges, and a turned foldable runs its fold across in `foldBand`
 - Present and Play show a page-tall phone one screen tall through `shownBox`, centered by `bezelBox` and fit by `bezelReach`
 
 ### `src/client/board/scroll/`
