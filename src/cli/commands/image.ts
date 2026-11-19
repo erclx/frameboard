@@ -211,7 +211,7 @@ export function registerImage(program: Command, context: ProgramContext): void {
     addVerb(
       image,
       'doctor',
-      'Report the GPU, a local ComfyUI server, and which provider keys are set, installing nothing',
+      "Report the GPU, a local ComfyUI server's version and missing model files, and which provider keys are set, printing setup steps and installing nothing",
     ),
     context,
     async () => {
@@ -224,12 +224,23 @@ export function registerImage(program: Command, context: ProgramContext): void {
         data: report,
         human: [
           `GPU\t${report.gpu === null ? 'none found' : `${report.gpu.name}, ${report.gpu.memoryMiB} MiB`}`,
-          `Local\t${report.local.url} ${report.local.running ? 'answers' : 'does not answer'}`,
+          `Local\t${report.local.url} ${report.local.running ? `answers, ComfyUI ${report.local.version ?? 'of unknown version'}` : 'does not answer'}`,
+          ...(report.local.missing ?? []).map(
+            (each) =>
+              `Missing\tmodels/${each.folder}/${each.file}, ${(each.bytes / 1e9).toFixed(2)} GB`,
+          ),
           ...report.providers.map(
             (each) =>
               `${each.provider}\t${each.key} ${each.ready ? 'set' : 'unset'}`,
           ),
           `Generate runs on\t${report.provider ?? 'nothing, since no key is set'}`,
+          ...(report.setup.length === 0
+            ? []
+            : [
+                '',
+                'To generate locally, run these yourself:',
+                ...report.setup,
+              ]),
         ].join('\n'),
       }
     },

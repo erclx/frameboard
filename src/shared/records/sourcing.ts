@@ -212,13 +212,33 @@ export const imageFreeSchema = z.object({
 
 export type ImageFree = z.infer<typeof imageFreeSchema>
 
+/** A model file the bundled workflow loads, as ComfyUI's `models/<folder>/` should hold it. */
+export const missingModelSchema = z.object({
+  folder: z.string(),
+  file: z.string(),
+  bytes: z.int(),
+  /** Where the file downloads from. */
+  url: z.string(),
+})
+
+export type MissingModel = z.infer<typeof missingModelSchema>
+
 /** What `image doctor` answers, naming each key as set or unset and never its value. */
 export const imageDoctorSchema = z.object({
   version: z.literal(1),
   /** The first GPU `nvidia-smi` reports, null when it is absent or fails. */
   gpu: z.object({ name: z.string(), memoryMiB: z.int() }).nullable(),
   /** The ComfyUI server at `FRAMEBOARD_COMFYUI_URL`, or the default address. */
-  local: z.object({ url: z.string(), running: z.boolean() }),
+  local: z.object({
+    url: z.string(),
+    running: z.boolean(),
+    /** The ComfyUI version the server reports, null when none answers. */
+    version: z.string().nullable(),
+    /** The bundled workflow's files the server lacks, null when it does not answer. */
+    missing: z.array(missingModelSchema).nullable(),
+  }),
+  /** Commands that would get this machine generating locally, empty when it already can. */
+  setup: z.array(z.string()),
   /** Each provider key by its environment variable, true when set and not empty. */
   keys: z.record(z.string(), z.boolean()),
   providers: z.array(
