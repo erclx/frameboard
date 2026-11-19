@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 
 import { bindKeys } from './actions/registry'
 import { App } from './app'
+import { subscribe } from './board/bridge/channel'
 import {
   cancelPendingShow,
   receiveShow,
@@ -25,7 +26,11 @@ if (!root) throw new Error('Missing #root element')
 
 armGuideLanding(window.location.pathname)
 startBusyWatch()
-markPointerFocus(window)
+// A frame on its own port hides its window, so its bridge pushes its keys.
+markPointerFocus(window, (iframe, onKey) => {
+  const heard = subscribe(iframe, 'focus-keys', {}, onKey)
+  return heard.close
+})
 // The presenter window shows no board, so an agent's show would navigate it away from the slides.
 connectLive(
   liveStore,

@@ -23,10 +23,23 @@ function takesTyping(element: Element): boolean {
 }
 
 /**
+ * Hears each key pressed inside a frame's page until the answer is called,
+ * since a frame on another origin hides its window from the board.
+ */
+export type HearFrame = (
+  iframe: HTMLIFrameElement,
+  onKey: () => void,
+) => () => void
+
+/**
  * Marks pointer-taken focus until blur, since the browser's `:focus-visible`
  * turns on at any key, Shift included, which rang a row before a Shift-click.
+ * Given no `hearFrame`, focus leaving a frame always reads as a pointer press.
  */
-export function markPointerFocus(target: Window): () => void {
+export function markPointerFocus(
+  target: Window,
+  hearFrame?: HearFrame,
+): () => void {
   const document = target.document
   let pointer = false
   // Held to the end of the keydown's task, after a key's own focus move.
@@ -50,26 +63,23 @@ export function markPointerFocus(target: Window): () => void {
     if (event.target instanceof Element) event.target.removeAttribute(MARK)
   }
   // Heard for a key, since Tab inside a frame leaves with no key seen here.
-  let heardFrame: Window | null = null
+  // Kept past focus coming back, since the frame's push can land after it.
+  let unhearFrame = () => {}
   const onFrameKey = () => {
     pointer = false
-  }
-  const unhearFrame = () => {
-    heardFrame?.removeEventListener('keydown', onFrameKey, true)
-    heardFrame = null
+    const active = document.activeElement
+    // Focus already came back on the key that left the frame, so the mark
+    // the pointer reading set is wrong.
+    if (active && !(active instanceof HTMLIFrameElement)) {
+      active.removeAttribute(MARK)
+    }
   }
   const onBlur = () => {
     const active = document.activeElement
     if (!(active instanceof HTMLIFrameElement)) return
     if (!keying) pointer = true
     unhearFrame()
-    try {
-      heardFrame = active.contentWindow
-      heardFrame?.addEventListener('keydown', onFrameKey, true)
-    } catch {
-      // A frame on another origin hides its window, so its keys stay unheard.
-      heardFrame = null
-    }
+    unhearFrame = hearFrame?.(active, onFrameKey) ?? (() => {})
   }
 
   target.addEventListener('pointerdown', onPointer, true)
@@ -77,14 +87,12 @@ export function markPointerFocus(target: Window): () => void {
   document.addEventListener('focusin', onFocusIn, true)
   document.addEventListener('focusout', onFocusOut, true)
   target.addEventListener('blur', onBlur)
-  target.addEventListener('focus', unhearFrame)
   return () => {
     target.removeEventListener('pointerdown', onPointer, true)
     target.removeEventListener('keydown', onKey, true)
     document.removeEventListener('focusin', onFocusIn, true)
     document.removeEventListener('focusout', onFocusOut, true)
     target.removeEventListener('blur', onBlur)
-    target.removeEventListener('focus', unhearFrame)
     unhearFrame()
   }
 }
