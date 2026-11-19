@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# Hands back the absolute form of a write from a linked worktree, where a
-# relative path resolves against the worktree and a click on it does nothing.
-# The worktree comes from the path, since a git call answers for the hook's cwd.
+# Hands back the absolute path for a write from a linked worktree, since a
+# relative one resolves against no editor root. The worktree comes from the
+# path, since `git rev-parse` answers for the hook process's own directory.
 
 # Claude Code sends a payload and closes stdin. A bare read with nothing
 # feeding it blocks forever and holds the session open, so the read is
