@@ -29,6 +29,8 @@ import {
   ISLANDS,
   type Pose,
   POSES,
+  type Turn,
+  TURNS,
 } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
 import { NO_KIT_WORD } from '@/shared/kits'
@@ -85,15 +87,17 @@ function deviceHeadline({
   device,
   pose,
   island,
+  turn,
 }: FrameRecord): string {
   const folded = pose ? `, folded ${pose} at ${box.width} by ${box.height}` : ''
-  if (!showDevice) return `Hid the device on ${ref}${folded}`
+  const turned = turn ? `, turned ${turn} at ${box.width} by ${box.height}` : ''
+  if (!showDevice) return `Hid the device on ${ref}${folded}${turned}`
   if (!device) {
     return `Showed the device on ${ref}, though no device fits its ${box.width} px width`
   }
   const islanded =
     device === 'phone' ? ` with the ${islandOf(island)} island` : ''
-  return `Showed the ${device} on ${ref}${folded}${islanded}`
+  return `Showed the ${device} on ${ref}${folded}${turned}${islanded}`
 }
 
 interface FoldFlags {
@@ -101,6 +105,7 @@ interface FoldFlags {
   foldable?: boolean
   pose?: Pose
   island?: Island
+  turn?: Turn
 }
 
 const WIDTHS_HELP =
@@ -310,7 +315,7 @@ export function registerFrame(
   act<CommonOptions & FoldFlags>(
     verb(
       'device',
-      'Show or hide the device the board draws around a frame, the phone, tablet, or laptop its width names or the foldable the frame names, fold a foldable, and pick a phone’s island, leaving the frame file as it is',
+      'Show or hide the device the board draws around a frame, the phone, tablet, or laptop its width names or the foldable the frame names, fold a foldable, pick a phone’s island, and turn a phone or tablet, leaving the frame file as it is',
     )
       .addArgument(
         new Argument(
@@ -341,18 +346,25 @@ export function registerFrame(
           '--island <width>',
           'pick the phone island drawn over a frame 320 to 479 px wide, compact or the wide one a call or a timer shows',
         ).choices(ISLANDS),
+      )
+      .addOption(
+        new Option(
+          '--turn <turn>',
+          'turn a phone or tablet a quarter, laying its page out landscape at its upright height wide with no status bar, left with the island on the left and right with it on the right, or upright to restore the size it held',
+        ).choices(TURNS),
       ),
     context,
-    async ([ref = '', value], { foldable, pose, island, ...options }) => {
+    async ([ref = '', value], { foldable, pose, island, turn, ...options }) => {
       if (
         value === undefined &&
         foldable === undefined &&
         pose === undefined &&
-        island === undefined
+        island === undefined &&
+        turn === undefined
       ) {
         throw new FrameboardError(
           'usage',
-          'frame device takes on or off, --foldable, --no-foldable, --pose, or --island.',
+          'frame device takes on or off, --foldable, --no-foldable, --pose, --island, or --turn.',
         )
       }
       const show =
@@ -363,7 +375,7 @@ export function registerFrame(
         await boardOf(options, io),
         ref,
         show,
-        { ...options, cwd: io.cwd, foldable, pose, island },
+        { ...options, cwd: io.cwd, foldable, pose, island, turn },
       )
       return { data: record, human: deviceHeadline(record) }
     },

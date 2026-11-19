@@ -166,6 +166,51 @@ export const STATUS_FONT = 'system-ui, -apple-system, sans-serif'
 export const SIGNAL_BARS = [4, 6.5, 9, 11.5] as const
 export const BATTERY = { width: 25, height: 12, radius: 3.5, cap: 2 } as const
 
+/**
+ * The ways a phone or a tablet is held, upright or turned a quarter with its
+ * island on the left or on the right short side.
+ */
+export const TURNS = ['upright', 'left', 'right'] as const
+
+export type Turn = (typeof TURNS)[number]
+
+/** A layout entry's `turn` as a turn, upright for none or a value no reader knows. */
+export function turnOf(value: unknown): Turn {
+  return value === 'left' || value === 'right' ? value : 'upright'
+}
+
+/** A turned frame's box before the turn, which turning it upright restores. */
+export interface UprightSize {
+  width: number
+  height: number
+}
+
+/** A layout entry's `upright` as a size, null for none or a value of another shape. */
+export function uprightOf(value: unknown): UprightSize | null {
+  if (typeof value !== 'object' || value === null) return null
+  if (!('width' in value) || !('height' in value)) return null
+  const { width, height } = value
+  if (typeof width !== 'number' || typeof height !== 'number') return null
+  const whole = Number.isInteger(width) && Number.isInteger(height)
+  return whole && width > 0 && height > 0 ? { width, height } : null
+}
+
+/**
+ * The width that picks the device for a frame, its kept upright width while
+ * turned, so a turned phone reads as a phone and never as the tablet its
+ * landscape box is wide enough for.
+ */
+export function uprightWidth(entry: {
+  width: number
+  turn?: unknown
+  upright?: unknown
+}): number {
+  const upright = uprightOf(entry.upright)
+  return turnOf(entry.turn) !== 'upright' && upright
+    ? upright.width
+    : entry.width
+}
+
 /** The height the device's status bar takes off the top of a frame's box, 0 for any device but the phone. */
 export function topInset(device: Device | null | undefined): number {
   return device === 'phone' ? STATUS_BAR.height : 0

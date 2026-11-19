@@ -48,6 +48,11 @@ export const frameRecordSchema = z.object({
   pose: z.enum(POSES).optional(),
   /** `wide` while the frame picks the phone's wide island, shown or not, absent for the compact one. */
   island: z.literal('wide').optional(),
+  /**
+   * The way a phone or tablet frame is turned, shown or not, absent upright.
+   * A turned frame's box is landscape, and a turned phone draws no status bar.
+   */
+  turn: z.enum(['left', 'right']).optional(),
   /** The transition the frame arrives with in present mode, over its page's, absent when it holds none. */
   transition: transitionRecordSchema.optional(),
   /** What the presenter means to say over the slide, plain text with its line breaks, absent when it holds none. */

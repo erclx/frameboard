@@ -60,7 +60,7 @@ import { ensureViewer } from '@/server/models/viewer'
 import type { PlaceableKind } from '@/shared/asset-kinds'
 import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
-import { ISLANDS, POSES } from '@/shared/frame-device'
+import { ISLANDS, POSES, TURNS } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES, referenceHeight } from '@/shared/frame-sizes'
 import type { LinkedWidth } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
@@ -137,6 +137,7 @@ const frameDeviceSchema = z.object({
   foldable: z.boolean().optional(),
   pose: z.enum(POSES).optional(),
   island: z.enum(ISLANDS).optional(),
+  turn: z.enum(TURNS).optional(),
 })
 const linkedWidth = z.int().min(1)
 /** More widths than any device list offers, so a body cannot grow without bound. */
@@ -550,6 +551,7 @@ export function structureRoutes(
           foldable: body.foldable,
           pose: body.pose,
           island: body.island,
+          turn: body.turn,
         }),
       (records) => records.map((record) => record.ref),
     )

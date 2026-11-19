@@ -17,6 +17,10 @@ import {
   islandOf,
   type Pose,
   poseOf,
+  turnOf,
+  uprightOf,
+  type UprightSize,
+  uprightWidth,
 } from '@/shared/frame-device'
 import { DEFAULT_FRAME_SIZE, FRAME_SIZES } from '@/shared/frame-sizes'
 import {
@@ -88,6 +92,9 @@ export interface Placement {
   pose?: Pose
   /** Present while the frame picks the phone's wide island, shown or not. */
   island?: 'wide'
+  /** Present while the frame is turned, with the size it held upright, which only the write reads. */
+  turn?: 'left' | 'right'
+  upright?: UprightSize
   /** The widths a foldable's entry lists and never draws, which un-naming it draws again. */
   keptWidths?: LinkedWidth[]
   /** Absent for a frame with no override or one holding a value no reader knows. */
@@ -240,7 +247,10 @@ export function placeFrames(
     const shown = showsDevice(entry)
     const foldable = entry.foldable === true
     const kept = widthsOf(entry.widths)
-    const named = foldable ? 'foldable' : deviceForWidth(box.width)
+    const upright = uprightOf(entry.upright)
+    // A foldable's poses are its sizes, so it reads upright whatever it holds.
+    const turn = upright && !foldable ? turnOf(entry.turn) : 'upright'
+    const named = foldable ? 'foldable' : deviceForWidth(uprightWidth(entry))
     const device = shown ? named : null
     const transition = readTransition(entry.transition)
     const speakerNotes = speakerNotesOf(entry.speakerNotes)
@@ -259,6 +269,7 @@ export function placeFrames(
       ...(foldable ? { foldable, pose: poseOf(entry.pose) } : {}),
       ...(foldable && kept.length > 0 ? { keptWidths: kept } : {}),
       ...(islandOf(entry.island) === 'wide' ? { island: 'wide' as const } : {}),
+      ...(turn !== 'upright' && upright ? { turn, upright } : {}),
       ...(transition ? { transition } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
       ...(kit ? { kit } : {}),
@@ -409,10 +420,12 @@ export async function scanPage(
   const records = await Promise.all(
     names.map(async (frame): Promise<FrameRecord> => {
       const framePath = join(path, `${frame}${FRAME_EXTENSION}`)
-      // The record carries the pose alone, which only a named foldable holds.
+      // The record carries the pose alone, which only a named foldable holds,
+      // and the turn without the upright size the write keeps to restore.
       const {
         foldable: _named,
         keptWidths: _kept,
+        upright: _upright,
         ...placement
       } = placements.get(frame) ?? placeNext([])
       return {
