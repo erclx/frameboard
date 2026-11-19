@@ -57,7 +57,7 @@ export function LabelTip({
           // Below, so the sentence never covers the tab strip or a heading above its label.
           side="bottom"
           sideOffset={6}
-          className="max-w-[220px] rounded-md px-2 py-[5px] text-[11px] leading-snug"
+          className="max-w-[220px] rounded-md px-2 py-[5px] text-[11px] leading-snug [overflow-wrap:anywhere]"
         >
           {tip}
         </TooltipContent>

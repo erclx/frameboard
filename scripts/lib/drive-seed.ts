@@ -131,6 +131,12 @@ const TILT = { project: 'webapp', page: 'tilt', frame: 'card' }
 
 const TILT_PAGE = join(import.meta.dirname, 'drive-tilt.html')
 
+/** The page holding one desktop frame that also shows at 834, so the widths row has a chip to read and a plus to open. */
+const WIDTHS = { project: 'webapp', page: 'widths', frame: 'panel' }
+
+/** The page holding one frame that hugs its width, so the widths row reads its plus disabled. */
+const HUG = { project: 'webapp', page: 'hug', frame: 'badge' }
+
 /**
  * The page holding one model with a clip it never plays, so the Model section
  * has an angle, a rotation, a scale, and a clip to stage, and a double-click a
@@ -199,6 +205,10 @@ export interface Seeded {
   tilt: 'laid' | 'kept'
   /** Whether the model page was laid now or was already there and kept. */
   model: 'laid' | 'kept'
+  /** Whether the extra width page was laid now or was already there and kept. */
+  widths: 'laid' | 'kept'
+  /** Whether the width-hugging frame page was laid now or was already there and kept. */
+  hug: 'laid' | 'kept'
   /** Whether the Drives folder was laid now or was already there and kept. */
   folder: 'laid' | 'kept'
   /** Whether the long sheet path project was laid now or was already there and kept. */
@@ -250,6 +260,15 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     height: PHONE_FEED_HEIGHT,
     showDevice: true,
   })
+  const widths = await layOne(root, WIDTHS, TILT_PAGE, {
+    ...FRAME_SIZES.desktop,
+    widths: [{ width: 834, height: 1194 }],
+  })
+  const hug = await layOne(root, HUG, TILT_PAGE, {
+    width: 320,
+    height: 200,
+    hugWidth: true,
+  })
   const folder = await layFolder(root)
   const longPath = await layLongPath(root)
   const reserved = await reserveSettings(root, now)
@@ -269,6 +288,8 @@ export async function seedDrive(root: string, now: Date): Promise<Seeded> {
     mixed,
     tilt,
     model,
+    widths,
+    hug,
     folder,
     longPath,
     reserved,
@@ -400,6 +421,8 @@ async function layOne(
     width: number
     height: number
     scroll?: boolean
+    hugWidth?: boolean
+    widths?: { width: number; height: number }[]
     showDevice?: boolean
     foldable?: boolean
     pose?: Pose

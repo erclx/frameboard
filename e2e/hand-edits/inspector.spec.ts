@@ -485,7 +485,7 @@ test.describe('showing a selected frame at another width by hand', () => {
     await expect(linked).toBeVisible()
     await expect(
       page
-        .getByRole('group', { name: 'Also shows at' })
+        .getByRole('group', { name: 'More widths' })
         .getByRole('button', { name: 'Remove 834' }),
     ).toBeVisible()
 

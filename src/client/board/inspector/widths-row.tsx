@@ -16,7 +16,6 @@ import type { FrameRecord } from '@/shared/records/list'
 import { ActionTooltip } from '../chrome/action-tooltip'
 import { ChromeMenuContent, MENU_ROW } from '../chrome/menu'
 import { reportRefusal } from '../left-panel/page-actions'
-import { LabelTip } from './label-tip'
 import { FRAME_TOOL_GROUPS, PRESETS } from './presets'
 
 interface WidthsRowProps {
@@ -92,19 +91,18 @@ export function WidthsRow({ frame, disabled, calls }: WidthsRowProps) {
       aria-describedby="inspector-widths-tip"
       className="mt-2.5"
     >
-      <LabelTip
-        label="Also shows at"
-        tip="Each is drawn beside the frame from the same file."
-        tipId="inspector-widths-tip"
-        className="mb-1.5 h-4"
+      <span
+        id="inspector-widths"
+        className="mb-1.5 block text-caption text-muted-foreground"
       >
-        <span
-          id="inspector-widths"
-          className="text-caption text-muted-foreground"
-        >
-          Also shows at
-        </span>
-      </LabelTip>
+        More widths
+      </span>
+      <p
+        id="inspector-widths-tip"
+        className="mb-1.5 rounded-lg bg-muted px-2.5 py-2 leading-[1.45] text-muted-foreground"
+      >
+        Show this frame at other widths beside it, to see how the page responds.
+      </p>
       <ul className="flex flex-wrap gap-1.5">
         {shown.map((width, index) => (
           <li
@@ -135,30 +133,28 @@ export function WidthsRow({ frame, disabled, calls }: WidthsRowProps) {
               <button
                 ref={plus}
                 type="button"
-                aria-label="Add a width"
                 aria-disabled
                 aria-describedby="inspector-widths-hug"
                 className={cn(PLUS, CONTROL, 'cursor-default opacity-40')}
               >
                 <Plus aria-hidden className="size-[13px]" strokeWidth={1.6} />
+                Add a width
               </button>
             </ActionTooltip>
           ) : (
             <DropdownMenu>
-              <ActionTooltip label="Add a width" side="bottom">
-                <DropdownMenuTrigger
-                  ref={plus}
-                  aria-label="Add a width"
-                  disabled={disabled || groups.length === 0}
-                  className={cn(
-                    PLUS,
-                    CONTROL,
-                    'hover:border-muted-foreground hover:text-foreground aria-expanded:bg-accent',
-                  )}
-                >
-                  <Plus aria-hidden className="size-[13px]" strokeWidth={1.6} />
-                </DropdownMenuTrigger>
-              </ActionTooltip>
+              <DropdownMenuTrigger
+                ref={plus}
+                disabled={disabled || groups.length === 0}
+                className={cn(
+                  PLUS,
+                  CONTROL,
+                  'hover:border-muted-foreground hover:text-foreground aria-expanded:bg-accent',
+                )}
+              >
+                <Plus aria-hidden className="size-[13px]" strokeWidth={1.6} />
+                Add a width
+              </DropdownMenuTrigger>
               <ChromeMenuContent
                 align="start"
                 sideOffset={4}
@@ -204,4 +200,4 @@ export function WidthsRow({ frame, disabled, calls }: WidthsRowProps) {
 }
 
 const PLUS =
-  'grid size-[26px] place-items-center rounded-md border border-dashed border-border text-muted-foreground'
+  'flex h-[26px] items-center gap-1 rounded-md border border-dashed border-border px-2 text-caption text-muted-foreground'
