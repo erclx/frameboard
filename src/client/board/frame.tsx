@@ -32,6 +32,7 @@ import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, type Theme } from '@/shared/theme'
 
+import { request } from './bridge/channel'
 import { followPage, shownHashOf } from './bridge/shown'
 import { useCompare } from './changes/compare'
 import { CompareControl, CompareView } from './changes/compare-view'
@@ -209,8 +210,16 @@ export const Frame = memo(function Frame({
     : height
   const colors = usePageColors(iframe, live && statusBar > 0, theme)
   const waiting = useWaitingOnFirstLoad(iframe, live)
-  useHiddenScrollbar(iframe, live, frame.scroll || drawnHeight < height)
+  const shownShort = drawnHeight < height
+  useHiddenScrollbar(iframe, live, frame.scroll || shownShort)
   useMotionDriver(iframe, frame.ref, live, playing)
+
+  // Leaving the one-screen view forgets where the page was scrolled to.
+  useEffect(() => {
+    const element = iframe.current
+    if (!live || !shownShort || !element) return
+    return () => void request(element, 'scroll-act', { act: 'to', top: 0 })
+  }, [live, shownShort])
 
   useEffect(() => {
     const element = iframe.current

@@ -161,7 +161,8 @@ test.describe('a phone frame as tall as its page, entered in Play', () => {
       join(folder, 'about.html'),
       TUNER.replace(
         '</body>',
-        '<div id="top" style="height:2200px">about</div></body>',
+        // Taller than the 2400 page, so a scroll left over at full length shows.
+        '<div id="top" style="height:2600px">about</div></body>',
       ),
     )
     server = await serveBoard(board.root)
@@ -193,6 +194,7 @@ test.describe('a phone frame as tall as its page, entered in Play', () => {
     await page.keyboard.press('Escape')
     await page.getByRole('button', { name: 'Edit' }).click()
     await expect.poll(() => pageHeight(page)).toBe(2400)
+    await expect.poll(() => scrollY(page)).toBe(0)
   })
 
   test('puts Keep values inside the phone it shows, not the stored box below it', async ({
