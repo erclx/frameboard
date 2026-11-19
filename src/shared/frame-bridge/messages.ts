@@ -309,12 +309,11 @@ export interface BridgeOps {
   }
   /** Hands a held page back to its own clock, playing CSS on and reloading any other, answering whether it held a timeline. */
   'motion-release': { args: { motion: string }; value: boolean; push: never }
-  /** The moment in ms a free-running page shows now, null when the subscription holds no timeline. */
-  'motion-moment': {
-    args: { motion: string }
-    value: number | null
-    push: never
-  }
+  /**
+   * The moment in ms a free-running page shows now on the timeline a `motion`
+   * push named, 0 for a HyperFrames page, which exposes no reading.
+   */
+  'motion-moment': { args: FrameMotion; value: number; push: never }
   /**
    * Binds the page's drawn controls, a move setting its property inline and
    * pushing how many are moved, until closed, which puts every value back.
@@ -681,8 +680,8 @@ const SCHEMAS: {
     value: z.boolean(),
   },
   'motion-moment': {
-    args: z.object({ motion: z.string() }),
-    value: z.number().finite().nonnegative().nullable(),
+    args: frameMotionSchema,
+    value: z.number().finite().nonnegative(),
   },
   controls: { args: noArgsSchema, value: z.boolean(), push: countSchema },
   'controls-act': {

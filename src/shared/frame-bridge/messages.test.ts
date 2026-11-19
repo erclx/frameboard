@@ -312,7 +312,10 @@ describe('the motion and present ops', () => {
     ['motion', {}],
     ['motion-seek', { motion: 'm1', at: 1250 }],
     ['motion-release', { motion: 'm1' }],
-    ['motion-moment', { motion: 'm1' }],
+    [
+      'motion-moment',
+      { motion: { source: 'css', duration: null }, span: 1500 },
+    ],
     ['controls', {}],
     ['controls-act', { controls: 'c1', act: 'reset' }],
     ['controls-act', { controls: 'c1', act: 'settle' }],
