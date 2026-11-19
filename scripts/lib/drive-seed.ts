@@ -299,20 +299,35 @@ async function layLongPath(root: string): Promise<'laid' | 'kept'> {
 }
 
 /**
- * Files two projects of one empty page each in the Drives folder, so a reel
- * opens a folder, renames it, and deletes a project out of it. A folder a reel
- * already changed is kept while either project is there.
+ * Files two projects of one page each in the Drives folder, so a reel opens a
+ * folder, renames it, and deletes a project out of it. The first holds one
+ * frame, so the folder card draws a capture. A changed folder is kept.
  */
 async function layFolder(root: string): Promise<'laid' | 'kept'> {
   if (FOLDER.projects.some((project) => existsSync(join(root, project))))
     return 'kept'
   await Promise.all(
-    FOLDER.projects.map(async (project) => {
-      await mkdir(join(root, project, 'home'), { recursive: true })
+    FOLDER.projects.map(async (project, index) => {
+      const page = join(root, project, 'home')
+      await mkdir(page, { recursive: true })
+      const framed = index === 0
+      const frames = framed
+        ? {
+            app: {
+              x: 0,
+              y: 0,
+              order: 0,
+              hidden: false,
+              locked: false,
+              ...FRAME_SIZES.desktop,
+            },
+          }
+        : {}
       await Promise.all([
+        framed ? copyFile(RAW_PAGE, join(page, 'app.html')) : undefined,
         writeFile(
-          join(root, project, 'home', 'layout.json'),
-          `${JSON.stringify({ version: 1, frames: {} }, null, 2)}\n`,
+          join(page, 'layout.json'),
+          `${JSON.stringify({ version: 1, frames }, null, 2)}\n`,
         ),
         writeFile(
           join(root, project, 'project.json'),
