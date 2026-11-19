@@ -12,7 +12,7 @@ import { canvasView } from '../view'
 
 /** Whether a selected frame drawing this device shows a bar under its body: a foldable's poses, or a phone's or tablet's Rotate. */
 export function showsDeviceBar(device: Device | null | undefined): boolean {
-  return device === 'foldable' || turnsWith(device)
+  return turnsWith(device)
 }
 
 /**
@@ -37,7 +37,7 @@ export function rotateFrame(
 }
 
 /**
- * Why a phone or tablet cannot turn, matching what the server refuses, or
+ * Why a phone, tablet, or foldable cannot turn, matching what the server refuses, or
  * undefined when it can: a locked frame, and one whose extra widths are each
  * an upright preview of their own.
  */

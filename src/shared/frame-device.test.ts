@@ -371,7 +371,7 @@ describe('a turned phone or tablet', () => {
     ['phone', true],
     ['tablet', true],
     ['laptop', false],
-    ['foldable', false],
+    ['foldable', true],
     [null, false],
   ] as const)('turns a %s: %s', (device, turns) => {
     expect(turnsWith(device)).toBe(turns)

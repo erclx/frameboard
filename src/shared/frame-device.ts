@@ -167,8 +167,8 @@ export const SIGNAL_BARS = [4, 6.5, 9, 11.5] as const
 export const BATTERY = { width: 25, height: 12, radius: 3.5, cap: 2 } as const
 
 /**
- * The ways a phone or a tablet is held, upright or turned a quarter with its
- * island on the left or on the right short side.
+ * The ways a phone, a tablet, or a foldable is held, upright or turned a
+ * quarter with its island on the left or on the right side.
  */
 export const TURNS = ['upright', 'left', 'right'] as const
 
@@ -188,9 +188,9 @@ export function nextTurn(turn: Turn | undefined): Turn {
   return TURNS[(at + 1) % TURNS.length] ?? 'upright'
 }
 
-/** Whether a device turns, which only a phone or a tablet does. */
+/** Whether a device turns, which a phone, a tablet, and a foldable do and a laptop does not. */
 export function turnsWith(device: Device | null | undefined): boolean {
-  return device === 'phone' || device === 'tablet'
+  return device === 'phone' || device === 'tablet' || device === 'foldable'
 }
 
 /** A turned frame's box before the turn, which turning it upright restores. */
@@ -225,7 +225,7 @@ export function uprightWidth(entry: {
     : entry.width
 }
 
-/** Whether a device draws turned, which only a phone or a tablet does. */
+/** Whether a device draws turned, which any device but a laptop does. */
 export function isTurned(
   device: Device | null | undefined,
   turn: Turn | undefined,
