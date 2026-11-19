@@ -109,7 +109,10 @@ test.describe('assets tab Find', () => {
   test.beforeEach(async () => {
     board = copyFixtureBoard('basic')
     server = await serveBoard(board.root, [], {
-      NODE_OPTIONS: `--import=${resolve('e2e/support/openverse-stub.mjs')}`,
+      NODE_OPTIONS: [
+        `--import=${resolve('e2e/support/openverse-stub.mjs')}`,
+        `--import=${resolve('e2e/support/polyhaven-stub.mjs')}`,
+      ].join(' '),
     })
   })
 
@@ -177,5 +180,53 @@ test.describe('assets tab Find', () => {
       .poll(() => readFileSync(hero, 'utf8'), { timeout: 10_000 })
       .toContain('src="../assets/house-2.png"')
     expect(existsSync(join(assets, 'house-2.png.license.json'))).toBe(true)
+  })
+
+  test('journey: a found model drags into a frame, saving once as a GLB placed as a model', async ({
+    page,
+  }) => {
+    const assets = join(board.root, 'webapp/assets')
+    const hero = join(board.root, 'webapp/home/hero.html')
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    await page.getByRole('tab', { name: 'Assets' }).click()
+    await page.getByRole('tab', { name: 'Find' }).click()
+    await page.getByRole('button', { name: 'Filter: Images' }).click()
+    await page.getByRole('menuitemradio', { name: 'Models' }).click()
+    await page.keyboard.press('Escape')
+    const field = page.getByRole('searchbox', { name: 'Search free models' })
+    await field.fill('stool')
+    await field.press('Enter')
+    const results = page.getByRole('list', { name: 'Results' })
+    await expect(results.getByRole('listitem')).toHaveCount(1)
+    await expect(results).toContainText('2.7k tris · Poly Haven')
+
+    const frame = await page
+      .locator('[data-frame="webapp/home/hero"]')
+      .boundingBox()
+    if (!frame) throw new Error('The hero frame draws no box')
+    await results.getByRole('listitem').hover()
+    await page.mouse.down()
+    await page.mouse.move(
+      frame.x + frame.width / 2 - 20,
+      frame.y + frame.height / 2,
+      { steps: 5 },
+    )
+    await page.mouse.move(
+      frame.x + frame.width / 2,
+      frame.y + frame.height / 2,
+      { steps: 5 },
+    )
+    await page.mouse.up()
+
+    await expect
+      .poll(() => readFileSync(hero, 'utf8'), { timeout: 10_000 })
+      .toMatch(/<model-viewer[^>]*src="\.\.\/assets\/stool\.glb"/)
+    expect(
+      JSON.parse(readFileSync(join(assets, 'stool.glb.license.json'), 'utf8')),
+    ).toMatchObject({ source: 'polyhaven', id: 'wooden_stool_01', size: '1k' })
+    await expect(
+      page.getByRole('button', { name: 'Saved Wooden Stool 01' }),
+    ).toBeAttached()
   })
 })
