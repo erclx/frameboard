@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
 import { registerActions } from '@/client/actions/registry'
+import { BRIDGE_TAG } from '@/shared/frame-bridge/messages'
 import { ask, bridgedFrame } from '@/test/frame-bridge'
 
 import { shownHashOf } from './bridge/shown'
@@ -63,6 +64,47 @@ describe('bindFrameKeys', () => {
     press(iframe, 'Escape', 'Escape')
 
     await expect.poll(() => exits).toBe(1)
+  })
+
+  it("runs nothing for a key the frame's own script pushes that the board never bound", async () => {
+    let moves = 0
+    cleanups.push(
+      registerActions([
+        {
+          id: 'tool.move',
+          label: 'Move',
+          group: 'tool',
+          palette: false,
+          keys: ['v'],
+          run: () => (moves += 1),
+        },
+      ]),
+    )
+    const iframe = await bridgedFrame('<p>Hi</p>')
+    await expect.poll(() => shownHashOf(iframe)).not.toBeNull()
+    const view = iframe.contentWindow as typeof window
+    // The page's script hears the board's request as the bridge does.
+    const heard: string[] = []
+    view.addEventListener('message', (event: MessageEvent) => {
+      const data = event.data as { op?: unknown; id?: unknown } | null
+      if (data?.op === 'keys' && typeof data.id === 'string')
+        heard.push(data.id)
+    })
+    cleanups.push(bindFrameKeys(iframe, ['Escape'], { keepTyping: false }))
+    await settled(iframe)
+    const [id] = heard
+    if (!id) throw new Error('The page heard no keys request')
+
+    // Posted from the frame's realm, so the board reads the frame as its source.
+    new view.Function('message', 'parent.postMessage(message, origin)')({
+      tag: BRIDGE_TAG,
+      kind: 'push',
+      id,
+      value: { key: 'v', repeat: false },
+    })
+    await settled(iframe)
+
+    expect(moves).toBe(0)
   })
 
   it('leaves a character key to the page while single-key shortcuts are off', async () => {

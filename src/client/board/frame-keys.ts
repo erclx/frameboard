@@ -29,7 +29,10 @@ export function bindFrameKeys(
           iframe,
           'keys',
           { keys: taken, keepTyping },
-          ({ key, repeat }) => runKey(key, repeat),
+          // A frame's own script can push in the bridge's shape, so only a bound key runs.
+          ({ key, repeat }) => {
+            if (taken.includes(key)) runKey(key, repeat)
+          },
         ).close,
     )
   }
