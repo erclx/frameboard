@@ -1,3 +1,5 @@
+import { referenceHeight } from './frame-sizes'
+
 interface Box {
   x: number
   y: number
@@ -182,6 +184,22 @@ export function pageBox(box: Box, device: Device | null | undefined): Box {
     width: box.width,
     height: Math.max(0, box.height - inset),
   }
+}
+
+/**
+ * The box a frame is shown at outside Edit, in present mode and once entered
+ * in Play: one screen tall for a phone frame as tall as its whole page, so
+ * the page scrolls inside, and the stored box for any other frame. A scroll
+ * frame's box is already its screen, and the decision names the phone alone.
+ */
+export function shownBox<B extends { width: number; height: number }>(frame: {
+  box: B
+  device?: Device | null
+  scroll: boolean
+}): B {
+  const { box, device, scroll } = frame
+  if (device !== 'phone' || scroll) return { ...box }
+  return { ...box, height: Math.min(box.height, referenceHeight(box.width)) }
 }
 
 /** The page's corners as a CSS `border-radius`, square on top under a phone's status bar. */
