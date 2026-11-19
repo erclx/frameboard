@@ -207,6 +207,7 @@ describe('the raw colors page', () => {
         'model',
         'device',
         'fold',
+        'phone-feed',
       ],
     })
   })
@@ -254,6 +255,7 @@ describe('the scroll feed page', () => {
         'model',
         'device',
         'fold',
+        'phone-feed',
       ],
     })
   })
@@ -278,6 +280,23 @@ describe('the device page', () => {
     expect(readJson('webapp/device/layout.json')).toMatchObject({
       frames: { phone: { width: 390, showDevice: true } },
     })
+  })
+})
+
+describe('the phone feed page', () => {
+  it('lays the feed in a phone frame as tall as its page, off Scroll', async () => {
+    const seeded = await seedDrive(root, new Date())
+
+    expect(seeded.phoneFeed).toBe('laid')
+    const { frames } = readJson('webapp/phone-feed/layout.json') as {
+      frames: Record<string, Record<string, unknown>>
+    }
+    expect(frames.feed).toMatchObject({
+      width: 390,
+      height: 1942,
+      showDevice: true,
+    })
+    expect(frames.feed?.scroll).toBeUndefined()
   })
 })
 
