@@ -21,12 +21,17 @@ import {
   scanProject,
 } from './scan'
 
-/** A new project holding one empty page. */
+export interface AddOptions extends JournalOptions {
+  /** The home folder the project starts filed in, none leaving it loose. */
+  group?: string
+}
+
+/** A new project holding one empty page, filed under `group` when one is given. */
 export async function addProject(
   root: string,
   name: string,
   now: Date = new Date(),
-  { journal }: JournalOptions = {},
+  { journal, group }: AddOptions = {},
 ): Promise<ProjectRecord> {
   assertValidName('project', name)
   await assertFree(root, name)
@@ -35,6 +40,7 @@ export async function addProject(
     version: 1,
     pages: [START_PAGE],
     createdAt: now.toISOString(),
+    ...(group?.trim() ? { group: group.trim() } : {}),
   })
   await journal?.created(join(root, name))
   return scanProject(root, name)

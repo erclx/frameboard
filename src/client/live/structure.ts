@@ -45,8 +45,9 @@ export function createStructure(send: typeof fetch = fetch) {
     body: unknown,
   ) => whenFree(refs, label, () => post<T>(path, body))
   return {
-    addProject: (name?: string) =>
-      post<ProjectRecord>('/api/project/add', { name }),
+    /** Adds a project, filed in `group` when one is given. */
+    addProject: (name?: string, group?: string) =>
+      post<ProjectRecord>('/api/project/add', { name, group }),
     renameProject: (ref: string, name: string) =>
       post<ProjectRecord>('/api/project/rename', { ref, name }),
     /** Sets the project's title and moves its folder to the name made from it, answering where it landed. */

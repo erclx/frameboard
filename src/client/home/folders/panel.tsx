@@ -1,13 +1,16 @@
+import { Plus } from 'lucide-react'
 import { useStore } from 'zustand'
 
+import { Button } from '@/client/components/ui/button'
 import {
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from '@/client/components/ui/dialog'
+import { useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import { unseenUnder, useUnseen } from '@/client/live/unseen'
-import { projectStore } from '@/client/projects/actions'
+import { addProjectIn, projectStore } from '@/client/projects/actions'
 
 import { usePins } from '../pins'
 import { type Captures, ProjectCard } from '../project-card'
@@ -33,6 +36,7 @@ export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
   const unseen = useUnseen((state) => state.unseen)
   const focused = useStore(projectStore, (state) => state.focused)
   const pins = usePins()
+  const canWrite = useLive((state) => state.canWrite)
   const rover = folder.projects.some((project) => project.name === focused)
     ? focused
     : folder.projects[0]?.name
@@ -59,7 +63,16 @@ export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
         <DialogDescription className="sr-only">
           {countOf(folder)}
         </DialogDescription>
-        <span className="ml-auto flex">
+        <span className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!canWrite}
+            onClick={() => addProjectIn(calls, folder.name)}
+          >
+            <Plus aria-hidden />
+            New project
+          </Button>
           <FolderMore folder={folder} open={false} />
         </span>
       </div>

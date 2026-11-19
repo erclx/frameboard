@@ -557,6 +557,21 @@ export class StepJournal implements Journal {
     after: LayoutEntry | undefined,
   ): void {
     const layout = join(page, LAYOUT_FILE)
+    // A frame written twice in one step, as a fold pushing a frame the same write then turns, keeps one change, or undo reads the first after as overtaken.
+    const last = this.changes.findLastIndex(
+      (change) =>
+        change.kind === 'entry' &&
+        change.layout === layout &&
+        change.frame === frame,
+    )
+    const held = this.changes[last]
+    if (
+      held?.kind === 'entry' &&
+      this.changes.slice(last + 1).every((change) => change.kind === 'entry')
+    ) {
+      held.after = after
+      return
+    }
     this.changes.push({ kind: 'entry', layout, frame, before, after })
   }
 

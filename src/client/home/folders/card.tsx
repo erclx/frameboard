@@ -30,7 +30,10 @@ interface FolderCardProps extends PanelProps {
 }
 
 /** The card's frame with its top left corner squared, where the tab meets it. */
-const FOLDER_CARD = cn(CARD, 'rounded-tl-none')
+const FOLDER_CARD = cn(
+  CARD,
+  'rounded-tl-none group-hover/folder:ring-2 group-hover/folder:ring-primary',
+)
 
 /**
  * Per `folder-tab-one-shape-720`, its fill runs 4px into the card on `after:`, not a taller box that would carry the side lines in,

@@ -460,6 +460,18 @@ export function useFolderActions(calls: Structure = structure): void {
         },
       },
       {
+        id: 'folder.new',
+        label: 'New project',
+        group: 'project',
+        // Run from the folder's list row menu, since the palette has `project.new`.
+        palette: false,
+        enabled: () => writable() && folder() !== undefined,
+        run: () => {
+          const target = folder()
+          if (target) addProjectIn(calls, target.name)
+        },
+      },
+      {
         id: 'folder.pin',
         label: 'Pin',
         group: 'project',
@@ -523,6 +535,20 @@ export function useHomeAction(goHome: () => void): void {
 }
 
 /**
+ * Adds a project, filed in the folder `group` names when one is given, and
+ * opens its name for renaming.
+ */
+export function addProjectIn(
+  calls: Structure = structure,
+  group?: string,
+): void {
+  calls.addProject(undefined, group).then((added) => {
+    focusProject(added.name)
+    startProjectRename(added.name)
+  }, reportRefusal("Couldn't add a project"))
+}
+
+/**
  * Registers `project.new`, which adds a project and opens its name for
  * renaming on the home view. The board passes `leave`, which goes home before
  * the add, since leaving clears the project state and would close the rename.
@@ -542,10 +568,7 @@ export function useNewProjectAction(
         enabled: writable,
         run: () => {
           leave?.()
-          calls.addProject().then((added) => {
-            focusProject(added.name)
-            startProjectRename(added.name)
-          }, reportRefusal("Couldn't add a project"))
+          addProjectIn(calls)
         },
       },
     ])

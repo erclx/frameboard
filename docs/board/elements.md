@@ -30,6 +30,7 @@ Images, videos, audio, and 3D models come from the project's `assets/` folder an
 - Dragging a tile from the Assets tab onto a frame places it where you let go. A video tile shows its first frame and length, plays muted on hover, and says when its codec cannot play.
   - A tile let go over empty canvas makes a frame the file's size, outlined while you drag, and one undo takes the frame and its media back
   - Find in the Assets tab searches Openverse for public domain photos, or Poly Haven for CC0 3D models from its filter menu. Save brings one into `assets/` with its license, and a dragged result saves, then lands.
+    - Find keeps its last search after another tab, until the board reloads
   - Generate shows the provider and its price, and stays off in this release, so `frameboard image generate` makes an image instead
 - A model lands 240 by 135 as a `<model-viewer>`, and the first one placed copies the viewer's script into `assets/` and links it in the frame's head
 - A dropped video is written with `controls`, so Play shows the browser's own strip to pause it and turn on its sound
@@ -37,7 +38,7 @@ Images, videos, audio, and 3D models come from the project's `assets/` folder an
   - The inspector's Video section carries the same play, scrub, and sound controls, which change nothing in the file
 - Controls, Autoplay, Loop, and Muted under In the file are the switches that write, each setting or dropping one attribute while the clip keeps playing, and audio has no Controls switch
 
-A right-click on an Assets tile, or its ⋯, places the file, lists the frames using it, or renames, replaces, or deletes it, each as one undo step. A rename points every frame linking the file at its new name, and Delete asks first when a frame uses it.
+A right-click on an Assets tile, or its ⋯, places the file, lists the frames using it, or renames, replaces, or deletes it, each as one undo step. A rename points every frame linking the file at its new name, and a layer still named after the old file takes the new one. Delete asks first when a frame uses it.
 
 ## Drawn controls
 

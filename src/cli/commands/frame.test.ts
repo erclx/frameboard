@@ -529,6 +529,38 @@ describe('frame', () => {
       expect(readFileSync(frame, 'utf8')).toBe(bytes)
     })
 
+    it('pushes the frame to its right along by the growth when --pose opens it', async () => {
+      const run = on('basic')
+      await run(
+        'frame',
+        'device',
+        'webapp/home/hero',
+        '--foldable',
+        '--pose',
+        'closed',
+      )
+      const layout = () =>
+        JSON.parse(
+          readFileSync(join(board.root, 'webapp/home/layout.json'), 'utf8'),
+        )
+      const before = layout().frames.about
+
+      const result = await run(
+        'frame',
+        'device',
+        'webapp/home/hero',
+        '--pose',
+        'open',
+      )
+
+      expect(result.exitCode).toBe(0)
+      expect(layout().frames.about).toMatchObject({
+        x: before.x + 890 - 466,
+        y: before.y,
+        width: before.width,
+      })
+    })
+
     it('folds a named foldable with --pose alone', async () => {
       const run = on('basic')
       await run('frame', 'device', 'webapp/home/hero', '--foldable')

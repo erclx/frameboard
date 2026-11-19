@@ -7,6 +7,7 @@ import {
   type TokenTable,
 } from '@/shared/records/tokens'
 
+import { LabelTip } from '../../inspector/label-tip'
 import { fetchTokenTable, useTokenTable } from '../../tokens'
 import { KitsSection } from './kits'
 import { ColorRow, ValueRow } from './rows'
@@ -110,29 +111,42 @@ function TokensSection({
     }
   const onWrite = { project: writerFor('project'), board: writerFor('board') }
 
+  const readOnly = canWrite && boardOutside
+  const sourceLine = [
+    `From ${[
+      boardSheet ? `board ${fileName(boardSheet.path)}` : null,
+      projectSheet
+        ? `${boardSheet ? 'overridden by ' : ''}project ${fileName(projectSheet.path)}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(', ')}`,
+    readOnly ? 'read only' : null,
+  ]
+    .filter(Boolean)
+    .join(', ')
+  const sourceTip = [
+    table.sheets.map((sheet) => `${sheet.path}.`).join(' '),
+    editable.project || editable.board ? 'Click a value to edit it.' : null,
+    readOnly
+      ? 'Board values stay read-only here, since that sheet sits outside the board folder.'
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <div className="flex flex-col pb-2">
-      <p className="mx-3 mt-1 mb-2 rounded-lg bg-muted px-2.5 py-2 leading-[1.45] text-muted-foreground">
-        From{' '}
-        {boardSheet ? (
-          <>
-            board <code className={CODE}>{boardSheet.path}</code>
-            {projectSheet ? ', overridden by ' : null}
-          </>
-        ) : null}
-        {projectSheet ? (
-          <>
-            project <code className={CODE}>{projectSheet.path}</code>
-          </>
-        ) : null}
-        .
-        {editable.project || editable.board
-          ? ' Click a value to edit it.'
-          : null}
-        {canWrite && boardOutside
-          ? ' Board values stay read-only here, since that sheet sits outside the board folder.'
-          : null}
-      </p>
+      <LabelTip
+        label="token source"
+        tip={sourceTip}
+        tipId="theme-source-tip"
+        className="mx-3 mt-1 mb-2 text-muted-foreground"
+      >
+        <span id="theme-source" className="min-w-0 [overflow-wrap:anywhere]">
+          {sourceLine}
+        </span>
+      </LabelTip>
       {table.sheets
         .filter((sheet) => sheet.error !== null)
         .map((sheet) => (
@@ -184,6 +198,11 @@ function TokensSection({
       })}
     </div>
   )
+}
+
+/** The last segment of a sheet path, which names the file where the full path would crowd a line. */
+function fileName(path: string): string {
+  return path.slice(path.lastIndexOf('/') + 1)
 }
 
 function NoTokens() {

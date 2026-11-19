@@ -21,7 +21,7 @@ The Frame tool places a phone, tablet, desktop, slide, social card, or video siz
 
 The inspector holds each frame-level setting.
 
-- A frame given several widths draws each beside it, and a click or drag on one acts on the frame. The inspector's Also shows at row lists, adds, and removes them.
+- A frame given several widths draws each beside it, and a click or drag on one acts on the frame. The inspector's More widths row lists, adds, and removes them.
 - The inspector's Height row holds a frame at a fixed height, at its content's height, or at one screen its page scrolls past. A frame taken through Fit and back to Scroll returns to the screen it left.
 - In Edit a scroll frame draws a rail beside it, which a drag or click scrolls while the wheel still pans the board, and the icon ending a frame's label opens it alone in a new tab
 

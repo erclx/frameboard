@@ -757,18 +757,18 @@ describe('InspectorPanel', () => {
     })
   })
 
-  it('draws the Also shows at row for one frame and not for several', () => {
+  it('draws the More widths row for one frame and not for several', () => {
     const { rerender } = render(
       <FrameSection page={PAGE} frames={[SWATCHES]} />,
     )
     expect(
-      screen.getByRole('group', { name: 'Also shows at' }),
+      screen.getByRole('group', { name: 'More widths' }),
     ).toBeInTheDocument()
 
     rerender(<FrameSection page={PAGE} frames={[SWATCHES, SUNSET]} />)
 
     expect(
-      screen.queryByRole('group', { name: 'Also shows at' }),
+      screen.queryByRole('group', { name: 'More widths' }),
     ).not.toBeInTheDocument()
   })
 

@@ -443,6 +443,60 @@ describe('assetsRoutes', () => {
       )
     })
 
+    it('renames an element still named after the old file', async () => {
+      writeAsset('beep.wav', 'sound')
+      writeFileSync(
+        frame('home/hero.html'),
+        '<audio data-name="beep.wav" src="../assets/beep.wav" controls></audio>',
+      )
+
+      await rename('beep.wav', 'chime.wav')
+
+      expect(readFileSync(frame('home/hero.html'), 'utf8')).toBe(
+        '<audio data-name="chime.wav" src="../assets/chime.wav" controls></audio>',
+      )
+    })
+
+    it('keeps a name set by hand on a renamed file', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeFileSync(
+        frame('home/hero.html'),
+        '<img data-name="Hero" src="../assets/lake.jpg">',
+      )
+
+      await rename('lake.jpg', 'shore.jpg')
+
+      expect(readFileSync(frame('home/hero.html'), 'utf8')).toBe(
+        '<img data-name="Hero" src="../assets/shore.jpg">',
+      )
+    })
+
+    it('leaves an element named like the file alone when it loads another', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeAsset('old/lake.jpg', 'other')
+      writeFileSync(
+        frame('home/hero.html'),
+        '<img data-name="lake.jpg" src="../assets/lake.jpg"><img data-name="lake.jpg" src="../assets/old/lake.jpg">',
+      )
+
+      await rename('lake.jpg', 'shore.jpg')
+
+      expect(readFileSync(frame('home/hero.html'), 'utf8')).toBe(
+        '<img data-name="shore.jpg" src="../assets/shore.jpg"><img data-name="lake.jpg" src="../assets/old/lake.jpg">',
+      )
+    })
+
+    it('adds no name to a renamed element that had none', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeFileSync(frame('home/hero.html'), '<img src="../assets/lake.jpg">')
+
+      await rename('lake.jpg', 'shore.jpg')
+
+      expect(readFileSync(frame('home/hero.html'), 'utf8')).toBe(
+        '<img src="../assets/shore.jpg">',
+      )
+    })
+
     it('moves the license file with it', async () => {
       writeAsset('lake.jpg', 'pixels')
       writeAsset('lake.jpg.license.json', '{}')

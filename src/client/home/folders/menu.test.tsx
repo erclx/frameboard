@@ -19,7 +19,7 @@ import { createStructure } from '@/client/live/structure'
 import { projectStore } from '@/client/projects/actions'
 import type { ProjectRecord } from '@/shared/records/list'
 import { keyboardFocus } from '@/test/focus-ring'
-import { pointerOff, realClick } from '@/test/real-pointer'
+import { pointerOff, pointerOver, realClick } from '@/test/real-pointer'
 
 import { Home } from '../home'
 import { dropPin, folderPin, pinnedProjects } from '../pins'
@@ -191,6 +191,62 @@ describe('FolderMenu', () => {
 
     expect(within(menu).queryByRole('menuitem', { name: 'Open' })).toBeNull()
     expect(projectStore.getState().openFolder).toBeNull()
+  })
+
+  it('keeps the card ringed while the pointer is on its ⋯', async () => {
+    renderHome()
+    const rest = getComputedStyle(folder()).boxShadow
+    const more = screen.getByRole('button', {
+      name: 'Folder actions for Client A',
+    })
+
+    await pointerOver(more)
+
+    expect(getComputedStyle(folder()).boxShadow).not.toBe(rest)
+    await pointerOff(more)
+  })
+
+  describe('New project', () => {
+    const addCalls = (sent: { path: string; body: unknown }[]) =>
+      sent.filter((call) => call.path === '/api/project/add')
+
+    it('adds a project filed in the folder from the open folder header', async () => {
+      const sent = renderHome()
+      await userEvent.click(item(await openMenu(), 'Open'))
+      const panel = await screen.findByRole('dialog', { name: 'Client A' })
+
+      await userEvent.click(
+        within(panel).getByRole('button', { name: 'New project' }),
+      )
+
+      await waitFor(() =>
+        expect(addCalls(sent)).toEqual([
+          { path: '/api/project/add', body: { group: 'Client A' } },
+        ]),
+      )
+    })
+
+    it('is off in the header on a read-only tab', async () => {
+      renderHome({ canWrite: false })
+      await userEvent.click(item(await openMenu(), 'Open'))
+      const panel = await screen.findByRole('dialog', { name: 'Client A' })
+
+      expect(
+        within(panel).getByRole('button', { name: 'New project' }),
+      ).toBeDisabled()
+    })
+
+    it('adds from a list row menu into that folder', async () => {
+      const sent = renderHome({ layout: 'list' })
+
+      await userEvent.click(item(await openMenu(), 'New project'))
+
+      await waitFor(() =>
+        expect(addCalls(sent)).toEqual([
+          { path: '/api/project/add', body: { group: 'Client A' } },
+        ]),
+      )
+    })
   })
 
   describe('on a read-only tab', () => {
