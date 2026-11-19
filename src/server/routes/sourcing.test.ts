@@ -44,11 +44,14 @@ interface FakeSource {
   send: typeof fetch
   /** Every URL asked, in order. */
   asked: URL[]
+  /** Every prompt body posted to the fake ComfyUI, in order. */
+  prompts: unknown[]
 }
 
 /**
  * A fake network: Openverse answers `search` for a search and the matching
- * image by id, image hosts answer the PNG, and fal answers `fal`.
+ * image by id, image hosts answer the PNG, fal answers `fal`, and a ComfyUI
+ * at `FRAMEBOARD_COMFYUI_URL` answers the PNG.
  */
 function fakeSource({
   search = { status: 200, body: { results: [rawImage('a1'), rawImage('b2')] } },
@@ -63,10 +66,12 @@ function fakeSource({
   images?: ReturnType<typeof rawImage>[]
 } = {}): FakeSource {
   const asked: URL[] = []
+  const prompts: unknown[] = []
   const send = (async (input: string | URL | Request, init?: RequestInit) => {
     const url = new URL(input instanceof Request ? input.url : input)
     asked.push(url)
     if (url.host === 'fal.run') return fal(init)
+    if (url.host === COMFY_HOST) return comfy(url, init, prompts)
     if (url.host === 'images.example.org') {
       return new Response(PNG, { headers: { 'content-type': 'image/png' } })
     }
@@ -77,7 +82,34 @@ function fakeSource({
     }
     return Response.json(search.body, { status: search.status })
   }) as typeof fetch
-  return { send, asked }
+  return { send, asked, prompts }
+}
+
+const COMFY_HOST = 'comfy.test:8188'
+const FRAMEBOARD_COMFYUI_URL = `http://${COMFY_HOST}`
+
+/** A ComfyUI that finishes every prompt at once and serves the PNG, recording each prompt body. */
+function comfy(url: URL, init: RequestInit | undefined, prompts: unknown[]) {
+  if (url.pathname.endsWith('/prompt')) {
+    prompts.push(JSON.parse(String(init?.body)))
+    return Response.json({ prompt_id: 'p1' })
+  }
+  if (url.pathname.endsWith('/history/p1')) {
+    return Response.json({
+      p1: {
+        status: { completed: true },
+        outputs: {
+          '9': {
+            images: [{ filename: 'f.png', subfolder: '', type: 'output' }],
+          },
+        },
+      },
+    })
+  }
+  if (url.pathname.endsWith('/view')) {
+    return new Response(PNG, { headers: { 'content-type': 'image/png' } })
+  }
+  return new Response('not found', { status: 404 })
 }
 
 describe('sourcingRoutes', () => {
@@ -376,7 +408,6 @@ describe('sourcingRoutes', () => {
       expect(text).not.toContain(FAL_KEY)
       expect(JSON.parse(text).data).toEqual({
         version: 1,
-        enabled: false,
         provider: {
           name: 'fal',
           model: 'fal-ai/flux/schnell',
@@ -405,27 +436,10 @@ describe('sourcingRoutes', () => {
   })
 
   describe('POST generate', () => {
-    it('is off unless the server switches it on, spending nothing', async () => {
+    it('refuses a reader with 401, spending nothing', async () => {
       const { send, asked } = fakeSource()
 
       const response = await routes({ send, env: { FAL_KEY } }).request(
-        '/api/projects/webapp/sourcing/generate',
-        post({ prompt: 'a house at dusk' }),
-      )
-
-      expect(response.status).toBe(403)
-      expect((await response.json()).error.code).toBe('generate-off')
-      expect(asked).toEqual([])
-    })
-
-    it('refuses a reader with 401 even when switched on', async () => {
-      const { send, asked } = fakeSource()
-
-      const response = await routes({
-        send,
-        env: { FAL_KEY },
-        generate: true,
-      }).request(
         '/api/projects/webapp/sourcing/generate',
         post({ prompt: 'a house at dusk' }, {}),
       )
@@ -437,11 +451,7 @@ describe('sourcingRoutes', () => {
     it('saves the generated image with its license, the key absent from the answer', async () => {
       const { send } = fakeSource()
 
-      const response = await routes({
-        send,
-        env: { FAL_KEY },
-        generate: true,
-      }).request(
+      const response = await routes({ send, env: { FAL_KEY } }).request(
         '/api/projects/webapp/sourcing/generate',
         post({ prompt: 'a house at dusk' }),
       )
@@ -456,6 +466,49 @@ describe('sourcingRoutes', () => {
       ])
     })
 
+    it('records the seed a local run drew in its license', async () => {
+      const { send, prompts } = fakeSource()
+
+      const response = await routes({
+        send,
+        env: { FRAMEBOARD_COMFYUI_URL },
+      }).request(
+        '/api/projects/webapp/sourcing/generate',
+        post({ prompt: 'a house at dusk' }),
+      )
+
+      expect(response.status).toBe(200)
+      const license = JSON.parse(
+        readFileSync(
+          join(board.root, 'webapp/assets/a-house-at-dusk.png.license.json'),
+          'utf8',
+        ),
+      )
+      expect(license).toMatchObject({ provider: 'comfyui', priceUsd: 0 })
+      expect(Number.isInteger(license.seed)).toBe(true)
+      expect(JSON.stringify(prompts[0])).toContain(
+        `"noise_seed":${license.seed}`,
+      )
+    })
+
+    it('records no seed for a hosted run, which ignores it', async () => {
+      const { send } = fakeSource()
+
+      await routes({ send, env: { FAL_KEY } }).request(
+        '/api/projects/webapp/sourcing/generate',
+        post({ prompt: 'a house at dusk' }),
+      )
+
+      const license = JSON.parse(
+        readFileSync(
+          join(board.root, 'webapp/assets/a-house-at-dusk.png.license.json'),
+          'utf8',
+        ),
+      )
+      expect(license.provider).toBe('fal')
+      expect(license).not.toHaveProperty('seed')
+    })
+
     it('keeps the key out of a refusal that echoes it', async () => {
       const { send } = fakeSource({
         fal: () =>
@@ -465,11 +518,7 @@ describe('sourcingRoutes', () => {
           ),
       })
 
-      const response = await routes({
-        send,
-        env: { FAL_KEY },
-        generate: true,
-      }).request(
+      const response = await routes({ send, env: { FAL_KEY } }).request(
         '/api/projects/webapp/sourcing/generate',
         post({ prompt: 'a house' }),
       )
@@ -483,7 +532,7 @@ describe('sourcingRoutes', () => {
     it('refuses no-provider when no key is set, sending nothing', async () => {
       const { send, asked } = fakeSource()
 
-      const response = await routes({ send, generate: true }).request(
+      const response = await routes({ send }).request(
         '/api/projects/webapp/sourcing/generate',
         post({ prompt: 'a house' }),
       )
@@ -508,7 +557,7 @@ describe('sourcingRoutes', () => {
           })
         },
       })
-      const app = routes({ send, env: { FAL_KEY }, generate: true })
+      const app = routes({ send, env: { FAL_KEY } })
 
       const first = app.request(
         '/api/projects/webapp/sourcing/generate',
@@ -541,7 +590,7 @@ describe('sourcingRoutes', () => {
         },
       })
 
-      const app = routes({ send, env: { FAL_KEY }, generate: true })
+      const app = routes({ send, env: { FAL_KEY } })
       await Promise.resolve(
         app.request(
           new Request(
