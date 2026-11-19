@@ -1098,6 +1098,78 @@ describe.skipIf(shell === null)(
         .toBe(true)
       expect(heroHeights(messages)).toEqual([900, 900])
     })
+
+    it('measures a frame placed while the start measure waits its turn to rescan', async () => {
+      const layout = join(board.root, 'studio/home/layout.json')
+      const file = JSON.parse(readFileSync(layout, 'utf8'))
+      file.frames.mobile.hugHeight = true
+      writeFileSync(layout, JSON.stringify(file))
+      writeFileSync(
+        join(board.root, 'studio/home/quick.html'),
+        '<!doctype html><html><head><style>body { margin: 0 }</style></head><body><div style="height: 700px"></div></body></html>',
+      )
+      const waiting = new Map<string, () => void>()
+      const requested = (path: string) =>
+        new Promise<void>((resolve) => waiting.set(path, resolve))
+      const releases = new Map<string, () => void>()
+      const gates = new Map(
+        ['/start.js', '/mobile.js'].map((path) => [
+          path,
+          new Promise<void>((resolve) => releases.set(path, resolve)),
+        ]),
+      )
+      const releaseAll = () => {
+        for (const release of releases.values()) release()
+      }
+      const held = createServer((request, response) => {
+        const path = request.url ?? ''
+        waiting.get(path)?.()
+        void (gates.get(path) ?? Promise.resolve()).then(() => response.end(''))
+      })
+      await new Promise<void>((resolve) => held.listen(0, '127.0.0.1', resolve))
+      const { port } = held.address() as AddressInfo
+      const frames = () => JSON.parse(readFileSync(layout, 'utf8')).frames
+
+      try {
+        const startMeasuring = requested('/start.js')
+        writeHero(
+          `<!doctype html><html><head><style>body { margin: 0 }</style><script src="http://127.0.0.1:${port}/start.js"></script></head><body><div style="height: 1200px"></div></body></html>`,
+          5000,
+        )
+        const server = await start()
+        await startMeasuring
+        const mobile = join(board.root, 'studio/home/mobile.html')
+        const mobileBatched = new Promise<void>((resolve) => {
+          const stop = server.watcher.onBatch((paths) => {
+            if (!paths.includes(mobile)) return
+            stop()
+            resolve()
+          })
+        })
+        // Mobile keeps its box, so its batch holds the turn and rescans nothing.
+        writeFileSync(
+          mobile,
+          `<!doctype html><html><head><style>body { margin: 0 }</style><script src="http://127.0.0.1:${port}/mobile.js"></script></head><body><div style="height: 844px"></div></body></html>`,
+        )
+        await mobileBatched
+        // The checker can load mobile before its batch, so only a later request is the measure.
+        await requested('/mobile.js')
+        releases.get('/start.js')?.()
+        await expect.poll(() => frames().hero.height).toBe(1200)
+        await cli(['frame', 'add', 'studio/home/quick', '--size', 'desktop'], {
+          cwd: board.root,
+        })
+        releases.get('/mobile.js')?.()
+
+        await expect
+          .poll(() => frames().quick?.height, { timeout: 10_000 })
+          .toBe(700)
+      } finally {
+        releaseAll()
+        held.closeAllConnections()
+        await new Promise((resolve) => held.close(resolve))
+      }
+    })
   },
 )
 

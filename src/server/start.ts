@@ -496,6 +496,13 @@ async function listen({
         let latest = scanned.board ?? board
         if (trails) {
           latest = await scanBoard(root)
+          // Measures nothing it finds newly placed, so those wait for the batch naming their layout.
+          scanned.unmeasured = placedRefs(
+            scanned.board ?? board,
+            latest,
+            undefined,
+            scanned.unmeasured,
+          )
           scanned.board = latest
           hub.broadcast({ type: 'board', data: latest })
           shown.board = latest
