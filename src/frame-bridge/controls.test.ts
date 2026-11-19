@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { ask, bridgedFrame } from '@/test/frame-bridge'
 
 import TUNER from '../../test/fixtures/frames/tuner-binder.html?raw'
+import LINKS from '../../test/fixtures/frames/tuner-links.html?raw'
 import { bindControls } from './controls'
 
 let iframe: HTMLIFrameElement | undefined
@@ -25,15 +26,6 @@ async function frameOf(body: string): Promise<Document> {
   if (!doc) throw new Error('The frame has no document')
   return doc
 }
-
-/** Two controls tuning one box, beside a third whose selector matches nothing. */
-const LINKS = `<style>body{margin:0;display:flex;gap:20px}#photo{width:200px;height:120px}</style>
-<div id="photo"></div>
-<div>
-  <input type="range" data-binds="#photo --brightness" data-unit="%">
-  <input type="range" data-binds="#photo --contrast" data-unit="%">
-  <input type="range" data-binds="#hero-image --grayscale" data-unit="%">
-</div>`
 
 function slide(doc: Document, id: string, value: string): void {
   const control = doc.getElementById(id) as HTMLInputElement
