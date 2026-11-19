@@ -13,7 +13,6 @@ import type { FrameRecord } from '@/shared/records/list'
 import { ringFocused } from '@/test/focus-ring'
 import { bridgeIn } from '@/test/frame-bridge'
 
-import { holdShown } from './bridge/shown'
 import { openFindings } from './findings/open'
 import { Frame, LabelRename } from './frame'
 import { stampRenderedHash } from './frame-dom'
@@ -1330,7 +1329,7 @@ describe('Frame preview', () => {
     const hugging = { ...frame('a'), hugHeight: true }
     const { container } = render(<Frame frame={hugging} live version={0} />)
     const iframe = iframeOf(container, 'a')
-    await loaded(iframe)
+    await bridged(iframe)
     const document = iframe.contentDocument
     if (!document) throw new Error('no frame document')
     document.body.innerHTML = '<div style="height:320px"></div>'
@@ -1339,27 +1338,26 @@ describe('Frame preview', () => {
     act(() => setPreview(['studio/home/a'], 1440))
 
     const root = container.querySelector<HTMLElement>('[data-frame]')
-    expect(root?.style.height).toBe('320px')
+    await expect.poll(() => root?.style.height).toBe('320px')
   })
 
   it('reads a hugging height again when a kept drop stamps the page, with no load', async () => {
     const hugging = { ...frame('a'), hugHeight: true }
     const { container } = render(<Frame frame={hugging} live version={0} />)
     const iframe = iframeOf(container, 'a')
-    await loaded(iframe)
+    await bridged(iframe)
     const document = iframe.contentDocument
     if (!document) throw new Error('no frame document')
-    // As the page's bridge would announce the bytes it shows.
-    holdShown(iframe, 'old')
     document.body.innerHTML = '<div style="height:320px"></div>'
     document.body.style.margin = '0'
     act(() => setPreview(['studio/home/a'], 1440))
+    const root = container.querySelector<HTMLElement>('[data-frame]')
+    await expect.poll(() => root?.style.height).toBe('320px')
     document.body.innerHTML = '<div style="height:480px"></div>'
 
-    act(() => stampRenderedHash(iframe, 'new'))
+    act(() => stampRenderedHash(iframe, 'd'.repeat(64)))
 
-    const root = container.querySelector<HTMLElement>('[data-frame]')
-    expect(root?.style.height).toBe('480px')
+    await expect.poll(() => root?.style.height).toBe('480px')
   })
 
   it("reads a hugging height at the previewed width's reference height, not the box's", async () => {
@@ -1370,7 +1368,7 @@ describe('Frame preview', () => {
     }
     const { container } = render(<Frame frame={hugging} live version={0} />)
     const iframe = iframeOf(container, 'a')
-    await loaded(iframe)
+    await bridged(iframe)
     const document = iframe.contentDocument
     if (!document) throw new Error('no frame document')
     document.body.innerHTML = '<div style="height:max(900px, 100vh)"></div>'
@@ -1379,7 +1377,7 @@ describe('Frame preview', () => {
     act(() => setPreview(['studio/home/a'], 1440))
 
     const root = container.querySelector<HTMLElement>('[data-frame]')
-    expect(root?.style.height).toBe('900px')
+    await expect.poll(() => root?.style.height).toBe('900px')
   })
 
   it('keeps a fixed height at a previewed width', async () => {

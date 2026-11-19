@@ -164,17 +164,24 @@ export const Frame = memo(function Frame({
   useEffect(() => {
     const element = iframe.current
     if (!live || !element || previewWidth === undefined || !hugHeight) return
-    const measure = () =>
-      measurePreview(
-        frame.ref,
-        previewWidth,
-        measureHeight(element, referenceHeight(previewWidth)),
+    // Only the newest read stores a height, so two restamps in quick order store one.
+    let latest = 0
+    const measure = () => {
+      const run = ++latest
+      void measureHeight(element, referenceHeight(previewWidth)).then(
+        (height) => {
+          if (run === latest) measurePreview(frame.ref, previewWidth, height)
+        },
       )
-    measure()
-    element.addEventListener('load', measure)
+    }
+    const stop = followPage(element, () => {
+      measure()
+      return () => {}
+    })
     element.addEventListener(RESTAMPED, measure)
     return () => {
-      element.removeEventListener('load', measure)
+      latest = -1
+      stop()
       element.removeEventListener(RESTAMPED, measure)
     }
   }, [live, previewWidth, hugHeight, frame.ref])

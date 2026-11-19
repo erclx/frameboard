@@ -1,92 +1,44 @@
-/**
- * The iframe page's content height at its width, null when sized off the
- * viewport, read as the server's fit does in one task so the collapsed iframe
- * never paints.
- */
-export function measureHeight(
-  iframe: HTMLIFrameElement,
-  height: number,
-): number | null {
-  const document = iframe.contentDocument
-  if (!document?.body) return null
-  const before = iframe.style.height
-  try {
-    iframe.style.height = '1px'
-    const short = contentBottom(document)
-    iframe.style.height = `${height}px`
-    const current = contentBottom(document)
-    return short === current ? short : null
-  } finally {
-    iframe.style.height = before
-  }
+import { request } from '../bridge/channel'
+import { shownHashOf } from '../bridge/shown'
+
+/** The read an iframe is under, and the height and visibility it stood at before the first of a run of reads. */
+interface Reading {
+  run: number
+  height: string
+  visibility: string
 }
 
-// The furthest uncropped bottom edge, mirroring `readContentSize` in
-// `src/server/capture/fit.ts`, which runs in a page and cannot be shared, so
-// the two must agree.
-function contentBottom(document: Document): number {
-  const view = document.defaultView
-  if (!view) return 1
-  const crops = (element: Element) => {
-    const style = view.getComputedStyle(element)
-    return style.overflowX !== 'visible' || style.overflowY !== 'visible'
+const readings = new WeakMap<HTMLIFrameElement, Reading>()
+let runs = 0
+
+/**
+ * The iframe page's content height at its width, null when sized off the
+ * viewport, read as the server's fit does at 1px tall and at `height`. The
+ * two reads cross the bridge as two tasks, so the iframe hides between them
+ * rather than paint its collapsed page. A newer read takes over, answering
+ * null for the older, and a page that never announced itself is not read.
+ */
+export async function measureHeight(
+  iframe: HTMLIFrameElement,
+  height: number,
+): Promise<number | null> {
+  if (shownHashOf(iframe) === null) return null
+  const run = ++runs
+  const before = readings.get(iframe) ?? {
+    height: iframe.style.height,
+    visibility: iframe.style.visibility,
   }
-  const isCropped = (element: Element) => {
-    for (
-      let parent = element.parentElement;
-      parent && parent !== document.body;
-      parent = parent.parentElement
-    ) {
-      if (crops(parent)) return true
-    }
-    return false
-  }
-  const hangOf = (lineHeight: number, height: number) =>
-    lineHeight < height ? (height - lineHeight) / 2 : 0
-  const textBottom = (element: Element) => {
-    let bottom = -Infinity
-    if (crops(element)) return bottom
-    const lineHeight = parseFloat(view.getComputedStyle(element).lineHeight)
-    for (const child of element.childNodes) {
-      if (child.nodeType !== view.Node.TEXT_NODE) continue
-      const range = document.createRange()
-      range.selectNodeContents(child)
-      for (const rect of range.getClientRects()) {
-        if (rect.width === 0 && rect.height === 0) continue
-        bottom = Math.max(bottom, rect.bottom - hangOf(lineHeight, rect.height))
-      }
-    }
-    return bottom
-  }
-  const replaced = [
-    'img',
-    'video',
-    'canvas',
-    'iframe',
-    'object',
-    'embed',
-    'audio',
-  ]
-  const ownBottom = (element: Element) => {
-    const rect = element.getBoundingClientRect()
-    if (element.namespaceURI !== 'http://www.w3.org/1999/xhtml')
-      return rect.bottom
-    if (replaced.includes(element.localName)) return rect.bottom
-    const style = view.getComputedStyle(element)
-    if (style.display !== 'inline') return rect.bottom
-    const below =
-      parseFloat(style.paddingBottom) + parseFloat(style.borderBottomWidth)
-    if (below > 0) return rect.bottom
-    const above =
-      parseFloat(style.paddingTop) + parseFloat(style.borderTopWidth)
-    return (
-      rect.bottom - hangOf(parseFloat(style.lineHeight), rect.height - above)
-    )
-  }
-  let bottom = document.documentElement.getBoundingClientRect().bottom
-  for (const element of document.querySelectorAll('body *')) {
-    if (isCropped(element)) continue
-    bottom = Math.max(bottom, ownBottom(element), textBottom(element))
-  }
-  return Math.max(1, Math.ceil(bottom + view.scrollY))
+  readings.set(iframe, { ...before, run })
+  const current = () => readings.get(iframe)?.run === run
+  iframe.style.visibility = 'hidden'
+  iframe.style.height = '1px'
+  const short = await request(iframe, 'content-height', {})
+  if (!current()) return null
+  iframe.style.height = `${height}px`
+  const tall = await request(iframe, 'content-height', {})
+  if (!current()) return null
+  readings.delete(iframe)
+  iframe.style.height = before.height
+  iframe.style.visibility = before.visibility
+  return short !== null && short === tall ? short : null
 }
