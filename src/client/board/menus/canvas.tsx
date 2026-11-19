@@ -2,7 +2,7 @@ import { pointer } from 'd3-selection'
 import { zoomTransform } from 'd3-zoom'
 import { type ReactElement, type RefObject, useState } from 'react'
 
-import { useActions } from '@/client/actions/registry'
+import { isEnabled, useActions } from '@/client/actions/registry'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -208,6 +208,7 @@ function FrameItems() {
 const ELEMENT_IDS = [
   'note.addHere',
   'tool.note',
+  'element.wrap',
   'element.up',
   'view.zoomToSelection',
   'element.toFront',
@@ -228,6 +229,7 @@ export function ElementItems({ noteable }: { noteable: boolean }) {
   const [
     note,
     noteTool,
+    wrap,
     parent,
     zoom,
     toFront,
@@ -248,6 +250,9 @@ export function ElementItems({ noteable }: { noteable: boolean }) {
     <>
       <ContextMenuGroup>
         <MenuTitle>Element</MenuTitle>
+        {wrap && isEnabled(wrap) ? (
+          <MenuRow action={wrap}>Use auto layout</MenuRow>
+        ) : null}
         {noteable ? (
           <MenuRow action={note} binding={noteTool?.keys?.[0]}>
             Add a note here

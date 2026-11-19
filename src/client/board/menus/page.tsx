@@ -62,3 +62,28 @@ export function PageMenu({ onOpen, trigger }: PageMenuProps) {
     </ContextMenu>
   )
 }
+
+const SPACE_IDS = ['page.new'] as const
+
+interface PagesSpaceMenuProps {
+  /** The empty space below the last page row, which keeps focus when the menu closes. */
+  trigger: ReactElement
+}
+
+/** The menu of the pages list's empty space, which holds New page alone. */
+export function PagesSpaceMenu({ trigger }: PagesSpaceMenuProps) {
+  const [add] = useActions(SPACE_IDS)
+  const content = useRef<HTMLDivElement>(null)
+  const keyboard = useKeyboardOpen(content)
+  return (
+    <ContextMenu onOpenChangeComplete={keyboard.onOpenChangeComplete}>
+      <ContextMenuTrigger render={trigger} onKeyDown={keyboard.onKeyDown} />
+      <ContextMenuContent ref={content}>
+        <ContextMenuGroup>
+          <MenuTitle>Pages</MenuTitle>
+          <MenuRow action={add}>New page</MenuRow>
+        </ContextMenuGroup>
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+}

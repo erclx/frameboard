@@ -10,8 +10,10 @@ import {
   ContextMenuTrigger,
 } from '@/client/components/ui/context-menu'
 import { useLive } from '@/client/live/store'
+import { FRAME_GAP } from '@/shared/frame-sizes'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
+import type { Point } from '../geometry/box'
 import { modeStore } from '../mode'
 import { startSectionRename } from '../sections/actions'
 import {
@@ -23,6 +25,7 @@ import {
   useSelection,
 } from '../selection'
 import { startFrameRename } from '../structure/actions'
+import { menuPlace } from './actions'
 import { ElementItems } from './canvas'
 import { DeleteRow, MenuRow, MenuTitle } from './items'
 
@@ -182,6 +185,59 @@ export function ElementRowMenu({
       <ContextMenuTrigger render={trigger} onKeyDown={keyboard.onKeyDown} />
       <ContextMenuContent ref={content} className="w-[230px]">
         <ElementItems noteable={false} />
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+}
+
+const SPACE_IDS = ['frame.newAt', 'frame.paste'] as const
+
+/**
+ * Where a new frame lands from the layers space, which is past the page's
+ * frames on the right at the top of the topmost one, or the origin on an empty page.
+ */
+function nextFreeSpot(frames: readonly FrameRecord[]): Point {
+  if (frames.length === 0) return { x: 0, y: 0 }
+  return {
+    x: Math.max(...frames.map(({ box }) => box.x + box.width)) + FRAME_GAP,
+    y: Math.min(...frames.map(({ box }) => box.y)),
+  }
+}
+
+interface LayersSpaceMenuProps {
+  /** Every frame on the page, which the new frame's spot is read from. */
+  frames: readonly FrameRecord[]
+  /** The empty space below the last layer row, which keeps focus when the menu closes. */
+  trigger: ReactElement
+}
+
+/**
+ * The menu of the layers list's empty space, holding New frame at the page's
+ * next free spot and Paste. New frame reads the point the canvas menu's does,
+ * so opening sets it and closing clears it.
+ */
+export function LayersSpaceMenu({ frames, trigger }: LayersSpaceMenuProps) {
+  const [newAt, paste] = useActions(SPACE_IDS)
+  const content = useRef<HTMLDivElement>(null)
+  const keyboard = useKeyboardOpen(content)
+  return (
+    <ContextMenu
+      onOpenChange={(opened) => {
+        if (opened)
+          menuPlace.setState({ at: nextFreeSpot(frames), frame: null })
+      }}
+      onOpenChangeComplete={(opened) => {
+        keyboard.onOpenChangeComplete(opened)
+        if (!opened) menuPlace.setState({ at: null, frame: null })
+      }}
+    >
+      <ContextMenuTrigger render={trigger} onKeyDown={keyboard.onKeyDown} />
+      <ContextMenuContent ref={content} className="w-55">
+        <ContextMenuGroup>
+          <MenuTitle>Layers</MenuTitle>
+          <MenuRow action={newAt}>New frame</MenuRow>
+          <MenuRow action={paste}>Paste</MenuRow>
+        </ContextMenuGroup>
       </ContextMenuContent>
     </ContextMenu>
   )

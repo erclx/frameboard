@@ -33,7 +33,7 @@ import { treeOf, trees } from '../element/tree'
 import { up } from '../element/walk'
 import { type FrameGroup, groupsOf } from '../frame-order'
 import { withDrawn } from '../geometry/write'
-import { FrameRowMenu } from '../menus/layers'
+import { FrameRowMenu, LayersSpaceMenu } from '../menus/layers'
 import { modeStore } from '../mode'
 import { enterFrame } from '../play/entered'
 import {
@@ -220,7 +220,7 @@ export function LayersList({
           No frames on this page
         </p>
       ) : (
-        <ul className="flex min-h-0 flex-col overflow-y-auto pb-1">
+        <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-1">
           {groups.map((group) => {
             const rows = group.rows.map((frame, index) =>
               frameRow(frame, index, listOf(group)),
@@ -248,6 +248,10 @@ export function LayersList({
               </SectionRow>
             )
           })}
+          <LayersSpaceMenu
+            frames={frames}
+            trigger={<li aria-hidden className="min-h-3 flex-1" />}
+          />
         </ul>
       )}
     </section>

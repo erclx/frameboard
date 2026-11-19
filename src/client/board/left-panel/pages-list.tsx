@@ -13,7 +13,7 @@ import { boardUrl } from '@/shared/board-urls'
 import type { PageRecord } from '@/shared/records/list'
 
 import { ActionTooltip } from '../chrome/action-tooltip'
-import { PageMenu } from '../menus/page'
+import { PageMenu, PagesSpaceMenu } from '../menus/page'
 import { DropLine } from './drop-line'
 import {
   deletePage,
@@ -150,7 +150,7 @@ export function PagesList({
           No page names match {query.trim()}
         </p>
       ) : (
-        <ul className="flex min-h-0 flex-col mt-[3px] overflow-y-auto pt-1 pb-0.5">
+        <ul className="flex min-h-0 flex-1 flex-col mt-[3px] overflow-y-auto pt-1 pb-0.5">
           {shown.map((page) => (
             <PageRow
               key={page.ref}
@@ -161,6 +161,9 @@ export function PagesList({
               canWrite={canWrite}
             />
           ))}
+          <PagesSpaceMenu
+            trigger={<li aria-hidden className="min-h-3 flex-1" />}
+          />
         </ul>
       )}
     </nav>
