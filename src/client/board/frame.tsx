@@ -62,6 +62,7 @@ import { measureHeight } from './preview/height'
 import { measurePreview, usePreview } from './preview/store'
 import { ScrollRail } from './scroll/rail'
 import { awaitingHash, select, selectionStore, useSelection } from './selection'
+import { useNotesShown } from './speaker-notes/shown'
 import {
   renameFrame,
   stopFrameRename,
@@ -109,6 +110,9 @@ export const Frame = memo(function Frame({
   )
   const iframe = useRef<HTMLIFrameElement>(null)
   const playing = useMode((state) => state.mode === 'play')
+  // While notes are hidden, a slide holding one says so on its label.
+  const notesShown = useNotesShown()
+  const noteMark = !notesShown && Boolean(frame.speakerNotes) && !playing
   const entered = useEntered(frame.ref) && playing
   const theme = useFrameTheme(frame.ref)
   const findingsOpen = useFindingsOpen(frame.ref)
@@ -311,11 +315,13 @@ export const Frame = memo(function Frame({
         <span
           className={cn(
             'truncate',
-            (preview || claimed || held || frame.kit) && 'shrink-[1000]',
+            (preview || claimed || held || frame.kit || noteMark) &&
+              'shrink-[1000]',
           )}
         >
           {frame.name}
         </span>
+        {noteMark ? <NoteMark /> : null}
         {preview ? <PreviewChip width={preview.width} /> : null}
         {held ? <HeldChip frameRef={frame.ref} at={held.at} /> : null}
         {frame.kit ? <KitChip project={frame.project} kit={frame.kit} /> : null}
@@ -561,6 +567,18 @@ function PreviewChip({ width }: { width: number }) {
     >
       <MoveHorizontal aria-hidden className="size-3 shrink-0" />
       <span className="truncate">Preview {width}</span>
+    </span>
+  )
+}
+
+/** Drawn only while notes are hidden, since a shown strip already carries the note. */
+function NoteMark() {
+  return (
+    <span
+      data-note-mark
+      className="shrink-0 rounded-[4px] bg-muted px-1 text-[10px] leading-[14px] text-muted-foreground"
+    >
+      <span className="sr-only">Speaker </span>note
     </span>
   )
 }

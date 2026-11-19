@@ -158,8 +158,8 @@ function Cell({
       onClick={onClick}
       className="group block w-full text-center outline-none"
     >
-      {/* The cursor's ring sits outside the current slide's outline, so both read on one cell. */}
-      <span className="grid aspect-video place-items-center overflow-hidden rounded-[5px] bg-[#19191b] group-focus-visible:ring-3 group-focus-visible:ring-[#4e92f6] group-focus-visible:ring-offset-6 group-focus-visible:ring-offset-[#0c0c0d] group-aria-current:outline-2 group-aria-current:outline-offset-2 group-aria-current:outline-[#4e92f6]">
+      {/* The ring means where the keys are alone, and the slide on the stage reads Now instead. */}
+      <span className="relative grid aspect-video place-items-center overflow-hidden rounded-[5px] bg-[#19191b] group-focus-visible:ring-3 group-focus-visible:ring-[#4e92f6] group-focus-visible:ring-offset-6 group-focus-visible:ring-offset-[#0c0c0d]">
         {src ? (
           <img
             src={src}
@@ -170,10 +170,16 @@ function Cell({
         ) : (
           <span className="truncate px-3 text-[#8c8f95]">{slide.name}</span>
         )}
+        {current ? (
+          <span
+            aria-hidden
+            className="absolute bottom-2 left-2 rounded-full bg-[#16161a] px-1.5 text-[10px] leading-4 font-medium text-white"
+          >
+            Now
+          </span>
+        ) : null}
       </span>
-      <span className="mt-1.5 block text-[12px] tabular-nums group-aria-current:text-[#f1f1ee]">
-        {number}
-      </span>
+      <span className="mt-1.5 block text-[12px] tabular-nums">{number}</span>
     </button>
   )
 }

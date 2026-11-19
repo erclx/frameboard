@@ -79,6 +79,19 @@ describe('opening the overview', () => {
     expect(cell(2).getAttribute('aria-current')).toBeNull()
   })
 
+  it('badges the current slide Now and outlines only where the keys are', async () => {
+    present(slidesOf('one', 'two', 'three'))
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}g{ArrowLeft}{ArrowLeft}')
+    const thumbnail = (number: number) =>
+      getComputedStyle(cell(number).firstElementChild as HTMLElement)
+
+    expect(within(cell(3)).getByText('Now')).toBeVisible()
+    expect(within(cell(1)).queryByText('Now')).toBeNull()
+    expect(thumbnail(3).outlineStyle).toBe('none')
+    expect(thumbnail(3).boxShadow).toBe('none')
+    expect(thumbnail(1).boxShadow).not.toBe('none')
+  })
+
   it('opens from the bar button', async () => {
     present(slidesOf('one', 'two'))
 

@@ -153,6 +153,22 @@
       .xlab:first-child {
         margin-top: 0;
       }
+      .npill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 24px;
+        margin-top: 10px;
+        padding: 0 9px;
+        border-radius: 7px;
+        background: var(--raised);
+        color: var(--text);
+        font-weight: 500;
+      }
+      .npill.on {
+        background: var(--text);
+        color: var(--panel);
+      }
       .xbtn {
         display: grid;
         place-items: center;
@@ -1805,6 +1821,22 @@
           <div class="xsel">Fade<i>⌄</i></div>
           <span class="xlab">Duration</span>
           <div class="xsel">300 ms<i>⌄</i></div>
+          <button class="npill">
+            <svg
+              class="ic"
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="4" y="4" width="16" height="16" rx="2" />
+              <path d="M8 9h8M8 13h8M8 17h5" /></svg
+            >Notes hidden
+          </button>
         </div>
       </aside>
     </div>

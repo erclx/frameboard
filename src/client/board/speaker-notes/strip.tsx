@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import { useStore } from 'zustand'
 
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { bezelBox } from '@/shared/frame-device'
@@ -11,16 +11,16 @@ import type { FrameRecord } from '@/shared/records/list'
 import { POSE_BAR_ROOM } from '../device/poses'
 import { showsDeviceBar } from '../device/turn'
 import { useDrawnBox } from '../geometry/write'
-import { inspectorTabStore } from '../inspector/tab-store'
 import { reportRefusal } from '../left-panel/page-actions'
 import { useMode } from '../mode'
 import { useSelection } from '../selection'
-import { stripRoomStore } from './room'
+import { clearStripRoom, setStripRoom } from './room'
+import { useNotesShown } from './shown'
 
 const COUNT = new Intl.NumberFormat('en-US')
 
 interface SpeakerNotesStripProps {
-  /** The page's shown frames, which the selected one is found among. */
+  /** The page's shown frames, each drawing its strip while notes are shown. */
   frames: readonly FrameRecord[]
   /** The sessions holding frames, by ref, which turn a held frame's strip off. */
   claims?: Readonly<Record<string, Claim>>
@@ -29,31 +29,26 @@ interface SpeakerNotesStripProps {
 }
 
 /**
- * The speaker notes strip under one selected slide, shown while the Slides
- * tab is open or the slide already holds a note. Mounted above the hit
- * layer, as the label's rename field is, so a press places the caret.
+ * A strip under every slide while the Notes button shows them, whatever is
+ * selected. Mounted above the hit layer, as the label's rename field is, so
+ * a press places the caret.
  */
 export function SpeakerNotesStrip({
   frames,
   claims,
   calls = structure,
 }: SpeakerNotesStripProps) {
-  const selected = useSelection((state) =>
-    state.frames.length === 1 ? state.frames[0] : null,
-  )
-  const slidesOpen =
-    useStore(inspectorTabStore, (state) => state.tab) === 'slides'
+  const shown = useNotesShown()
   const playing = useMode((state) => state.mode === 'play')
-  const frame = frames.find((candidate) => candidate.ref === selected)
-  if (!frame || playing || !(slidesOpen || frame.speakerNotes)) return null
-  return (
+  if (!shown || playing) return null
+  return frames.map((frame) => (
     <StripAt
       key={frame.ref}
       frame={frame}
       claim={claims?.[frame.ref]}
       calls={calls}
     />
-  )
+  ))
 }
 
 function StripAt({
@@ -68,6 +63,7 @@ function StripAt({
   const drawn = useDrawnBox(frame)
   const body = bezelBox(drawn, frame.device, frame.turn)
   const canWrite = useLive((state) => state.canWrite)
+  const selected = useSelection((state) => state.frames.includes(frame.ref))
   const stored = frame.speakerNotes ?? ''
   // What is being typed, null while the field shows the stored note.
   const [draft, setDraft] = useState<string | null>(null)
@@ -94,16 +90,13 @@ function StripAt({
   useEffect(() => {
     const element = room.current
     if (!element) return
-    const publish = () =>
-      stripRoomStore.setState({ ref: frame.ref, height: element.offsetHeight })
+    const publish = () => setStripRoom(frame.ref, element.offsetHeight)
     publish()
     const observer = new ResizeObserver(publish)
     observer.observe(element)
     return () => {
       observer.disconnect()
-      if (stripRoomStore.getState().ref === frame.ref) {
-        stripRoomStore.setState({ ref: null, height: 0 })
-      }
+      clearStripRoom(frame.ref)
     }
   }, [frame.ref])
 
@@ -137,10 +130,12 @@ function StripAt({
     <div
       ref={room}
       data-speaker-notes={frame.ref}
-      className={
-        // Hidden while a drag carries the frame, which writes the frames' layer and not this one.
-        'pointer-events-auto absolute origin-top-left @container [transform:scale(calc(1/var(--zoom,1)))] [[data-layer]:has([data-move-chip]:not([hidden]))~[data-notes-layer]_&]:invisible'
-      }
+      className={cn(
+        'pointer-events-auto absolute origin-top-left @container [transform:scale(calc(1/var(--zoom,1)))]',
+        // Hidden while a drag carries the selection, which writes the frames' layer and not this one.
+        selected &&
+          '[[data-layer]:has([data-move-chip]:not([hidden]))~[data-notes-layer]_&]:invisible',
+      )}
       style={{
         left: body.x,
         // A device's bar takes the room right under its body.
