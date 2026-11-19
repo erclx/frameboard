@@ -308,6 +308,28 @@ describe('a turned phone or tablet', () => {
       expect(entry).not.toHaveProperty('upright')
     })
 
+    it('turns the phone its width names when named off with a turn in one call', async () => {
+      const root = open()
+      setHero(root, FOLDABLE)
+      await setFrameDevice(root, HERO, undefined, { cwd: root, turn: 'left' })
+
+      const turned = await setFrameDevice(root, HERO, undefined, {
+        cwd: root,
+        foldable: false,
+        turn: 'left',
+      })
+
+      expect(turned).toMatchObject({
+        device: 'phone',
+        turn: 'left',
+        box: { width: 678, height: 466 },
+      })
+      expect(layout('webapp/home').frames.hero).toMatchObject({
+        turn: 'left',
+        upright: { width: 466, height: 678 },
+      })
+    })
+
     it('reads a stored turn on a foldable entry that holds no upright size', async () => {
       const root = open()
       setHero(root, { ...FOLDABLE, width: 678, height: 466, turn: 'right' })

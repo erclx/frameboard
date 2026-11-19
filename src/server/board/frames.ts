@@ -963,13 +963,16 @@ export async function setFrameDevice(
   return updatePlacement(root, ref, options, (stood, frameRef) => {
     const foldable = name ?? stood.foldable === true
     const shown = show ?? (name === true || stood.showDevice === true)
+    // A foldable named off stands at its pose's screen before its width picks the device a turn checks.
+    const unfolded =
+      stood.foldable === true ? unfoldedPlacement(stood, foldable) : stood
     if (turn && turn !== 'upright') {
-      refuseTurn(stood, frameRef, turn, { foldable, shown })
+      refuseTurn(unfolded, frameRef, turn, { foldable, shown })
     }
     const placement =
-      stood.foldable === true
-        ? unfoldedPlacement(stood, foldable)
-        : turnedPlacement(stood, foldable ? 'upright' : turn)
+      stood.foldable === true && foldable
+        ? unfolded
+        : turnedPlacement(unfolded, foldable ? 'upright' : turn)
     const {
       showDevice: _held,
       device: _device,
