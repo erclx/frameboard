@@ -139,9 +139,10 @@ describe('an asset tile menu in a writing tab', () => {
       }),
     )
 
-    expect(
-      await screen.findByRole('button', { name: 'home / hero' }),
-    ).toBeVisible()
+    // The popover fades in, so its rows read hidden until the fade settles.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'home / hero' })).toBeVisible(),
+    )
     expect(screen.getByRole('button', { name: 'pricing / card' })).toBeVisible()
   })
 
