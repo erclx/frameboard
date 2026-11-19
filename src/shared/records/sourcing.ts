@@ -38,7 +38,46 @@ export const imageFindSchema = z.object({
 
 export type ImageFind = z.infer<typeof imageFindSchema>
 
-const foundLicenseSchema = z.object({
+/** The texture sizes Poly Haven serves a model at, smallest first. */
+export const MODEL_SIZES = ['1k', '2k', '4k', '8k', '16k'] as const
+
+export type ModelSize = (typeof MODEL_SIZES)[number]
+
+/** One Poly Haven model a search found, numbered from 1 in the order the ranking put it. */
+export const modelResultSchema = z.object({
+  number: z.int().min(1),
+  /** Poly Haven's own id, which `--save` takes in place of the number. */
+  id: z.string(),
+  name: z.string(),
+  authors: z.array(z.string()),
+  categories: z.array(z.string()),
+  tags: z.array(z.string()),
+  license: z.literal('cc0'),
+  /** The model's page on polyhaven.com. */
+  landingUrl: z.string(),
+  thumbnail: z.string().nullable(),
+  polycount: z.int().nullable(),
+  /** Poly Haven's x, y, and z extent in millimetres, z pointing up. */
+  dimensionsMm: z.tuple([z.number(), z.number(), z.number()]).nullable(),
+  /** The texture sizes `--size` may ask for, smallest first. */
+  sizes: z.array(z.enum(MODEL_SIZES)),
+  downloadCount: z.int().nullable(),
+})
+
+export type ModelResult = z.infer<typeof modelResultSchema>
+
+/** What `model find` answers without `--save`, writing nothing. */
+export const modelFindSchema = z.object({
+  version: z.literal(1),
+  query: z.string(),
+  /** Who serves the results, which every surface listing them names. */
+  source: z.object({ name: z.literal('Poly Haven'), url: z.string() }),
+  results: z.array(modelResultSchema),
+})
+
+export type ModelFind = z.infer<typeof modelFindSchema>
+
+const openverseLicenseSchema = z.object({
   version: z.literal(1),
   origin: z.literal('found'),
   source: z.literal('openverse'),
@@ -58,6 +97,30 @@ const foundLicenseSchema = z.object({
   savedAt: z.string(),
 })
 
+const polyhavenLicenseSchema = z.object({
+  version: z.literal(1),
+  origin: z.literal('found'),
+  source: z.literal('polyhaven'),
+  id: z.string(),
+  /** The search that found it, null when it was saved by id. */
+  query: z.string().nullable(),
+  title: z.string(),
+  /** Recorded though CC0 asks no credit, since where a file came from outlives that question. */
+  authors: z.array(z.string()),
+  license: z.literal('cc0'),
+  licenseUrl: z.string(),
+  landingUrl: z.string(),
+  /** The glTF the GLB was packed from. */
+  url: z.string(),
+  size: z.enum(MODEL_SIZES),
+  savedAt: z.string(),
+})
+
+const foundLicenseSchema = z.discriminatedUnion('source', [
+  openverseLicenseSchema,
+  polyhavenLicenseSchema,
+])
+
 const generatedLicenseSchema = z.object({
   version: z.literal(1),
   origin: z.literal('generated'),
@@ -71,7 +134,7 @@ const generatedLicenseSchema = z.object({
   savedAt: z.string(),
 })
 
-/** The `<file>.license.json` beside every saved image, saying where it came from. */
+/** The `<file>.license.json` beside every saved image or model, saying where it came from. */
 export const licenseFileSchema = z.discriminatedUnion('origin', [
   foundLicenseSchema,
   generatedLicenseSchema,
@@ -90,6 +153,11 @@ export const savedImageSchema = z.object({
 })
 
 export type SavedImage = z.infer<typeof savedImageSchema>
+
+/** A model saved into a project's `assets/` as one `.glb`, with the license file written beside it. */
+export const savedModelSchema = savedImageSchema
+
+export type SavedModel = SavedImage
 
 /** What `image generate` answers, with `saved` null on a dry run. */
 export const imageGenerateSchema = z.object({
