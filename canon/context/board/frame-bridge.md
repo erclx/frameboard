@@ -18,6 +18,8 @@ Holds the script that runs in each frame's own realm, built to `dist/frame-bridg
 - The script removes its own `<script>` as it starts, so the live element indices the board reads match the file
 - It answers only `window.parent` at the frame's own origin, and a frame with no parent, as capture and the phone link show one, never listens
 - `main.ts` checks each request's arguments against its op's schema and hands them to one area's handlers, such as `measure.ts`, `media.ts`, `model.ts`, or `text-edit.ts`
+- `chrome.ts` answers what the board draws around a frame, being its theme, its hidden scrollbar, its scroll view and the acts that move it, and its content height at the viewport it holds
+- `keys.ts` takes a named list of bindings in the frame's own window, prevents each press there, and pushes which binding fired, since a press prevented on the board lands after the page already scrolled or typed. A flag leaves a press in the page's own fields to the page.
 - It announces its hash in a `shown` message once its body parses, on a restamp, and as its page goes, naming the page by an id, since a page going posts with no window
 - Text in place owns `contenteditable` and the keys, opens only the run at the point beside a child, and keeps the old text until the board says whether the write landed
 
@@ -28,7 +30,10 @@ Owns the board's end, which posts a request to one iframe's window and resolves 
 - The board focuses the iframe before an edit opens, since a frame on another origin cannot take focus itself, and hands focus back when the edit is refused
 - The channel parses every reply and push against its op's schema and answers null for one in another shape, since a frame's own script can post in the bridge's shape
 - `shown.ts` holds each iframe's announced hash for a press to read at once, and `followFrame` opens a subscription again on each page, restamp, and iframe swap
-- What a press reads, being the selection's measures, the ghosts, and the pin corners, is pushed by the frame and held on the board, so it trails the page by a frame
+- What a press reads, being the selection's measures, the ghosts, the pin corners, and a scroll frame's view, is pushed by the frame and held on the board, so it trails the page by a frame
+- `followPage` keeps one request open per page an iframe shows, closing it as the page goes and opening it on the next. The theme, the hidden scrollbar, the scroll rail, and Play's keys each ride it, so a page reloaded mid-change takes the board's state on its announce.
+- `bindFrameKeys` in `src/client/board/frame-keys.ts` is the board's end of the key op, running the action a fired binding names through `runKey`
+- The preview height hides its iframe for its two readings, at 1 px and at the reference height, since two requests cannot share the one task the collapsed page never painted in
 
 ### `src/shared/frame-bridge/`
 
