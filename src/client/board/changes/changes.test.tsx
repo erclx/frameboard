@@ -25,7 +25,10 @@ import {
 } from '@/client/live/unseen'
 import type { FrameChange } from '@/shared/records/changes'
 import { frameOf } from '@/test/board'
+import { BRIDGE } from '@/test/frame-bridge'
 
+import { shownHashOf } from '../bridge/shown'
+import { stampRenderedHash } from '../frame-dom'
 import { modeStore } from '../mode'
 import { endPreview, setPreview } from '../preview/store'
 import { clear, select, selectionStore } from '../selection'
@@ -758,7 +761,7 @@ describe('ChangesToast', () => {
 })
 
 // Indices past the skipped injected style: html 0, head 1, body 2, h1 3, p 4.
-const SOURCE = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}h1{margin:20px 0 0 30px;height:30px}p{margin:10px 0 0 30px;width:200px;height:20px}</style></head><body><h1>Plans</h1><p>Pick one</p></body></html>`
+const SOURCE = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}">body{margin:0}h1{margin:20px 0 0 30px;height:30px}p{margin:10px 0 0 30px;width:200px;height:20px}</style>${BRIDGE}</head><body><h1>Plans</h1><p>Pick one</p></body></html>`
 const PRICING = frameOf('pricing', {
   box: { x: 100, y: 50, width: 400, height: 300 },
 })
@@ -786,8 +789,12 @@ describe('ChangeGlow', () => {
     layer.append(frame)
     document.body.append(layer)
     await loaded
+    await expect.poll(() => shownHashOf(iframe)).toBe(HASH)
     return layer
   }
+
+  const glowsIn = (drawn: HTMLElement) =>
+    drawn.querySelectorAll<HTMLElement>('[data-change-glow]')
 
   it('glows over each changed element the frame shows', async () => {
     const container = await mountFrame()
@@ -801,11 +808,11 @@ describe('ChangeGlow', () => {
       <ChangeGlow frames={[PRICING]} container={container} />,
     )
 
-    const glows = drawn.querySelectorAll<HTMLElement>('[data-change-glow]')
-    expect(glows).toHaveLength(1)
+    await expect.poll(() => glowsIn(drawn)).toHaveLength(1)
+    const [glow] = glowsIn(drawn)
     // The p sits 30px in and 60px down, and the glow 4px outside it.
-    expect(glows[0]?.style.left).toContain('130px')
-    expect(glows[0]?.style.top).toContain('110px')
+    expect(glow?.style.left).toContain('130px')
+    expect(glow?.style.top).toContain('110px')
   })
 
   it('glows over the whole frame for a change too wide to name', async () => {
@@ -820,9 +827,8 @@ describe('ChangeGlow', () => {
       <ChangeGlow frames={[PRICING]} container={container} />,
     )
 
-    expect(
-      drawn.querySelector<HTMLElement>('[data-change-glow]')?.style.width,
-    ).toContain('400px')
+    await expect.poll(() => glowsIn(drawn)).toHaveLength(1)
+    expect(glowsIn(drawn)[0]?.style.width).toContain('400px')
   })
 
   it('glows over the whole frame at the width it is previewed at', async () => {
@@ -838,10 +844,9 @@ describe('ChangeGlow', () => {
       <ChangeGlow frames={[PRICING]} container={container} />,
     )
 
+    await expect.poll(() => glowsIn(drawn)).toHaveLength(1)
     act(() => endPreview([PRICING.ref]))
-    expect(
-      drawn.querySelector<HTMLElement>('[data-change-glow]')?.style.width,
-    ).toContain('1440px')
+    expect(glowsIn(drawn)[0]?.style.width).toContain('1440px')
   })
 
   it('waits for the frame to show the bytes the change left', async () => {
@@ -857,6 +862,25 @@ describe('ChangeGlow', () => {
     )
 
     expect(drawn.querySelector('[data-change-glow]')).toBeNull()
+  })
+
+  it('glows once the frame comes to show the bytes the change left', async () => {
+    const container = await mountFrame()
+    const left = 'd'.repeat(64)
+    act(() =>
+      receiveChanges(unseenStore, [
+        change(PRICING.ref, { id: 'c-glow-6', hash: left, elements: [4] }),
+      ]),
+    )
+    const { container: drawn } = render(
+      <ChangeGlow frames={[PRICING]} container={container} />,
+    )
+    const iframe = container.querySelector('iframe')
+    if (!iframe) throw new Error('no frame')
+
+    act(() => stampRenderedHash(iframe, left))
+
+    await expect.poll(() => glowsIn(drawn)).toHaveLength(1)
   })
 
   it('draws no glow in Play', async () => {

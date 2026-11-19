@@ -4,11 +4,20 @@ import { render, waitFor } from '@testing-library/react'
 import { useRef } from 'react'
 import { describe, expect, it } from 'vitest'
 
+import { BRIDGE } from '@/test/frame-bridge'
+
 import { pressRail, railReach } from './page'
 import { ScrollRail } from './rail'
 
+/** A stamped page carrying the bridge, as the frame route serves one. */
+function bridgedPage(body: string): string {
+  return `<!doctype html><html><head><style data-frameboard data-hash="${'c'.repeat(64)}"></style>${BRIDGE}</head>${body}</html>`
+}
+
 /** A page four times as tall as its 400px box. */
-const PAGE = '<body style="margin:0"><div style="height:1600px"></div></body>'
+const PAGE = bridgedPage(
+  '<body style="margin:0"><div style="height:1600px"></div></body>',
+)
 
 function Box({ zoom, page = PAGE }: { zoom: number; page?: string }) {
   const iframe = useRef<HTMLIFrameElement>(null)
@@ -95,7 +104,7 @@ describe('ScrollRail', () => {
 
     expect(press(track.left + 3, track.bottom - 10)).toBe(true)
 
-    expect(view().scrollY).toBe(400)
+    await expect.poll(() => view().scrollY).toBe(400)
   })
 
   // A 40px drag on a track drawing 1600px of page at 400px times the zoom.
@@ -118,7 +127,7 @@ describe('ScrollRail', () => {
         new PointerEvent('pointerup', { clientX: x, clientY: y + 40 }),
       )
 
-      expect(view().scrollY).toBeCloseTo(scrolled, 0)
+      await expect.poll(() => view().scrollY).toBeCloseTo(scrolled, 0)
     },
   )
 
@@ -126,7 +135,9 @@ describe('ScrollRail', () => {
     const { container } = render(
       <Box
         zoom={1}
-        page='<body style="margin:0"><div style="height:100px"></div></body>'
+        page={bridgedPage(
+          '<body style="margin:0"><div style="height:100px"></div></body>',
+        )}
       />,
     )
     const iframe = container.querySelector('iframe')
@@ -135,6 +146,35 @@ describe('ScrollRail', () => {
     )
 
     expect(container.querySelector('[data-rail]')).toBeNull()
+  })
+})
+
+describe('ScrollRail on a page with no bridge', () => {
+  it('draws nothing and takes no press', async () => {
+    const { container } = render(
+      <Box
+        zoom={1}
+        page='<body style="margin:0"><div style="height:1600px"></div></body>'
+      />,
+    )
+    const iframe = container.querySelector('iframe')
+    await new Promise<void>((resolve) =>
+      iframe?.addEventListener('load', () => resolve(), { once: true }),
+    )
+    const layer = container.querySelector<HTMLElement>('[data-layer]')
+    if (!layer) throw new Error('no box')
+
+    const took = pressRail(
+      layer,
+      new PointerEvent('pointerdown', {
+        clientX: 311,
+        clientY: 390,
+        button: 0,
+      }),
+    )
+
+    expect(container.querySelector('[data-rail]')).toBeNull()
+    expect(took).toBe(false)
   })
 })
 

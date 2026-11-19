@@ -10,6 +10,7 @@ import {
   readBridgeMessage,
   REFUSED,
   replyValue,
+  requestArgs,
 } from './messages'
 
 const ORIGIN = 'http://127.0.0.1:4000'
@@ -250,5 +251,50 @@ describe('pushValue', () => {
 
   it('refuses any push for an op that pushes nothing', () => {
     expect(pushValue('element-box', null)).toBe(REFUSED)
+  })
+})
+
+describe('the chrome ops', () => {
+  it.each([
+    ['theme', { theme: 'dark' }],
+    ['hide-scrollbar', {}],
+    ['scroll', {}],
+    ['scroll-act', { act: 'page', toward: -1 }],
+    ['scroll-act', { act: 'to', top: 0.25 }],
+    ['keys', { keys: ['Escape'], keepTyping: false }],
+    ['content-height', {}],
+  ] as const)('takes the arguments %s carries', (op, args) => {
+    expect(requestArgs(op, args)).toEqual(args)
+  })
+
+  it.each([
+    ['a theme the board has none of', 'theme', { theme: 'sepia' }],
+    ['a page move of two screens', 'scroll-act', { act: 'page', toward: 2 }],
+    ['a scroll past the page', 'scroll-act', { act: 'to', top: Infinity }],
+    ['a key list of one key', 'keys', { keys: 'Escape', keepTyping: false }],
+    ['keys with no typing rule', 'keys', { keys: ['Escape'] }],
+    ['arguments where none go', 'content-height', { at: 1 }],
+  ] as const)('refuses %s', (_case, op, args) => {
+    expect(requestArgs(op, args)).toBe(REFUSED)
+  })
+
+  it('reads where the page shows as a scroll reply and push', () => {
+    const view = { top: 0.5, size: 0.25 }
+
+    expect(replyValue('scroll', view)).toEqual(view)
+    expect(pushValue('scroll', null)).toBeNull()
+  })
+
+  it('reads the binding that fired as a key push', () => {
+    const fired = { key: 'Escape', repeat: false }
+
+    expect(pushValue('keys', fired)).toEqual(fired)
+  })
+
+  it.each([
+    ['a scroll view missing its size', 'scroll', { top: 0 }],
+    ['a height of no pixels', 'content-height', 0],
+  ] as const)('refuses a reply holding %s', (_case, op, value) => {
+    expect(replyValue(op, value)).toBe(REFUSED)
   })
 })

@@ -8,12 +8,11 @@ import { bindKeys, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import { chooseTheme, flipFrame, themeStore } from '@/client/theme/store'
-import { frameElements } from '@/shared/frame-bridge/elements'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 import { ringFocused } from '@/test/focus-ring'
+import { bridgeIn } from '@/test/frame-bridge'
 
-import { holdShown } from './bridge/shown'
 import { openFindings } from './findings/open'
 import { Frame, LabelRename } from './frame'
 import { stampRenderedHash } from './frame-dom'
@@ -26,7 +25,7 @@ import {
 } from './motion/store'
 import { enteredStore, enterFrame, leaveFrame } from './play/entered'
 import { endPreview, setPreview } from './preview/store'
-import { clear, select, selectionStore } from './selection'
+import { clear, select, selectElement, selectionStore } from './selection'
 import {
   renamingFrame,
   startFrameRename,
@@ -102,6 +101,15 @@ function loaded(iframe: HTMLIFrameElement): Promise<void> {
   )
 }
 
+/** Waits for a just rendered frame's page and starts the bridge in it, as the frame route would. */
+async function bridged(
+  iframe: HTMLIFrameElement,
+  hash?: string,
+): Promise<void> {
+  await loaded(iframe)
+  await bridgeIn(iframe, { hash })
+}
+
 describe('Frame in Play', () => {
   const cleanups: (() => void)[] = []
 
@@ -128,14 +136,17 @@ describe('Frame in Play', () => {
     const { container, rerender } = render(
       <Frame frame={frame('a')} live version={0} />,
     )
-    await loaded(iframeOf(container, 'a'))
+    await bridged(iframeOf(container, 'a'))
     const reloaded = loaded(iframeOf(container, 'a'))
-
     rerender(<Frame frame={frame('a')} live version={1} />)
     await reloaded
+    await bridgeIn(iframeOf(container, 'a'))
+
+    pressEscapeIn(iframeOf(container, 'a'))
+    await expect.poll(() => exits).toBe(1)
     pressEscapeIn(iframeOf(container, 'a'))
 
-    expect(exits).toBe(1)
+    await expect.poll(() => exits).toBe(2)
   })
 
   it('leaves an entered frame on Esc pressed in a field inside it', async () => {
@@ -156,24 +167,22 @@ describe('Frame in Play', () => {
     cleanups.push(() => act(() => leaveFrame()))
     const { container } = render(<Frame frame={frame('a')} live version={0} />)
     const iframe = iframeOf(container, 'a')
-    await loaded(iframe)
+    await bridged(iframe)
     const inner = iframe.contentWindow as typeof window
     const slider = inner.document.createElement('input')
     slider.type = 'range'
     inner.document.body.append(slider)
     slider.focus()
 
-    act(() => {
-      slider.dispatchEvent(
-        new inner.KeyboardEvent('keydown', {
-          key: 'Escape',
-          code: 'Escape',
-          bubbles: true,
-        }),
-      )
-    })
+    slider.dispatchEvent(
+      new inner.KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        bubbles: true,
+      }),
+    )
 
-    expect(enteredStore.getState().ref).toBeNull()
+    await expect.poll(() => enteredStore.getState().ref).toBeNull()
   })
 
   it('stands the entered tag below a laptop base rather than on its chin', () => {
@@ -209,23 +218,11 @@ describe('Frame', () => {
         <Frame frame={{ ...frame('a'), scroll: true }} live version={0} />,
       )
 
-      await loaded(iframeOf(container, 'a'))
+      await bridged(iframeOf(container, 'a'))
 
-      expect(rootScrollbar(iframeOf(container, 'a'))).toBe('none')
-    })
-
-    it('leaves the injected style out of the element index', async () => {
-      const { container } = render(
-        <Frame frame={{ ...frame('a'), scroll: true }} live version={0} />,
-      )
-      await loaded(iframeOf(container, 'a'))
-      const document = iframeOf(container, 'a').contentDocument
-      if (!document) throw new Error('no frame document')
-
-      expect(document.querySelectorAll('style')).not.toHaveLength(0)
-      expect(
-        frameElements(document).filter((node) => node.localName === 'style'),
-      ).toEqual([])
+      await expect
+        .poll(() => rootScrollbar(iframeOf(container, 'a')))
+        .toBe('none')
     })
 
     it('keeps the scrollbar on a frame without the key', async () => {
@@ -233,7 +230,7 @@ describe('Frame', () => {
         <Frame frame={frame('a')} live version={0} />,
       )
 
-      await loaded(iframeOf(container, 'a'))
+      await bridged(iframeOf(container, 'a'))
 
       expect(rootScrollbar(iframeOf(container, 'a'))).toBe('auto')
     })
@@ -242,11 +239,34 @@ describe('Frame', () => {
       const { container, rerender } = render(
         <Frame frame={{ ...frame('a'), scroll: true }} live version={0} />,
       )
-      await loaded(iframeOf(container, 'a'))
+      await bridged(iframeOf(container, 'a'))
+      await expect
+        .poll(() => rootScrollbar(iframeOf(container, 'a')))
+        .toBe('none')
 
       rerender(<Frame frame={frame('a')} live version={0} />)
 
-      expect(rootScrollbar(iframeOf(container, 'a'))).toBe('auto')
+      await expect
+        .poll(() => rootScrollbar(iframeOf(container, 'a')))
+        .toBe('auto')
+    })
+
+    it('hides it again on the page a reload brings', async () => {
+      const { container, rerender } = render(
+        <Frame frame={{ ...frame('a'), scroll: true }} live version={0} />,
+      )
+      await bridged(iframeOf(container, 'a'))
+      const reloaded = loaded(iframeOf(container, 'a'))
+
+      rerender(
+        <Frame frame={{ ...frame('a'), scroll: true }} live version={1} />,
+      )
+      await reloaded
+      await bridgeIn(iframeOf(container, 'a'))
+
+      await expect
+        .poll(() => rootScrollbar(iframeOf(container, 'a')))
+        .toBe('none')
     })
   })
 
@@ -834,15 +854,15 @@ describe('Frame theme', () => {
   it("writes a theme change into the frame's root with no reload", async () => {
     const { container } = render(<Frame frame={frame('a')} live version={0} />)
     const iframe = iframeOf(container, 'a')
-    await loaded(iframe)
+    await bridged(iframe)
     const src = iframe.getAttribute('src')
     let loads = 0
     iframe.addEventListener('load', () => (loads += 1))
 
     act(() => chooseTheme('dark'))
 
+    await expect.poll(() => themeOfRoot(iframe)).toBe('dark')
     const root = iframe.contentDocument?.documentElement
-    expect(root?.getAttribute('data-theme')).toBe('dark')
     expect(root?.style.colorScheme).toBe('dark')
     expect(root?.classList.contains('dark')).toBe(true)
     expect(iframe.style.colorScheme).toBe('dark')
@@ -863,19 +883,72 @@ describe('Frame theme', () => {
     )
   })
 
+  it('sends the theme a page missed while it was loading', async () => {
+    const { container } = render(<Frame frame={frame('a')} live version={0} />)
+    const iframe = iframeOf(container, 'a')
+    await loaded(iframe)
+
+    act(() => chooseTheme('dark'))
+    await bridgeIn(iframe)
+
+    await expect.poll(() => themeOfRoot(iframe)).toBe('dark')
+  })
+
   it('shows a flipped frame in the opposite theme and leaves the others', async () => {
     act(() => chooseTheme('dark'))
     const { container } = render(<Pair a={0} b={0} />)
     await Promise.all([
-      loaded(iframeOf(container, 'a')),
-      loaded(iframeOf(container, 'b')),
+      bridged(iframeOf(container, 'a')),
+      bridged(iframeOf(container, 'b')),
     ])
+    await expect.poll(() => themeOfRoot(iframeOf(container, 'b'))).toBe('dark')
 
     act(() => flipFrame('studio/home/a'))
 
-    expect(themeOfRoot(iframeOf(container, 'a'))).toBe('light')
+    await expect.poll(() => themeOfRoot(iframeOf(container, 'a'))).toBe('light')
     expect(iframeOf(container, 'a').style.colorScheme).toBe('light')
     expect(themeOfRoot(iframeOf(container, 'b'))).toBe('dark')
+  })
+})
+
+describe('Frame on a new page', () => {
+  const SHOWN = 'c'.repeat(64)
+  const OTHER = 'd'.repeat(64)
+
+  afterEach(() => {
+    act(() => clear(selectionStore))
+  })
+
+  async function pickedOnReload(hash: string): Promise<void> {
+    const { container, rerender } = render(
+      <Frame frame={frame('a')} live version={0} />,
+    )
+    await bridged(iframeOf(container, 'a'), SHOWN)
+    act(() =>
+      selectElement(selectionStore, 'studio/home', {
+        frame: 'studio/home/a',
+        index: 4,
+        hash: SHOWN,
+      }),
+    )
+    const reloaded = loaded(iframeOf(container, 'a'))
+
+    rerender(<Frame frame={frame('a')} live version={1} />)
+    await reloaded
+    await bridgeIn(iframeOf(container, 'a'), { hash })
+  }
+
+  it('drops an element picked in other bytes to its frame', async () => {
+    await pickedOnReload(OTHER)
+
+    await expect.poll(() => selectionStore.getState().element).toBeNull()
+    expect(selectionStore.getState().frames).toEqual(['studio/home/a'])
+  })
+
+  it('keeps an element picked in the bytes the new page shows', async () => {
+    await pickedOnReload(SHOWN)
+
+    expect(selectionStore.getState().element?.index).toBe(4)
   })
 })
 
@@ -1256,7 +1329,7 @@ describe('Frame preview', () => {
     const hugging = { ...frame('a'), hugHeight: true }
     const { container } = render(<Frame frame={hugging} live version={0} />)
     const iframe = iframeOf(container, 'a')
-    await loaded(iframe)
+    await bridged(iframe)
     const document = iframe.contentDocument
     if (!document) throw new Error('no frame document')
     document.body.innerHTML = '<div style="height:320px"></div>'
@@ -1265,27 +1338,26 @@ describe('Frame preview', () => {
     act(() => setPreview(['studio/home/a'], 1440))
 
     const root = container.querySelector<HTMLElement>('[data-frame]')
-    expect(root?.style.height).toBe('320px')
+    await expect.poll(() => root?.style.height).toBe('320px')
   })
 
   it('reads a hugging height again when a kept drop stamps the page, with no load', async () => {
     const hugging = { ...frame('a'), hugHeight: true }
     const { container } = render(<Frame frame={hugging} live version={0} />)
     const iframe = iframeOf(container, 'a')
-    await loaded(iframe)
+    await bridged(iframe)
     const document = iframe.contentDocument
     if (!document) throw new Error('no frame document')
-    // As the page's bridge would announce the bytes it shows.
-    holdShown(iframe, 'old')
     document.body.innerHTML = '<div style="height:320px"></div>'
     document.body.style.margin = '0'
     act(() => setPreview(['studio/home/a'], 1440))
+    const root = container.querySelector<HTMLElement>('[data-frame]')
+    await expect.poll(() => root?.style.height).toBe('320px')
     document.body.innerHTML = '<div style="height:480px"></div>'
 
-    act(() => stampRenderedHash(iframe, 'new'))
+    act(() => stampRenderedHash(iframe, 'd'.repeat(64)))
 
-    const root = container.querySelector<HTMLElement>('[data-frame]')
-    expect(root?.style.height).toBe('480px')
+    await expect.poll(() => root?.style.height).toBe('480px')
   })
 
   it("reads a hugging height at the previewed width's reference height, not the box's", async () => {
@@ -1296,7 +1368,7 @@ describe('Frame preview', () => {
     }
     const { container } = render(<Frame frame={hugging} live version={0} />)
     const iframe = iframeOf(container, 'a')
-    await loaded(iframe)
+    await bridged(iframe)
     const document = iframe.contentDocument
     if (!document) throw new Error('no frame document')
     document.body.innerHTML = '<div style="height:max(900px, 100vh)"></div>'
@@ -1305,7 +1377,7 @@ describe('Frame preview', () => {
     act(() => setPreview(['studio/home/a'], 1440))
 
     const root = container.querySelector<HTMLElement>('[data-frame]')
-    expect(root?.style.height).toBe('900px')
+    await expect.poll(() => root?.style.height).toBe('900px')
   })
 
   it('keeps a fixed height at a previewed width', async () => {

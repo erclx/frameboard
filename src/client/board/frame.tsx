@@ -1,7 +1,6 @@
 import { ExternalLink, Lock, Moon, MoveHorizontal, Sun } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
-import { bindKeys } from '@/client/actions/registry'
 import { RenameField } from '@/client/components/rename-field'
 import {
   Popover,
@@ -20,14 +19,14 @@ import {
   useShownTheme,
 } from '@/client/theme/store'
 import { frameUrl } from '@/shared/board-urls'
-import { renderedHash } from '@/shared/frame-bridge/elements'
 import { BEZELS, screenCorners } from '@/shared/frame-device'
 import { referenceHeight } from '@/shared/frame-sizes'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
-import { frameThemeUrl, setFrameTheme, type Theme } from '@/shared/theme'
+import { frameThemeUrl, type Theme } from '@/shared/theme'
 
+import { followPage, shownHashOf } from './bridge/shown'
 import { useCompare } from './changes/compare'
 import { CompareControl, CompareView } from './changes/compare-view'
 import { UnseenDot } from './changes/dot'
@@ -39,7 +38,9 @@ import { FindingsList } from './findings/list'
 import { FindingsCount } from './findings/mark'
 import { openFindings, useFindingsOpen } from './findings/open'
 import { RESTAMPED } from './frame-dom'
+import { bindFrameKeys } from './frame-keys'
 import { useWaitingOnFirstLoad } from './frame-loading'
+import { useThemeInFrame } from './frame-theme'
 import { useDrawnBox, usePendingBox } from './geometry/write'
 import { useHiddenScrollbar } from './hidden-scrollbar'
 import { LoadingBlock } from './loading-block'
@@ -124,17 +125,7 @@ export const Frame = memo(function Frame({
     [loaded],
   )
 
-  useEffect(() => {
-    const element = iframe.current
-    if (!live || !element) return
-    const write = () => {
-      const root = element.contentDocument?.documentElement
-      if (root) setFrameTheme(root, theme)
-    }
-    write()
-    element.addEventListener('load', write)
-    return () => element.removeEventListener('load', write)
-  }, [theme, live])
+  useThemeInFrame(iframe, theme, live)
 
   // Stamps the rendered file, so a pick made before an agent's reload is refused.
   useEffect(() => {
@@ -147,20 +138,23 @@ export const Frame = memo(function Frame({
     return () => element.removeEventListener('load', stamp)
   }, [live])
 
-  // Drops an element selection on foreign bytes, which may have shifted every index.
+  // Drops an element selection on a new page's foreign bytes, which may have shifted every index.
   useEffect(() => {
     const element = iframe.current
     if (!live || !element) return
-    const check = () => {
+    return followPage(element, () => {
       const { page, element: selected } = selectionStore.getState()
-      const document = element.contentDocument
-      if (selected?.frame !== frame.ref || !page || !document) return
-      const shown = renderedHash(document)
-      if (shown === selected.hash || awaitingHash(frame.ref, shown)) return
-      select(selectionStore, page, [frame.ref])
-    }
-    element.addEventListener('load', check)
-    return () => element.removeEventListener('load', check)
+      const shown = shownHashOf(element)
+      if (
+        selected?.frame === frame.ref &&
+        page &&
+        shown !== selected.hash &&
+        !awaitingHash(frame.ref, shown)
+      ) {
+        select(selectionStore, page, [frame.ref])
+      }
+      return () => {}
+    })
   }, [live, frame.ref])
 
   // Read at the width's reference height, as the server's fit reads it.
@@ -169,17 +163,24 @@ export const Frame = memo(function Frame({
   useEffect(() => {
     const element = iframe.current
     if (!live || !element || previewWidth === undefined || !hugHeight) return
-    const measure = () =>
-      measurePreview(
-        frame.ref,
-        previewWidth,
-        measureHeight(element, referenceHeight(previewWidth)),
+    // Only the newest read stores a height, so two restamps in quick order store one.
+    let latest = 0
+    const measure = () => {
+      const run = ++latest
+      void measureHeight(element, referenceHeight(previewWidth)).then(
+        (height) => {
+          if (run === latest) measurePreview(frame.ref, previewWidth, height)
+        },
       )
-    measure()
-    element.addEventListener('load', measure)
+    }
+    const stop = followPage(element, () => {
+      measure()
+      return () => {}
+    })
     element.addEventListener(RESTAMPED, measure)
     return () => {
-      element.removeEventListener('load', measure)
+      latest = -1
+      stop()
       element.removeEventListener(RESTAMPED, measure)
     }
   }, [live, previewWidth, hugHeight, frame.ref])
@@ -191,21 +192,7 @@ export const Frame = memo(function Frame({
   useEffect(() => {
     const element = iframe.current
     if (!playing || !element) return
-    let unbind = () => {}
-    // Each load is a new document, so the binding moves to it and leaves none on the last.
-    const bind = () => {
-      unbind()
-      const target = element.contentWindow
-      unbind = target
-        ? bindKeys(target, PLAY_KEYS, { typing: 'frame' })
-        : () => {}
-    }
-    bind()
-    element.addEventListener('load', bind)
-    return () => {
-      element.removeEventListener('load', bind)
-      unbind()
-    }
+    return bindFrameKeys(element, PLAY_KEYS, { keepTyping: false })
   }, [playing, live])
 
   // An entered frame takes the keys, so focus moves into its page.

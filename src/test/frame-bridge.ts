@@ -62,6 +62,43 @@ export function ask<O extends BridgeOp>(
   })
 }
 
+/**
+ * Stamps and bridges a page an iframe loaded, once per page, since the test
+ * server routes no frame. Resolves after the frame answered what its word woke.
+ */
+export function bridgeIn(
+  iframe: HTMLIFrameElement,
+  { hash = 'c'.repeat(64) } = {},
+): Promise<void> {
+  const view = iframe.contentWindow
+  const head = iframe.contentDocument?.head
+  if (!view || !head) throw new Error('The iframe holds no page')
+  const announced = new Promise<void>((resolve) => {
+    const heard = (event: MessageEvent) => {
+      const data = event.data as { tag?: unknown; kind?: unknown } | null
+      if (event.source !== view || data?.tag !== BRIDGE_TAG) return
+      if (data.kind !== 'shown') return
+      removeEventListener('message', heard)
+      resolve()
+    }
+    addEventListener('message', heard)
+  })
+  head.insertAdjacentHTML(
+    'beforeend',
+    `<style data-frameboard data-hash="${hash}"></style>`,
+  )
+  // A script parsed from markup never runs, so it is made as an element.
+  const script = head.ownerDocument.createElement('script')
+  script.type = 'module'
+  script.setAttribute('data-frameboard', '')
+  script.src = '/src/frame-bridge/main.ts'
+  head.append(script)
+  // A round trip after the word, so every request the board sent on hearing it has landed.
+  return announced
+    .then(() => ask(iframe, 'live-body', {}))
+    .then(({ close }) => close())
+}
+
 /** An iframe showing `body` beside the stamp and the bridge, resolved once it has loaded. */
 export async function bridgedFrame(
   body: string,

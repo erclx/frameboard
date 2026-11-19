@@ -182,16 +182,31 @@ export function bindKeys(
  * asks, gated here so a key added later is covered.
  */
 function press(key: string, event: KeyboardEvent): void {
-  if (isCharacterKey(key) && !characterKeysOn()) return
-  const action = registry
-    .getState()
-    .actions.find(
-      (candidate) => candidate.keys?.includes(key) && isEnabled(candidate),
-    )
+  const action = actionFor(key)
   if (!action) return
   event.preventDefault()
   if (event.repeat && !action.repeat) return
   action.run({ repeat: event.repeat })
+}
+
+/**
+ * Runs the action a key press names, as a bound press would, for a press a
+ * frame already took and prevented in its own window.
+ */
+export function runKey(key: string, repeat: boolean): void {
+  const action = actionFor(key)
+  if (!action || (repeat && !action.repeat)) return
+  action.run({ repeat })
+}
+
+/** The first enabled action a key runs, none for a switched-off character key. */
+function actionFor(key: string): Action | undefined {
+  if (isCharacterKey(key) && !characterKeysOn()) return undefined
+  return registry
+    .getState()
+    .actions.find(
+      (candidate) => candidate.keys?.includes(key) && isEnabled(candidate),
+    )
 }
 
 /**

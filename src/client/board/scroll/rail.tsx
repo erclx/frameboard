@@ -1,10 +1,17 @@
 import { type RefObject, useEffect, useState } from 'react'
 
 import { cn } from '@/client/lib/cn'
+import type { ScrollView } from '@/shared/frame-bridge/messages'
 
-import { readPage, type ScrollView, scrollViewOf } from './page'
+import { subscribe } from '../bridge/channel'
+import { followPage } from '../bridge/shown'
+import { holdScrollView } from './page'
 
-/** Follows a frame page's scroll, answering null while nothing scrolls. */
+/**
+ * Follows where a frame's page shows as its bridge pushes it, answering null
+ * while nothing scrolls or the page has not answered. A drag draws from the
+ * page's own pushes, never from its requests, so the thumb follows the page.
+ */
 function useScrollView(
   iframe: RefObject<HTMLIFrameElement | null>,
   live: boolean,
@@ -13,33 +20,27 @@ function useScrollView(
   useEffect(() => {
     const element = iframe.current
     if (!live || !element) return
-    let stop = () => {}
-    const read = () => {
-      const next = scrollViewOf(element)
+    const show = (next: ScrollView | null) => {
+      holdScrollView(element, next)
       setView((was) =>
         was?.top === next?.top && was?.size === next?.size ? was : next,
       )
     }
-    const follow = () => {
-      stop()
-      read()
-      const page = readPage(element)
-      if (!page) return
-      const resized = new ResizeObserver(read)
-      resized.observe(page.root)
-      page.window.addEventListener('scroll', read)
-      page.window.addEventListener('resize', read)
-      stop = () => {
-        resized.disconnect()
-        page.window.removeEventListener('scroll', read)
-        page.window.removeEventListener('resize', read)
+    const stop = followPage(element, () => {
+      let open = true
+      const followed = subscribe(element, 'scroll', {}, show)
+      void followed.opened.then((first) => {
+        if (open) show(first)
+      })
+      return () => {
+        open = false
+        followed.close()
+        show(null)
       }
-    }
-    follow()
-    element.addEventListener('load', follow)
+    })
     return () => {
-      element.removeEventListener('load', follow)
       stop()
+      holdScrollView(element, null)
     }
   }, [iframe, live])
   return view

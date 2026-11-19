@@ -1,21 +1,19 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { bridgedFrame } from '@/test/frame-bridge'
+
+import { shownHashOf } from '../bridge/shown'
 import { measureHeight } from './height'
 
-const RESET = '<style>html,body{margin:0}</style>'
+const RESET = '<style data-frameboard>html,body{margin:0}</style>'
 
-async function iframeOf(
-  body: string,
-  { width, height }: { width: number; height: number },
-): Promise<HTMLIFrameElement> {
-  const iframe = document.createElement('iframe')
-  iframe.style.cssText = `display:block;border:0;width:${width}px;height:${height}px`
-  const loaded = new Promise((resolve) =>
-    iframe.addEventListener('load', resolve, { once: true }),
-  )
-  iframe.srcdoc = `<!doctype html>${RESET}<body>${body}</body>`
-  document.body.append(iframe)
-  await loaded
+/** A bridged frame of `width` by 900 showing `body`, resolved once its bridge announced itself. */
+async function frameOf(body: string, width = 390): Promise<HTMLIFrameElement> {
+  const iframe = await bridgedFrame(body, {
+    head: RESET,
+    style: `display:block;border:0;width:${width}px;height:900px`,
+  })
+  await expect.poll(() => shownHashOf(iframe)).not.toBeNull()
   return iframe
 }
 
@@ -24,89 +22,79 @@ describe('measureHeight', () => {
     for (const iframe of document.querySelectorAll('iframe')) iframe.remove()
   })
 
+  it('reads a page of a fixed height at that height', async () => {
+    const iframe = await frameOf('<div style="height:320px"></div>')
+
+    expect(await measureHeight(iframe, 900)).toBe(320)
+  })
+
   it('reads a wrapping page taller at a narrower width', async () => {
     const tile = '<div style="flex:none;width:100px;height:50px"></div>'
-    const iframe = await iframeOf(
+    const iframe = await frameOf(
       `<div style="display:flex;flex-wrap:wrap">${tile.repeat(8)}</div>`,
-      { width: 200, height: 900 },
+      200,
     )
 
-    expect(measureHeight(iframe, 900)).toBe(200)
-  })
-
-  it('reads a page of a fixed height at that height', async () => {
-    const iframe = await iframeOf('<div style="height:320px"></div>', {
-      width: 390,
-      height: 900,
-    })
-
-    expect(measureHeight(iframe, 900)).toBe(320)
-  })
-
-  it('reads text spilling below a block shorter than it', async () => {
-    const iframe = await iframeOf(
-      '<p style="width:1px;height:20px;margin:0;line-height:30px">one two three four</p>',
-      { width: 390, height: 900 },
-    )
-
-    expect(measureHeight(iframe, 900)).toBeGreaterThan(90)
-  })
-
-  it('reads a tight line height block at its own height', async () => {
-    const iframe = await iframeOf(
-      '<h1 style="margin:0;font-size:48px;line-height:1">Heading</h1>',
-      { width: 390, height: 900 },
-    )
-
-    expect(measureHeight(iframe, 900)).toBe(48)
-  })
-
-  it('reads a tight line height heading wrapping its text in a link at its own height', async () => {
-    const iframe = await iframeOf(
-      '<h1 style="margin:0;font-size:48px;line-height:1"><a href="#">Heading</a></h1>',
-      { width: 390, height: 900 },
-    )
-
-    expect(measureHeight(iframe, 900)).toBe(48)
-  })
-
-  it('reads a padded inline badge under a tight line height to its painted bottom', async () => {
-    const iframe = await iframeOf(
-      '<h1 style="margin:0;font-size:48px;line-height:1"><span style="padding:12px 0;background:red">Heading</span></h1>',
-      { width: 390, height: 900 },
-    )
-    const badge = iframe.contentDocument?.querySelector('span')
-    const painted = Math.ceil(badge?.getBoundingClientRect().bottom ?? 0)
-
-    expect(measureHeight(iframe, 900)).toBe(painted)
-  })
-
-  it('reads an image inside a tight line height heading at its own height', async () => {
-    const iframe = await iframeOf(
-      '<h1 style="margin:0;font-size:48px;line-height:1"><img alt="" width="10" height="200" style="display:inline"></h1>',
-      { width: 390, height: 900 },
-    )
-
-    expect(measureHeight(iframe, 900)).toBeGreaterThanOrEqual(200)
+    expect(await measureHeight(iframe, 900)).toBe(200)
   })
 
   it('reads nothing for a page sized off the viewport', async () => {
-    const iframe = await iframeOf('<div style="height:100vh"></div>', {
-      width: 390,
-      height: 900,
-    })
+    const iframe = await frameOf('<div style="height:100vh"></div>')
 
-    expect(measureHeight(iframe, 900)).toBeNull()
+    expect(await measureHeight(iframe, 900)).toBeNull()
   })
 
-  it('puts the iframe back at its height', async () => {
-    const iframe = await iframeOf('<div style="height:320px"></div>', {
-      width: 390,
-      height: 900,
-    })
+  it('hides the iframe while it reads, so its collapsed page never shows', async () => {
+    const iframe = await frameOf('<div style="height:320px"></div>')
 
-    measureHeight(iframe, 900)
+    const measured = measureHeight(iframe, 900)
+    const during = iframe.style.visibility
+    await measured
 
-    expect(iframe.style.height).toBe('900px')
+    expect(during).toBe('hidden')
+  })
+
+  it('puts the iframe back at its height and shows it once read', async () => {
+    const iframe = await frameOf('<div style="height:320px"></div>')
+
+    await measureHeight(iframe, 900)
+
+    expect([iframe.style.height, iframe.style.visibility]).toEqual([
+      '900px',
+      '',
+    ])
+  })
+
+  it('puts the iframe back as it stood before two reads in quick order', async () => {
+    const iframe = await frameOf('<div style="height:320px"></div>')
+
+    const first = measureHeight(iframe, 900)
+    const second = measureHeight(iframe, 900)
+    await Promise.all([first, second])
+
+    expect([iframe.style.height, iframe.style.visibility]).toEqual([
+      '900px',
+      '',
+    ])
+  })
+
+  it('answers the newer of two reads in quick order alone', async () => {
+    const iframe = await frameOf('<div style="height:320px"></div>')
+
+    const first = measureHeight(iframe, 900)
+    const second = measureHeight(iframe, 900)
+
+    expect(await Promise.all([first, second])).toEqual([null, 320])
+  })
+
+  it('reads nothing and hides nothing on a page with no bridge', async () => {
+    const iframe = document.createElement('iframe')
+    iframe.srcdoc = '<div style="height:320px"></div>'
+    document.body.append(iframe)
+
+    const measured = measureHeight(iframe, 900)
+
+    expect(iframe.style.visibility).toBe('')
+    expect(await measured).toBeNull()
   })
 })

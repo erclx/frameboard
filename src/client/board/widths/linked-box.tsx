@@ -1,15 +1,16 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
-import { bindKeys } from '@/client/actions/registry'
 import { cn } from '@/client/lib/cn'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import { linkedBoxes } from '@/shared/frame-widths'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
-import { frameThemeUrl, setFrameTheme } from '@/shared/theme'
+import { frameThemeUrl } from '@/shared/theme'
 
 import { FINDINGS_MARK, severityOf } from '../findings/level'
 import { FindingsCount } from '../findings/mark'
+import { bindFrameKeys } from '../frame-keys'
+import { useThemeInFrame } from '../frame-theme'
 import { useDrawnBox } from '../geometry/write'
 import { useHiddenScrollbar } from '../hidden-scrollbar'
 import { useMode } from '../mode'
@@ -89,37 +90,13 @@ export function LinkedBox({
     [loaded],
   )
 
-  useEffect(() => {
-    const element = iframe.current
-    if (!live || !element) return
-    const write = () => {
-      const root = element.contentDocument?.documentElement
-      if (root) setFrameTheme(root, theme)
-    }
-    write()
-    element.addEventListener('load', write)
-    return () => element.removeEventListener('load', write)
-  }, [theme, live])
-
+  useThemeInFrame(iframe, theme, live)
   useHiddenScrollbar(iframe, live, frame.scroll)
 
   useEffect(() => {
     const element = iframe.current
     if (!playing || !element) return
-    let unbind = () => {}
-    const bind = () => {
-      unbind()
-      const target = element.contentWindow
-      unbind = target
-        ? bindKeys(target, PLAY_KEYS, { typing: 'frame' })
-        : () => {}
-    }
-    bind()
-    element.addEventListener('load', bind)
-    return () => {
-      element.removeEventListener('load', bind)
-      unbind()
-    }
+    return bindFrameKeys(element, PLAY_KEYS, { keepTyping: false })
   }, [playing, live])
 
   const count = findings?.length ?? 0

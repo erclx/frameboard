@@ -1,32 +1,22 @@
-/** Where the page shows, as fractions of its full height. */
-export interface ScrollView {
-  /** The share of the page above the top of the view. */
-  top: number
-  /** The share of the page the view shows. */
-  size: number
-}
+import type { ScrollView } from '@/shared/frame-bridge/messages'
 
-/** A frame's page as its rail reads it, null where it cannot be read, as on another origin. */
-export function readPage(
+import { request } from '../bridge/channel'
+
+/** Where each iframe's page last said it shows, held for a press to read at once. */
+const views = new WeakMap<HTMLIFrameElement, ScrollView>()
+
+/** Holds where an iframe's page shows, as its bridge pushed it, or forgets it on null. */
+export function holdScrollView(
   iframe: HTMLIFrameElement,
-): { window: Window; root: HTMLElement } | null {
-  try {
-    const view = iframe.contentWindow
-    const root = iframe.contentDocument?.documentElement
-    return view && root ? { window: view, root } : null
-  } catch {
-    return null
-  }
+  view: ScrollView | null,
+): void {
+  if (view) views.set(iframe, view)
+  else views.delete(iframe)
 }
 
-/** Where a frame's page shows, or null when nothing scrolls or the page cannot be read. */
+/** Where a frame's page shows, as its bridge last pushed it, or null when nothing scrolls or it has not answered. */
 export function scrollViewOf(iframe: HTMLIFrameElement): ScrollView | null {
-  const page = readPage(iframe)
-  if (!page) return null
-  const { window: view, root } = page
-  const full = root.scrollHeight
-  if (full <= view.innerHeight + 1) return null
-  return { top: view.scrollY / full, size: view.innerHeight / full }
+  return views.get(iframe) ?? null
 }
 
 /**
@@ -39,26 +29,24 @@ export function pressRail(layer: ParentNode, event: PointerEvent): boolean {
   const rail = railAt(layer, event)
   const iframe =
     rail?.parentElement?.querySelector<HTMLIFrameElement>(':scope > iframe')
-  const page = iframe ? readPage(iframe) : null
+  const view = iframe ? scrollViewOf(iframe) : null
   const thumb = rail?.querySelector<HTMLElement>('[data-rail-thumb]')
-  if (!rail || !page || !thumb) return false
+  if (!rail || !iframe || !view || !thumb) return false
   event.preventDefault()
   const track = rail.getBoundingClientRect()
   const held = thumb.getBoundingClientRect()
   if (event.clientY < held.top || event.clientY > held.bottom) {
     const toward = event.clientY < held.top ? -1 : 1
-    page.window.scrollBy({ top: toward * page.window.innerHeight })
+    void request(iframe, 'scroll-act', { act: 'page', toward })
     return true
   }
-  // A drag pixel moves the page by the track's ratio, whatever the zoom.
-  const ratio = page.root.scrollHeight / track.height
-  const from = { y: event.clientY, scroll: page.window.scrollY }
+  // A drag pixel moves the page by its share of the track, whatever the zoom.
+  const from = { y: event.clientY, top: view.top }
   rail.setAttribute('data-dragging', '')
   const owner = rail.ownerDocument.defaultView ?? window
   const move = (moved: PointerEvent) => {
-    page.window.scrollTo({
-      top: from.scroll + (moved.clientY - from.y) * ratio,
-    })
+    const top = from.top + (moved.clientY - from.y) / track.height
+    void request(iframe, 'scroll-act', { act: 'to', top })
   }
   const end = () => {
     rail.removeAttribute('data-dragging')

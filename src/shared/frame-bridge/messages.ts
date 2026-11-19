@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import type { Theme } from '@/shared/theme'
+
 import { type ShownGap, shownGapSchema } from './gap'
 import {
   type FrameOverflow,
@@ -91,8 +93,61 @@ export interface PickAt {
   chain: PickedElement[]
 }
 
+/** Where a frame's page shows, as fractions of its full height. */
+export interface ScrollView {
+  /** The share of the page above the top of the view. */
+  top: number
+  /** The share of the page the view shows. */
+  size: number
+}
+
+/** How the board scrolls a frame's page: by one screen toward a side, or to a share of its height. */
+export type ScrollAct =
+  | { act: 'page'; toward: -1 | 1 }
+  | { act: 'to'; top: number }
+
+/** Which bindings a frame takes for the board, and whether a press in one of its fields stays with the page. */
+export interface KeyBindings {
+  /** tinykeys bindings, as the board's actions name them. */
+  keys: string[]
+  keepTyping: boolean
+}
+
+/** A binding the frame took a press of, its repeats marked so the board runs a held key as its own window would. */
+export interface KeyFired {
+  key: string
+  repeat: boolean
+}
+
 /** Each op's arguments, its reply value, and what it pushes, `never` for an op that pushes nothing. */
 export interface BridgeOps {
+  /** Shows the page's root in a theme, answering whether it held a root. */
+  theme: { args: { theme: Theme }; value: boolean; push: never }
+  /** Hides the page's own scrollbar until closed, answering whether it hid it. */
+  'hide-scrollbar': {
+    args: Record<string, never>
+    value: boolean
+    push: never
+  }
+  /** Where the page shows, pushed again on a scroll, resize, or growth until closed, null while nothing scrolls. */
+  scroll: {
+    args: Record<string, never>
+    value: ScrollView | null
+    push: ScrollView | null
+  }
+  /** Scrolls the page, answering whether it held a page to scroll. */
+  'scroll-act': { args: ScrollAct; value: boolean; push: never }
+  /**
+   * Takes each named binding inside the frame until closed, preventing the
+   * press there and pushing which one fired, answering whether it bound them.
+   */
+  keys: { args: KeyBindings; value: boolean; push: KeyFired }
+  /** The page's content height at its viewport, as the server's fit reads it, null for a page with no body. */
+  'content-height': {
+    args: Record<string, never>
+    value: number | null
+    push: never
+  }
   /** The element's live box, or null when the frame shows other bytes or no element there. */
   'element-box': { args: ElementAddress; value: ElementBox | null; push: never }
   /** Each named element's box that draws anything, or null when the frame shows other bytes. */
@@ -226,11 +281,14 @@ export type BridgeMessage =
     }
 
 const OPS: readonly string[] = [
+  'content-height',
   'element-box',
   'element-boxes',
   'gap-at',
+  'hide-scrollbar',
   'hide-strips',
   'keep-previews',
+  'keys',
   'live-body',
   'live-element',
   'measure',
@@ -244,8 +302,11 @@ const OPS: readonly string[] = [
   'pins',
   'preview-style',
   'restamp',
+  'scroll',
+  'scroll-act',
   'text-edit',
   'text-written',
+  'theme',
 ] satisfies readonly BridgeOp[]
 
 /**
@@ -325,6 +386,11 @@ const elementBoxSchema = z.object({
   bottom: z.number().finite(),
 })
 
+const scrollViewSchema = z.object({
+  top: z.number().finite(),
+  size: z.number().finite(),
+})
+
 const textEditEndSchema = z.union([
   z.object({
     kind: z.literal('commit'),
@@ -346,6 +412,35 @@ const SCHEMAS: {
     push?: z.ZodType<BridgeOps[O]['push']>
   }
 } = {
+  theme: {
+    args: z.object({ theme: z.enum(['light', 'dark']) }),
+    value: z.boolean(),
+  },
+  'hide-scrollbar': { args: noArgsSchema, value: z.boolean() },
+  scroll: {
+    args: noArgsSchema,
+    value: scrollViewSchema.nullable(),
+    push: scrollViewSchema.nullable(),
+  },
+  'scroll-act': {
+    args: z.union([
+      z.object({
+        act: z.literal('page'),
+        toward: z.union([z.literal(-1), z.literal(1)]),
+      }),
+      z.object({ act: z.literal('to'), top: z.number().finite() }),
+    ]),
+    value: z.boolean(),
+  },
+  keys: {
+    args: z.object({ keys: z.array(z.string()), keepTyping: z.boolean() }),
+    value: z.boolean(),
+    push: z.object({ key: z.string(), repeat: z.boolean() }),
+  },
+  'content-height': {
+    args: noArgsSchema,
+    value: z.number().int().positive().nullable(),
+  },
   'element-box': { args: addressSchema, value: elementBoxSchema.nullable() },
   'element-boxes': {
     args: z.object({ hash: z.string(), indexes: z.array(indexSchema) }),

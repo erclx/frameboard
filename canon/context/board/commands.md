@@ -17,7 +17,7 @@ Owns the action registry every toolbar button, menu item, and key runs through, 
 
 - An action is `{ id, label, group, keys?, run, enabled?, checked?, repeat? }` plus `command`, which carries the label, icon, `hint`, `keywords`, and `searchOnly` the palette reads
 - A control whose action no row has registered yet renders disabled with its name and key, so it lights once that row registers and its row removes it on unmount
-- `bindKeys` binds the registry into the board window at start and into a frame's window in Play, Esc alone there
+- `bindKeys` binds the registry into the board window at start. In Play a frame takes Esc alone through the bridge, and `runKey` runs the action the press names.
 - A key shared by several actions runs the first registered whose `enabled` is true, so each row's `enabled` has to be honest about its mode for Esc to mean one thing at a time
 - `character-keys.ts` holds the Single-key shortcuts switch, on by default in `localStorage`, and while off `press` lets a character key reach the browser and `liveKey` skips it on every chip
 
@@ -58,7 +58,7 @@ Owns the change kinds a step holds and what each restores, which is only what th
 ## Gotchas
 
 - `bindKeys` skips a press inside a field or an open dialog in the board's window, which keeps Esc from the palette and the sheet off `selection.clear` and `mode.exitPlay`
-- A frame's window binds with `typing: 'frame'`, skipping only a composing press or one the page prevented, so Esc leaves an entered frame from a focused field
+- A frame skips only a composing press or one the page prevented, so Esc leaves an entered frame from a focused field, and binds a character key only while the switch is on
 - A toast is a dialog to base-ui but takes board keys, undo among them, by its `data-slot="toast"` marker, while Enter there stays with the toast, which runs Show, or the button holding focus
 - A held key runs its action once and prevents the auto-repeats, unless the action sets `repeat`, as the nudges, resizes, pans, zoom steps, undo, and redo do
 - While a step is out, undo and redo drop a key's auto-repeat but hold the last discrete press, a click too, until the step answers
