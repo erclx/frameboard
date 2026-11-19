@@ -63,11 +63,8 @@ export function ask<O extends BridgeOp>(
 }
 
 /**
- * Stamps the page an iframe already loaded and starts the bridge in it, as the
- * frame route would have, resolved once the bridge announced the stamp and
- * answered whatever the board sent it on hearing that. The
- * board's frames load an empty page under the test server, which routes no
- * frame, and a reload brings one back with no bridge, so call it per page.
+ * Stamps and bridges a page an iframe loaded, once per page, since the test
+ * server routes no frame. Resolves after the frame answered what its word woke.
  */
 export function bridgeIn(
   iframe: HTMLIFrameElement,

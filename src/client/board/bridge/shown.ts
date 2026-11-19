@@ -45,10 +45,8 @@ export function subscribeShown(listener: Listener): () => void {
 }
 
 /**
- * Keeps what `open` starts on each page an iframe shows, closing it as the
- * page goes and opening it again on the next, since a request lives in one
- * document. A restamp keeps the page, and a page that never announces itself,
- * such as a kit preview, never opens.
+ * Keeps what `open` starts on each page an iframe shows, since a request lives
+ * in one document. A restamp keeps the page, and one that never announces opens nothing.
  */
 export function followPage(
   iframe: HTMLIFrameElement,

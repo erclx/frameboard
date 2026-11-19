@@ -138,8 +138,7 @@ export const Frame = memo(function Frame({
     return () => element.removeEventListener('load', stamp)
   }, [live])
 
-  // Drops an element selection on a new page's foreign bytes, which may have
-  // shifted every index, read as the page announces itself rather than the last one's.
+  // Drops an element selection on a new page's foreign bytes, which may have shifted every index.
   useEffect(() => {
     const element = iframe.current
     if (!live || !element) return

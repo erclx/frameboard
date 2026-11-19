@@ -12,11 +12,8 @@ const readings = new WeakMap<HTMLIFrameElement, Reading>()
 let runs = 0
 
 /**
- * The iframe page's content height at its width, null when sized off the
- * viewport, read as the server's fit does at 1px tall and at `height`. The
- * two reads cross the bridge as two tasks, so the iframe hides between them
- * rather than paint its collapsed page. A newer read takes over, answering
- * null for the older, and a page that never announced itself is not read.
+ * The page's content height at its width, null when sized off the viewport or
+ * superseded. The 1px and `height` reads are two tasks, so the iframe hides between.
  */
 export async function measureHeight(
   iframe: HTMLIFrameElement,
