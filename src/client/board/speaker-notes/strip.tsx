@@ -28,10 +28,9 @@ interface SpeakerNotesStripProps {
 }
 
 /**
- * A speaker notes strip under every slide of the page while the Notes button
- * shows them, and none while it hides them, whatever is selected. Mounted
- * above the hit layer, as the label's rename field is, so a press places
- * the caret.
+ * A strip under every slide while the Notes button shows them, whatever is
+ * selected. Mounted above the hit layer, as the label's rename field is, so
+ * a press places the caret.
  */
 export function SpeakerNotesStrip({
   frames,
