@@ -68,12 +68,6 @@ export interface SourcingRoutesOptions {
   send?: typeof fetch
   /** Where a provider's key is read, the server's own environment unless given. */
   env?: Environment
-  /**
-   * Whether `POST generate` spends. Off until a frame's script can no longer
-   * pass the writer guard, since such a script could otherwise spend on the
-   * developer's key.
-   */
-  generate?: boolean
 }
 
 const queryLimit = z.string().trim().min(1).max(200)
@@ -115,7 +109,6 @@ export function sourcingRoutes(
   {
     send = (input, init) => fetch(input, init),
     env = process.env,
-    generate = false,
   }: SourcingRoutesOptions = {},
 ): Hono {
   const app = new Hono()
@@ -201,24 +194,11 @@ export function sourcingRoutes(
 
   app.get(`${base}/provider`, (c) => {
     projectOf(root, c.req.param('project'))
-    return c.json({ ok: true, data: offer(env, generate) })
+    return c.json({ ok: true, data: offer(env) })
   })
 
   app.post(`${base}/generate`, authorized, async (c) => {
     const project = projectOf(root, c.req.param('project'))
-    if (!generate) {
-      return c.json(
-        {
-          ok: false,
-          error: {
-            code: 'generate-off',
-            message:
-              'Generating from the board is off in this release. Run `frameboard image generate` instead.',
-          },
-        },
-        403,
-      )
-    }
     const { prompt } = await parseBody(c.req.raw, generateBodySchema)
     if (generating) {
       return c.json(
@@ -249,6 +229,8 @@ export function sourcingRoutes(
           prompt,
           ...plan.size,
           priceUsd: plan.priceUsd,
+          // A hosted provider ignores the seed, so only a local run records one.
+          ...(plan.provider.name === 'comfyui' && { seed: plan.seed }),
           savedAt: new Date().toISOString(),
         },
       )
@@ -308,13 +290,13 @@ async function saveFoundModel(
 }
 
 /** The provider a generation would run on and its price, naming each key by its variable alone. */
-function offer(env: Environment, enabled: boolean): ImageOffer {
+function offer(env: Environment): ImageOffer {
   const keys = PROVIDERS.map((provider) => provider.keyEnv)
   try {
     const plan = planGeneration({ prompt: '', size: GENERATE_SIZE }, env)
     return {
       version: 1,
-      enabled,
+      enabled: true,
       provider: {
         name: plan.provider.name,
         model: plan.provider.model,
@@ -327,7 +309,7 @@ function offer(env: Environment, enabled: boolean): ImageOffer {
   } catch (error) {
     if (!(error instanceof FrameboardError) || error.code !== 'no-provider')
       throw error
-    return { version: 1, enabled, provider: null, keys }
+    return { version: 1, enabled: true, provider: null, keys }
   }
 }
 
