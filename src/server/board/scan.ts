@@ -14,6 +14,7 @@ import { FrameboardError } from '@/shared/errors'
 import {
   type Device,
   deviceForWidth,
+  islandOf,
   type Pose,
   poseOf,
 } from '@/shared/frame-device'
@@ -85,6 +86,8 @@ export interface Placement {
   /** Present while the frame names the foldable, shown or not, with its pose. */
   foldable?: true
   pose?: Pose
+  /** Present while the frame picks the phone's wide island, shown or not. */
+  island?: 'wide'
   /** The widths a foldable's entry lists and never draws, which un-naming it draws again. */
   keptWidths?: LinkedWidth[]
   /** Absent for a frame with no override or one holding a value no reader knows. */
@@ -255,6 +258,7 @@ export function placeFrames(
       ...(device ? { device } : {}),
       ...(foldable ? { foldable, pose: poseOf(entry.pose) } : {}),
       ...(foldable && kept.length > 0 ? { keptWidths: kept } : {}),
+      ...(islandOf(entry.island) === 'wide' ? { island: 'wide' as const } : {}),
       ...(transition ? { transition } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
       ...(kit ? { kit } : {}),

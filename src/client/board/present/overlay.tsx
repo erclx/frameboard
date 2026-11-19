@@ -427,6 +427,7 @@ export function ScaledFrame({
           width={width}
           height={height}
           pose={frame.pose}
+          island={frame.island}
         />
       ) : null}
     </div>

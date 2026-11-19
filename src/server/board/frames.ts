@@ -6,6 +6,8 @@ import { isDeepStrictEqual } from 'node:util'
 import { FrameboardError } from '@/shared/errors'
 import {
   deviceForWidth,
+  type Island,
+  islandOf,
   nearestPose,
   type Pose,
   POSE_SIZES,
@@ -107,6 +109,8 @@ export interface FoldOptions {
   foldable?: boolean
   /** The pose a foldable folds to, which sets its box, refused on a frame naming none. */
   pose?: Pose
+  /** The phone's island width, refused on a frame whose width names no phone or that names the foldable. */
+  island?: Island
 }
 
 export type FrameFlag = 'hidden' | 'locked'
@@ -935,6 +939,7 @@ export async function setFrameDevice(
   {
     foldable: name,
     pose: fold,
+    island: pick,
     ...options
   }: RefOptions & JournalOptions & FoldOptions,
 ): Promise<FrameRecord> {
@@ -945,6 +950,7 @@ export async function setFrameDevice(
       foldable: named,
       pose: stored,
       keptWidths,
+      island: picked,
       ...rest
     } = placement
     const foldable = name ?? named === true
@@ -955,8 +961,20 @@ export async function setFrameDevice(
         { ref: frameRef, pose: fold },
       )
     }
+    if (pick && (foldable || deviceForWidth(placement.box.width) !== 'phone')) {
+      throw new FrameboardError(
+        'usage',
+        `${frameRef} draws no phone, so it has no island. A frame 320 to 479 px wide that names no foldable draws one.`,
+        { ref: frameRef, island: pick },
+      )
+    }
+    const island = pick ?? islandOf(picked)
     const shown = show ?? (name === true || held === true)
-    const base = { ...rest, ...(shown ? { showDevice: true as const } : {}) }
+    const base = {
+      ...rest,
+      ...(shown ? { showDevice: true as const } : {}),
+      ...(island === 'wide' ? { island } : {}),
+    }
     if (!foldable) {
       // The widths the entry kept draw again, less one the box now holds itself.
       const widths = (keptWidths ?? rest.widths).filter(
@@ -1207,6 +1225,7 @@ class PageLayout {
       foldable,
       pose,
       keptWidths,
+      island,
       transition,
       speakerNotes,
       kit,
@@ -1244,6 +1263,7 @@ class PageLayout {
       (held?.foldable !== true || poseOf(held.pose) !== pose)
         ? { pose }
         : {}),
+      ...(island ? { island } : {}),
       ...(transition ? { transition: { ...transition } } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
       ...(kit ? { kit } : {}),
@@ -1256,6 +1276,7 @@ class PageLayout {
       delete entry.pose
     }
     if (!showDevice && held?.showDevice === true) delete entry.showDevice
+    if (!island && islandOf(held?.island) === 'wide') delete entry.island
     if (typeof held?.device === 'string') delete entry.device
     if (!transition && storedTransitionOf(held?.transition)) {
       delete entry.transition

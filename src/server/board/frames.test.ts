@@ -948,6 +948,63 @@ describe('frames', () => {
         expect(layout('webapp/home').frames.hero).not.toHaveProperty('device')
       })
 
+      it('writes the wide island on a phone and clears the key for the compact one', async () => {
+        const root = open()
+        hugHero(root, { width: 390, showDevice: true })
+
+        const wide = await setFrameDevice(root, 'webapp/home/hero', undefined, {
+          cwd: root,
+          island: 'wide',
+        })
+        const written = layout('webapp/home').frames.hero
+        const compact = await setFrameDevice(
+          root,
+          'webapp/home/hero',
+          undefined,
+          { cwd: root, island: 'compact' },
+        )
+
+        expect(wide).toMatchObject({ device: 'phone', island: 'wide' })
+        expect(written).toMatchObject({ showDevice: true, island: 'wide' })
+        expect(compact).not.toHaveProperty('island')
+        expect(layout('webapp/home').frames.hero).not.toHaveProperty('island')
+      })
+
+      it('keeps the wide island through a move', async () => {
+        const root = open()
+        hugHero(root, { width: 390, showDevice: true, island: 'wide' })
+
+        const moved = await moveFrame(root, 'webapp/home/hero', {
+          cwd: root,
+          x: 40,
+        })
+
+        expect(moved.island).toBe('wide')
+        expect(layout('webapp/home').frames.hero).toMatchObject({
+          island: 'wide',
+        })
+      })
+
+      it('reads an island no reader knows as compact', async () => {
+        const root = open()
+        hugHero(root, { width: 390, showDevice: true, island: 'huge' })
+
+        const hero = await readFrame(root, 'webapp/home/hero', { cwd: root })
+
+        expect(hero).not.toHaveProperty('island')
+      })
+
+      it('refuses an island on a frame whose width names no phone', async () => {
+        const root = open()
+
+        await expect(
+          setFrameDevice(root, 'webapp/home/hero', undefined, {
+            cwd: root,
+            island: 'wide',
+          }),
+        ).rejects.toMatchObject({ code: 'usage' })
+      })
+
       it('hides a device name written before the flag, leaving neither key', async () => {
         const root = open()
         hugHero(root, { device: 'tablet' })

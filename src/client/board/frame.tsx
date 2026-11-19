@@ -306,6 +306,7 @@ export const Frame = memo(function Frame({
           width={width}
           height={height}
           pose={frame.pose}
+          island={frame.island}
         />
       ) : null}
       {frame.device === 'foldable' &&

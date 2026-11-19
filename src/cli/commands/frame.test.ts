@@ -563,9 +563,45 @@ describe('frame', () => {
       expect(result.json().data).not.toHaveProperty('pose')
     })
 
+    it('writes the wide island with --island wide and clears it with --island compact', async () => {
+      const run = on('basic')
+      const layout = () =>
+        JSON.parse(
+          readFileSync(join(board.root, 'webapp/home/layout.json'), 'utf8'),
+        ).frames.about
+      await run('frame', 'device', 'webapp/home/about', 'on')
+
+      const wide = await run(
+        'frame',
+        'device',
+        'webapp/home/about',
+        '--island',
+        'wide',
+      )
+      const written = layout()
+      const compact = await run(
+        'frame',
+        'device',
+        'webapp/home/about',
+        '--island',
+        'compact',
+      )
+
+      expect(wide.exitCode).toBe(0)
+      expect(wide.json().data).toMatchObject({
+        device: 'phone',
+        island: 'wide',
+      })
+      expect(written).toMatchObject({ island: 'wide' })
+      expect(compact.json().data).not.toHaveProperty('island')
+      expect(layout()).not.toHaveProperty('island')
+    })
+
     it.each([
       ['a pose on a frame naming no foldable', ['--pose', 'open']],
       ['a pose no device has', ['--foldable', '--pose', 'tent']],
+      ['an island on a frame drawing no phone', ['--island', 'wide']],
+      ['an island no phone has', ['--island', 'huge']],
       ['neither a value nor a flag', []],
     ])(
       'refuses %s with usage, exit 2, writing nothing',

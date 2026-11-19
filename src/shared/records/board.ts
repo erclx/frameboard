@@ -82,6 +82,9 @@ export const layoutEntrySchema = z.looseObject({
   // reads as closed, and either value of another kind parses as written.
   foldable: z.unknown().optional(),
   pose: z.unknown().optional(),
+  // The phone's island width, `wide` alone, absent for the compact one. A
+  // value no reader knows parses as written and reads as compact.
+  island: z.unknown().optional(),
   // The transition the frame arrives with in present mode, over its page's.
   // A value no reader knows parses as written and reads as none.
   transition: z.unknown().optional(),

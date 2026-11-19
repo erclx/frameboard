@@ -60,7 +60,7 @@ import { ensureViewer } from '@/server/models/viewer'
 import type { PlaceableKind } from '@/shared/asset-kinds'
 import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
-import { POSES } from '@/shared/frame-device'
+import { ISLANDS, POSES } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES, referenceHeight } from '@/shared/frame-sizes'
 import type { LinkedWidth } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
@@ -136,6 +136,7 @@ const frameDeviceSchema = z.object({
   show: z.boolean().optional(),
   foldable: z.boolean().optional(),
   pose: z.enum(POSES).optional(),
+  island: z.enum(ISLANDS).optional(),
 })
 const linkedWidth = z.int().min(1)
 /** More widths than any device list offers, so a body cannot grow without bound. */
@@ -537,7 +538,7 @@ export function structureRoutes(
     return c.json({ ok: true, data: frames })
   })
 
-  /** Shows or hides each frame's device, names the foldable, or folds it, in one step, leaving every frame file alone. */
+  /** Shows or hides each frame's device, names the foldable, folds it, or picks a phone's island, in one step, leaving every frame file alone. */
   app.post('/api/frame/device', async (c) => {
     const body = await parseBody(c.req.raw, frameDeviceSchema)
     const frames = await eachFrame(
@@ -548,6 +549,7 @@ export function structureRoutes(
           journal,
           foldable: body.foldable,
           pose: body.pose,
+          island: body.island,
         }),
       (records) => records.map((record) => record.ref),
     )
