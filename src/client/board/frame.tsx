@@ -169,7 +169,7 @@ export const Frame = memo(function Frame({
   const previewWidth = preview?.width
   const { hugHeight } = frame
   // The page starts under a phone's status bar, so the box holds the page and the bar.
-  const statusBar = topInset(frame.device)
+  const statusBar = topInset(frame.device, frame.turn)
   useEffect(() => {
     const element = iframe.current
     if (!live || !element || previewWidth === undefined || !hugHeight) return
@@ -206,6 +206,8 @@ export const Frame = memo(function Frame({
         box: { width, height },
         device: frame.device,
         scroll: frame.scroll,
+        turn: frame.turn,
+        hugHeight: frame.hugHeight,
       }).height
     : height
   const colors = usePageColors(iframe, live && statusBar > 0, theme)
@@ -244,7 +246,7 @@ export const Frame = memo(function Frame({
   // The page stands under a phone's status bar, square where the two meet.
   const page = frame.device
     ? {
-        borderRadius: pageCorners(frame.device),
+        borderRadius: pageCorners(frame.device, frame.turn),
         ...(statusBar
           ? { marginTop: statusBar, height: `calc(100% - ${statusBar}px)` }
           : {}),

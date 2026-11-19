@@ -65,7 +65,7 @@ function StripAt({
   calls: Structure
 }) {
   const drawn = useDrawnBox(frame)
-  const body = bezelBox(drawn, frame.device)
+  const body = bezelBox(drawn, frame.device, frame.turn)
   const canWrite = useLive((state) => state.canWrite)
   const stored = frame.speakerNotes ?? ''
   // What is being typed, null while the field shows the stored note.

@@ -1,4 +1,4 @@
-import { referenceHeight } from './frame-sizes'
+import { FRAME_SIZES, referenceHeight } from './frame-sizes'
 
 interface Box {
   x: number
@@ -211,18 +211,39 @@ export function uprightWidth(entry: {
     : entry.width
 }
 
-/** The height the device's status bar takes off the top of a frame's box, 0 for any device but the phone. */
-export function topInset(device: Device | null | undefined): number {
-  return device === 'phone' ? STATUS_BAR.height : 0
+/** Whether a device draws turned, which only a phone or a tablet does. */
+export function isTurned(
+  device: Device | null | undefined,
+  turn: Turn | undefined,
+): boolean {
+  return (
+    (device === 'phone' || device === 'tablet') && turnOf(turn) !== 'upright'
+  )
 }
 
 /**
- * The page's box inside a frame's box, the box less the status bar while a
- * phone shows and the box itself on every other device or none. A frame's
- * box keeps the screen's size, and every surface reads the page through this.
+ * The height the device's status bar takes off the top of a frame's box, 0
+ * for any device but an upright phone, since a turned one hides its bar.
  */
-export function pageBox(box: Box, device: Device | null | undefined): Box {
-  const inset = topInset(device)
+export function topInset(
+  device: Device | null | undefined,
+  turn: Turn | undefined,
+): number {
+  return device === 'phone' && !isTurned(device, turn) ? STATUS_BAR.height : 0
+}
+
+/**
+ * The page's box inside a frame's box, the box less the status bar while an
+ * upright phone shows and the box itself on every other device or none. A
+ * frame's box keeps the screen's size, and every surface reads the page
+ * through this.
+ */
+export function pageBox(
+  box: Box,
+  device: Device | null | undefined,
+  turn: Turn | undefined,
+): Box {
+  const inset = topInset(device, turn)
   return {
     x: box.x,
     y: box.y + inset,
@@ -232,23 +253,42 @@ export function pageBox(box: Box, device: Device | null | undefined): Box {
 }
 
 /**
+ * The screen height of a turned hugging phone, the reference phone's
+ * landscape screen at the box's width, since its box holds the reference
+ * height of its upright width and its height is its page's.
+ */
+function turnedScreenHeight(width: number): number {
+  const { width: short, height: long } = FRAME_SIZES.phone
+  return Math.round((width * short) / long)
+}
+
+/**
  * The box a frame is shown at in present mode and entered in Play, one screen
  * tall for a page-tall phone so its page scrolls, else the stored box, which
- * a scroll frame already holds at its screen.
+ * a scroll frame already holds at its screen and a fixed turned one at its
+ * landscape screen.
  */
 export function shownBox<B extends { width: number; height: number }>(frame: {
   box: B
   device?: Device | null
   scroll?: boolean
+  turn?: Turn
+  hugHeight?: boolean
 }): B {
-  const { box, device, scroll } = frame
+  const { box, device, scroll, turn, hugHeight } = frame
   if (device !== 'phone' || scroll) return { ...box }
-  return { ...box, height: Math.min(box.height, referenceHeight(box.width)) }
+  if (!isTurned(device, turn)) {
+    return { ...box, height: Math.min(box.height, referenceHeight(box.width)) }
+  }
+  if (!hugHeight) return { ...box }
+  return { ...box, height: Math.min(box.height, turnedScreenHeight(box.width)) }
 }
 
-/** The page's corners as a CSS `border-radius`, square on top under a phone's status bar. */
-export function pageCorners(device: Device): string {
-  if (device !== 'phone') return screenCorners(device)
+/** The page's corners as a CSS `border-radius`, square on top under an upright phone's status bar. */
+export function pageCorners(device: Device, turn: Turn | undefined): string {
+  if (device !== 'phone' || isTurned(device, turn)) {
+    return screenCorners(device)
+  }
   const { screenRadius } = BEZELS.phone
   return `0 0 ${screenRadius}px ${screenRadius}px`
 }
@@ -411,17 +451,25 @@ export function bezelShadow(
 /**
  * The box a device's body covers around a frame's box, the box itself with
  * none. A laptop's base reaches past its lid and a phone's buttons past its
- * sides, so their sides grow by more than their top.
+ * sides, so their sides grow by more than their top. A turned phone's
+ * buttons stand on its long edges, past its top and bottom instead.
  */
-export function bezelBox(box: Box, device: Device | null | undefined): Box {
+export function bezelBox(
+  box: Box,
+  device: Device | null | undefined,
+  turn: Turn | undefined,
+): Box {
   if (!device) return { ...box }
   const { border, bottom } = BEZELS[device]
-  const side = border + sideReach(device, box.width)
+  const reach = sideReach(device, box.width)
+  const turned = isTurned(device, turn)
+  const side = border + (turned ? 0 : reach)
+  const end = turned ? reach : 0
   return {
     x: box.x - side,
-    y: box.y - border,
+    y: box.y - border - end,
     width: box.width + 2 * side,
-    height: box.height + border + bottom,
+    height: box.height + border + bottom + 2 * end,
   }
 }
 
@@ -430,9 +478,13 @@ export function bezelBox(box: Box, device: Device | null | undefined): Box {
  * its one-unit edge, and the drop shadow `bezelShadow` blurs past both, the
  * box itself with none. A fit by `bezelBox` alone clips the edge and shadow.
  */
-export function bezelReach(box: Box, device: Device | null | undefined): Box {
+export function bezelReach(
+  box: Box,
+  device: Device | null | undefined,
+  turn: Turn | undefined,
+): Box {
   if (!device) return { ...box }
-  const body = bezelBox(box, device)
+  const body = bezelBox(box, device, turn)
   const { border } = BEZELS[device]
   // The shadow drops by the border and blurs three borders past the screen.
   const left = Math.min(body.x - 1, box.x - 3 * border)

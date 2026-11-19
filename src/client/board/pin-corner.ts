@@ -41,7 +41,7 @@ export function subscribeCorners(listener: () => void): () => void {
  * so a drag passes the box it will draw.
  */
 export function cornerOf(
-  frame: Pick<FrameRecord, 'ref' | 'box' | 'device'>,
+  frame: Pick<FrameRecord, 'ref' | 'box' | 'device' | 'turn'>,
   element: number | null,
   container: ParentNode | null,
 ): { x: number; y: number } {
@@ -52,7 +52,7 @@ export function cornerOf(
       : corners.get(frame.ref)?.get(element)
   if (!held) return { x: x + width, y }
   // The corner reads in the page, which starts under a phone's status bar.
-  const page = pageBox(frame.box, frame.device)
+  const page = pageBox(frame.box, frame.device, frame.turn)
   return {
     x: x + Math.min(held.right, width),
     y: page.y + Math.max(held.top, 0),

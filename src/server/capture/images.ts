@@ -5,7 +5,7 @@ import type { Browser } from 'playwright-core'
 
 import { COMPOSITE_MARGIN, filmstripWidth } from '@/shared/capture-limits'
 import { FrameboardError } from '@/shared/errors'
-import { type Device, topInset } from '@/shared/frame-device'
+import { type Device, topInset, type Turn } from '@/shared/frame-device'
 import { drawnExtent, linkedBoxes } from '@/shared/frame-widths'
 import type { FrameRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
@@ -386,7 +386,12 @@ export async function captureMotionImages(
       if ('filmstrip' in timing) {
         const strip = await renderFilmstrip(browser, {
           baseUrl,
-          frame: { ref: frame.ref, box: view, device: viewDevice(frame, view) },
+          frame: {
+            ref: frame.ref,
+            box: view,
+            device: viewDevice(frame, view),
+            turn: frame.turn,
+          },
           theme,
           scale,
           count: timing.filmstrip,
@@ -413,6 +418,7 @@ export async function captureMotionImages(
         ref: frame.ref,
         view,
         device: viewDevice(frame, view),
+        turn: frame.turn,
         theme,
         scale,
         motionTimeoutMs,
@@ -473,6 +479,7 @@ export async function renderFilmstrip(
       box: { width: number; height: number }
       /** The device the strip's page draws under, none when absent. */
       device?: Device | null
+      turn?: Turn
     }
     theme: Theme
     scale?: number
@@ -487,6 +494,7 @@ export async function renderFilmstrip(
     ref: frame.ref,
     view,
     device: frame.device,
+    turn: frame.turn,
     theme,
     scale,
     motionTimeoutMs,
@@ -518,6 +526,7 @@ async function holdShots(
     ref,
     view,
     device,
+    turn,
     theme,
     scale,
     motionTimeoutMs,
@@ -528,6 +537,7 @@ async function holdShots(
     view: { width: number; height: number }
     /** The device the view draws its page under, a phone's status bar shown over each shot. */
     device?: Device | null
+    turn?: Turn
     theme: Theme
     scale: number
     motionTimeoutMs: number
@@ -543,7 +553,7 @@ async function holdShots(
   const opened = await openFrame(browser, {
     baseUrl,
     ref,
-    box: pageSize(view, device),
+    box: pageSize(view, device, turn),
     theme,
     scale,
     motion: 'hold',
@@ -552,7 +562,7 @@ async function holdShots(
     // Each theme's context seeks on its own, so no shot waits on another.
     const motion = await findMotion(opened.page, ref, motionTimeoutMs)
     const colors =
-      topInset(device) > 0 ? await readPageColors(opened.page) : null
+      topInset(device, turn) > 0 ? await readPageColors(opened.page) : null
     const held: { held: number; bytes: Buffer }[] = []
     for (const moment of moments(motion)) {
       const at = await seekMotion(opened.page, motion, moment)
@@ -597,7 +607,7 @@ async function renderFrame(
   const opened = await openFrame(browser, {
     baseUrl,
     ref: frame.ref,
-    box: pageSize(box, device),
+    box: pageSize(box, device, frame.turn),
     theme,
     scale,
   })
@@ -608,7 +618,7 @@ async function renderFrame(
         : await opened.page.evaluate(scrollAndSettle, scroll)
     const shot = await opened.page.screenshot(SCREENSHOT)
     const bytes =
-      topInset(device) > 0
+      topInset(device, frame.turn) > 0
         ? await underStatusBar(
             browser,
             shot,

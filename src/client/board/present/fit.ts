@@ -3,6 +3,7 @@ import {
   bezelReach,
   type Device,
   shownBox,
+  type Turn,
 } from '@/shared/frame-device'
 
 /** The most a frame grows, so a small one draws at twice its size rather than filling the room. */
@@ -30,13 +31,15 @@ export function presentScale(
     box: { width: number; height: number }
     device?: Device | null
     scroll?: boolean
+    hugHeight?: boolean
+    turn?: Turn
   },
   room: { width: number; height: number },
 ): number {
   const { width, height } = shownBox(frame)
   const box = { x: 0, y: 0, width, height }
-  const body = bezelBox(box, frame.device)
-  const reach = bezelReach(box, frame.device)
+  const body = bezelBox(box, frame.device, frame.turn)
+  const reach = bezelReach(box, frame.device, frame.turn)
   const centerX = body.x + body.width / 2
   const centerY = body.y + body.height / 2
   const halfWidth = Math.max(centerX - reach.x, reach.x + reach.width - centerX)

@@ -67,10 +67,10 @@ export type Touching = (rect: Box) => { key: ElementKey; box: Box }[]
  */
 export async function elementsIn(
   container: ParentNode,
-  frame: Pick<FrameRecord, 'ref' | 'box' | 'device'>,
+  frame: Pick<FrameRecord, 'ref' | 'box' | 'device' | 'turn'>,
   tree: ElementTree | null,
 ): Promise<Touching> {
-  const page = pageBox(frame.box, frame.device)
+  const page = pageBox(frame.box, frame.device, frame.turn)
   const iframe = container.querySelector<HTMLIFrameElement>(
     `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
   )

@@ -61,7 +61,7 @@ function FrameBindings({
 }) {
   const bindings = useBindingMeasures(container, frame.ref)
   // A control's box reads in the page, which starts under a phone's status bar.
-  const { x, y } = pageBox(frame.box, frame.device)
+  const { x, y } = pageBox(frame.box, frame.device, frame.turn)
   return bindings.map((binding) => (
     <div
       key={binding.key}

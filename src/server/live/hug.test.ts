@@ -103,6 +103,32 @@ describe('createHug', () => {
     expect(entries().hero).toMatchObject({ width: 466, height: 1000 + 54 })
   })
 
+  it('measures a turned phone frame at its turned width with no status bar', async () => {
+    board = boardOf({
+      hero: {
+        width: 844,
+        height: 390,
+        hugHeight: true,
+        showDevice: true,
+        turn: 'left',
+        upright: { width: 390, height: 2328 },
+      },
+    })
+    const boxes: { width: number; height: number }[] = []
+    const hug = createHug({
+      root: board.root,
+      measure: async (frame: FrameRecord) => {
+        boxes.push({ width: frame.box.width, height: frame.box.height })
+        return sized(844, 1500)
+      },
+    })
+
+    await hug.now(await scanBoard(board.root), [HERO])
+
+    expect(boxes).toEqual([{ width: 844, height: 390 }])
+    expect(entries().hero).toMatchObject({ width: 844, height: 1500 })
+  })
+
   it('measures a phone frame with its device off at its whole box', async () => {
     board = boardOf({ hero: { width: 466, height: 678, hugHeight: true } })
     const hug = createHug({

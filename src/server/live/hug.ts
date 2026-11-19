@@ -160,12 +160,12 @@ async function measureParts(
   const size: MeasuredSize = {}
   if (parts !== 'linked') {
     // A phone's page starts under its status bar, so the box holds the page and the bar.
-    const page = pageBox(frame.box, frame.device)
+    const page = pageBox(frame.box, frame.device, frame.turn)
     const own = await measure({ ...frame, box: page })
     if (!own.empty) {
       Object.assign(size, {
         width: own.width,
-        height: own.height + topInset(frame.device),
+        height: own.height + topInset(frame.device, frame.turn),
       })
     }
   }

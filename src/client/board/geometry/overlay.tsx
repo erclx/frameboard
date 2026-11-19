@@ -98,8 +98,8 @@ function Selection({
   // The chips stand past any device body drawn below the selection's box.
   const below = Math.max(
     0,
-    ...frames.map(({ box, device }) => {
-      const body = bezelBox(box, device)
+    ...frames.map(({ box, device, turn }) => {
+      const body = bezelBox(box, device, turn)
       return body.y + body.height - (bounds.y + bounds.height)
     }),
   )

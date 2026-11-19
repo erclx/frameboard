@@ -28,7 +28,7 @@ async function askGap(
     `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
   )
   if (!iframe || shownHashOf(iframe) === null) return null
-  const page = pageBox(frame.box, frame.device)
+  const page = pageBox(frame.box, frame.device, frame.turn)
   const point = { x: at.x - page.x, y: at.y - page.y }
   const shown = await request(
     iframe,

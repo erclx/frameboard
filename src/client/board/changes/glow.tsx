@@ -61,7 +61,7 @@ export function ChangeGlow({ frames, container }: ChangeGlowProps) {
         previewOf(frame.ref),
       )
       // An element's box reads in its page, which starts under a phone's status bar.
-      const top = topInset(frame.device)
+      const top = topInset(frame.device, frame.turn)
       const boxes = change.whole
         ? [{ x: 0, y: 0, width, height }]
         : ((

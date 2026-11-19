@@ -2,7 +2,7 @@ import type { Browser } from 'playwright-core'
 
 import { finishAnimations, settleResize } from '@/server/capture/fit'
 import { openFrame, pageSize } from '@/server/capture/render'
-import type { Device } from '@/shared/frame-device'
+import type { Device, Turn } from '@/shared/frame-device'
 import type { ProjectChecks } from '@/shared/records/board'
 import type { Finding } from '@/shared/records/check'
 import { type Theme, THEMES } from '@/shared/theme'
@@ -33,7 +33,7 @@ export interface CheckRenderedOptions {
   /** The board folder, which the frame's own sheets are read from. */
   root: string
   /** The frame at the box it shows, with the device its page draws under, none at a linked width. */
-  frame: RenderedTarget & { device?: Device | null }
+  frame: RenderedTarget & { device?: Device | null; turn?: Turn }
   config: ProjectChecks
 }
 
@@ -46,8 +46,8 @@ export async function checkRendered(
   { baseUrl, root, frame: shown, config }: CheckRenderedOptions,
 ): Promise<Finding[]> {
   // A phone's page starts under its status bar, so the rules read that page.
-  const { device, ...target } = shown
-  const frame = { ...target, box: pageSize(target.box, device) }
+  const { device, turn, ...target } = shown
+  const frame = { ...target, box: pageSize(target.box, device, turn) }
   const [project = '', page = '', name = ''] = frame.ref.split('/')
   const source = readFrame({ root, project, page, name })
   const byTheme = new Map<Theme, Finding[]>()
