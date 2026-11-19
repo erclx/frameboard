@@ -1,11 +1,15 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
 import { cn } from '@/client/lib/cn'
+import {
+  FRAME_ALLOW,
+  framePageUrl,
+  useFramePort,
+} from '@/client/live/frame-url'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import { linkedBoxes } from '@/shared/frame-widths'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
-import { frameThemeUrl } from '@/shared/theme'
 
 import { FINDINGS_MARK, severityOf } from '../findings/level'
 import { FindingsCount } from '../findings/mark'
@@ -82,12 +86,18 @@ export function LinkedBox({
   if (loaded.version !== version || loaded.live !== live) {
     setLoaded({ ref: frame.ref, version, live })
   }
+  const framePort = useFramePort()
   const src = useMemo(
     () =>
       loaded.live
-        ? frameThemeUrl(loaded.ref, frameTheme(loaded.ref), loaded.version)
+        ? framePageUrl(
+            framePort,
+            loaded.ref,
+            frameTheme(loaded.ref),
+            loaded.version,
+          )
         : null,
-    [loaded],
+    [loaded, framePort],
   )
 
   useThemeInFrame(iframe, theme, live)
@@ -138,6 +148,7 @@ export function LinkedBox({
           ref={iframe}
           title={label}
           src={src ?? undefined}
+          allow={FRAME_ALLOW}
           style={{ colorScheme: theme }}
           className="block size-full border-0 bg-[color:Canvas]"
         />

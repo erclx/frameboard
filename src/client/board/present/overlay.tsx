@@ -9,6 +9,11 @@ import {
 import { createPortal } from 'react-dom'
 
 import { type Action, findAction, isEnabled } from '@/client/actions/registry'
+import {
+  FRAME_ALLOW,
+  framePageUrl,
+  useFramePort,
+} from '@/client/live/frame-url'
 import { useLive } from '@/client/live/store'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import {
@@ -20,7 +25,6 @@ import {
   turnsWith,
 } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
-import { frameThemeUrl } from '@/shared/theme'
 
 import { request, subscribe } from '../bridge/channel'
 import { followPage } from '../bridge/shown'
@@ -602,7 +606,7 @@ function useStepWalk(
 }
 
 /**
- * One frame's live page through the same `/frames/` address the canvas
+ * One frame's live page through the same frame-port address the canvas
  * loads, in the theme the frame shows on the board, never a capture, inside
  * its device with the page under a phone's status bar.
  */
@@ -650,9 +654,10 @@ function PresentedFrame({
   const colors = usePageColors(iframe, statusBar > 0, theme)
   const version = useLive((state) => state.reloads[frame.ref] ?? 0)
   // Read at load, since a later flip rewrites the root rather than restart the page.
+  const framePort = useFramePort()
   const src = useMemo(
-    () => frameThemeUrl(frame.ref, frameTheme(frame.ref), version),
-    [frame.ref, version],
+    () => framePageUrl(framePort, frame.ref, frameTheme(frame.ref), version),
+    [frame.ref, version, framePort],
   )
   useEffect(() => {
     const element = iframe.current
@@ -682,7 +687,8 @@ function PresentedFrame({
       <iframe
         ref={iframe}
         title={frame.name}
-        src={src}
+        src={src ?? undefined}
+        allow={FRAME_ALLOW}
         aria-busy={waiting || undefined}
         style={{ colorScheme: theme, ...page }}
         // Hidden until its steps are hidden, so a stepped slide never flashes whole.

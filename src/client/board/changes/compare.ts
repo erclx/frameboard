@@ -9,6 +9,7 @@ import {
   registerActions,
 } from '@/client/actions/registry'
 import { toast } from '@/client/components/ui/toast'
+import { heldFramePath } from '@/client/live/frame-url'
 import { dropBase, type UnseenStore, unseenStore } from '@/client/live/unseen'
 import { frameThemeUrl } from '@/shared/theme'
 
@@ -51,9 +52,10 @@ export type VersionHeld = (ref: string, hash: string) => Promise<boolean>
 
 const versionHeld: VersionHeld = async (ref, hash) => {
   try {
-    const response = await fetch(frameThemeUrl(ref, 'light', undefined, hash), {
-      cache: 'no-store',
-    })
+    const response = await fetch(
+      heldFramePath(frameThemeUrl(ref, 'light', undefined, hash)),
+      { cache: 'no-store' },
+    )
     return response.ok
   } catch {
     return false

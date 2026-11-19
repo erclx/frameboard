@@ -132,8 +132,8 @@ describe('LinkedBoxes', () => {
         box.querySelector('iframe')?.getAttribute('src'),
       ),
     ).toEqual([
-      '/frames/studio/home/hero.html?theme=light&v=3',
-      '/frames/studio/home/hero.html?theme=light&v=3',
+      `${location.origin}/frames/studio/home/hero.html?theme=light&v=3`,
+      `${location.origin}/frames/studio/home/hero.html?theme=light&v=3`,
     ])
   })
 

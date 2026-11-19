@@ -58,13 +58,17 @@ function agentChange(overrides: Partial<FrameChange> = {}): FrameChange {
   }
 }
 
-/** The server holding the versions named, answering 404 for every other. */
+/**
+ * The frame port holding the versions named, answering 404 for every other
+ * and for any ask that reaches the board's own port instead.
+ */
 function serverHolding(...hashes: string[]) {
+  const framePort = `http://${location.hostname}:${location.port}/frames/`
   vi.stubGlobal('fetch', async (input: RequestInfo | URL) => {
-    const at = new URL(String(input), location.href).searchParams.get('at')
-    return new Response(null, {
-      status: at && hashes.includes(at) ? 200 : 404,
-    })
+    const asked = String(input)
+    const at = new URL(asked).searchParams.get('at')
+    const held = asked.startsWith(framePort) && at && hashes.includes(at)
+    return new Response(null, { status: held ? 200 : 404 })
   })
 }
 

@@ -2,8 +2,12 @@ import { GitCompareArrows } from 'lucide-react'
 import { type KeyboardEvent, useEffect, useMemo, useRef } from 'react'
 
 import { cn } from '@/client/lib/cn'
+import {
+  FRAME_ALLOW,
+  framePageUrl,
+  useFramePort,
+} from '@/client/live/frame-url'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
-import { frameThemeUrl } from '@/shared/theme'
 
 import { useThemeInFrame } from '../frame-theme'
 import {
@@ -32,10 +36,11 @@ export function CompareView({ frameRef: ref, name, hash }: CompareViewProps) {
   const split = useCompare((state) => state.split)
   const theme = useFrameTheme(ref)
   const iframe = useRef<HTMLIFrameElement>(null)
+  const framePort = useFramePort()
   // Read once per version, so a theme switch never reloads the page.
   const src = useMemo(
-    () => frameThemeUrl(ref, frameTheme(ref), undefined, hash),
-    [ref, hash],
+    () => framePageUrl(framePort, ref, frameTheme(ref), undefined, hash),
+    [ref, hash, framePort],
   )
 
   useThemeInFrame(iframe, theme)
@@ -56,7 +61,8 @@ export function CompareView({ frameRef: ref, name, hash }: CompareViewProps) {
         <iframe
           ref={iframe}
           title={`${name} before`}
-          src={src}
+          src={src ?? undefined}
+          allow={FRAME_ALLOW}
           tabIndex={-1}
           style={{ colorScheme: theme }}
           className="block size-full border-0 bg-[color:Canvas]"
