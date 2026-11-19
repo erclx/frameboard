@@ -34,10 +34,9 @@ function collapsesBreaks(element: HTMLElement): boolean {
 }
 
 /**
- * Opens an element's text for typing, answering the open edit or null, or
- * only the run at `at` beside child elements. A break is a newline, never a
- * `<br>`, and a reload ends the edit with nothing to write. An element with
- * no text opens only when `empty` asks, as a placed Text does.
+ * Opens an element's text, or only the run at `at` beside child elements,
+ * for typing. A break is a newline, never a `<br>`, a reload ends the edit
+ * unwritten, and an element with no text opens only when `empty` asks.
  */
 export function openTextEdit(
   found: Element,

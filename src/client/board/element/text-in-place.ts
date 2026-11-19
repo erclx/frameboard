@@ -212,11 +212,9 @@ export const newTextStore = createStore<{ key: ElementKey | null }>()(() => ({
 }))
 
 /**
- * Opens a placed Text, empty, for typing once its frame shows the key's
- * bytes, and stops waiting once the selection moves on. It ends written,
- * or blank and handed to `remove` once, as a selection moving on before it
- * opens, a cancel, or an end with no text leaves it. The answer reads the
- * edit that opened, as one opened at once is read.
+ * Opens a placed Text, empty, once its frame shows the key's bytes. It ends
+ * written, or blank and handed to `remove` once, by an end with no text, a
+ * cancel, or a selection moving on before it opens.
  */
 export function editTextWhenShown(
   container: HTMLElement,
