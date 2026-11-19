@@ -48,7 +48,7 @@ export interface DraggedResult {
   request: SaveRequest
   /** The stem the saved file and a frame made for it take, as the save names it. */
   name: string
-  /** The size the source reports, null when it reports none. */
+  /** The size in pixels the source reports, null when it reports none, as for every model. */
   natural: { width: number; height: number } | null
 }
 

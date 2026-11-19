@@ -17,14 +17,29 @@ import {
   licensesFor,
   searchImages,
 } from '@/server/sourcing/openverse'
-import { downloadImage, savedStem, saveImage } from '@/server/sourcing/save'
+import {
+  DEFAULT_MODEL_SIZE,
+  fetchModel,
+  modelById,
+  POLYHAVEN_SOURCE,
+  polyhavenLicense,
+  searchModels,
+} from '@/server/sourcing/polyhaven'
+import {
+  downloadImage,
+  savedStem,
+  saveImage,
+  saveModel,
+} from '@/server/sourcing/save'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
 import { isValidName } from '@/shared/names'
 import type {
   ImageFind,
   ImageGenerate,
   ImageOffer,
+  ModelFind,
   SavedImage,
+  SavedModel,
 } from '@/shared/records/sourcing'
 
 import { type Access, requireWriter } from '../access/guard'
@@ -35,6 +50,12 @@ export const FIND_TIMEOUT_MS = 15_000
 
 /** How long each request of a save, its lookup and its download, may take. */
 export const SAVE_TIMEOUT_MS = 60_000
+
+/**
+ * How long each request of a model save may take, longer than an image's,
+ * since a model's buffer and textures download before packing.
+ */
+export const MODEL_SAVE_TIMEOUT_MS = 180_000
 
 /** How long a provider may take, so a provider that never answers frees the button. */
 export const GENERATE_TIMEOUT_MS = 120_000
@@ -61,6 +82,11 @@ const saveBodySchema = z.object({
   id: z.string().min(1).max(200),
   query: queryLimit,
   credited: z.boolean().default(false),
+})
+
+const modelSaveBodySchema = z.object({
+  id: z.string().min(1).max(200),
+  query: queryLimit,
 })
 
 const generateBodySchema = z.object({
@@ -97,6 +123,7 @@ export function sourcingRoutes(
   const base = '/api/projects/:project/sourcing'
   // Concurrent saves of one result share one write, so a double press lands one file.
   const saving = new Map<string, Promise<SavedImage>>()
+  const savingModel = new Map<string, Promise<SavedModel>>()
   let generating = false
 
   app.onError((error, c) => answer(error, c))
@@ -134,6 +161,40 @@ export function sourcingRoutes(
         () => saving.delete(key),
       )
       saving.set(key, pending)
+    }
+    return c.json({ ok: true, data: await pending })
+  })
+
+  app.get(`${base}/models`, async (c) => {
+    projectOf(root, c.req.param('project'))
+    const query = queryLimit.safeParse(c.req.query('q') ?? '')
+    if (!query.success) {
+      throw new FrameboardError(
+        'usage',
+        'Send ?q=<what the model shows>, up to 200 characters.',
+      )
+    }
+    const record: ModelFind = {
+      version: 1,
+      query: query.data,
+      source: { ...POLYHAVEN_SOURCE },
+      results: await searchModels(query.data, timed(send, FIND_TIMEOUT_MS)),
+    }
+    return c.json({ ok: true, data: record })
+  })
+
+  app.post(`${base}/models/save`, authorized, async (c) => {
+    const project = projectOf(root, c.req.param('project'))
+    const body = await parseBody(c.req.raw, modelSaveBodySchema)
+    const key = JSON.stringify([project.name, body.id])
+    let pending = savingModel.get(key)
+    if (pending === undefined) {
+      pending = saveFoundModel(
+        project,
+        body,
+        timed(send, MODEL_SAVE_TIMEOUT_MS),
+      ).finally(() => savingModel.delete(key))
+      savingModel.set(key, pending)
     }
     return c.json({ ok: true, data: await pending })
   })
@@ -222,6 +283,27 @@ async function saveFound(
     savedStem(undefined, body.query),
     await downloadImage(image.url, send),
     foundLicense(image, body.query, new Date()),
+  )
+}
+
+async function saveFoundModel(
+  project: { name: string; path: string },
+  body: z.infer<typeof modelSaveBodySchema>,
+  send: typeof fetch,
+): Promise<SavedModel> {
+  // Read again by id, so the license file records what Poly Haven holds rather than what a tab sent.
+  const model = await modelById(body.id, send)
+  const packed = await fetchModel(model.id, DEFAULT_MODEL_SIZE, send)
+  return saveModel(
+    project,
+    savedStem(undefined, body.query, 'model'),
+    packed.bytes,
+    polyhavenLicense(
+      model,
+      body.query,
+      { url: packed.url, size: DEFAULT_MODEL_SIZE },
+      new Date(),
+    ),
   )
 }
 

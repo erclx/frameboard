@@ -7,6 +7,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { polyhaven, rawModel } from '../../../test/support/polyhaven'
 import { sourcingRoutes, type SourcingRoutesOptions } from './sourcing'
 
 const TOKEN = 'a'.repeat(64)
@@ -247,6 +248,116 @@ describe('sourcingRoutes', () => {
       const response = await routes({ send }).request(
         '/api/projects/webapp/sourcing/save',
         post({ id: 'c3', query: 'house' }),
+      )
+
+      expect(response.status).toBe(404)
+      expect((await response.json()).error.code).toBe('result-not-found')
+      expect(assetFiles()).toEqual([])
+    })
+  })
+
+  describe('GET models', () => {
+    it('answers Poly Haven models matching the query, naming Poly Haven, for a reader too', async () => {
+      const { send } = polyhaven({
+        wooden_stool_01: rawModel(),
+        office_chair: rawModel({ name: 'Office Chair', tags: ['chair'] }),
+      })
+
+      const response = await routes({ send }).request(
+        '/api/projects/webapp/sourcing/models?q=chair',
+      )
+
+      expect(response.status).toBe(200)
+      const { data } = await response.json()
+      expect(data.query).toBe('chair')
+      expect(data.source).toEqual({
+        name: 'Poly Haven',
+        url: 'https://polyhaven.com',
+      })
+      expect(data.results.map((each: { id: string }) => each.id)).toEqual([
+        'office_chair',
+      ])
+      expect(data.results[0].polycount).toBe(10946)
+    })
+
+    it('refuses an empty query as usage without asking Poly Haven', async () => {
+      const { send, asked } = polyhaven({})
+
+      const response = await routes({ send }).request(
+        '/api/projects/webapp/sourcing/models?q=',
+      )
+
+      expect(response.status).toBe(400)
+      expect((await response.json()).error.code).toBe('usage')
+      expect(asked).toEqual([])
+    })
+  })
+
+  describe('POST models/save', () => {
+    it('refuses a reader with 401 and writes nothing', async () => {
+      const { send, asked } = polyhaven({ wooden_stool_01: rawModel() })
+
+      const response = await routes({ send }).request(
+        '/api/projects/webapp/sourcing/models/save',
+        post({ id: 'wooden_stool_01', query: 'stool' }, {}),
+      )
+
+      expect(response.status).toBe(401)
+      expect(asked).toEqual([])
+      expect(assetFiles()).toEqual([])
+    })
+
+    it("saves a 1k GLB under the query's name with a CC0 license from Poly Haven", async () => {
+      const { send } = polyhaven({ wooden_stool_01: rawModel() })
+
+      const response = await routes({ send }).request(
+        '/api/projects/webapp/sourcing/models/save',
+        post({ id: 'wooden_stool_01', query: 'Wooden Stool' }),
+      )
+
+      expect(response.status).toBe(200)
+      const { data } = await response.json()
+      expect(data.path).toBe('wooden-stool.glb')
+      expect(assetFiles()).toEqual([
+        'wooden-stool.glb',
+        'wooden-stool.glb.license.json',
+      ])
+      const license = JSON.parse(
+        readFileSync(
+          join(board.root, 'webapp/assets/wooden-stool.glb.license.json'),
+          'utf8',
+        ),
+      )
+      expect(license).toMatchObject({
+        source: 'polyhaven',
+        id: 'wooden_stool_01',
+        query: 'Wooden Stool',
+        license: 'cc0',
+        size: '1k',
+      })
+    })
+
+    it('lands one file for two saves of one model sent together', async () => {
+      const { send } = polyhaven({ wooden_stool_01: rawModel() })
+      const app = routes({ send })
+      const save = () =>
+        app.request(
+          '/api/projects/webapp/sourcing/models/save',
+          post({ id: 'wooden_stool_01', query: 'stool' }),
+        )
+
+      const [first, second] = await Promise.all([save(), save()])
+
+      expect([first.status, second.status]).toEqual([200, 200])
+      expect(assetFiles()).toEqual(['stool.glb', 'stool.glb.license.json'])
+    })
+
+    it('refuses an id Poly Haven holds no model under, writing nothing', async () => {
+      const { send } = polyhaven({})
+
+      const response = await routes({ send }).request(
+        '/api/projects/webapp/sourcing/models/save',
+        post({ id: 'nothing_here', query: 'stool' }),
       )
 
       expect(response.status).toBe(404)

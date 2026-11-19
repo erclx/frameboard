@@ -33,7 +33,7 @@ Owns the Assets tab, whose Files, Find, and Generate row sits in `tab.tsx`. File
 
 ### `src/client/board/assets/find/`
 
-Owns Find, an Openverse search run on Enter, with a filter menu at the end of the search field whose credited licenses item searches again. A newer search aborts the older, so an older answer never replaces it. `saveStore` in `../sourcing.ts` keys each save by project and Openverse id, so a Save click and a drag of one result land one file.
+Owns Find, searching Openverse's images or Poly Haven's CC0 models, picked in the field's filter menu, and a model saves as one 1k GLB. A newer search aborts the older. `saveStore` in `../sourcing.ts` keys each save by project, kind, and source id, so a Save click and a drag of one result land one file.
 
 - A result's thumbnail loads straight from the source in the board's chrome, over http or https alone, and falls back to its grey block
 - Save keeps its Saved mark once the file lands, so the grid never jumps, and a read-only tab lists results with Save off and says why

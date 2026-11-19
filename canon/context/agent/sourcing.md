@@ -60,4 +60,4 @@ Owns `model find`, which takes the flags `image find` takes plus `--size`, resol
 - `listAssets` skips `*.license.json`, so the Assets tab and the usage counts never draw a license file as a tile
 - A CLI test hands the network in through `cli(argv, { fetch })`, which reaches the verbs as `CliIo.fetch`, and the fake Poly Haven lives in `test/support/polyhaven.ts`
 - The board's `POST sourcing/generate` answers 403 `generate-off` until `sourcingRoutes` takes `generate: true`, since a frame's script still passes the writer guard and would spend the key
-- A `serve` child in an e2e spec reaches Openverse through `e2e/support/openverse-stub.mjs`, preloaded with `NODE_OPTIONS=--import`, since the server's `fetch` is out of the spec's reach
+- An e2e `serve` child reaches Openverse and Poly Haven through `e2e/support/openverse-stub.mjs` and `polyhaven-stub.mjs`, preloaded by `NODE_OPTIONS=--import`, past the spec's reach
