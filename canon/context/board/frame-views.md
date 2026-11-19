@@ -37,3 +37,7 @@ Owns `rail.tsx`, the rail a scroll frame draws in Edit 8px past its right edge, 
 - The rail draws inside the frame's box and each linked box, and only while the page is taller than its box and readable, so a page on another origin draws none
 - A frame's rail shows on hover or selection, and a linked box's while its frame is selected, since the pointer marks the frame alone
 - The scroll offset lives on the iframe's window and is never written to the layout or to undo
+
+## Gotchas
+
+- A fold, a turn, or naming the foldable that widens a body pushes each frame to its right on its rows by the growth, in one write and undo step, and a shrink or a bare show pushes nothing

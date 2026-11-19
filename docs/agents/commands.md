@@ -64,6 +64,7 @@ The older `phone` and `tablet` read as `on`, and `none` as `off`. A frame can al
 - `--pose <closed|half|open>` folds it, setting the box to 466 by 678 closed and 890 by 626 half or open, sides swapped while turned, and writes `layout.json` alone
 - `--no-foldable` hands the pick back to the width, and `--pose` on a frame naming no foldable is refused as `usage`
 - `list --json` reports `device` as `foldable` and adds `pose`
+- A fold or a turn that widens the body shifts each frame to its right on its rows by the growth, so re-run `list --json` before placing a frame beside them
 
 ## Images
 

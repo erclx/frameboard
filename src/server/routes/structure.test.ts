@@ -747,7 +747,10 @@ describe('structureRoutes', () => {
       )
       app = structureRoutes(board.root, ACCESS, history)
 
-      await post('/api/frame/rename', { ref: 'studio/home/hero', name: 'hero' })
+      await post('/api/frame/rename', {
+        ref: 'studio/home/hero',
+        name: 'hero',
+      })
 
       expect(wrote).toEqual([undefined])
     })
@@ -792,6 +795,33 @@ describe('structureRoutes', () => {
       expect(layout().hero).not.toHaveProperty('showDevice')
       expect(layout().mobile).not.toHaveProperty('showDevice')
       expect(readFileSync(frameFile('hero'))).toEqual(bytes)
+    })
+
+    it('turns two phones in a row as one step, the first pushing the second, and undoes both', async () => {
+      const held = pageLayout()
+      Object.assign(held.frames.hero, {
+        width: 390,
+        height: 844,
+        showDevice: true,
+      })
+      Object.assign(held.frames.mobile, { x: 500, showDevice: true })
+      writeFileSync(
+        join(board.root, 'studio/home/layout.json'),
+        JSON.stringify(held),
+      )
+
+      await post('/api/frame/device', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+        turn: 'left',
+      })
+      expect(layout().hero).toMatchObject({ turn: 'left', width: 844 })
+      expect(layout().mobile.x).toBeGreaterThan(500)
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(layout().hero).toMatchObject({ x: 0, width: 390 })
+      expect(layout().mobile).toMatchObject({ x: 500, width: 390 })
+      expect(layout().mobile).not.toHaveProperty('turn')
     })
 
     it('folds a named foldable as one step and unfolds it on undo', async () => {
