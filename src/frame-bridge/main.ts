@@ -17,6 +17,7 @@ import { liveElementHandlers } from './live-element'
 import { measureHandlers } from './measure'
 import { mediaHandlers } from './media'
 import { modelHandlers } from './model'
+import { motionHandlers } from './motion'
 import { presentHandlers } from './present'
 import { previewHandlers } from './preview'
 import { stepHandlers } from './steps'
@@ -47,6 +48,7 @@ const handlers: Handlers = {
   ...measureHandlers,
   ...mediaHandlers,
   ...modelHandlers,
+  ...motionHandlers,
   ...presentHandlers,
   ...stepHandlers,
   'element-box': (address) => {
