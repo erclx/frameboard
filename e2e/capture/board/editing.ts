@@ -50,7 +50,7 @@ function freeBoxOnHero(left: number): (page: Page) => Promise<void> {
  * `elementInFrame` does, then Shift-clicks each of the rest once the one before
  * draws its outline, and marks the page once all of them draw.
  */
-function elementsInFrame(
+export function elementsInFrame(
   ref: string,
   selectors: readonly string[],
 ): (page: Page) => Promise<void> {

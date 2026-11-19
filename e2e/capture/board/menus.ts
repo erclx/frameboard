@@ -3,6 +3,7 @@ import { type Page } from '@playwright/test'
 import type { ListResult } from '@/shared/records/list'
 
 import type { CaptureCase } from '../types'
+import { elementsInFrame } from './editing'
 import {
   asWriter,
   AVATAR,
@@ -288,6 +289,53 @@ export function menusCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           asWriter,
           menuOn({ row: 'home' }),
+          readyWhen('[data-slot="context-menu-content"]'),
+        ),
+      ),
+    },
+    {
+      section: 'menu-pages-space',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          menuOn({ space: 'pages' }),
+          readyWhen('[data-slot="context-menu-content"]'),
+        ),
+      ),
+    },
+    {
+      section: 'menu-layers-space',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          menuOn({ space: 'layers' }),
+          readyWhen('[data-slot="context-menu-content"]'),
+        ),
+      ),
+    },
+    {
+      // Hero's headline and caption share a parent, so two of them leave Use auto layout leading the menu.
+      section: 'menu-element-wrap',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          elementsInFrame('webapp/home/hero', ['h1', 'p']),
+          menuOn({ element: true, several: true }),
           readyWhen('[data-slot="context-menu-content"]'),
         ),
       ),
