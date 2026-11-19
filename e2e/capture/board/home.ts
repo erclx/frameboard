@@ -309,10 +309,13 @@ async function renameClientFolder(page: Page): Promise<void> {
   }, ROW_FRAMES)
 }
 
-/** A card well drawing a capture, which the home case waits on beside `CARD_UNCAPTURED`. */
-const CARD_CAPTURED = '[data-skeleton] image'
+/**
+ * A card well whose capture has loaded, which the home case waits on beside
+ * `CARD_UNCAPTURED`, since a box with its image still loading pulses grey.
+ */
+const CARD_CAPTURED = '[data-skeleton] rect[data-capture="drawn"]'
 
-/** A frame in a card's well still showing its box alone. */
+/** A frame in a card's well showing still grey, its frame having no capture. */
 const CARD_UNCAPTURED = 'main li [data-skeleton] g:not(:has(image))'
 
 /** The hint on the one home item a held project is over. */
