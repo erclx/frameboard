@@ -1060,7 +1060,8 @@ function pushAlong(layout: PageLayout, name: string, before: Placement): void {
   const growth = now.x + now.width - edge
   if (growth <= 0) return
   const pushed = layout.names
-    .filter((other) => other !== name)
+    // A frame with no entry already takes its place past the grown body.
+    .filter((other) => other !== name && layout.hasEntry(other))
     .map((other) => ({ other, placement: layout.placement(other) }))
     .filter(({ placement }) => {
       const body = bodyOf(placement)

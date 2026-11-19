@@ -405,6 +405,23 @@ describe('a turned phone or tablet', () => {
       expect(layout('webapp/home').frames.side.locked).toBe(true)
     })
 
+    it('leaves a frame with no entry to its computed place past the grown body', async () => {
+      const root = open()
+      writeFileSync(
+        join(root, 'webapp/home/side.html'),
+        file('webapp/home/about.html'),
+      )
+      const page = layout('webapp/home')
+      delete page.frames.about
+      page.frames.hero = { ...page.frames.hero, ...CLOSED }
+      writeFileSync(join(root, 'webapp/home/layout.json'), JSON.stringify(page))
+
+      await setFrameDevice(root, HERO, undefined, { cwd: root, pose: 'open' })
+
+      expect(layout('webapp/home').frames).not.toHaveProperty('side')
+      expect(layout('webapp/home').frames).not.toHaveProperty('about')
+    })
+
     it('leaves a frame below its rows, or to its left, where it stands', async () => {
       const root = open()
       writeFileSync(
