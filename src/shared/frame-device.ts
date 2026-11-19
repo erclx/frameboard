@@ -265,10 +265,9 @@ export function insetsPage(
 }
 
 /**
- * The page's box inside a frame's box, less the status bar while an upright
- * phone shows and less a side inset on each short side while a phone is
- * turned. A frame's box keeps the screen's size, and every surface reads the
- * page through this.
+ * The page's box inside a frame's box, less an upright phone's status bar or
+ * a turned phone's side insets. A frame's box keeps the screen's size, and
+ * every surface reads the page through this.
  */
 export function pageBox(
   box: Box,
