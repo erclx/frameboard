@@ -188,6 +188,8 @@ function SideStrips({
             [side]: 0,
             width,
             background: colors?.fill ?? 'Canvas',
+            // A copy one unit toward the page closes the seam two anti-aliased edges leave at a fractional zoom.
+            boxShadow: `${side === 'left' ? 1 : -1}px 0 0 0 ${colors?.fill ?? 'Canvas'}`,
             colorScheme: theme,
             borderRadius:
               side === 'left'
