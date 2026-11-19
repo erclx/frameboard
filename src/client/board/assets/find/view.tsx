@@ -78,10 +78,8 @@ interface FindViewProps {
 }
 
 /**
- * Find in the Assets tab: an Openverse search for public domain images,
- * widened to credited licenses, or a Poly Haven search for CC0 models, both
- * picked from the filter menu in the search field. A newer search abandons an
- * older one, so an older answer never replaces a newer.
+ * Find in the Assets tab, searching Openverse's images or Poly Haven's CC0
+ * models. A newer search abandons an older one, so an older answer never replaces a newer.
  */
 export function FindView({
   project,
@@ -206,10 +204,8 @@ export function FindView({
 }
 
 /**
- * The kind and the license choice, folded into one control at the end of the
- * search field so results start right under it. The license choice greys out
- * under Models, since every Poly Haven model is CC0, rather than leaving the
- * menu so its rows hold still.
+ * The kind and the license choice in one control at the field's end. The
+ * license choice greys out under Models rather than leaving, so the rows hold still.
  */
 function FilterMenu({
   kind,

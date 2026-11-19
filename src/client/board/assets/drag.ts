@@ -44,10 +44,7 @@ const RESULT = Symbol('found-result')
 
 /** A found result a drag carries, not yet in `assets/`. */
 export interface DraggedResult {
-  /**
-   * What saves it, the same request Save sends, so a drag and a click share
-   * one file. Its `kind` picks the route, so a model lands as a GLB.
-   */
+  /** What saves it, the same request Save sends, so a drag and a click share one file. */
   request: SaveRequest
   /** The stem the saved file and a frame made for it take, as the save names it. */
   name: string
