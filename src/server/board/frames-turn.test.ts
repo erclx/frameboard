@@ -203,8 +203,11 @@ describe('a turned phone or tablet', () => {
         journal,
       })
 
-      expect(calls).toHaveLength(1)
-      expect(calls[0]).toMatchObject({
+      const hero = calls.filter(
+        (call) => call.kind === 'entry' && call.frame === 'hero',
+      )
+      expect(hero).toHaveLength(1)
+      expect(hero[0]).toMatchObject({
         kind: 'entry',
         frame: 'hero',
         before: { width: 390, height: 844 },
@@ -337,6 +340,139 @@ describe('a turned phone or tablet', () => {
       const read = await readFrame(root, HERO, { cwd: root })
 
       expect(read).toMatchObject({ device: 'foldable', turn: 'right' })
+    })
+  })
+
+  describe('pushing the frames to its right', () => {
+    const CLOSED = {
+      x: 0,
+      y: 0,
+      width: 466,
+      height: 678,
+      showDevice: true,
+      foldable: true,
+      pose: 'closed',
+    }
+    // The foldable's body keeps its border in each pose, so opening grows it by the screens' difference.
+    const GROWTH = 890 - 466
+
+    function place(root: string, frames: Record<string, object>): void {
+      const page = layout('webapp/home')
+      for (const [name, flags] of Object.entries(frames)) {
+        page.frames[name] = {
+          order: Object.keys(page.frames).length,
+          hidden: false,
+          locked: false,
+          ...page.frames[name],
+          ...flags,
+        }
+      }
+      writeFileSync(join(root, 'webapp/home/layout.json'), JSON.stringify(page))
+    }
+
+    function boxOf(name: string) {
+      const { x, y, width, height } = layout('webapp/home').frames[name]
+      return { x, y, width, height }
+    }
+
+    it('shifts each frame to its right on its rows by the growth, keeping every gap and size', async () => {
+      const root = open()
+      writeFileSync(
+        join(root, 'webapp/home/side.html'),
+        file('webapp/home/about.html'),
+      )
+      place(root, {
+        hero: CLOSED,
+        about: { x: 700, y: 100, width: 390, height: 844 },
+        side: { x: 1200, y: 0, width: 390, height: 600, locked: true },
+      })
+
+      await setFrameDevice(root, HERO, undefined, { cwd: root, pose: 'open' })
+
+      expect(boxOf('hero')).toMatchObject({ x: 0, width: 890 })
+      expect(boxOf('about')).toEqual({
+        x: 700 + GROWTH,
+        y: 100,
+        width: 390,
+        height: 844,
+      })
+      expect(boxOf('side')).toEqual({
+        x: 1200 + GROWTH,
+        y: 0,
+        width: 390,
+        height: 600,
+      })
+      expect(layout('webapp/home').frames.side.locked).toBe(true)
+    })
+
+    it('leaves a frame below its rows, or to its left, where it stands', async () => {
+      const root = open()
+      writeFileSync(
+        join(root, 'webapp/home/side.html'),
+        file('webapp/home/about.html'),
+      )
+      place(root, {
+        hero: { ...CLOSED, x: 600 },
+        about: { x: 1200, y: 900, width: 390, height: 844 },
+        side: { x: 0, y: 0, width: 390, height: 600 },
+      })
+
+      await setFrameDevice(root, HERO, undefined, { cwd: root, pose: 'open' })
+
+      expect(boxOf('about')).toEqual({
+        x: 1200,
+        y: 900,
+        width: 390,
+        height: 844,
+      })
+      expect(boxOf('side')).toEqual({ x: 0, y: 0, width: 390, height: 600 })
+    })
+
+    it('pulls nothing back when the foldable closes again', async () => {
+      const root = open()
+      place(root, {
+        hero: { ...CLOSED, width: 890, height: 626, pose: 'open' },
+        about: { x: 1200, y: 0, width: 390, height: 844 },
+      })
+
+      await setFrameDevice(root, HERO, undefined, {
+        cwd: root,
+        pose: 'closed',
+      })
+
+      expect(boxOf('hero')).toMatchObject({ width: 466 })
+      expect(boxOf('about')).toMatchObject({ x: 1200 })
+    })
+
+    it('reports the fold and every shift in one write, so one undo restores each box', async () => {
+      const root = open()
+      place(root, {
+        hero: CLOSED,
+        about: { x: 700, y: 0, width: 390, height: 844 },
+      })
+      const { journal, calls } = recordingJournal(root)
+
+      await setFrameDevice(root, HERO, undefined, {
+        cwd: root,
+        pose: 'open',
+        journal,
+      })
+
+      expect(calls).toHaveLength(2)
+      expect(calls).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            frame: 'hero',
+            before: expect.objectContaining({ width: 466 }),
+            after: expect.objectContaining({ width: 890 }),
+          }),
+          expect.objectContaining({
+            frame: 'about',
+            before: expect.objectContaining({ x: 700 }),
+            after: expect.objectContaining({ x: 700 + GROWTH }),
+          }),
+        ]),
+      )
     })
   })
 

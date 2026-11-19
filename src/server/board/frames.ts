@@ -5,6 +5,7 @@ import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
 import {
+  bezelBox,
   type Device,
   deviceForWidth,
   type Island,
@@ -960,85 +961,124 @@ export async function setFrameDevice(
     ...options
   }: RefOptions & JournalOptions & FoldOptions,
 ): Promise<FrameRecord> {
-  return updatePlacement(root, ref, options, (stood, frameRef) => {
-    const foldable = name ?? stood.foldable === true
-    const shown = show ?? (name === true || stood.showDevice === true)
-    // A foldable named off stands at its pose's screen before its width picks the device a turn checks.
-    const unfolded =
-      stood.foldable === true ? unfoldedPlacement(stood, foldable) : stood
-    if (turn && turn !== 'upright') {
-      refuseTurn(unfolded, frameRef, turn, { foldable, shown })
-    }
-    const placement =
-      stood.foldable === true && foldable
-        ? unfolded
-        : turnedPlacement(unfolded, foldable ? 'upright' : turn)
-    const {
-      showDevice: _held,
-      device: _device,
-      foldable: named,
-      pose: stored,
-      keptWidths,
-      island: picked,
-      turn: held,
-      ...rest
-    } = placement
-    if (fold && !foldable) {
-      throw new FrameboardError(
-        'usage',
-        `${frameRef} is not a foldable, so it has no pose. Name it with --foldable first.`,
-        { ref: frameRef, pose: fold },
+  return updatePlacement(
+    root,
+    ref,
+    options,
+    (stood, frameRef) => {
+      const foldable = name ?? stood.foldable === true
+      const shown = show ?? (name === true || stood.showDevice === true)
+      // A foldable named off stands at its pose's screen before its width picks the device a turn checks.
+      const unfolded =
+        stood.foldable === true ? unfoldedPlacement(stood, foldable) : stood
+      if (turn && turn !== 'upright') {
+        refuseTurn(unfolded, frameRef, turn, { foldable, shown })
+      }
+      const placement =
+        stood.foldable === true && foldable
+          ? unfolded
+          : turnedPlacement(unfolded, foldable ? 'upright' : turn)
+      const {
+        showDevice: _held,
+        device: _device,
+        foldable: named,
+        pose: stored,
+        keptWidths,
+        island: picked,
+        turn: held,
+        ...rest
+      } = placement
+      if (fold && !foldable) {
+        throw new FrameboardError(
+          'usage',
+          `${frameRef} is not a foldable, so it has no pose. Name it with --foldable first.`,
+          { ref: frameRef, pose: fold },
+        )
+      }
+      if (pick && (foldable || drawnDevice(placement) !== 'phone')) {
+        throw new FrameboardError(
+          'usage',
+          `${frameRef} draws no phone, so it has no island. A frame 320 to 479 px wide that names no foldable draws one.`,
+          { ref: frameRef, island: pick },
+        )
+      }
+      const island = pick ?? islandOf(picked)
+      const base = {
+        ...rest,
+        ...(shown ? { showDevice: true as const } : {}),
+        ...(island === 'wide' ? { island } : {}),
+      }
+      if (!foldable) {
+        // The widths the entry kept draw again, less one the box now holds itself.
+        const widths = (keptWidths ?? rest.widths).filter(
+          (linked) => linked.width !== placement.box.width,
+        )
+        return { ...base, ...(held ? { turn: held } : {}), widths }
+      }
+      // Naming a frame keeps the widths it drew in its entry, undrawn.
+      const undrawn = keptWidths ?? rest.widths
+      const kept = {
+        widths: [],
+        ...(undrawn.length > 0 ? { keptWidths: undrawn } : {}),
+      }
+      const pose = fold ?? stored ?? nearestPose(placement.box.width)
+      const facing = turn ?? turnOf(held)
+      const sideways = facing === 'upright' ? {} : { turn: facing }
+      if (!fold && !turn && named) {
+        return { ...base, ...kept, foldable, pose, ...sideways }
+      }
+      const screen = POSE_SIZES[pose]
+      return {
+        ...base,
+        ...kept,
+        foldable,
+        pose,
+        ...sideways,
+        box: {
+          ...placement.box,
+          ...(facing === 'upright'
+            ? screen
+            : { width: screen.height, height: screen.width }),
+        },
+        hugWidth: false,
+        hugHeight: false,
+      }
+    },
+    fold || turn || name !== undefined ? pushAlong : undefined,
+  )
+}
+
+/**
+ * Shifts, after a fold, a turn, or a naming and never a bare show or hide,
+ * each frame whose body starts at or past the grown frame's old right
+ * edge and shares its rows by the growth, so the gap between them stays. A
+ * shrink pulls nothing back, since the developer may have arranged them since.
+ */
+function pushAlong(layout: PageLayout, name: string, before: Placement): void {
+  const was = bodyOf(before)
+  const now = bodyOf(layout.placement(name))
+  const edge = was.x + was.width
+  const growth = now.x + now.width - edge
+  if (growth <= 0) return
+  const pushed = layout.names
+    .filter((other) => other !== name)
+    .map((other) => ({ other, placement: layout.placement(other) }))
+    .filter(({ placement }) => {
+      const body = bodyOf(placement)
+      return (
+        body.x >= edge &&
+        body.y < now.y + now.height &&
+        body.y + body.height > now.y
       )
-    }
-    if (pick && (foldable || drawnDevice(placement) !== 'phone')) {
-      throw new FrameboardError(
-        'usage',
-        `${frameRef} draws no phone, so it has no island. A frame 320 to 479 px wide that names no foldable draws one.`,
-        { ref: frameRef, island: pick },
-      )
-    }
-    const island = pick ?? islandOf(picked)
-    const base = {
-      ...rest,
-      ...(shown ? { showDevice: true as const } : {}),
-      ...(island === 'wide' ? { island } : {}),
-    }
-    if (!foldable) {
-      // The widths the entry kept draw again, less one the box now holds itself.
-      const widths = (keptWidths ?? rest.widths).filter(
-        (linked) => linked.width !== placement.box.width,
-      )
-      return { ...base, ...(held ? { turn: held } : {}), widths }
-    }
-    // Naming a frame keeps the widths it drew in its entry, undrawn.
-    const undrawn = keptWidths ?? rest.widths
-    const kept = {
-      widths: [],
-      ...(undrawn.length > 0 ? { keptWidths: undrawn } : {}),
-    }
-    const pose = fold ?? stored ?? nearestPose(placement.box.width)
-    const facing = turn ?? turnOf(held)
-    const sideways = facing === 'upright' ? {} : { turn: facing }
-    if (!fold && !turn && named) {
-      return { ...base, ...kept, foldable, pose, ...sideways }
-    }
-    const screen = POSE_SIZES[pose]
-    return {
-      ...base,
-      ...kept,
-      foldable,
-      pose,
-      ...sideways,
-      box: {
-        ...placement.box,
-        ...(facing === 'upright'
-          ? screen
-          : { width: screen.height, height: screen.width }),
-      },
-      hugWidth: false,
-      hugHeight: false,
-    }
-  })
+    })
+  for (const { other, placement } of pushed) {
+    const { box } = placement
+    layout.set(other, { ...placement, box: { ...box, x: box.x + growth } })
+  }
+}
+
+function bodyOf({ box, device, turn }: Placement): Box {
+  return bezelBox(box, device, turn)
 }
 
 /**
@@ -1220,6 +1260,7 @@ async function updatePlacement(
   ref: string,
   options: RefOptions & JournalOptions,
   change: (placement: Placement, ref: string) => Placement,
+  settle?: (layout: PageLayout, name: string, before: Placement) => void,
 ): Promise<FrameRecord> {
   const frame = await resolveFrameRef(root, ref, options)
   const page = pageDir(frame)
@@ -1227,7 +1268,9 @@ async function updatePlacement(
     [page],
     async (layouts) => {
       const layout = layoutAt(layouts, page)
-      layout.set(frame.name, change(layout.placement(frame.name), refOf(frame)))
+      const before = layout.placement(frame.name)
+      layout.set(frame.name, change(before, refOf(frame)))
+      settle?.(layout, frame.name, before)
     },
     options.journal,
   )
