@@ -37,6 +37,8 @@ Images, videos, audio, and 3D models come from the project's `assets/` folder an
   - The inspector's Video section carries the same play, scrub, and sound controls, which change nothing in the file
 - Controls, Autoplay, Loop, and Muted under In the file are the switches that write, each setting or dropping one attribute while the clip keeps playing, and audio has no Controls switch
 
+A right-click on an Assets tile, or its ⋯, places the file, lists the frames using it, or renames, replaces, or deletes it, each as one undo step. A rename points every frame linking the file at its new name, and Delete asks first when a frame uses it.
+
 ## Drawn controls
 
 A slider an agent draws beside an element can tune it, keeping the frame plain HTML and CSS.
