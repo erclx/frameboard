@@ -5,9 +5,14 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { frameOf } from '@/test/board'
+import { BRIDGE } from '@/test/frame-bridge'
 import { realClick } from '@/test/real-pointer'
 
-import { motionHoldOf, releaseMotion } from '../motion/store'
+import {
+  motionHoldOf,
+  onMotionHoldChange,
+  releaseMotion,
+} from '../motion/store'
 import { exportStore } from './export-store'
 import { FilmstripSection, MotionSection } from './motion-section'
 
@@ -23,6 +28,11 @@ const SPIN = `<style>
   #box { width: 10px; height: 10px; animation: spin 1s linear infinite }
 </style><div id="box"></div>`
 
+/** A page holding `body` with the stamp and the bridge the frame route injects. */
+function bridgedPage(body: string): string {
+  return `<!doctype html><html><head><style data-frameboard data-hash="${'c'.repeat(64)}"></style>${BRIDGE}</head><body>${body}</body></html>`
+}
+
 const hosts: HTMLElement[] = []
 
 afterEach(() => {
@@ -36,7 +46,7 @@ async function showFrame(html: string): Promise<void> {
   host.dataset.frame = HERO.ref
   const iframe = document.createElement('iframe')
   const loaded = new Promise((done) => iframe.addEventListener('load', done))
-  iframe.srcdoc = html
+  iframe.srcdoc = bridgedPage(html)
   host.append(iframe)
   document.body.append(host)
   hosts.push(host)
@@ -78,6 +88,24 @@ describe('MotionSection', () => {
       }),
     )
     expect(screen.getByRole('button', { name: 'Play' })).toBeVisible()
+  })
+
+  it('holds a free-running frame once on two fast presses of Pause', async () => {
+    await showFrame(SPIN)
+    render(<MotionSection frame={HERO} />)
+    const pause = await screen.findByRole('button', { name: 'Pause' })
+    let holds = 0
+    const stop = onMotionHoldChange(() => (holds += 1))
+
+    act(() => {
+      pause.click()
+      pause.click()
+    })
+
+    await waitFor(() => expect(motionHoldOf(HERO.ref)?.playing).toBe(false))
+    await screen.findByRole('button', { name: 'Play' })
+    stop()
+    expect(holds).toBe(1)
   })
 
   describe('for a frame that has run to its end', () => {
