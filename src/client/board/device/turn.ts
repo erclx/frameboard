@@ -10,7 +10,10 @@ import type { FrameRecord } from '@/shared/records/list'
 import { reportRefusal } from '../left-panel/page-actions'
 import { canvasView } from '../view'
 
-/** Whether a selected frame drawing this device shows a bar under its body: a foldable's poses, or a phone's or tablet's Rotate. */
+/**
+ * Whether a selected frame drawing this device shows a bar under its body, as
+ * every device that turns does. Its callers leave room for the bar, so the name says bar.
+ */
 export function showsDeviceBar(device: Device | null | undefined): boolean {
   return turnsWith(device)
 }
