@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { freeMemory, runWorkflow } from './client'
+import {
+  freeMemory,
+  runModelWorkflow,
+  runWorkflow,
+  uploadImage,
+} from './client'
 import type { Workflow } from './workflow'
 
 const workflow: Workflow = {
@@ -329,6 +334,149 @@ describe('runWorkflow', () => {
       '/comfy/history/p1',
       '/comfy/view',
     ])
+  })
+})
+
+describe('runModelWorkflow', () => {
+  const glb = {
+    path: '/view?filename=pixal3d_00001_.glb&subfolder=3d&type=output',
+    answer: () =>
+      new Response(new Uint8Array([0x67, 0x6c, 0x54, 0x46]), {
+        headers: { 'content-type': 'model/gltf-binary' },
+      }),
+  }
+
+  it('reads back the first GLB a save node wrote and ignores a second', async () => {
+    const { send, asked } = server([
+      queued,
+      history({
+        '164': {
+          images: [{ filename: 'preview.png', subfolder: '', type: 'temp' }],
+        },
+        '322': {
+          '3d': [
+            {
+              filename: 'pixal3d_00001_.glb',
+              subfolder: '3d',
+              type: 'output',
+            },
+          ],
+        },
+        '323': {
+          '3d': [
+            { filename: 'second_00001_.glb', subfolder: '3d', type: 'output' },
+          ],
+        },
+      }),
+      glb,
+    ])
+
+    const bytes = await runModelWorkflow(
+      'http://127.0.0.1:8188',
+      workflow,
+      send,
+      fakeClock(),
+    )
+
+    expect([...bytes]).toEqual([0x67, 0x6c, 0x54, 0x46])
+    expect(asked.map((each) => new URL(each.url).pathname)).toEqual([
+      '/prompt',
+      '/history/p1',
+      '/view',
+    ])
+    expect(asked.filter((each) => each.url.includes('second'))).toEqual([])
+  })
+
+  it('refuses provider-failed when the run saved no GLB', async () => {
+    const { send } = server([
+      queued,
+      history({
+        '9': {
+          images: [
+            {
+              filename: 'frameboard_00001_.png',
+              subfolder: '',
+              type: 'output',
+            },
+          ],
+        },
+      }),
+    ])
+
+    await expect(
+      runModelWorkflow('http://127.0.0.1:8188', workflow, send, fakeClock()),
+    ).rejects.toMatchObject({
+      code: 'provider-failed',
+      message: expect.stringContaining('saved no GLB'),
+    })
+  })
+})
+
+describe('uploadImage', () => {
+  /** A fake upload route that keeps the form it was sent, answering the body given. */
+  function uploads(answer: () => Response) {
+    const forms: { url: string; form: FormData }[] = []
+    const send = (async (input: string | URL | Request, init?: RequestInit) => {
+      if (init?.body instanceof FormData) {
+        forms.push({ url: String(input), form: init.body })
+      }
+      return answer()
+    }) as typeof fetch
+    return { send, forms }
+  }
+
+  it('posts the picture as a form to /upload/image and answers the stored name', async () => {
+    const { send, forms } = uploads(() =>
+      Response.json({ name: 'axe (1).png', subfolder: '', type: 'input' }),
+    )
+
+    const name = await uploadImage(
+      'http://127.0.0.1:8188/',
+      { name: 'axe.png', bytes: new Uint8Array([1, 2]) },
+      send,
+    )
+
+    expect(name).toBe('axe (1).png')
+    expect(forms[0]?.url).toBe('http://127.0.0.1:8188/upload/image')
+    const file = forms[0]?.form.get('image')
+    expect(file).toBeInstanceOf(File)
+    expect((file as File).name).toBe('axe.png')
+    expect([...new Uint8Array(await (file as File).arrayBuffer())]).toEqual([
+      1, 2,
+    ])
+  })
+
+  it('answers a stored subfolder ahead of the name, as LoadImage reads it', async () => {
+    const { send } = uploads(() =>
+      Response.json({
+        name: 'axe.png',
+        subfolder: 'frameboard',
+        type: 'input',
+      }),
+    )
+
+    const name = await uploadImage(
+      'http://127.0.0.1:8188',
+      { name: 'axe.png', bytes: new Uint8Array([1]) },
+      send,
+    )
+
+    expect(name).toBe('frameboard/axe.png')
+  })
+
+  it('refuses provider-failed when the server refuses the upload', async () => {
+    const { send } = uploads(() => new Response('', { status: 400 }))
+
+    await expect(
+      uploadImage(
+        'http://127.0.0.1:8188',
+        { name: 'axe.png', bytes: new Uint8Array([1]) },
+        send,
+      ),
+    ).rejects.toMatchObject({
+      code: 'provider-failed',
+      details: { provider: 'comfyui', status: 400 },
+    })
   })
 })
 

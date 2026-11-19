@@ -77,7 +77,7 @@ Generating makes an image nobody licensed, on the developer's own server or key.
 - `image generate "<prompt>"` runs on the first ready provider and spends on its key at once, so `--dry-run` answers the provider and price first
 - A ComfyUI server at `FRAMEBOARD_COMFYUI_URL` goes first and charges nothing, running FLUX.2 klein 4B or the workflow `--workflow <file>` names
 - `image free` unloads that server's model once a batch of runs ends
-- `image doctor` reports the GPU, the ComfyUI server's version and missing model files, and which keys are set, printing setup steps and installing nothing
+- `image doctor` reports the GPU, the ComfyUI server's version and the files each bundled workflow lacks, and which keys are set, printing setup steps and installing nothing
 
 ## Models
 
@@ -85,6 +85,12 @@ Generating makes an image nobody licensed, on the developer's own server or key.
 
 - `--save <number-or-id>` saves one as a single `.glb` with its license file beside it, and `--name <stem>` names the file
 - `--size <size>` picks the texture size, `1k` by default, and a size the model lacks is refused with the sizes it has
+
+`model generate <picture>` makes a textured `.glb` from one picture on the ComfyUI server at `FRAMEBOARD_COMFYUI_URL`, charging nothing.
+
+- It runs Pixal3D at web size, about 17 MB, or the workflow `--workflow <file>` names, and takes about a minute with no progress line
+- The license file names the picture and carries a project asset's own license forward, and `--dry-run` answers without calling the server
+- The server keeps the model loaded between runs, so `image free` unloads it once a batch ends
 
 ## Design references
 

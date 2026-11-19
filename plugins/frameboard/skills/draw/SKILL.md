@@ -70,7 +70,7 @@ Each feature past the core loop keeps its judgment in its own file. Read the one
 - When a frame shows a device body, the developer names a phone, a tablet, a laptop, or the foldable, or asks for a screen turned landscape, read `${CLAUDE_SKILL_DIR}/references/devices.md`
 - When an element should lean or turn in 3D, such as a tilted card or a screenshot at an angle, read `${CLAUDE_SKILL_DIR}/references/tilt.md`
 - When a frame plays a video or a sound, read `${CLAUDE_SKILL_DIR}/references/media.md`
-- When a frame shows a 3D model, or the developer asks for an object they can turn, read `${CLAUDE_SKILL_DIR}/references/models.md`
+- When a frame shows a 3D model, the developer asks for an object they can turn, or a picture should become a model on their own ComfyUI server through `model generate`, read `${CLAUDE_SKILL_DIR}/references/models.md`
 
 ## Keep frames in their sections
 

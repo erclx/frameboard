@@ -1,6 +1,6 @@
 ---
 title: Models
-description: When a frame shows a 3D model, finding one on Poly Haven, the viewer script its head loads, the attributes that stage it, and how to build a simple model with a kept script
+description: When a frame shows a 3D model, finding one on Poly Haven or generating one from a picture, the viewer script its head loads, the attributes that stage it, and how to build a simple model with a kept script
 ---
 
 # Models
@@ -13,7 +13,7 @@ A model costs a script of about 1 MB in the project and a wait on every capture,
 
 - Place a model when the developer names a 3D object, or asks for one they can turn or that plays a clip
 - Tilt a flat card with a CSS `transform` instead, since a tilt needs no model and no script
-- Use a `.glb` the project's `assets/` already holds, then a found one, before building one
+- Use a `.glb` the project's `assets/` already holds, then a found one, then a generated one, before building one
 
 ## Find a model before building one
 
@@ -23,6 +23,16 @@ A model costs a script of about 1 MB in the project and a wait on every capture,
 - Answer a product search that comes back empty by building the shape from boxes, below, rather than searching again with other words
 - Save at the default `1k` unless the developer asks for detail, and say what a larger `--size` weighs before taking it, since a stool is about 1 MB at `1k` and 40 MB at `8k`
 - Name Poly Haven to the developer when showing results, which its terms ask of anything listing its models
+
+## Generate a model from a picture
+
+`frameboard model generate <picture>` turns one picture into a textured `.glb` on the developer's own ComfyUI server, which `FRAMEBOARD_COMFYUI_URL` names. It charges nothing and saves the model into the project's `assets/` with a license naming the picture.
+
+- Reach for it when Poly Haven has nothing close and the developer wants a real object rather than boxes
+- Give it a clean picture of one object on a plain ground, such as one `image generate` made first, since a busy photo comes out worse
+- Run it with `--dry-run --json` first when unsure the server is set, since an unset address refuses `no-provider` and `image doctor --json` lists the files it lacks
+- Expect about a minute per model with nothing printed until it returns
+- Run `frameboard image free --json` once a batch ends, since the server keeps the model in GPU memory between calls
 
 ## Write the element and its script
 
