@@ -687,7 +687,7 @@ describe('the wrap row', () => {
     while (unregisters.length > 0) unregisters.pop()?.()
   })
 
-  /** Stands in for `element.wrap`, enabled while two or more elements are selected. */
+  /** Stands in for `element.wrap`, which enables on one element too, so the menu holds the count. */
   function standIn() {
     const runs = { count: 0 }
     unregisters.push(
@@ -698,7 +698,7 @@ describe('the wrap row', () => {
           group: 'selection',
           palette: false,
           keys: ['Shift+KeyA'],
-          enabled: () => (selectionStore.getState().elements?.length ?? 0) > 1,
+          enabled: () => true,
           run: () => (runs.count += 1),
         },
       ]),

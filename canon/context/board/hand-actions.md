@@ -23,7 +23,7 @@ Owns picking, walking, and outlining elements, with the board's `selection.ts`: 
 
 ### `src/client/board/menus/`
 
-Owns the right-click menus on a frame, the selected element, empty canvas, a page or layers row, empty list space, and an Assets tile, each item running a registered action, greyed while disabled. The Element menu leads with Use auto layout and ends with Delete through `POST /api/frames/remove`, after four restack items, never writing `z-index`.
+Owns the right-click menus on a frame, the selected element, empty canvas, a page or layers row, empty list space, and an Assets tile, each item running an action, greyed while disabled. The Element menu leads with Use auto layout for several and ends with Delete through `POST /api/frames/remove`, after four restack items, never writing `z-index`.
 
 - A right-click on a frame not yet selected selects it alone first, and one on the frame around the selected element selects the frame, so an item acts the way its key does
 - Paste here sends the right-clicked point to place the group's top left there, and New frame here and both Add a note rows act there too, as the Layers space's New frame does past the last frame

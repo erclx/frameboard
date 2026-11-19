@@ -18,7 +18,12 @@ import { releaseReserved, reservedOn } from '../claims/reservations'
 import { treeOf } from '../element/tree'
 import { up } from '../element/walk'
 import { selectedElementBoxAt } from '../geometry/hit'
-import { select, selectionStore, useSelection } from '../selection'
+import {
+  select,
+  selectedElements,
+  selectionStore,
+  useSelection,
+} from '../selection'
 import { menuPlace } from './actions'
 import { DeleteRow, MenuRow, MenuTitle } from './items'
 import { type MenuTarget, menuTarget } from './target'
@@ -242,6 +247,7 @@ export function ElementItems({ noteable }: { noteable: boolean }) {
     remove,
   ] = useActions(ELEMENT_IDS)
   const element = useSelection((state) => state.element ?? null)
+  const several = useSelection((state) => selectedElements(state).length > 1)
   const tree = element ? treeOf(element.frame) : null
   // Esc from an element sitting directly in `body` selects the frame itself.
   const atTop =
@@ -250,7 +256,7 @@ export function ElementItems({ noteable }: { noteable: boolean }) {
     <>
       <ContextMenuGroup>
         <MenuTitle>Element</MenuTitle>
-        {wrap && isEnabled(wrap) ? (
+        {several && wrap && isEnabled(wrap) ? (
           <MenuRow action={wrap}>Use auto layout</MenuRow>
         ) : null}
         {noteable ? (

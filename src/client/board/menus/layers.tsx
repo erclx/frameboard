@@ -9,11 +9,13 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/client/components/ui/context-menu'
-import { useLive } from '@/client/live/store'
+import { liveStore, useLive } from '@/client/live/store'
 import { FRAME_GAP } from '@/shared/frame-sizes'
+import { drawnExtent } from '@/shared/frame-widths'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
-import type { Point } from '../geometry/box'
+import { reservedOn } from '../claims/reservations'
+import type { Box, Point } from '../geometry/box'
 import { modeStore } from '../mode'
 import { startSectionRename } from '../sections/actions'
 import {
@@ -193,18 +195,30 @@ export function ElementRowMenu({
 const SPACE_IDS = ['frame.newAt', 'frame.paste'] as const
 
 /**
- * Where a new frame lands from the layers space, which is past the page's
- * frames on the right at the top of the topmost one, or the origin on an empty page.
+ * Where a new frame lands from the layers space, which is where the CLI's next
+ * row starts, past every frame's drawn extent and the page's reserved boxes, at
+ * the top of the topmost one, or the origin on an empty page.
  */
-function nextFreeSpot(frames: readonly FrameRecord[]): Point {
-  if (frames.length === 0) return { x: 0, y: 0 }
+function nextFreeSpot(
+  frames: readonly FrameRecord[],
+  reserved: readonly Box[],
+): Point {
+  const boxes = [
+    ...frames.map(({ box, widths, device }) =>
+      drawnExtent(box, widths, device),
+    ),
+    ...reserved,
+  ]
+  if (boxes.length === 0) return { x: 0, y: 0 }
   return {
-    x: Math.max(...frames.map(({ box }) => box.x + box.width)) + FRAME_GAP,
-    y: Math.min(...frames.map(({ box }) => box.y)),
+    x: Math.max(...boxes.map(({ x, width }) => x + width)) + FRAME_GAP,
+    y: Math.min(...boxes.map(({ y }) => y)),
   }
 }
 
 interface LayersSpaceMenuProps {
+  /** The page the list shows, whose reserved boxes the new frame's spot clears. */
+  page: string
   /** Every frame on the page, which the new frame's spot is read from. */
   frames: readonly FrameRecord[]
   /** The empty space below the last layer row, which keeps focus when the menu closes. */
@@ -216,15 +230,26 @@ interface LayersSpaceMenuProps {
  * next free spot and Paste. New frame reads the point the canvas menu's does,
  * so opening sets it and closing clears it.
  */
-export function LayersSpaceMenu({ frames, trigger }: LayersSpaceMenuProps) {
+export function LayersSpaceMenu({
+  page,
+  frames,
+  trigger,
+}: LayersSpaceMenuProps) {
   const [newAt, paste] = useActions(SPACE_IDS)
   const content = useRef<HTMLDivElement>(null)
   const keyboard = useKeyboardOpen(content)
   return (
     <ContextMenu
       onOpenChange={(opened) => {
-        if (opened)
-          menuPlace.setState({ at: nextFreeSpot(frames), frame: null })
+        if (!opened) return
+        const reserved = reservedOn(liveStore.getState().claims, frames, page)
+        menuPlace.setState({
+          at: nextFreeSpot(
+            frames,
+            reserved.map(({ claim }) => claim.box),
+          ),
+          frame: null,
+        })
       }}
       onOpenChangeComplete={(opened) => {
         keyboard.onOpenChangeComplete(opened)

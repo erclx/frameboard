@@ -198,7 +198,10 @@ export function LayersList({
   }
 
   return (
-    <section aria-labelledby="layers-heading" className="flex min-h-0 flex-col">
+    <section
+      aria-labelledby="layers-heading"
+      className="flex h-full min-h-0 flex-col"
+    >
       <PanelSection id="layers-heading" title="Layers">
         <button
           type="button"
@@ -216,9 +219,16 @@ export function LayersList({
         </button>
       </PanelSection>
       {frames.length === 0 ? (
-        <p className="px-3.5 py-1 text-muted-foreground">
-          No frames on this page
-        </p>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <p className="px-3.5 py-1 text-muted-foreground">
+            No frames on this page
+          </p>
+          <LayersSpaceMenu
+            page={page ?? ''}
+            frames={frames}
+            trigger={<div aria-hidden className="min-h-3 flex-1" />}
+          />
+        </div>
       ) : (
         <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-1">
           {groups.map((group) => {
@@ -249,6 +259,7 @@ export function LayersList({
             )
           })}
           <LayersSpaceMenu
+            page={pageOfFrames(frames)}
             frames={frames}
             trigger={<li aria-hidden className="min-h-3 flex-1" />}
           />

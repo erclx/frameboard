@@ -10,6 +10,7 @@ import { registerActions } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { frameOf, pageOf } from '@/test/board'
 
+import { menuPlace } from '../menus/actions'
 import { LayersList } from './layers-list'
 import { PagesList } from './pages-list'
 
@@ -103,5 +104,43 @@ describe('the empty space menus', () => {
     )
 
     expect(added.count).toBe(1)
+  })
+
+  it('opens New frame on a page with no frames', async () => {
+    const added = counted('frame.newAt', 'New frame here')
+    const { container } = render(
+      <TooltipProvider>
+        <LayersList frames={[]} />
+      </TooltipProvider>,
+    )
+
+    await userEvent.pointer({
+      keys: '[MouseRight]',
+      target: container.querySelector('div[aria-hidden]') as Element,
+    })
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: /^New frame/ }),
+    )
+
+    expect(added.count).toBe(1)
+  })
+
+  it('places New frame past the drawn width of the last frame, linked widths included', async () => {
+    counted('frame.newAt', 'New frame here')
+    const wide = frameOf('wide', {
+      box: { x: 0, y: 40, width: 400, height: 300 },
+      widths: [{ width: 200, height: 300 }],
+    })
+    const { container } = render(
+      <TooltipProvider>
+        <LayersList frames={[wide]} />
+      </TooltipProvider>,
+    )
+
+    await userEvent.pointer({ keys: '[MouseRight]', target: space(container) })
+    await screen.findByRole('menu')
+
+    // The linked width draws one gap past the frame, then the gap past that.
+    expect(menuPlace.getState().at).toEqual({ x: 400 + 80 + 200 + 80, y: 40 })
   })
 })
