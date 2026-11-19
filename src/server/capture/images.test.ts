@@ -400,7 +400,7 @@ describe.skipIf(shell === null)(
       expect(pixel(own.path, 195, 54 + 5)).toBe('#ff0000')
     })
 
-    it('starts a turned phone page at its top, with no status bar, at the landscape box', async () => {
+    it("starts a turned phone page at its top between two 54 wide strips in the page's fill, at the landscape box", async () => {
       const [own] = await shoot('phone', {
         box: { x: 0, y: 0, width: 844, height: 390 },
         widths: [],
@@ -410,6 +410,9 @@ describe.skipIf(shell === null)(
 
       expect([own.width, own.height]).toEqual([844, 390])
       expect(pixel(own.path, 422, 5)).toBe('#ff0000')
+      expect(pixel(own.path, 54 + 2, 5)).toBe('#ff0000')
+      expect(pixel(own.path, 50, 5)).toBe('#0000ff')
+      expect(pixel(own.path, 844 - 50, 5)).toBe('#0000ff')
     })
 
     it('starts a linked width page at its top, since it draws no device', async () => {

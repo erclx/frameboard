@@ -19,6 +19,7 @@ import {
   poseOf,
   screenCorners,
   shownBox,
+  sideInset,
   STATUS_BAR,
   topInset,
   turnOf,
@@ -407,13 +408,36 @@ describe('a turned phone or tablet', () => {
   )
 
   it.each(['left', 'right'] as const)(
-    'drops a phone’s status bar turned %s, its page the whole box',
+    'insets a phone’s page 54 on both short sides turned %s, past its island, with no status bar',
     (turn) => {
+      const { top, height } = PHONE_ISLAND
+      expect(sideInset('phone', turn)).toBe(STATUS_BAR.height)
+      expect(sideInset('phone', turn)).toBeGreaterThan(top + height)
       expect(topInset('phone', turn)).toBe(0)
-      expect(pageBox(landscape, 'phone', turn)).toEqual(landscape)
-      expect(pageCorners('phone', turn)).toBe('62px')
+      expect(pageBox(landscape, 'phone', turn)).toEqual({
+        x: 154,
+        y: 40,
+        width: 736,
+        height: 390,
+      })
+      expect(pageCorners('phone', turn)).toBe('0')
     },
   )
+
+  it.each([
+    ['tablet', 'left'],
+    ['tablet', 'right'],
+    ['foldable', 'left'],
+    ['foldable', 'right'],
+    ['phone', 'upright'],
+  ] as const)('keeps a %s’s page its full width held %s', (device, turn) => {
+    expect(sideInset(device, turn)).toBe(0)
+    expect(pageBox(landscape, device, turn).width).toBe(landscape.width)
+  })
+
+  it('leaves no page in a turned phone box narrower than both insets', () => {
+    expect(pageBox({ ...landscape, width: 80 }, 'phone', 'left').width).toBe(0)
+  })
 
   it('keeps an upright phone’s page square on top under its bar', () => {
     expect(pageCorners('phone', 'upright')).toBe('0 0 62px 62px')

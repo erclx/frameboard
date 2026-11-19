@@ -245,21 +245,42 @@ export function topInset(
 }
 
 /**
- * The page's box inside a frame's box, less the status bar while an upright
- * phone shows. A frame's box keeps the screen's size, and every surface reads
- * the page through this.
+ * The width a turned phone's page stands in from each short side, the status
+ * bar's height, so the island on one side never covers it and the page stays
+ * centered. 0 for any other device or hold, a turned foldable included.
+ */
+export function sideInset(
+  device: Device | null | undefined,
+  turn: Turn | undefined,
+): number {
+  return device === 'phone' && isTurned(device, turn) ? STATUS_BAR.height : 0
+}
+
+/** Whether a page stands in from its box, so the strips around it paint the page's fill. */
+export function insetsPage(
+  device: Device | null | undefined,
+  turn: Turn | undefined,
+): boolean {
+  return topInset(device, turn) > 0 || sideInset(device, turn) > 0
+}
+
+/**
+ * The page's box inside a frame's box, less an upright phone's status bar or
+ * a turned phone's side insets. A frame's box keeps the screen's size, and
+ * every surface reads the page through this.
  */
 export function pageBox(
   box: Box,
   device: Device | null | undefined,
   turn: Turn | undefined,
 ): Box {
-  const inset = topInset(device, turn)
+  const top = topInset(device, turn)
+  const side = sideInset(device, turn)
   return {
-    x: box.x,
-    y: box.y + inset,
-    width: box.width,
-    height: Math.max(0, box.height - inset),
+    x: box.x + side,
+    y: box.y + top,
+    width: Math.max(0, box.width - 2 * side),
+    height: Math.max(0, box.height - top),
   }
 }
 
@@ -294,11 +315,13 @@ export function shownBox<B extends { width: number; height: number }>(frame: {
   return { ...box, height: Math.min(box.height, turnedScreenHeight(box.width)) }
 }
 
-/** The page's corners as a CSS `border-radius`, square on top under an upright phone's status bar. */
+/**
+ * The page's corners as a CSS `border-radius`, square on top under an upright
+ * phone's status bar and square all round between a turned phone's strips.
+ */
 export function pageCorners(device: Device, turn: Turn | undefined): string {
-  if (device !== 'phone' || isTurned(device, turn)) {
-    return screenCorners(device)
-  }
+  if (device !== 'phone') return screenCorners(device)
+  if (isTurned(device, turn)) return '0'
   const { screenRadius } = BEZELS.phone
   return `0 0 ${screenRadius}px ${screenRadius}px`
 }

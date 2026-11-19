@@ -363,7 +363,7 @@ describe.skipIf(shell === null)(
       expect(line).toEqual([255, 0, 0, 255])
     })
 
-    it('draws a phone turned left with its page at the top and the island on its left short side', async () => {
+    it('draws a phone turned left with its page at the top between its strips and the island on its left short side', async () => {
       const render = createWarmRenderer({
         baseUrl: () => host.url,
         browser: createWarmBrowser(async () => requireShell(shell)),
@@ -383,12 +383,20 @@ describe.skipIf(shell === null)(
       const line = await pixelAt(requireShell(shell), bytes, 200, 20 + 5)
       // The island's middle, 14 in from the body's left screen edge and 15 into its 30 width.
       const island = await pixelAt(requireShell(shell), bytes, 16 + 29, 120)
+      // Past the island's far side in the left strip, and as deep into the right one.
+      const left = await pixelAt(requireShell(shell), bytes, 16 + 50, 25)
+      const right = await pixelAt(requireShell(shell), bytes, 16 + 350, 25)
+      // The page's first column, past the left strip.
+      const start = await pixelAt(requireShell(shell), bytes, 16 + 54 + 2, 25)
 
       expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
         432, 240,
       ])
       expect(line).toEqual([255, 0, 0, 255])
       expect(island).toEqual([5, 5, 6, 255])
+      expect(left).toEqual([0, 128, 0, 255])
+      expect(right).toEqual([0, 128, 0, 255])
+      expect(start).toEqual([255, 0, 0, 255])
     })
 
     it.each([

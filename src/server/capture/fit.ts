@@ -141,11 +141,12 @@ export async function fitFrame(
     ...options
   }: RefOptions & { root: string; baseUrl: string; frame: FrameRecord },
 ): Promise<FitResult> {
-  // A phone's page starts under its status bar, so the box holds the page and the bar.
+  // A phone's page stands inside its status bar or side strips, so the box holds the page and both.
+  const page = pageBox(frame.box, frame.device, frame.turn)
   const measured = await measureContent(browser, {
     baseUrl,
     ref: frame.ref,
-    box: pageBox(frame.box, frame.device, frame.turn),
+    box: page,
     hugWidth: false,
   })
   const widths: LinkedWidth[] = []
@@ -167,7 +168,7 @@ export async function fitFrame(
     ),
     contentHeight: measured.height,
     contentWidth: measured.contentWidth,
-    tooWide: measured.contentWidth > frame.box.width,
+    tooWide: measured.contentWidth > page.width,
   }
 }
 
