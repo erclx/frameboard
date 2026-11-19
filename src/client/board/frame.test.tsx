@@ -8,7 +8,6 @@ import { bindKeys, registerActions } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import { chooseTheme, flipFrame, themeStore } from '@/client/theme/store'
-import { frameElements } from '@/shared/frame-bridge/elements'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 import { ringFocused } from '@/test/focus-ring'
@@ -219,23 +218,11 @@ describe('Frame', () => {
         <Frame frame={{ ...frame('a'), scroll: true }} live version={0} />,
       )
 
-      await loaded(iframeOf(container, 'a'))
+      await bridged(iframeOf(container, 'a'))
 
-      expect(rootScrollbar(iframeOf(container, 'a'))).toBe('none')
-    })
-
-    it('leaves the injected style out of the element index', async () => {
-      const { container } = render(
-        <Frame frame={{ ...frame('a'), scroll: true }} live version={0} />,
-      )
-      await loaded(iframeOf(container, 'a'))
-      const document = iframeOf(container, 'a').contentDocument
-      if (!document) throw new Error('no frame document')
-
-      expect(document.querySelectorAll('style')).not.toHaveLength(0)
-      expect(
-        frameElements(document).filter((node) => node.localName === 'style'),
-      ).toEqual([])
+      await expect
+        .poll(() => rootScrollbar(iframeOf(container, 'a')))
+        .toBe('none')
     })
 
     it('keeps the scrollbar on a frame without the key', async () => {
@@ -243,7 +230,7 @@ describe('Frame', () => {
         <Frame frame={frame('a')} live version={0} />,
       )
 
-      await loaded(iframeOf(container, 'a'))
+      await bridged(iframeOf(container, 'a'))
 
       expect(rootScrollbar(iframeOf(container, 'a'))).toBe('auto')
     })
@@ -252,11 +239,34 @@ describe('Frame', () => {
       const { container, rerender } = render(
         <Frame frame={{ ...frame('a'), scroll: true }} live version={0} />,
       )
-      await loaded(iframeOf(container, 'a'))
+      await bridged(iframeOf(container, 'a'))
+      await expect
+        .poll(() => rootScrollbar(iframeOf(container, 'a')))
+        .toBe('none')
 
       rerender(<Frame frame={frame('a')} live version={0} />)
 
-      expect(rootScrollbar(iframeOf(container, 'a'))).toBe('auto')
+      await expect
+        .poll(() => rootScrollbar(iframeOf(container, 'a')))
+        .toBe('auto')
+    })
+
+    it('hides it again on the page a reload brings', async () => {
+      const { container, rerender } = render(
+        <Frame frame={{ ...frame('a'), scroll: true }} live version={0} />,
+      )
+      await bridged(iframeOf(container, 'a'))
+      const reloaded = loaded(iframeOf(container, 'a'))
+
+      rerender(
+        <Frame frame={{ ...frame('a'), scroll: true }} live version={1} />,
+      )
+      await reloaded
+      await bridgeIn(iframeOf(container, 'a'))
+
+      await expect
+        .poll(() => rootScrollbar(iframeOf(container, 'a')))
+        .toBe('none')
     })
   })
 
