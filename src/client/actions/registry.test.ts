@@ -3,7 +3,7 @@ import { afterEach, describe, expect, expectTypeOf, it } from 'vitest'
 
 import { setCharacterKeys } from './character-keys'
 import { IS_MAC } from './keys'
-import { type Action, bindKeys, registerActions } from './registry'
+import { type Action, bindKeys, registerActions, runKey } from './registry'
 
 const cleanups: (() => void)[] = []
 
@@ -532,6 +532,44 @@ describe('bindKeys', () => {
     pressIn(inner, 'v', 'KeyV')
 
     expect([exitPlay.runs, move.runs]).toEqual([1, 0])
+  })
+})
+
+describe('runKey', () => {
+  afterEach(() => setCharacterKeys(true))
+
+  it('runs the first enabled action carrying the key', () => {
+    const off = action('play.leaveFrame', {
+      keys: ['Escape'],
+      enabled: () => false,
+    })
+    const exitPlay = action('mode.exitPlay', { keys: ['Escape'] })
+    register(off, exitPlay)
+
+    runKey('Escape', false)
+
+    expect([off.runs, exitPlay.runs]).toEqual([0, 1])
+  })
+
+  it('runs a held key once unless its action repeats', () => {
+    const exitPlay = action('mode.exitPlay', { keys: ['Escape'] })
+    const nudge = action('nudge.down', { keys: ['ArrowDown'], repeat: true })
+    register(exitPlay, nudge)
+
+    runKey('Escape', true)
+    runKey('ArrowDown', true)
+
+    expect([exitPlay.runs, nudge.runs]).toEqual([0, 1])
+  })
+
+  it('leaves a character key unrun while the switch is off', () => {
+    const next = action('changes.next', { keys: ['BracketRight'] })
+    register(next)
+    setCharacterKeys(false)
+
+    runKey('BracketRight', false)
+
+    expect(next.runs).toBe(0)
   })
 })
 
