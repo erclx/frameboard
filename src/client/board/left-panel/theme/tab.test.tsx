@@ -1,6 +1,6 @@
 import '../../../styles.css'
 
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -80,6 +80,27 @@ describe('ThemeTab', () => {
     expect(
       screen.getByRole('button', { name: 'About token source' }),
     ).toHaveAccessibleDescription(`${path}.`)
+  })
+
+  it('wraps a path no break rescues inside the open tip', async () => {
+    // One segment wider than the tip, which no slash break rescues.
+    const path =
+      'northwindbrandsystemworkspacedesigntokensnorthwindbrandsystem/tokens.css'
+    const long = table([row('primary')], {
+      sheets: [{ path, kind: 'board', error: null, hash: 'h' }],
+    })
+
+    render(<ThemeTab project="studio" load={async () => long} />)
+
+    await userEvent.hover(
+      await screen.findByRole('button', { name: 'About token source' }),
+    )
+    const tip = await waitFor(() => {
+      const open = document.querySelector('[data-slot="tooltip-content"]')
+      if (!open) throw new Error('The tip is not open')
+      return open
+    })
+    expect(tip.scrollWidth).toBeLessThanOrEqual(tip.clientWidth)
   })
 
   it('draws each color with a light and a dark swatch', async () => {
