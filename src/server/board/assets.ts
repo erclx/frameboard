@@ -225,10 +225,8 @@ function isScratch(name: string): boolean {
 }
 
 /**
- * Writes an upload's bytes in place of an asset's, keeping its path, and
- * takes its license file out, since the license named the bytes replaced.
- * Refuses `asset-type-refused` for an upload a drop would refuse or whose kind
- * differs from the file's, since every frame showing the file would change kind.
+ * Writes an upload's bytes under an asset's path and takes its license out, since it named the old bytes.
+ * Refuses `asset-type-refused` for an upload a drop refuses or of another kind, which frames would change under.
  */
 export async function replaceAsset(
   projectDir: string,
@@ -273,12 +271,9 @@ export interface RenameOptions extends JournalOptions {
 }
 
 /**
- * Renames an asset and its license file in their folder and points every
- * frame linking it at the new name, writing no file until the gate passed
- * on every frame. A frame write that fails puts back the frames written
- * before it, so no project is left half renamed. Refuses `invalid-name` for
- * a name off the board rule or changing the extension, and `name-taken` for
- * a name another file in the folder holds in any case.
+ * Renames an asset and its license and repoints every linking frame, writing nothing until the gate passes,
+ * and puts written frames back when a later write fails, so no project is left half renamed.
+ * Refuses `invalid-name` off the name rule or for a new extension, and `name-taken` for a name held in any case.
  */
 export async function renameAsset(
   root: string,

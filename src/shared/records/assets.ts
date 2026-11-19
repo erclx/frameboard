@@ -35,12 +35,7 @@ export type AssetAddResult = z.infer<typeof assetAddResultSchema>
 /** A rename's body: the file's new name in its own folder, keeping its extension. */
 export const assetRenameSchema = z.object({ name: z.string().min(1) })
 
-export type AssetRename = z.infer<typeof assetRenameSchema>
-
-/**
- * What a hand write to one asset answers: the path the file stands at after
- * it, gone for a delete, and the frames it rewrote, each as a frame ref.
- */
+/** A hand asset write's answer: the file's path after it, and each frame ref it rewrote. */
 export const assetWriteResultSchema = z.object({
   path: z.string(),
   frames: z.array(z.string()),
@@ -48,7 +43,6 @@ export const assetWriteResultSchema = z.object({
 
 export type AssetWriteResult = z.infer<typeof assetWriteResultSchema>
 
-/** The frames linking one asset, each as a frame ref in board order. */
 export const assetFramesSchema = z.object({
   path: z.string(),
   frames: z.array(z.string()),

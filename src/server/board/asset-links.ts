@@ -30,11 +30,8 @@ export async function framesLinking(
 }
 
 /**
- * The frame's markup with every load of the file `from` pointed at `to` in
- * the same folder, or null when no load in the frame's own file names it. A
- * load from a linked sheet lives in another file, and a URL the markup holds
- * only through an entity or an escape cannot be found as written, so both
- * stay as they are for the link check to report.
+ * The frame's markup with each load of `from` pointed at `to`, or null when no load in its own file names it.
+ * A linked sheet's load, or a URL written through an entity or escape, stays for the link check to report.
  */
 export function rewriteAssetLinks(
   source: FrameSource,

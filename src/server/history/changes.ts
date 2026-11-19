@@ -107,10 +107,8 @@ export type Change =
       hashes: Record<Side, string>
     }
   /**
-   * One frame file a hand write rewrote outside any element edit, such as an
-   * asset rename pointing its links at the new name, held whole on both sides,
-   * so an agent's write anywhere in the file overtakes the step rather than
-   * being reverted by it.
+   * One frame an asset rename rewrote, held whole on both sides, so an agent's
+   * write anywhere in it overtakes the step rather than being reverted by it.
    */
   | {
       kind: 'rewritten'
