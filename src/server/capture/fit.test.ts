@@ -281,8 +281,22 @@ describe.skipIf(shell === null)(
               order: 1,
               showDevice: true,
             },
+            turned: {
+              x: 2000,
+              y: 0,
+              width: 844,
+              height: 390,
+              order: 2,
+              showDevice: true,
+              turn: 'left',
+              upright: { width: 390, height: 844 },
+            },
           },
         }),
+        'studio/home/turned.html': page(
+          '<div class="wide"></div>',
+          '.wide { width: 800px; height: 100px }',
+        ),
         'studio/home/mobile.html': page(
           '<div class="block"></div>',
           '.block { height: 1200px }',
@@ -334,6 +348,21 @@ describe.skipIf(shell === null)(
         1200,
         1200 + 54,
       ])
+    })
+
+    it('reports a turned phone too wide for content past its page, though inside its box', async () => {
+      const frame = await readFrame(board.root, 'studio/home/turned', {
+        cwd: board.root,
+      })
+
+      const fit = await fitFrame(browser, {
+        root: board.root,
+        cwd: board.root,
+        baseUrl: host.url,
+        frame,
+      })
+
+      expect([fit.contentWidth, fit.tooWide]).toEqual([800, true])
     })
   },
 )

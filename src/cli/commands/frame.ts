@@ -27,6 +27,7 @@ import {
   type Island,
   islandOf,
   ISLANDS,
+  pageBox,
   type Pose,
   POSES,
   type Turn,
@@ -258,7 +259,7 @@ export function registerFrame(
           fitFrame(browser, { ...refOptions, root, baseUrl, frame }),
       )
       const wide = result.tooWide
-        ? `, and its content is ${result.contentWidth} px wide against ${result.frame.box.width}`
+        ? `, and its content is ${result.contentWidth} px wide against its ${pageBox(result.frame.box, result.frame.device, result.frame.turn).width} px page`
         : ''
       return {
         data: result,
