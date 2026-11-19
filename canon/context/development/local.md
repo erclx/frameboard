@@ -37,7 +37,7 @@ These serve the board and run the test layers.
 | Command                    | Purpose                                                                                                             |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `bun run preview`          | Serves `basic` under `CANON_PREVIEW_ROOT` (unset: committed board) at `PREVIEW_PORT`, 4173, and prints an edit link |
-| `bun run dev`              | Serves the client with hot reload on 5173, proxying to its own board on 6173, both plus the worktree offset         |
+| `bun run dev`              | Hot-reloads the client on 5173 over its own board on 6173, both offset per worktree, passing Vite's `Origin` alone  |
 | `bun run test`             | Runs Vitest in watch mode                                                                                           |
 | `bun run test:run`         | Runs both Vitest projects, `node` and `browser`, once on half the cores, under the test lock                        |
 | `bun run test:coverage`    | Runs the `node` project with coverage, as CI's unit-tests job does                                                  |
@@ -123,6 +123,6 @@ Test support and design references sit outside the folders above.
 
 - `canon sync` writes `canon/config/config.json` in a shape oxfmt rejects, so run `bun run format` before the commit
 - `vitest.config.ts` clears the `server.strictPort` from `vite.config.ts`, so parallel unit runs hop off a taken 63315 while `dev`, `preview`, and the e2e servers still fail on one
-- `vitest.config.ts` strips the dev proxy before merging, so a browser test's frame iframe gets a 404 from vitest's own server rather than reaching 6173
+- `src/test/setup.ts` hands the frame port the test page's own, and `vitest.config.ts` strips the dev proxy, so a test frame gets vitest's 404 rather than a board
 - `web/` has no Preflight, so a rule outside `@layer base` beats every utility, and `[hidden]` hides only through `global.css`
 - Playwright never reuses a running server, and a `preview` on any port makes the e2e `serve` report `reused` and exit, so stop the preview before running specs

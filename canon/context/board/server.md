@@ -45,13 +45,13 @@ Owns who may write, apart from the route modules.
 
 ### `src/server/routes/`
 
-Owns the HTTP route modules `app.ts` mounts, one per surface, being the frame and asset routes, access, the structure, history, token, and kit writes `api.ts` mounts behind `requireWriter`, and the element tree. Frames load same-origin and unsandboxed, since selection works inside a frame's DOM, and the board key keeps other pages from writing.
+Owns the HTTP route modules `app.ts` mounts, one per surface, being the frame and asset routes, access, the writes `api.ts` mounts behind `requireWriter`, and the element tree. Frames load from the port in `canon/context/board/frame-origin.md`, and the board's port sends a GET under `/frames/` there with a 307.
 
 - A non-frame file answers a single byte `Range` with a streamed 206, so a `<video>` seeks, while a frame is served whole since its head is spliced in memory
 - A non-frame file carries a weak `ETag` under `no-cache`, while a frame, a `?at=` version, a 206, and a 416 stay `no-store`, since an asset edit reloads the frames it reaches
 - A file's `frames` count comes from the cache in `src/server/board/asset-usage.ts` over the link check's `frameLoads`, which a watcher batch under the project drops
 - A kit remove records the folder's take-out and every cleared `kit` key as one step, so one undo brings back the kit and the frames naming it
-- Kit files sit under `/frameboard/` and `GET /api/access/open` answers only under `serve --open-route`, since a bare `/kits` shadows the client's module folder under Vite
+- Kit files sit under `/frameboard/`, since `/kits` shadows Vite's module folder, each page and SVG under the preview policy, and `GET /api/access/open` answers only under `--open-route`
 
 ### `src/server/preview/`
 

@@ -16,8 +16,8 @@ Owns how the board reads and edits a frame without touching its document, being 
 Holds the script that runs in each frame's own realm, built to `dist/frame-bridge.js` and served by the look routes under `/frameboard/bridge/` at the running release. It answers each board request with one reply under the same id, and a subscribing op pushes under that id until either side closes it.
 
 - The script removes its own `<script>` as it starts, so the live element indices the board reads match the file
-- It answers only `window.parent` at the frame's own origin, and a frame with no parent, as capture and the phone link show one, never listens
-- `main.ts` checks each request's arguments against its op's schema and hands them to one area's handlers, such as `measure.ts`, `keys.ts`, `steps.ts`, `motion.ts`, or `controls.ts`
+- It answers `window.parent` at a loopback origin on any port or its own, replying to each request's origin and posting `shown` to any, and a frame with no parent never listens
+- `main.ts` checks each request against its op's schema and hands it to one area, such as `measure.ts`, `steps.ts`, or `keys.ts`, whose `focus-keys` lets the pointer mark hear Tab leave a frame
 - It announces its hash in a `shown` message once its body parses, on a restamp, and as its page goes, naming the page by an id, since a page going posts with no window
 - Text in place owns `contenteditable` and the keys, opens only the run at the point beside a child, and keeps the old text until the board says whether the write landed
 
