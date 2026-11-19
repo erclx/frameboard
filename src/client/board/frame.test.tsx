@@ -137,14 +137,17 @@ describe('Frame in Play', () => {
     const { container, rerender } = render(
       <Frame frame={frame('a')} live version={0} />,
     )
-    await loaded(iframeOf(container, 'a'))
+    await bridged(iframeOf(container, 'a'))
     const reloaded = loaded(iframeOf(container, 'a'))
-
     rerender(<Frame frame={frame('a')} live version={1} />)
     await reloaded
+    await bridgeIn(iframeOf(container, 'a'))
+
+    pressEscapeIn(iframeOf(container, 'a'))
+    await expect.poll(() => exits).toBe(1)
     pressEscapeIn(iframeOf(container, 'a'))
 
-    expect(exits).toBe(1)
+    await expect.poll(() => exits).toBe(2)
   })
 
   it('leaves an entered frame on Esc pressed in a field inside it', async () => {
@@ -165,24 +168,22 @@ describe('Frame in Play', () => {
     cleanups.push(() => act(() => leaveFrame()))
     const { container } = render(<Frame frame={frame('a')} live version={0} />)
     const iframe = iframeOf(container, 'a')
-    await loaded(iframe)
+    await bridged(iframe)
     const inner = iframe.contentWindow as typeof window
     const slider = inner.document.createElement('input')
     slider.type = 'range'
     inner.document.body.append(slider)
     slider.focus()
 
-    act(() => {
-      slider.dispatchEvent(
-        new inner.KeyboardEvent('keydown', {
-          key: 'Escape',
-          code: 'Escape',
-          bubbles: true,
-        }),
-      )
-    })
+    slider.dispatchEvent(
+      new inner.KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        bubbles: true,
+      }),
+    )
 
-    expect(enteredStore.getState().ref).toBeNull()
+    await expect.poll(() => enteredStore.getState().ref).toBeNull()
   })
 
   it('stands the entered tag below a laptop base rather than on its chin', () => {

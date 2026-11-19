@@ -64,7 +64,8 @@ export function ask<O extends BridgeOp>(
 
 /**
  * Stamps the page an iframe already loaded and starts the bridge in it, as the
- * frame route would have, resolved once the bridge announces the stamp. The
+ * frame route would have, resolved once the bridge announced the stamp and
+ * answered whatever the board sent it on hearing that. The
  * board's frames load an empty page under the test server, which routes no
  * frame, and a reload brings one back with no bridge, so call it per page.
  */
@@ -95,7 +96,10 @@ export function bridgeIn(
   script.setAttribute('data-frameboard', '')
   script.src = '/src/frame-bridge/main.ts'
   head.append(script)
+  // A round trip after the word, so every request the board sent on hearing it has landed.
   return announced
+    .then(() => ask(iframe, 'live-body', {}))
+    .then(({ close }) => close())
 }
 
 /** An iframe showing `body` beside the stamp and the bridge, resolved once it has loaded. */

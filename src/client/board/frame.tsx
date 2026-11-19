@@ -1,7 +1,6 @@
 import { ExternalLink, Lock, Moon, MoveHorizontal, Sun } from 'lucide-react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 
-import { bindKeys } from '@/client/actions/registry'
 import { RenameField } from '@/client/components/rename-field'
 import {
   Popover,
@@ -39,6 +38,7 @@ import { FindingsList } from './findings/list'
 import { FindingsCount } from './findings/mark'
 import { openFindings, useFindingsOpen } from './findings/open'
 import { RESTAMPED } from './frame-dom'
+import { bindFrameKeys } from './frame-keys'
 import { useWaitingOnFirstLoad } from './frame-loading'
 import { useThemeInFrame } from './frame-theme'
 import { useDrawnBox, usePendingBox } from './geometry/write'
@@ -186,21 +186,7 @@ export const Frame = memo(function Frame({
   useEffect(() => {
     const element = iframe.current
     if (!playing || !element) return
-    let unbind = () => {}
-    // Each load is a new document, so the binding moves to it and leaves none on the last.
-    const bind = () => {
-      unbind()
-      const target = element.contentWindow
-      unbind = target
-        ? bindKeys(target, PLAY_KEYS, { typing: 'frame' })
-        : () => {}
-    }
-    bind()
-    element.addEventListener('load', bind)
-    return () => {
-      element.removeEventListener('load', bind)
-      unbind()
-    }
+    return bindFrameKeys(element, PLAY_KEYS, { keepTyping: false })
   }, [playing, live])
 
   // An entered frame takes the keys, so focus moves into its page.
