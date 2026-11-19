@@ -1416,6 +1416,21 @@
           .at.hov {
             box-shadow: 0 0 0 1.5px var(--accent);
           }
+          .at .more {
+            position: absolute;
+            right: 5px;
+            top: 5px;
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+            background: var(--panel);
+            display: grid;
+            place-items: center;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            font-weight: 700;
+            line-height: 1;
+            color: var(--text);
+          }
           .at .cp {
             position: absolute;
             right: 5px;
@@ -1529,7 +1544,7 @@
               class="th"
               style="background: linear-gradient(135deg, #6d5bd0, #e07a5f)"
             ></div>
-            <span class="cp">Copy path</span>
+            <span class="more">⋯</span>
             <div class="nm">hero.png<span>image · 1.2 MB</span></div>
           </div>
           <div class="at">
