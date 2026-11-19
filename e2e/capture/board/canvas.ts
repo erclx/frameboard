@@ -157,6 +157,34 @@ async function wideIslandShown(page: Page): Promise<void> {
 }
 
 /**
+ * Turns the about frame's phone left and the hero into a tablet turned left,
+ * each at the box a turn writes, putting the layout back when the page closes.
+ */
+async function devicesTurned(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  Object.assign(layout.frames.about, {
+    width: 844,
+    height: 390,
+    showDevice: true,
+    turn: 'left',
+    upright: { width: 390, height: 844 },
+  })
+  Object.assign(layout.frames.hero, {
+    width: 1194,
+    height: 834,
+    showDevice: true,
+    turn: 'left',
+    upright: { width: 834, height: 1194 },
+  })
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+  })
+}
+
+/**
  * Names the about frame a foldable in `pose`, at that pose's screen size,
  * putting the layout back when the page closes.
  */
@@ -649,6 +677,25 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
         ),
       ),
     },
+    {
+      // A selected phone turned left with Rotate under it, beside a turned tablet.
+      section: 'device-turned',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          devicesTurned,
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          readyWhen(
+            'body:has([data-bezel="phone"][data-bezel-turn="left"]):has([data-bezel="tablet"][data-bezel-turn="left"]):has([data-turns])',
+          ),
+        ),
+      ),
+    },
     // A selected foldable in each pose, with its buttons under the body.
     ...POSES.map((pose) => ({
       section: `device-foldable-${pose}`,
@@ -821,6 +868,47 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           pressOnLoad('^Play$'),
           pressOnLoad('^Select about$'),
           readyWhen('[data-entered] [data-bezel="phone"]'),
+        ),
+      ),
+    },
+    {
+      // A turned phone presented landscape, Rotate in the bar after the count.
+      section: 'present-turned',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      setup: themed(
+        both(
+          asWriter,
+          devicesTurned,
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          presentOnLoad,
+          readyWhen(
+            '[data-presenting]:has([data-bezel-turn="left"]) [role="toolbar"] button:has(svg)',
+          ),
+        ),
+      ),
+    },
+    {
+      // The turned phone entered in Play, Rotate in the banner beside its text.
+      section: 'play-entered-turned',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          devicesTurned,
+          noAgentChanges,
+          pressOnLoad('^Play$'),
+          pressOnLoad('^Select about$'),
+          readyWhen(
+            'body:has([data-entered] [data-bezel-turn="left"]):has([role="status"] + button)',
+          ),
         ),
       ),
     },
