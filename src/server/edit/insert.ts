@@ -157,7 +157,7 @@ export function elementMarkup(
   const box = (shape: ShapeSize) => `${size(shape)}; background: ${fill}`
   switch (element.kind) {
     case 'text':
-      return `<p data-name="Text" style="font-family: ${font}; width: fit-content">Text</p>`
+      return `<p data-name="Text" style="font-family: ${font}; width: fit-content"></p>`
     case 'rectangle':
       return `<div data-name="Rectangle" style="${box(element)}"></div>`
     case 'ellipse':

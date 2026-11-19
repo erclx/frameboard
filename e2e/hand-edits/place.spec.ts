@@ -405,7 +405,13 @@ test.describe('placing text and shapes into a frame', () => {
     await tools(page).getByRole('button', { name: 'Text' }).click()
     // On the headline's lower half, clear of the point the double-click below opens.
     await page.mouse.click(headline.x, headline.y + 8)
-    await expect(hero(page).locator('[data-name="Text"]')).toBeFocused()
+    const placed = hero(page).locator('[data-name="Text"]')
+    await expect(placed).toBeFocused()
+    // A caret alone, with no word in it and no size chip around it.
+    await expect(placed).toHaveText('')
+    await expect(
+      page.locator('[data-element-selection] [data-chip]'),
+    ).toHaveCount(0)
     await page.keyboard.type('Hello')
     await page.keyboard.press('Escape')
 
@@ -433,6 +439,23 @@ test.describe('placing text and shapes into a frame', () => {
       .toContain(
         '<h1 data-name="Headline" style="white-space: pre-line">Wel\ncome</h1>',
       )
+  })
+
+  test('a placed Text left empty is taken out again on Esc', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const original = read()
+    const headline = await centerOf(page, 'h1')
+
+    await tools(page).getByRole('button', { name: 'Text' }).click()
+    await page.mouse.click(headline.x, headline.y + 8)
+    await expect(hero(page).locator('[data-name="Text"]')).toBeFocused()
+    await expect.poll(read).toContain('data-name="Text"')
+    await page.keyboard.press('Escape')
+
+    await expect.poll(read).toBe(original)
   })
 
   test('a click inside a text open for typing moves the caret there, and a click outside ends the edit', async ({

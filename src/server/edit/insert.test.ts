@@ -18,7 +18,7 @@ import {
 const PAINT = { fill: 'var(--muted)', line: 'var(--border)' }
 const FONT = 'var(--font-text)'
 const TEXT =
-  '<p data-name="Text" style="font-family: var(--font-text); width: fit-content">Text</p>'
+  '<p data-name="Text" style="font-family: var(--font-text); width: fit-content"></p>'
 
 // In a bare fragment the implied html, head, and body take 0 to 2, so the
 // first stated element is 3.
@@ -437,7 +437,12 @@ describe('removeInserted and restoreInserted', () => {
   it('should refuse once an agent changed the inserted element', () => {
     const { html, span } = inserted()
 
-    expect(removeInserted(html.replace('>Text<', '>Hi<'), span)).toBeUndefined()
+    expect(
+      removeInserted(
+        html.replace(TEXT, TEXT.replace('></p>', '>Hi</p>')),
+        span,
+      ),
+    ).toBeUndefined()
   })
 
   it('should refuse a redo once the sibling it went before is gone', () => {
