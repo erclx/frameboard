@@ -356,6 +356,7 @@ export const Frame = memo(function Frame({
           height={drawnHeight}
           pose={frame.pose}
           island={frame.island}
+          turn={frame.turn}
           colors={colors}
           theme={theme}
         />

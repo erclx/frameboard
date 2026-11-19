@@ -663,6 +663,7 @@ function PresentedFrame({
           height={shown.height}
           pose={frame.pose}
           island={frame.island}
+          turn={frame.turn}
           colors={colors}
           theme={theme}
         />

@@ -10,6 +10,7 @@ import {
   HOME_BAR,
   type Island,
   islandCenter,
+  isTurned,
   LAPTOP_BASE,
   laptopParts,
   type PageColors,
@@ -20,6 +21,7 @@ import {
   SIGNAL_BARS,
   STATUS_BAR,
   STATUS_FONT,
+  type Turn,
   WIDE_ISLAND_LEVEL,
   WIDE_ISLAND_TIMER,
 } from '@/shared/frame-device'
@@ -38,6 +40,7 @@ export function Bezel({
   height,
   pose = 'closed',
   island = 'compact',
+  turn = 'upright',
   colors,
   theme,
 }: {
@@ -49,27 +52,34 @@ export function Bezel({
   pose?: Pose
   /** The phone's island width, which no other device reads. */
   island?: Island
+  /** How a phone or tablet is held, which moves a phone's island and buttons and hides its status bar. */
+  turn?: Turn
   /** The page's fill and text color, which the phone's status bar paints, its theme's own until the page reports them. */
   colors?: PageColors | null
   /** The frame's theme, which a page painting no fill shows through the status bar. */
   theme?: Theme
 }) {
   const laptop = device === 'laptop'
+  const turned = isTurned(device, turn)
   return (
     <div
       aria-hidden
       data-bezel={device}
+      data-bezel-turn={turned ? turn : undefined}
       className="pointer-events-none absolute inset-0"
       style={{
         borderRadius: screenCorners(device),
         boxShadow: bezelShadow(device),
       }}
     >
-      {device === 'phone' ? (
+      {device === 'phone' && !turned ? (
         <>
           <StatusBar colors={colors ?? null} theme={theme} />
           <PhoneMarks island={island} />
         </>
+      ) : null}
+      {device === 'phone' && turned && turn !== 'upright' ? (
+        <TurnedPhoneMarks island={island} turn={turn} />
       ) : null}
       {laptop ? <LaptopBody width={width} height={height} /> : null}
       {device === 'foldable' ? <FoldableMarks pose={pose} /> : null}
@@ -227,6 +237,65 @@ function PhoneMarks({ island }: { island: Island }) {
           width,
           height,
           borderRadius: height / 2,
+          background: BEZEL_COLORS.island,
+          color: BEZEL_COLORS.islandText,
+          fontFamily: STATUS_FONT,
+        }}
+      >
+        {island === 'wide' ? <IslandTimer /> : null}
+      </span>
+      <HomeBar />
+    </>
+  )
+}
+
+/**
+ * A turned phone's island on the short side its turn names, standing on end
+ * with its timer turned with it, and its buttons on the long edges, each as
+ * far from the side the island stands on as it sat from the top upright.
+ * Turned left, the left buttons lie along the bottom and the side button
+ * along the top, and turned right the other way round.
+ */
+function TurnedPhoneMarks({
+  island,
+  turn,
+}: {
+  island: Island
+  turn: 'left' | 'right'
+}) {
+  const { width, height, top } = phoneIsland(island)
+  const { border } = BEZELS.phone
+  const from = turn === 'left' ? 'left' : 'right'
+  const center = top + height / 2
+  return (
+    <>
+      {PHONE_BUTTONS.map(({ side, top: along, height: length }) => {
+        const edge = (side === 'left') === (turn === 'left') ? 'bottom' : 'top'
+        return (
+          <span
+            key={`${side} ${along}`}
+            data-bezel-button={edge}
+            className="absolute"
+            style={{
+              [edge]: -border - BUTTON_DEPTH,
+              [from]: along - border,
+              width: length,
+              height: BUTTON_DEPTH,
+              borderRadius: BUTTON_DEPTH / 2,
+              background: BEZEL_COLORS.button,
+            }}
+          />
+        )
+      })}
+      <span
+        data-bezel-island
+        className="absolute top-1/2 flex items-center justify-between px-[11px] text-[11px] leading-none font-semibold tabular-nums"
+        style={{
+          left: turn === 'left' ? center : `calc(100% - ${center}px)`,
+          width,
+          height,
+          borderRadius: height / 2,
+          transform: `translate(-50%, -50%) rotate(${turn === 'left' ? -90 : 90}deg)`,
           background: BEZEL_COLORS.island,
           color: BEZEL_COLORS.islandText,
           fontFamily: STATUS_FONT,

@@ -3,7 +3,13 @@ import '../../styles.css'
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import type { Device, Island, PageColors, Pose } from '@/shared/frame-device'
+import type {
+  Device,
+  Island,
+  PageColors,
+  Pose,
+  Turn,
+} from '@/shared/frame-device'
 import type { Theme } from '@/shared/theme'
 
 import { Bezel } from './bezel'
@@ -15,6 +21,7 @@ function Framed({
   zoom = 1,
   pose,
   island,
+  turn,
   colors,
   theme,
 }: {
@@ -24,6 +31,7 @@ function Framed({
   zoom?: number
   pose?: Pose
   island?: Island
+  turn?: Turn
   colors?: PageColors
   theme?: Theme
 }) {
@@ -39,6 +47,7 @@ function Framed({
           height={height}
           pose={pose}
           island={island}
+          turn={turn}
           colors={colors}
           theme={theme}
         />
@@ -195,6 +204,87 @@ describe('Bezel', () => {
       expect(
         container.querySelector('[data-bezel-timer]')?.textContent,
       ).toContain('0:42')
+    })
+  })
+
+  describe('a turned phone', () => {
+    const rectsOf = (container: HTMLElement, selector: string) =>
+      [...container.querySelectorAll(selector)].map((element) =>
+        element.getBoundingClientRect(),
+      )
+    const middle = (rect: DOMRect | undefined) => ({
+      x: (rect?.left ?? 0) + (rect?.width ?? 0) / 2,
+      y: (rect?.top ?? 0) + (rect?.height ?? 0) / 2,
+    })
+
+    it('draws no status bar turned left or right', () => {
+      const { container } = render(
+        <Framed device="phone" width={844} height={390} turn="left" />,
+      )
+
+      expect(container.querySelector('[data-bezel-status]')).toBeNull()
+    })
+
+    it('stands the island on end on the left short side turned left', () => {
+      const { container } = render(
+        <Framed device="phone" width={844} height={390} turn="left" />,
+      )
+
+      const [island] = rectsOf(container, '[data-bezel-island]')
+
+      expect(island?.width).toBeCloseTo(30)
+      expect(island?.height).toBeCloseTo(81)
+      expect(middle(island).x).toBeCloseTo(100 + 29)
+      expect(middle(island).y).toBeCloseTo(100 + 195)
+    })
+
+    it('stands the island on end on the right short side turned right', () => {
+      const { container } = render(
+        <Framed device="phone" width={844} height={390} turn="right" />,
+      )
+
+      const [island] = rectsOf(container, '[data-bezel-island]')
+
+      expect(island?.height).toBeCloseTo(81)
+      expect(middle(island).x).toBeCloseTo(100 + 844 - 29)
+    })
+
+    it('lays the three left buttons along the bottom and the side button along the top turned left', () => {
+      const { container } = render(
+        <Framed device="phone" width={844} height={390} turn="left" />,
+      )
+
+      const bottom = rectsOf(container, '[data-bezel-button="bottom"]')
+      const top = rectsOf(container, '[data-bezel-button="top"]')
+
+      expect(bottom).toHaveLength(3)
+      expect(top).toHaveLength(1)
+      for (const button of bottom) {
+        expect(button.top).toBeCloseTo(100 + 390 + 16)
+        expect(button.height).toBeCloseTo(4)
+      }
+      expect(top[0]?.bottom).toBeCloseTo(100 - 16)
+      expect(top[0]?.left).toBeCloseTo(100 - 16 + 222)
+    })
+
+    it('lays the three left buttons along the top from the right turned right', () => {
+      const { container } = render(
+        <Framed device="phone" width={844} height={390} turn="right" />,
+      )
+
+      const top = rectsOf(container, '[data-bezel-button="top"]')
+
+      expect(top).toHaveLength(3)
+      expect(top[0]?.right).toBeCloseTo(100 + 844 + 16 - 142)
+    })
+
+    it('draws a turned tablet with no island and no buttons', () => {
+      const { container } = render(
+        <Framed device="tablet" width={1194} height={834} turn="left" />,
+      )
+
+      expect(container.querySelector('[data-bezel-island]')).toBeNull()
+      expect(container.querySelector('[data-bezel-button]')).toBeNull()
     })
   })
 

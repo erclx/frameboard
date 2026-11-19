@@ -31,6 +31,7 @@ import {
   STATUS_FONT,
   topInset,
   type Turn,
+  turnOf,
   WIDE_ISLAND_LEVEL,
   WIDE_ISLAND_TIMER,
 } from '@/shared/frame-device'
@@ -367,9 +368,12 @@ async function drawBezel(
   })
   try {
     const tab = await context.newPage()
+    const sideways = turnOf(turn)
     const marks =
       device === 'phone'
-        ? statusBarHtml(bar.colors, bar.theme) + phoneMarks(island)
+        ? sideways === 'upright'
+          ? statusBarHtml(bar.colors, bar.theme) + phoneMarks(island)
+          : turnedPhoneMarks(island, sideways)
         : laptop
           ? laptopMarks(box)
           : device === 'foldable'
@@ -488,14 +492,37 @@ function phoneMarks(island: Island): string {
       `<span style="position:absolute;${side}:${-border - BUTTON_DEPTH}px;top:${top - border}px;width:${BUTTON_DEPTH}px;height:${height}px;border-radius:${BUTTON_DEPTH / 2}px;background:${BEZEL_COLORS.button}"></span>`,
   ).join('')
   const shape = phoneIsland(island)
-  const timer =
-    island === 'wide'
-      ? `<span style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:3px;background:${BEZEL_COLORS.islandLive}"></span>${WIDE_ISLAND_TIMER}</span>` +
-        `<span style="display:flex;align-items:flex-end;gap:2px">${WIDE_ISLAND_LEVEL.map((tall) => `<span style="width:2px;height:${tall}px;border-radius:1px;background:${BEZEL_COLORS.islandLive}"></span>`).join('')}</span>`
-      : ''
   return (
     buttons +
-    `<span style="${pill(shape.width, shape.height, BEZEL_COLORS.island)}top:${shape.top}px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;padding:0 11px;color:${BEZEL_COLORS.islandText};font:600 11px/1 ${STATUS_FONT};font-variant-numeric:tabular-nums">${timer}</span>` +
+    `<span style="${pill(shape.width, shape.height, BEZEL_COLORS.island)}top:${shape.top}px;${ISLAND_TEXT}">${islandTimer(island)}</span>` +
+    `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
+  )
+}
+
+const ISLAND_TEXT = `box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;padding:0 11px;color:${BEZEL_COLORS.islandText};font:600 11px/1 ${STATUS_FONT};font-variant-numeric:tabular-nums`
+
+function islandTimer(island: Island): string {
+  if (island !== 'wide') return ''
+  return (
+    `<span style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:3px;background:${BEZEL_COLORS.islandLive}"></span>${WIDE_ISLAND_TIMER}</span>` +
+    `<span style="display:flex;align-items:flex-end;gap:2px">${WIDE_ISLAND_LEVEL.map((tall) => `<span style="width:2px;height:${tall}px;border-radius:1px;background:${BEZEL_COLORS.islandLive}"></span>`).join('')}</span>`
+  )
+}
+
+/** A turned phone's island on end and its buttons on the long edges, as the board's bezel draws them. */
+function turnedPhoneMarks(island: Island, turn: 'left' | 'right'): string {
+  const { border } = BEZELS.phone
+  const from = turn === 'left' ? 'left' : 'right'
+  const buttons = PHONE_BUTTONS.map(({ side, top, height }) => {
+    const edge = (side === 'left') === (turn === 'left') ? 'bottom' : 'top'
+    return `<span style="position:absolute;${edge}:${-border - BUTTON_DEPTH}px;${from}:${top - border}px;width:${height}px;height:${BUTTON_DEPTH}px;border-radius:${BUTTON_DEPTH / 2}px;background:${BEZEL_COLORS.button}"></span>`
+  }).join('')
+  const shape = phoneIsland(island)
+  const center = shape.top + shape.height / 2
+  const left = turn === 'left' ? `${center}px` : `calc(100% - ${center}px)`
+  return (
+    buttons +
+    `<span style="position:absolute;left:${left};top:50%;transform:translate(-50%,-50%) rotate(${turn === 'left' ? -90 : 90}deg);width:${shape.width}px;height:${shape.height}px;border-radius:${shape.height / 2}px;background:${BEZEL_COLORS.island};${ISLAND_TEXT}">${islandTimer(island)}</span>` +
     `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
   )
 }
