@@ -7,11 +7,17 @@ import {
   DEVICES,
   foldBand,
   islandCenter,
+  islandOf,
   laptopParts,
   nearestPose,
+  pageBox,
+  PHONE_ISLAND,
+  phoneIsland,
   POSE_SIZES,
   poseOf,
   screenCorners,
+  STATUS_BAR,
+  topInset,
 } from './frame-device'
 import { drawnExtent } from './frame-widths'
 
@@ -32,11 +38,11 @@ describe('deviceForWidth', () => {
 })
 
 describe('bezelBox', () => {
-  it('grows a phone frame by 16 points on every side', () => {
+  it('grows a phone frame by 16 points above and below and by its buttons aside', () => {
     expect(bezelBox(frame, 'phone')).toEqual({
-      x: 84,
+      x: 80,
       y: 24,
-      width: 422,
+      width: 430,
       height: 876,
     })
   })
@@ -149,6 +155,55 @@ describe('drawnExtent with a device', () => {
       width: 390 + 80 + 834 + 44,
       height: 1194 + 44,
     })
+  })
+})
+
+describe('the phone body', () => {
+  it('draws the wide island wider than the compact one at the same height and place', () => {
+    const compact = phoneIsland('compact')
+    const wide = phoneIsland('wide')
+    expect(wide.width).toBeGreaterThan(compact.width)
+    expect(wide.height).toBe(compact.height)
+    expect(wide.top).toBe(compact.top)
+  })
+
+  it.each([
+    ['wide', 'wide'],
+    ['compact', 'compact'],
+    [undefined, 'compact'],
+    ['huge', 'compact'],
+    [true, 'compact'],
+  ] as const)('reads an island key of %s as %s', (value, island) => {
+    expect(islandOf(value)).toBe(island)
+  })
+})
+
+describe('pageBox', () => {
+  const phone = { x: 100, y: 40, width: 466, height: 678 }
+
+  it('starts a phone page 54 down its box, 10 past the island, a 624 tall page in a 678 box', () => {
+    expect(STATUS_BAR.height).toBe(54)
+    expect(STATUS_BAR.height - (PHONE_ISLAND.top + PHONE_ISLAND.height)).toBe(
+      10,
+    )
+    expect(pageBox(phone, 'phone')).toEqual({
+      x: 100,
+      y: 94,
+      width: 466,
+      height: 624,
+    })
+  })
+
+  it.each([null, undefined, 'tablet', 'laptop', 'foldable'] as const)(
+    'keeps the box as the page with %s',
+    (device) => {
+      expect(pageBox(phone, device)).toEqual(phone)
+      expect(topInset(device)).toBe(0)
+    },
+  )
+
+  it('leaves no page in a phone box shorter than the status bar', () => {
+    expect(pageBox({ ...phone, height: 40 }, 'phone').height).toBe(0)
   })
 })
 

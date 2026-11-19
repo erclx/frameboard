@@ -292,6 +292,41 @@ test.describe('frame geometry by hand', () => {
     )
   })
 
+  test("an element picked in a phone frame is outlined on itself, under the phone's status bar", async ({
+    page,
+  }) => {
+    const written = layout()
+    written.frames.mobile = { ...written.frames.mobile, showDevice: true }
+    writeFileSync(
+      join(board.root, 'studio/home/layout.json'),
+      JSON.stringify(written),
+    )
+    server = await serveBoard(board.root)
+    await openAsWriter(page, server)
+    const mobile = page.locator(MOBILE)
+    const status = mobile.locator('[data-bezel-status]')
+    const heading = page.frameLocator(`${MOBILE} iframe`).locator('h1')
+    await expect(heading).toBeVisible()
+    const bar = await status.boundingBox()
+    const shown = await heading.boundingBox()
+    if (!bar || !shown) throw new Error('The phone frame has no box on screen')
+    expect(shown.y).toBeGreaterThanOrEqual(bar.y + bar.height - 1)
+
+    await page.mouse.dblclick(
+      shown.x + shown.width / 2,
+      shown.y + shown.height / 2,
+    )
+
+    const outline = page.locator('[data-element-selection]')
+    await expect(outline).toHaveCount(1)
+    await expect
+      .poll(async () => {
+        const box = await outline.boundingBox()
+        return box && [box.x, box.y, box.width, box.height].map(Math.round)
+      })
+      .toEqual([shown.x, shown.y, shown.width, shown.height].map(Math.round))
+  })
+
   test('Cmd+Z puts a dragged frame back at once', async ({ page }) => {
     server = await serveBoard(board.root)
     await openAsWriter(page, server)

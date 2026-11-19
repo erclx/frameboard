@@ -233,6 +233,10 @@ describe.skipIf(shell === null)(
       faces = mkdtempSync(join(tmpdir(), 'frameboard-faces-'))
       board = writeBoard({
         'studio/home/hero.html': '<p>Hello</p>',
+        // A red line at the page's very top, on a green fill the status bar takes.
+        'studio/home/edge.html':
+          '<style>body{margin:0;background:rgb(0,128,0)}</style>' +
+          '<div style="height:10px;background:rgb(255,0,0)"></div>',
         // The body's red fill would show in the corner of a shot not isolated.
         'studio/home/badge.html':
           '<style>body{margin:0;background:red}</style>' +
@@ -287,7 +291,7 @@ describe.skipIf(shell === null)(
       ])
     })
 
-    it('grows a PNG by the device body and leaves its corners clear', async () => {
+    it('grows a PNG by the device body and its buttons and leaves its corners clear', async () => {
       const render = createWarmRenderer({
         baseUrl: () => host.url,
         browser: createWarmBrowser(async () => requireShell(shell)),
@@ -303,11 +307,85 @@ describe.skipIf(shell === null)(
         'light',
       )
       const corner = await cornerAlpha(requireShell(shell), bytes)
+      // The first volume button, 4 wide past the body's left and 195 down it.
+      const button = await pixelAt(requireShell(shell), bytes, 2, 220)
 
       expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
-        232, 432,
+        240, 432,
       ])
       expect(corner).toBe(0)
+      expect(button).toEqual([42, 44, 49, 255])
+    })
+
+    it("starts a phone page under a status bar in the page's fill, the box still its size", async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/edge',
+          box: { width: 200, height: 400 },
+          device: 'phone',
+        },
+        'light',
+      )
+      // The body's top is 16 down the PNG, the status bar 54 tall below it.
+      const bar = await pixelAt(requireShell(shell), bytes, 120, 16 + 50)
+      const line = await pixelAt(requireShell(shell), bytes, 120, 16 + 54 + 5)
+
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        240, 432,
+      ])
+      expect(bar).toEqual([0, 128, 0, 255])
+      expect(line).toEqual([255, 0, 0, 255])
+    })
+
+    it('starts a tablet page at its box top', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/edge',
+          box: { width: 600, height: 400 },
+          device: 'tablet',
+        },
+        'light',
+      )
+      const line = await pixelAt(requireShell(shell), bytes, 300, 44 + 5)
+
+      expect(line).toEqual([255, 0, 0, 255])
+    })
+
+    it.each([
+      ['compact', 255],
+      ['wide', 5],
+    ] as const)('draws the %s island at its own width', async (island, red) => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/hero',
+          box: { width: 320, height: 568 },
+          device: 'phone',
+          island,
+        },
+        'light',
+      )
+      // Inside the wide island's left end, past the compact one's and the time, on the island's middle line.
+      const [shown] = await pixelAt(requireShell(shell), bytes, 125, 45)
+
+      expect(shown).toBe(red)
     })
 
     it.each([
@@ -379,7 +457,7 @@ describe.skipIf(shell === null)(
         'light',
       )
       // Inside the screen's square corner yet past the body's outer arc.
-      const [, , , alpha] = await pixelAt(requireShell(shell), bytes, 17, 17)
+      const [, , , alpha] = await pixelAt(requireShell(shell), bytes, 21, 17)
 
       expect(alpha).toBe(0)
     })

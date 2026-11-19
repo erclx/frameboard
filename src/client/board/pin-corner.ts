@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 
 import type { PinCorner } from '@/shared/frame-bridge/live-element'
+import { pageBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { request, subscribe } from './bridge/channel'
@@ -40,7 +41,7 @@ export function subscribeCorners(listener: () => void): () => void {
  * so a drag passes the box it will draw.
  */
 export function cornerOf(
-  frame: Pick<FrameRecord, 'ref' | 'box'>,
+  frame: Pick<FrameRecord, 'ref' | 'box' | 'device'>,
   element: number | null,
   container: ParentNode | null,
 ): { x: number; y: number } {
@@ -50,7 +51,12 @@ export function cornerOf(
       ? undefined
       : corners.get(frame.ref)?.get(element)
   if (!held) return { x: x + width, y }
-  return { x: x + Math.min(held.right, width), y: y + Math.max(held.top, 0) }
+  // The corner reads in the page, which starts under a phone's status bar.
+  const page = pageBox(frame.box, frame.device)
+  return {
+    x: x + Math.min(held.right, width),
+    y: page.y + Math.max(held.top, 0),
+  }
 }
 
 /**

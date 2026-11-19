@@ -37,9 +37,9 @@ Owns `linked-box.tsx`, the views of a frame at each width its entry lists, drawn
 
 ### `src/client/board/device/`
 
-Owns `bezel.tsx`, the phone, tablet, laptop, or foldable body drawn around a frame whose record shows a `device`, in Edit, Play, and present, and `poses.tsx`, the Closed, Half, and Open buttons under one selected foldable. Both take the geometry from `src/shared/frame-device.ts`, which the PNG route reads too.
+Owns `bezel.tsx`, the body drawn around a frame showing a `device`, `page-colors.ts`, the colors a phone's status bar paints, and `poses.tsx`, a selected foldable's buttons. All read `src/shared/frame-device.ts`, as the PNG route and capture do. A phone's page starts under its status bar, so a board point maps into it through `pageBox`.
 
-- The body is a `box-shadow` spread around the screen radius, which misses a square corner, so the page, its placeholder, its loading block, and the PNG's shot round to `screenCorners`
+- The body is a `box-shadow` spread that misses a square corner, so the page rounds to `pageCorners`, square on top under a phone's status bar, and every other box on its screen to `screenCorners`
 - A laptop's lid is that spread, and its chin and wider base are positioned boxes from `laptopParts`, since one spread holds one width on every side
 - The body and the island scale with the canvas, its hairline edge stays one screen pixel at any zoom, and it takes no pointer events
 - The label, the open-alone link, and the rail stand past the border, a laptop's lid, and the In frame tag below the body, a laptop's base, and a linked width draws no device

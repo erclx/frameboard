@@ -56,11 +56,11 @@ describe('linkedBoxes', () => {
     ).toEqual([{ x: 1709, y: 40, width: 834, height: 1194 }])
   })
 
-  it('keeps the row 80 past a phone frame, whose body reaches no further', () => {
+  it("keeps the row 80 past a phone frame's buttons", () => {
     const phone = { x: 100, y: 40, width: 390, height: 844 }
 
     expect(linkedBoxes(phone, [{ width: 320, height: 568 }], 'phone')).toEqual([
-      { x: 570, y: 40, width: 320, height: 568 },
+      { x: 574, y: 40, width: 320, height: 568 },
     ])
   })
 })
@@ -84,7 +84,7 @@ describe('xPast', () => {
   it.each([
     ['a laptop, past its base', 1440, 'laptop', 1709],
     ['a tablet, past its border', 834, 'tablet', 1644],
-    ['a phone, past its border', 390, 'phone', 1616],
+    ['a phone, past its buttons', 390, 'phone', 1620],
     ['no device, at the frame', 1440, null, 1600],
   ] as const)('places %s 80 clear of the edge', (_, width, device, x) => {
     expect(xPast(1520, width, device)).toBe(x)

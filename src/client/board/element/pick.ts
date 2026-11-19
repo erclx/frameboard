@@ -1,3 +1,4 @@
+import { pageBox } from '@/shared/frame-device'
 import type { ElementTree, TreeElement } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -66,9 +67,10 @@ export type Touching = (rect: Box) => { key: ElementKey; box: Box }[]
  */
 export async function elementsIn(
   container: ParentNode,
-  frame: Pick<FrameRecord, 'ref' | 'box'>,
+  frame: Pick<FrameRecord, 'ref' | 'box' | 'device'>,
   tree: ElementTree | null,
 ): Promise<Touching> {
+  const page = pageBox(frame.box, frame.device)
   const iframe = container.querySelector<HTMLIFrameElement>(
     `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
   )
@@ -85,8 +87,8 @@ export async function elementsIn(
     const touched = new Map<number, Box>()
     for (const { index, box } of boxes) {
       const shown = {
-        x: frame.box.x + box.x,
-        y: frame.box.y + box.y,
+        x: page.x + box.x,
+        y: page.y + box.y,
         width: box.width,
         height: box.height,
       }

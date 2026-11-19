@@ -1,5 +1,5 @@
 import { type EditLabel, whenFree } from '@/client/board/claims/waiting'
-import type { Pose } from '@/shared/frame-device'
+import type { Island, Pose } from '@/shared/frame-device'
 import type { FrameSize } from '@/shared/frame-sizes'
 import type {
   KitInstallRecord,
@@ -132,6 +132,9 @@ export function createStructure(send: typeof fetch = fetch) {
     /** Folds each foldable to a pose, which sets its box, in one undo step. */
     setPose: (refs: readonly string[], pose: Pose) =>
       post<FrameRecord[]>('/api/frame/device', { refs, pose }),
+    /** Picks each phone's island width, in one undo step. */
+    setIsland: (refs: readonly string[], island: Island) =>
+      post<FrameRecord[]>('/api/frame/device', { refs, island }),
     // One undo step, a list changed since its `expected` refusing `stale-layout`.
     setWidths: (
       refs: readonly string[],

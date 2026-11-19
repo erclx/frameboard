@@ -3,6 +3,7 @@ import type { Browser, Page } from 'playwright-core'
 import { fitHeight } from '@/server/board/frames'
 import type { RefOptions } from '@/server/board/refs'
 import { FrameboardError } from '@/shared/errors'
+import { pageBox, topInset } from '@/shared/frame-device'
 import { FRAME_SIZES, referenceHeight } from '@/shared/frame-sizes'
 import type { LinkedWidth } from '@/shared/frame-widths'
 import type { FitResult } from '@/shared/records/capture'
@@ -140,10 +141,11 @@ export async function fitFrame(
     ...options
   }: RefOptions & { root: string; baseUrl: string; frame: FrameRecord },
 ): Promise<FitResult> {
+  // A phone's page starts under its status bar, so the box holds the page and the bar.
   const measured = await measureContent(browser, {
     baseUrl,
     ref: frame.ref,
-    box: frame.box,
+    box: pageBox(frame.box, frame.device),
     hugWidth: false,
   })
   const widths: LinkedWidth[] = []
@@ -157,10 +159,12 @@ export async function fitFrame(
     widths.push({ width, height: linked.height })
   }
   return {
-    frame: await fitHeight(options.root, frame.ref, measured.height, {
-      ...options,
-      widths,
-    }),
+    frame: await fitHeight(
+      options.root,
+      frame.ref,
+      measured.height + topInset(frame.device),
+      { ...options, widths },
+    ),
     contentHeight: measured.height,
     contentWidth: measured.contentWidth,
     tooWide: measured.contentWidth > frame.box.width,

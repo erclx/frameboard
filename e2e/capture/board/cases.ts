@@ -43,6 +43,7 @@ const WRITING_SECTIONS = [
   'scroll-rail',
   'scroll-no-ghost',
   'device-bezel',
+  'device-island-wide',
   'device-foldable-closed',
   'device-foldable-half',
   'device-foldable-open',

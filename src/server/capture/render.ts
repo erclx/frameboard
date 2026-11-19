@@ -4,20 +4,34 @@ import { HIDE_CONTROLS_CSS } from '@/shared/bindings'
 import { MAX_COMPOSITE_SIDE } from '@/shared/capture-limits'
 import { FrameboardError } from '@/shared/errors'
 import {
+  BATTERY,
   BEZEL_COLORS,
   bezelBox,
   BEZELS,
   bezelShadow,
+  BUTTON_DEPTH,
   type Device,
   FOLDABLE_ISLAND,
   foldBand,
   HOME_BAR,
+  type Island,
   islandCenter,
   LAPTOP_BASE,
   laptopParts,
-  PHONE_ISLAND,
+  pageBox,
+  type PageColors,
+  pageColors,
+  pageCorners,
+  PHONE_BUTTONS,
+  phoneIsland,
   type Pose,
   screenCorners,
+  SIGNAL_BARS,
+  STATUS_BAR,
+  STATUS_FONT,
+  topInset,
+  WIDE_ISLAND_LEVEL,
+  WIDE_ISLAND_TIMER,
 } from '@/shared/frame-device'
 import { frameThemeUrl, LOOK_MARKER, type Theme } from '@/shared/theme'
 
@@ -163,6 +177,8 @@ export type RenderFrame = (
     device?: Device
     /** How a foldable is held, which draws its island and fold, closed when absent. */
     pose?: Pose
+    /** The phone's island width, compact when absent. */
+    island?: Island
     element?: number
   },
   theme: Theme,
@@ -238,13 +254,15 @@ export function createWarmRenderer({
       const opened = await openFrame(open, {
         baseUrl: baseUrl(),
         ref: frame.ref,
-        box: frame.box,
+        box: pageSize(frame.box, device),
         theme,
         scale,
       })
       let shot: Buffer
+      let colors: PageColors | null = null
       try {
         await hideControls(opened.page)
+        if (topInset(device) > 0) colors = await readPageColors(opened.page)
         shot =
           element === undefined
             ? await opened.page.screenshot({
@@ -256,7 +274,18 @@ export function createWarmRenderer({
         await opened.close()
       }
       return device
-        ? drawBezel(open, shot, frame.box, { device, pose: frame.pose }, scale)
+        ? drawBezel(
+            open,
+            shot,
+            frame.box,
+            {
+              device,
+              pose: frame.pose,
+              island: frame.island,
+              bar: { colors, theme },
+            },
+            scale,
+          )
         : shot
     })
     queue = run.catch(() => {})
@@ -308,39 +337,126 @@ async function drawBezel(
   browser: Browser,
   shot: Buffer,
   box: { width: number; height: number },
-  { device, pose = 'closed' }: { device: Device; pose?: Pose },
+  {
+    device,
+    pose = 'closed',
+    island = 'compact',
+    bar,
+  }: {
+    device: Device
+    pose?: Pose
+    island?: Island
+    /** The page's colors and theme, which a phone's status bar paints. */
+    bar: { colors: PageColors | null; theme: Theme }
+  },
   scale: number,
 ): Promise<Buffer> {
   const outer = bezelBox({ x: 0, y: 0, ...box }, device)
+  const page = pageBox({ x: 0, y: 0, ...box }, device)
   const laptop = device === 'laptop'
   const context = await browser.newContext({
     viewport: { width: outer.width, height: outer.height },
     deviceScaleFactor: scale,
   })
   try {
-    const page = await context.newPage()
+    const tab = await context.newPage()
     const marks =
       device === 'phone'
-        ? `<span style="${pill(PHONE_ISLAND.width, PHONE_ISLAND.height, BEZEL_COLORS.island)}top:${PHONE_ISLAND.top}px"></span>` +
-          `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
+        ? statusBarHtml(bar.colors, bar.theme) + phoneMarks(island)
         : laptop
           ? laptopMarks(box)
           : device === 'foldable'
             ? foldableMarks(pose)
             : ''
     const radius = screenCorners(device)
-    await page.setContent(
+    await tab.setContent(
       `<!doctype html><html><body style="margin:0;background:transparent">` +
         `<div style="position:absolute;left:${-outer.x}px;top:${-outer.y}px;width:${box.width}px;height:${box.height}px">` +
-        `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="display:block;width:100%;height:100%;border-radius:${radius}">` +
+        `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="position:absolute;left:0;top:${page.y}px;width:${page.width}px;height:${page.height}px;border-radius:${pageCorners(device)}">` +
         `<div style="position:absolute;inset:0;border-radius:${radius};box-shadow:${bezelShadow(device, { board: false })}">${marks}</div>` +
         `</div></body></html>`,
       { waitUntil: 'load' },
     )
-    return await page.screenshot({ omitBackground: true, caret: 'hide' })
+    return await tab.screenshot({ omitBackground: true, caret: 'hide' })
   } finally {
     await context.close()
   }
+}
+
+/**
+ * A phone frame's shot of its page set under the status bar, at the frame's
+ * box with no body, so a capture holds the screen the board draws.
+ */
+export async function underStatusBar(
+  browser: Browser,
+  shot: Buffer,
+  box: { width: number; height: number },
+  { colors, theme }: { colors: PageColors | null; theme: Theme },
+  scale: number,
+): Promise<Buffer> {
+  const page = pageBox({ x: 0, y: 0, ...box }, 'phone')
+  const context = await browser.newContext({
+    viewport: box,
+    deviceScaleFactor: scale,
+  })
+  try {
+    const tab = await context.newPage()
+    await tab.setContent(
+      `<!doctype html><html><body style="margin:0;position:relative;width:${box.width}px;height:${box.height}px">` +
+        `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="position:absolute;left:0;top:${page.y}px;width:${page.width}px;height:${page.height}px">` +
+        statusBarHtml(colors, theme, { rounded: false }) +
+        `</body></html>`,
+      { waitUntil: 'load' },
+    )
+    return await tab.screenshot({ caret: 'hide' })
+  } finally {
+    await context.close()
+  }
+}
+
+/** A loaded page's fill and text color, which the browser reads off its own document. */
+export function readPageColors(page: Page): Promise<PageColors> {
+  // Called with no argument, so the function reads the page's own document.
+  return page.evaluate(pageColors as () => PageColors)
+}
+
+/** The viewport a frame's page opens at, its box less a phone's status bar, at least one pixel tall. */
+export function pageSize(
+  box: { width: number; height: number },
+  device: Device | null | undefined,
+): { width: number; height: number } {
+  const page = pageBox({ x: 0, y: 0, ...box }, device)
+  return { width: page.width, height: Math.max(1, page.height) }
+}
+
+/**
+ * The phone's status bar as the board draws it, in the page's fill and text
+ * color or its theme's own, its top corners rounded to the screen inside a
+ * body and square on a frame's bare box.
+ */
+export function statusBarHtml(
+  colors: PageColors | null,
+  theme: Theme,
+  { rounded = true }: { rounded?: boolean } = {},
+): string {
+  const { screenRadius } = BEZELS.phone
+  const corners = rounded ? `${screenRadius}px ${screenRadius}px 0 0` : '0'
+  const signal = SIGNAL_BARS.map(
+    (tall) =>
+      `<span style="width:3px;height:${tall}px;border-radius:1px;background:currentColor"></span>`,
+  ).join('')
+  const battery =
+    `<span style="display:flex;align-items:center">` +
+    `<span style="box-sizing:border-box;display:flex;align-items:center;width:${BATTERY.width}px;height:${BATTERY.height}px;border:1px solid currentColor;border-radius:${BATTERY.radius}px;padding:1.5px;opacity:.9"><span style="width:80%;height:100%;border-radius:2px;background:currentColor"></span></span>` +
+    `<span style="width:${BATTERY.cap}px;height:4px;margin-left:1px;border-radius:0 1px 1px 0;background:currentColor;opacity:.6"></span>` +
+    `</span>`
+  return (
+    `<div style="position:absolute;left:0;right:0;top:0;height:${STATUS_BAR.height}px;border-radius:${corners};color-scheme:${theme};background:${colors?.fill ?? 'Canvas'};color:${colors?.ink ?? 'CanvasText'}">` +
+    `<div style="position:absolute;left:0;right:0;top:${STATUS_BAR.band.top}px;height:${STATUS_BAR.band.height}px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;padding:0 ${STATUS_BAR.side}px;font:600 ${STATUS_BAR.font}px/1 ${STATUS_FONT};font-variant-numeric:tabular-nums">` +
+    `<span>${STATUS_BAR.time}</span>` +
+    `<span style="display:flex;align-items:center;gap:6px"><span style="display:flex;align-items:flex-end;gap:2px">${signal}</span>${battery}</span>` +
+    `</div></div>`
+  )
 }
 
 /**
@@ -353,6 +469,26 @@ function laptopMarks(box: { width: number; height: number }): string {
   return (
     `<span style="position:absolute;box-sizing:border-box;left:${chin.x}px;top:${chin.y}px;width:${chin.width}px;height:${chin.height}px;background:${BEZEL_COLORS.body};border-left:${edge};border-right:${edge}"></span>` +
     `<span style="position:absolute;box-sizing:border-box;left:${base.x}px;top:${base.y}px;width:${base.width}px;height:${base.height}px;background:${BEZEL_COLORS.base};border:${edge};border-radius:0 0 ${LAPTOP_BASE.radius}px ${LAPTOP_BASE.radius}px"></span>`
+  )
+}
+
+/** The phone's buttons, island, and home bar as the board draws them. */
+function phoneMarks(island: Island): string {
+  const { border } = BEZELS.phone
+  const buttons = PHONE_BUTTONS.map(
+    ({ side, top, height }) =>
+      `<span style="position:absolute;${side}:${-border - BUTTON_DEPTH}px;top:${top - border}px;width:${BUTTON_DEPTH}px;height:${height}px;border-radius:${BUTTON_DEPTH / 2}px;background:${BEZEL_COLORS.button}"></span>`,
+  ).join('')
+  const shape = phoneIsland(island)
+  const timer =
+    island === 'wide'
+      ? `<span style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:3px;background:${BEZEL_COLORS.islandLive}"></span>${WIDE_ISLAND_TIMER}</span>` +
+        `<span style="display:flex;align-items:flex-end;gap:2px">${WIDE_ISLAND_LEVEL.map((tall) => `<span style="width:2px;height:${tall}px;border-radius:1px;background:${BEZEL_COLORS.islandLive}"></span>`).join('')}</span>`
+      : ''
+  return (
+    buttons +
+    `<span style="${pill(shape.width, shape.height, BEZEL_COLORS.island)}top:${shape.top}px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;padding:0 11px;color:${BEZEL_COLORS.islandText};font:600 11px/1 ${STATUS_FONT};font-variant-numeric:tabular-nums">${timer}</span>` +
+    `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
   )
 }
 

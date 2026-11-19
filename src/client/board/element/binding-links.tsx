@@ -5,6 +5,7 @@ import {
   isCustomProperty,
   parseBinds,
 } from '@/shared/bindings'
+import { pageBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { RESTAMPED } from '../frame-dom'
@@ -59,7 +60,8 @@ function FrameBindings({
   container: HTMLElement | null
 }) {
   const bindings = useBindingMeasures(container, frame.ref)
-  const { x, y } = frame.box
+  // A control's box reads in the page, which starts under a phone's status bar.
+  const { x, y } = pageBox(frame.box, frame.device)
   return bindings.map((binding) => (
     <div
       key={binding.key}
