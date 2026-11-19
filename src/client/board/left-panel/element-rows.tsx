@@ -4,7 +4,7 @@ import { type MouseEvent, useCallback, useRef, useState } from 'react'
 import { RenameField } from '@/client/components/rename-field'
 import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
-import type { TreeElement } from '@/shared/records/elements'
+import type { ElementTree, TreeElement } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { useElementTree } from '../element/tree'
@@ -59,7 +59,17 @@ export function ElementRows({
   const entry = useElementTree(frame.ref)
   const canWrite = useLive((state) => state.canWrite)
   const [renaming, setRenaming] = useState<number | null>(null)
-  const tree = entry?.status === 'ready' ? entry.tree : null
+  const [last, setLast] = useState<{ ref: string; tree: ElementTree } | null>(
+    null,
+  )
+  const ready = entry?.status === 'ready' ? entry.tree : null
+  if (ready && (last?.tree !== ready || last.ref !== frame.ref)) {
+    setLast({ ref: frame.ref, tree: ready })
+  }
+  // A re-read keeps the last rows up rather than flashing a notice, and the server refuses a row gone stale as any stale key.
+  const tree =
+    ready ??
+    (entry?.status === 'loading' && last?.ref === frame.ref ? last.tree : null)
   const prefix = siblingList(frame.ref, null).slice(0, -1)
   const watches = useCallback(
     (list: string) => list.startsWith(prefix),
@@ -77,21 +87,19 @@ export function ElementRows({
     [tree, frame.ref, page],
   )
   useReorderMonitor(watches, move)
-  if (!entry || entry.status === 'loading') {
-    return <Notice depth={1}>Reading elements</Notice>
-  }
-  if (entry.status === 'refused') {
+  if (entry?.status === 'refused') {
     return (
       <Notice depth={1} title={entry.message}>
         This frame cannot be addressed
       </Notice>
     )
   }
-  const rows = visibleRows(entry.tree.elements, isOpen)
+  if (!tree) return <Notice depth={1}>Reading elements</Notice>
+  const rows = visibleRows(tree.elements, isOpen)
   if (rows.length === 0) return <Notice depth={1}>No elements</Notice>
-  const parents = new Set(entry.tree.elements.map((element) => element.parent))
-  const places = siblingPlaces(entry.tree.elements)
-  const { hash } = entry.tree
+  const parents = new Set(tree.elements.map((element) => element.parent))
+  const places = siblingPlaces(tree.elements)
+  const { hash } = tree
   const keyOf = (index: number) => ({ frame: frame.ref, index, hash })
   const pick = (index: number, event: PickEvent) => {
     // Read at the click, since a click just before may not have rendered yet.
