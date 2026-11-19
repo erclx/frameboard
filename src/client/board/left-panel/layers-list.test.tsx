@@ -1,13 +1,15 @@
 import '../../styles.css'
 
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { TooltipProvider } from '@/client/components/ui/tooltip'
+import type { TreeElement } from '@/shared/records/elements'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
+import { trees } from '../element/tree'
 import type { Box } from '../geometry/box'
 import { modeStore } from '../mode'
 import { enteredStore, leaveFrame } from '../play/entered'
@@ -45,6 +47,92 @@ function renderList() {
     </TooltipProvider>,
   )
 }
+
+/** An element at the top of its frame, named and shaped as `edit` reads a heading. */
+function elementOf(index: number, name: string): TreeElement {
+  return {
+    index,
+    parent: null,
+    tag: 'h1',
+    name,
+    textOnly: true,
+    layout: 'block',
+    round: false,
+    placed: false,
+  }
+}
+
+/** Holds hero's tree entry as the server's answer left it, ready with these elements or still loading. */
+function holdTree(elements: TreeElement[] | 'loading') {
+  act(() =>
+    trees.store.setState({
+      byRef: {
+        [HERO.ref]:
+          elements === 'loading'
+            ? { status: 'loading', version: 0 }
+            : {
+                status: 'ready',
+                version: 0,
+                tree: { ref: HERO.ref, hash: 'a'.repeat(64), elements },
+              },
+      },
+    }),
+  )
+}
+
+describe("a frame's element rows across a re-read", () => {
+  afterEach(() => {
+    act(() => trees.store.setState({ byRef: {} }))
+  })
+
+  it('keeps the rows mounted while the tree is read again', async () => {
+    holdTree([elementOf(6, 'Headline')])
+    renderList()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Show the elements of hero' }),
+    )
+    const row = within(
+      screen.getByRole('list', { name: 'Elements of hero' }),
+    ).getByText('Headline')
+
+    holdTree('loading')
+
+    expect(
+      within(screen.getByRole('list', { name: 'Elements of hero' })).getByText(
+        'Headline',
+      ),
+    ).toBe(row)
+    expect(screen.queryByText('Reading elements')).toBeNull()
+  })
+
+  it('drops a row the new tree no longer holds', async () => {
+    holdTree([elementOf(6, 'Headline'), elementOf(7, 'Footer')])
+    renderList()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Show the elements of hero' }),
+    )
+    holdTree('loading')
+
+    holdTree([elementOf(6, 'Headline')])
+
+    expect(
+      within(
+        screen.getByRole('list', { name: 'Elements of hero' }),
+      ).queryByText('Footer'),
+    ).toBeNull()
+  })
+
+  it('says it is reading on a first read', async () => {
+    holdTree('loading')
+    renderList()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Show the elements of hero' }),
+    )
+
+    expect(screen.getByText('Reading elements')).toBeVisible()
+  })
+})
 
 describe('a layers row in Play', () => {
   let detach = () => {}
