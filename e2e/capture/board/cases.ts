@@ -48,6 +48,7 @@ const WRITING_SECTIONS = [
   'device-foldable-closed',
   'device-foldable-half',
   'device-foldable-open',
+  'device-foldable-turned',
   'present-device',
   'present-phone-tall',
   'play-entered-phone-tall',
