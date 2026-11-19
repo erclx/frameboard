@@ -15,6 +15,8 @@ Owns where the developer picks a project, being the home view and the project ac
 
 Owns the home view, every project a card with a thumbnail or a list row, under a header with the layout switch, New project, the theme toggle, and Sort. A title renames through `POST /api/project/title`, the filter and Archived section narrow the list, and `sort.ts` and `pins.ts` keep the viewer's own order.
 
+A card's box in `skeleton.tsx` pulses grey until its capture loads, and holds still grey when its frame has no stamp or the image fails, so nothing pulses for good. The header's project mark draws white boxes alone.
+
 - `thumbnails.ts` asks for the shown theme's stamps on mount, a theme flip, a reconnect, and a changed frame, and each landing reaches the live store over the socket
 - An `invalid-name` refusal stays inline under the rename field, and a board's New project goes home first, since leaving the board clears the state the add opens
 - `roveFocus` reads the single-key switch itself, the one character key outside the registry's gate, and the focus actions stand down once a card, toggle, or field holds focus
