@@ -182,6 +182,90 @@ describe('createHug', () => {
     expect(calls).toBe(1)
   })
 
+  describe('a skipped measure', () => {
+    it('reports the frame and the reason, and hugs it on a later batch', async () => {
+      board = boardOf({ card: { hugHeight: true } })
+      const lines: string[] = []
+      let calls = 0
+      const hug = createHug({
+        root: board.root,
+        measure: async () => {
+          calls += 1
+          if (calls === 1) {
+            throw new FrameboardError(
+              'fit-unbounded',
+              'Grows with the viewport.',
+            )
+          }
+          return sized(1440, 485)
+        },
+        report: (line) => lines.push(line),
+      })
+
+      await hug.now(await scanBoard(board.root), [CARD])
+      await hug.now(await scanBoard(board.root), [CARD])
+
+      expect(lines).toHaveLength(1)
+      expect(lines[0]).toContain(CARD)
+      expect(lines[0]).toContain('fit-unbounded')
+      expect(entries().card.height).toBe(485)
+    })
+
+    it('reports a measure that throws something other than a board error', async () => {
+      board = boardOf({ card: { hugHeight: true } })
+      const lines: string[] = []
+      const hug = createHug({
+        root: board.root,
+        measure: async () => {
+          throw new Error(
+            'Timeout 30000ms exceeded.\nCall log:\n  - navigating',
+          )
+        },
+        report: (line) => lines.push(line),
+      })
+
+      await hug.now(await scanBoard(board.root), [CARD])
+
+      expect(lines).toEqual([
+        expect.stringContaining('Timeout 30000ms exceeded.'),
+      ])
+      expect(lines[0]).not.toContain('Call log')
+    })
+
+    it('reports a browser that does not launch once, not per frame', async () => {
+      board = boardOf({
+        card: { hugHeight: true },
+        hero: { hugHeight: true },
+      })
+      const lines: string[] = []
+      const hug = createHug({
+        root: board.root,
+        measure: async () => {
+          throw new FrameboardError('browser-not-found', 'No browser.')
+        },
+        report: (line) => lines.push(line),
+      })
+
+      await hug.now(await scanBoard(board.root), [CARD, HERO])
+
+      expect(lines).toEqual([expect.stringContaining('browser-not-found')])
+    })
+
+    it('reports nothing for a body empty on purpose', async () => {
+      board = boardOf({ card: { hugHeight: true } })
+      const lines: string[] = []
+      const hug = createHug({
+        root: board.root,
+        measure: async () => ({ ...sized(16, 16), empty: true }),
+        report: (line) => lines.push(line),
+      })
+
+      await hug.now(await scanBoard(board.root), [CARD])
+
+      expect(lines).toEqual([])
+    })
+  })
+
   it('writes what it queued later without holding the caller', async () => {
     board = boardOf({ card: { hugHeight: true } })
     let release: () => void = () => {}
