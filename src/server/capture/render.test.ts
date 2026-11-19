@@ -469,6 +469,61 @@ describe.skipIf(shell === null)(
       expect(shaded).toBeLessThan(creased ?? 0)
     })
 
+    it('stands a turned open foldable’s island on end a quarter down its left side', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/hero',
+          box: { width: 626, height: 890 },
+          device: 'foldable',
+          pose: 'open',
+          turn: 'left',
+        },
+        'light',
+      )
+      // The island's middle, 14 in from the screen's left edge and 15 into its 30 width, a quarter down the 890 tall screen.
+      const island = await pixelAt(
+        requireShell(shell),
+        bytes,
+        20 + 29,
+        20 + 222,
+      )
+
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        666, 930,
+      ])
+      expect(island).toEqual([5, 5, 6, 255])
+    })
+
+    it('runs a turned half open foldable’s fold across the screen', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/hero',
+          box: { width: 626, height: 890 },
+          device: 'foldable',
+          pose: 'half',
+          turn: 'right',
+        },
+        'light',
+      )
+      // The screen's middle row against a row 200 above it, both halfway across.
+      const [fold] = await pixelAt(requireShell(shell), bytes, 333, 20 + 445)
+      const [clear] = await pixelAt(requireShell(shell), bytes, 333, 20 + 245)
+
+      expect(fold).toBeLessThan(clear ?? 0)
+    })
+
     it('draws none of a phone page past the body at its screen corner', async () => {
       const render = createWarmRenderer({
         baseUrl: () => host.url,

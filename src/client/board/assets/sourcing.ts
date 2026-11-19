@@ -6,12 +6,25 @@ import type {
   ImageGenerate,
   ImageOffer,
   ImageResult,
+  ModelFind,
+  ModelResult,
   SavedImage,
 } from '@/shared/records/sourcing'
 
 import { assetUrl } from './describe'
 
-export type { ImageFind, ImageGenerate, ImageOffer, ImageResult, SavedImage }
+export type {
+  ImageFind,
+  ImageGenerate,
+  ImageOffer,
+  ImageResult,
+  ModelFind,
+  ModelResult,
+  SavedImage,
+}
+
+/** What a found result is, which picks the route that saves it. */
+export type ResultKind = 'image' | 'model'
 
 function base(project: string): string {
   return `/api/projects/${encodeURIComponent(project)}/sourcing`
@@ -41,10 +54,25 @@ export async function findImages(
 ): Promise<ImageFind> {
   const params = new URLSearchParams({ q: query })
   if (credited) params.set('credited', 'true')
-  const response = await fetch(`${base(project)}/find?${params}`, { signal })
-  const body = (await response
-    .json()
-    .catch(() => null)) as Envelope<ImageFind> | null
+  return read<ImageFind>(`${base(project)}/find?${params}`, signal)
+}
+
+/**
+ * Poly Haven's models matching a query through the board's server, refusing
+ * and aborting as `findImages` does.
+ */
+export function findModels(
+  project: string,
+  query: string,
+  signal?: AbortSignal,
+): Promise<ModelFind> {
+  const params = new URLSearchParams({ q: query })
+  return read<ModelFind>(`${base(project)}/models?${params}`, signal)
+}
+
+async function read<T>(url: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(url, { signal })
+  const body = (await response.json().catch(() => null)) as Envelope<T> | null
   if (body === null) {
     throw new BoardWriteError(
       'internal',
@@ -84,11 +112,18 @@ export type SaveState =
   | { state: 'saved'; path: string }
   | { state: 'failed'; message: string }
 
-/** Each result's save by `project` and Openverse id, so a click and a drag share one. */
+/**
+ * Each result's save by `project`, kind, and source id, so a click and a drag
+ * share one and an image and a model sharing an id never do.
+ */
 export const saveStore = createStore<Record<string, SaveState>>()(() => ({}))
 
-export function saveKey(project: string, id: string): string {
-  return `${project}\0${id}`
+export function saveKey(
+  project: string,
+  id: string,
+  kind: ResultKind = 'image',
+): string {
+  return `${project}\0${kind}\0${id}`
 }
 
 export interface SaveRequest {
@@ -97,6 +132,8 @@ export interface SaveRequest {
   /** The search that found it, which names the saved file. */
   query: string
   credited: boolean
+  /** An image unless named, which saves through Openverse. */
+  kind?: ResultKind
 }
 
 const pending = new Map<string, Promise<SavedImage>>()
@@ -120,11 +157,11 @@ export async function assetExists(
  * the same file rather than writing another.
  */
 export function saveResult(
-  { project, result, query, credited }: SaveRequest,
+  { project, result, query, credited, kind = 'image' }: SaveRequest,
   send: typeof writeBoard<SavedImage> = writeBoard,
   exists: typeof assetExists = assetExists,
 ): Promise<SavedImage> {
-  const key = saveKey(project, result.id)
+  const key = saveKey(project, result.id, kind)
   const running = pending.get(key)
   if (running) return running
   const set = (state: SaveState) =>
@@ -135,11 +172,17 @@ export function saveResult(
     landed.delete(key)
     set({ state: 'saving' })
     try {
-      const saved = await send(`${base(project)}/save`, {
-        id: result.id,
-        query,
-        credited,
-      })
+      const saved =
+        kind === 'model'
+          ? await send(`${base(project)}/models/save`, {
+              id: result.id,
+              query,
+            })
+          : await send(`${base(project)}/save`, {
+              id: result.id,
+              query,
+              credited,
+            })
       landed.set(key, saved)
       set({ state: 'saved', path: saved.path })
       return saved

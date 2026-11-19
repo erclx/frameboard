@@ -6,11 +6,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { liveStore } from '@/client/live/store'
 import type { AssetFile } from '@/shared/records/assets'
 import type { FrameRecord } from '@/shared/records/list'
-import type { ImageResult } from '@/shared/records/sourcing'
+import type { ImageResult, ModelResult } from '@/shared/records/sourcing'
 import { frameOf } from '@/test/board'
 
 import type { DraggedResult, PlaceableFile } from '../assets/drag'
-import { ResultTile } from '../assets/find/result-tile'
+import { ModelTile, ResultTile } from '../assets/find/result-tile'
 import { Tile } from '../assets/tile'
 import type { BoardPoint } from '../notes/pick'
 import { tileDragStore, useAssetDrop } from './asset-drop'
@@ -455,5 +455,59 @@ describe('useAssetDrop with a found result', () => {
     })
 
     expect(found).toEqual([])
+  })
+})
+
+describe('useAssetDrop with a found model', () => {
+  const STOOL: ModelResult = {
+    number: 1,
+    id: 'wooden_stool_01',
+    name: 'Wooden Stool 01',
+    authors: [],
+    categories: [],
+    tags: [],
+    license: 'cc0',
+    landingUrl: 'https://polyhaven.com/a/wooden_stool_01',
+    thumbnail: null,
+    polycount: 10946,
+    dimensionsMm: null,
+    sizes: ['1k'],
+    downloadCount: null,
+  }
+
+  it('saves a dropped model as a model, sizing nothing from pixels it has none of', async () => {
+    const found: DraggedResult[] = []
+    render(
+      <div>
+        <HitLayer placed={[]} found={found} />
+        <ul style={{ position: 'fixed', left: 300, top: 0, width: 200 }}>
+          <ModelTile
+            project="studio"
+            result={STOOL}
+            query="Wooden Stool"
+            onSave={() => {}}
+          />
+        </ul>
+      </div>,
+    )
+
+    await dragTo(screen.getByRole('listitem'), screen.getByTestId('hit'), {
+      clientX: 80,
+      clientY: 60,
+    })
+
+    expect(found).toEqual([
+      {
+        request: {
+          project: 'studio',
+          result: { id: 'wooden_stool_01' },
+          query: 'Wooden Stool',
+          credited: false,
+          kind: 'model',
+        },
+        name: 'wooden-stool',
+        natural: null,
+      },
+    ])
   })
 })

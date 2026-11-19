@@ -50,10 +50,12 @@ function attachView() {
 function Bar({
   pose,
   off,
+  rotate,
   calls,
 }: {
   pose: Pose
   off?: string
+  rotate?: { turn?: Turn; off?: string }
   calls: ReturnType<typeof server>['calls']
 }) {
   return (
@@ -64,6 +66,7 @@ function Bar({
         pose={pose}
         below={20}
         off={off}
+        rotate={rotate}
         calls={calls}
       />
     </div>
@@ -199,6 +202,62 @@ describe('PoseButtons', () => {
     const bar = container.querySelector('[data-poses]')
 
     expect(bar?.getBoundingClientRect().top).toBeGreaterThanOrEqual(100 + 20)
+  })
+})
+
+describe('PoseButtons with Rotate', () => {
+  afterEach(() => {
+    for (const detach of detaches.splice(0)) detach()
+  })
+
+  it('shows the poses, a divider, then Rotate in one group', () => {
+    const { calls } = server()
+
+    render(<Bar pose="open" rotate={{}} calls={calls} />)
+
+    const group = screen.getByRole('group', { name: 'Pose of inbox' })
+    expect(
+      [...group.querySelectorAll('button, [data-bar-divider]')].map(
+        (part) => part.textContent || 'divider',
+      ),
+    ).toEqual(['Closed', 'Half', 'Open', 'divider', 'Rotate'])
+  })
+
+  it.each([
+    [undefined, 'left'],
+    ['left', 'right'],
+    ['right', 'upright'],
+  ] as const)(
+    'turns a foldable held %s on to %s, sending the target turn',
+    async (turn, next) => {
+      attachView()
+      const { calls, sent } = server()
+      render(<Bar pose="closed" rotate={{ turn }} calls={calls} />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Rotate' }))
+
+      expect(sent).toEqual([{ refs: [REF], turn: next }])
+    },
+  )
+
+  it('turns Rotate off alone, saying why, while the poses stay on', async () => {
+    const { calls, sent } = server()
+    render(
+      <Bar
+        pose="closed"
+        rotate={{ off: 'Unlock inbox to turn it' }}
+        calls={calls}
+      />,
+    )
+    const rotate = screen.getByRole('button', { name: 'Rotate' })
+
+    await userEvent.click(rotate)
+
+    expect(sent).toEqual([])
+    expect(rotate).toHaveAttribute('title', 'Unlock inbox to turn it')
+    expect(screen.getByRole('button', { name: /Open/ })).not.toHaveAttribute(
+      'aria-disabled',
+    )
   })
 })
 

@@ -31,7 +31,7 @@ interface PresentBarProps {
   onLeave: () => void
   /** Whether a slide in the deck turns, which holds Rotate's width on every slide so nothing moves. */
   rotateSlot?: boolean
-  /** Turns the shown slide, absent while it is no phone or tablet or the tab cannot write. */
+  /** Turns the shown slide, absent while it is no phone, tablet, or foldable or the tab cannot write. */
   onRotate?: () => void
   /** Why the shown slide cannot turn, which turns Rotate off and names the reason. */
   rotateOff?: string

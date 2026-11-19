@@ -196,7 +196,11 @@ export async function placeResult(
   try {
     path = (await save(dropped.request)).path
   } catch (error) {
-    reportRefusal("Couldn't save the image")(error)
+    reportRefusal(
+      dropped.request.kind === 'model'
+        ? "Couldn't save the model"
+        : "Couldn't save the image",
+    )(error)
     return
   }
   const kind = assetKind(path)

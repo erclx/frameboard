@@ -135,7 +135,7 @@ export function createStructure(send: typeof fetch = fetch) {
     /** Picks each phone's island width, in one undo step. */
     setIsland: (refs: readonly string[], island: Island) =>
       post<FrameRecord[]>('/api/frame/device', { refs, island }),
-    /** Turns each phone or tablet to `turn`, the target rather than the next, so a retried call lands once, in one undo step. */
+    /** Turns each phone, tablet, or foldable to `turn`, the target rather than the next, so a retried call lands once, in one undo step. */
     setTurn: (refs: readonly string[], turn: Turn) =>
       post<FrameRecord[]>('/api/frame/device', { refs, turn }),
     // One undo step, a list changed since its `expected` refusing `stale-layout`.

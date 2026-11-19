@@ -115,9 +115,9 @@ export interface FoldOptions {
   /** The phone's island width, refused on a frame whose width names no phone or that names the foldable. */
   island?: Island
   /**
-   * The turn a phone or a tablet takes, absolute so a retried call lands once,
-   * upright restoring the size it held. A quarter turn refuses a foldable, a
-   * laptop, a frame showing no device, and one holding extra widths.
+   * The turn a phone, a tablet, or a foldable takes, absolute so a retried
+   * call lands once, upright restoring the size it held or the pose's screen.
+   * A quarter turn refuses a laptop, no device shown, and extra widths.
    */
   turn?: Turn
 }
@@ -945,8 +945,8 @@ export async function setFrameFlag(
 
 /**
  * Shows or hides a frame's device, names, folds, or turns it, never writing
- * the frame's file. Naming a foldable shows it and sets the box to its pose's
- * screen, fixed on both axes, standing a turned frame upright first.
+ * the frame's file. A named foldable's box is its pose's screen, both axes
+ * fixed, sides swapped while turned, and a turned frame stands upright first.
  */
 export async function setFrameDevice(
   root: string,
@@ -963,10 +963,16 @@ export async function setFrameDevice(
   return updatePlacement(root, ref, options, (stood, frameRef) => {
     const foldable = name ?? stood.foldable === true
     const shown = show ?? (name === true || stood.showDevice === true)
+    // A foldable named off stands at its pose's screen before its width picks the device a turn checks.
+    const unfolded =
+      stood.foldable === true ? unfoldedPlacement(stood, foldable) : stood
     if (turn && turn !== 'upright') {
-      refuseTurn(stood, frameRef, turn, { foldable, shown })
+      refuseTurn(unfolded, frameRef, turn, { foldable, shown })
     }
-    const placement = turnedPlacement(stood, foldable ? 'upright' : turn)
+    const placement =
+      stood.foldable === true && foldable
+        ? unfolded
+        : turnedPlacement(unfolded, foldable ? 'upright' : turn)
     const {
       showDevice: _held,
       device: _device,
@@ -974,6 +980,7 @@ export async function setFrameDevice(
       pose: stored,
       keptWidths,
       island: picked,
+      turn: held,
       ...rest
     } = placement
     if (fold && !foldable) {
@@ -1001,7 +1008,7 @@ export async function setFrameDevice(
       const widths = (keptWidths ?? rest.widths).filter(
         (linked) => linked.width !== placement.box.width,
       )
-      return { ...base, widths }
+      return { ...base, ...(held ? { turn: held } : {}), widths }
     }
     // Naming a frame keeps the widths it drew in its entry, undrawn.
     const undrawn = keptWidths ?? rest.widths
@@ -1010,17 +1017,40 @@ export async function setFrameDevice(
       ...(undrawn.length > 0 ? { keptWidths: undrawn } : {}),
     }
     const pose = fold ?? stored ?? nearestPose(placement.box.width)
-    if (!fold && named) return { ...base, ...kept, foldable, pose }
+    const facing = turn ?? turnOf(held)
+    const sideways = facing === 'upright' ? {} : { turn: facing }
+    if (!fold && !turn && named) {
+      return { ...base, ...kept, foldable, pose, ...sideways }
+    }
+    const screen = POSE_SIZES[pose]
     return {
       ...base,
       ...kept,
       foldable,
       pose,
-      box: { ...placement.box, ...POSE_SIZES[pose] },
+      ...sideways,
+      box: {
+        ...placement.box,
+        ...(facing === 'upright'
+          ? screen
+          : { width: screen.height, height: screen.width }),
+      },
       hugWidth: false,
       hugHeight: false,
     }
   })
+}
+
+/**
+ * A named foldable left as it is while it stays named, and stood upright at
+ * its pose's screen when named off, since no other device reads its turn.
+ */
+function unfoldedPlacement(placement: Placement, foldable: boolean): Placement {
+  if (foldable) return placement
+  const { turn: held, upright: _upright, ...rest } = placement
+  if (!held) return rest
+  const screen = POSE_SIZES[poseOf(placement.pose)]
+  return { ...rest, box: { ...placement.box, ...screen } }
 }
 
 /** The device a frame's width picks, its upright width while turned, shown or not. */
@@ -1029,9 +1059,9 @@ function drawnDevice(placement: Placement): Device | null {
 }
 
 /**
- * Refuses a quarter turn the board has no drawn answer for: a foldable, a
- * laptop, a frame showing no device, and a frame whose extra widths are each
- * an upright preview of their own.
+ * Refuses a quarter turn the board has no drawn answer for: a laptop, a frame
+ * showing no device, and a frame whose extra widths are each an upright
+ * preview of their own. A shown foldable turns in each pose.
  */
 function refuseTurn(
   placement: Placement,
@@ -1039,18 +1069,11 @@ function refuseTurn(
   turn: Turn,
   { foldable, shown }: { foldable: boolean; shown: boolean },
 ): void {
-  if (foldable) {
-    throw new FrameboardError(
-      'usage',
-      `${frameRef} is a foldable, whose poses are its sizes, so it does not turn.`,
-      { ref: frameRef, turn },
-    )
-  }
   const device = drawnDevice(placement)
-  if (!shown || (device !== 'phone' && device !== 'tablet')) {
+  if (!shown || !(foldable || device === 'phone' || device === 'tablet')) {
     throw new FrameboardError(
       'usage',
-      `${frameRef} draws no phone or tablet, so it does not turn. Show the device on a frame 320 to 1023 px wide first.`,
+      `${frameRef} draws no phone, tablet, or foldable, so it does not turn. Show the device on a frame 320 to 1023 px wide or a foldable first.`,
       { ref: frameRef, turn },
     )
   }
@@ -1357,9 +1380,11 @@ class PageLayout {
         ? { pose }
         : {}),
       ...(island ? { island } : {}),
-      ...(turn && upright
+      ...(turn && upright && !foldable
         ? { turn, upright: { width: upright.width, height: upright.height } }
         : {}),
+      // A foldable's pose gives its upright screen, so its turn keeps no size.
+      ...(turn && foldable ? { turn } : {}),
       ...(transition ? { transition: { ...transition } } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
       ...(kit ? { kit } : {}),
@@ -1377,6 +1402,7 @@ class PageLayout {
       delete entry.turn
       delete entry.upright
     }
+    if (turn && foldable) delete entry.upright
     if (typeof held?.device === 'string') delete entry.device
     if (!transition && storedTransitionOf(held?.transition)) {
       delete entry.transition

@@ -418,6 +418,17 @@
           transparent
         );
       }
+      .foldh.half {
+        background: linear-gradient(
+          180deg,
+          transparent,
+          rgba(0, 0, 0, 0.1) 30%,
+          rgba(0, 0, 0, 0.34) 49%,
+          rgba(0, 0, 0, 0.34) 51%,
+          rgba(0, 0, 0, 0.08) 70%,
+          transparent
+        );
+      }
       .pbar {
         white-space: nowrap;
         display: inline-flex;
@@ -494,10 +505,12 @@
   </head>
   <body>
     <p class="cap">
-      <b>rotate-phone-tablet-720.</b> The phone and the tablet turned left, each
-      selected with Rotate alone under its body. The phone's island stands on
-      the left short side, its buttons lie on the long edges, and its status bar
-      is gone.
+      <b>rotate-phone-tablet-720.</b> The phone, the tablet, and the foldable in
+      each pose turned left. The phone and the tablet show Rotate alone under
+      the body, and the foldable its poses, a divider, then Rotate. The phone's
+      island stands on the left short side, its buttons lie on the long edges,
+      and its status bar is gone. The foldable's island sits where a quarter
+      turn puts it, and its fold runs across the screen.
     </p>
     <div class="stage">
       <div class="col">
@@ -546,6 +559,113 @@
         </div>
         <div class="pbar"><span>⟳ Rotate</span></div>
         <small>tablet</small>
+      </div>
+      <div class="col">
+        <div
+          class="body"
+          style="width: 194px; height: 137px; border-radius: 18px"
+        >
+          <div
+            class="scr"
+            style="inset: 5px; border-radius: 13px; padding-left: 22px"
+          >
+            <b>Inbox</b><i>Design review</i><i>Release 0.42.0</i
+            ><i>Invoice 2231</i>
+          </div>
+          <div
+            class="isl"
+            style="
+              top: 50%;
+              left: 9px;
+              width: 8px;
+              height: 27px;
+              transform: translateY(-50%);
+            "
+          ></div>
+        </div>
+        <div class="pbar">
+          <span class="on">▯ Closed</span><span>◫ Half</span><span>◫ Open</span
+          ><em></em><span>⟳ Rotate</span>
+        </div>
+        <small>foldable closed, 678 by 466</small>
+      </div>
+      <div class="col">
+        <div
+          class="body"
+          style="width: 180px; height: 251px; border-radius: 18px"
+        >
+          <div
+            class="scr"
+            style="inset: 5px; border-radius: 13px; padding-left: 22px"
+          >
+            <b>Inbox</b><i>Design review</i><i>Release 0.42.0</i
+            ><i>Invoice 2231</i>
+          </div>
+          <div
+            class="foldh half"
+            style="
+              left: 0;
+              right: 0;
+              top: 50%;
+              height: 40px;
+              transform: translateY(-50%);
+            "
+          ></div>
+          <div
+            class="isl"
+            style="
+              top: 65px;
+              left: 9px;
+              width: 8px;
+              height: 27px;
+              transform: translateY(-50%);
+            "
+          ></div>
+        </div>
+        <div class="pbar">
+          <span>▯ Closed</span><span class="on">◫ Half</span><span>◫ Open</span
+          ><em></em><span>⟳ Rotate</span>
+        </div>
+        <small>foldable half, 626 by 890</small>
+      </div>
+      <div class="col">
+        <div
+          class="body"
+          style="width: 180px; height: 251px; border-radius: 18px"
+        >
+          <div
+            class="scr"
+            style="inset: 5px; border-radius: 13px; padding-left: 22px"
+          >
+            <b>Inbox</b><i>Design review</i><i>Release 0.42.0</i
+            ><i>Invoice 2231</i>
+          </div>
+          <div
+            class="foldh"
+            style="
+              left: 5px;
+              right: 5px;
+              top: 50%;
+              height: 8px;
+              transform: translateY(-50%);
+            "
+          ></div>
+          <div
+            class="isl"
+            style="
+              top: 65px;
+              left: 9px;
+              width: 8px;
+              height: 27px;
+              transform: translateY(-50%);
+            "
+          ></div>
+        </div>
+        <div class="pbar">
+          <span>▯ Closed</span><span>◫ Half</span><span class="on">◫ Open</span
+          ><em></em><span>⟳ Rotate</span>
+        </div>
+        <small>foldable open, 626 by 890</small>
       </div>
     </div>
   </body>
