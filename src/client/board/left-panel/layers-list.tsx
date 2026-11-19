@@ -60,6 +60,8 @@ import { PanelSection } from './section'
 import { SectionRow } from './section-rows'
 
 interface LayersListProps {
+  /** The ref of the page the list shows, which an empty page has no frame to name it by. */
+  shown?: string
   /** The page's frames as the server sends them, bottom of the stack first. */
   frames: readonly FrameRecord[]
   /** The page's sections as the server sends them, bottom first, each naming the frames it holds. */
@@ -81,6 +83,7 @@ const NO_SECTIONS: readonly SectionRecord[] = []
  * never into or out of a section.
  */
 export function LayersList({
+  shown,
   frames,
   sections = NO_SECTIONS,
   calls = structure,
@@ -224,7 +227,7 @@ export function LayersList({
             No frames on this page
           </p>
           <LayersSpaceMenu
-            page={page ?? ''}
+            page={shown ?? ''}
             frames={frames}
             trigger={<div aria-hidden className="min-h-3 flex-1" />}
           />
@@ -259,7 +262,7 @@ export function LayersList({
             )
           })}
           <LayersSpaceMenu
-            page={pageOfFrames(frames)}
+            page={shown ?? pageOfFrames(frames)}
             frames={frames}
             trigger={<li aria-hidden className="min-h-3 flex-1" />}
           />

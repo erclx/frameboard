@@ -1,6 +1,6 @@
 import '../../styles.css'
 
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Router } from 'wouter'
@@ -8,11 +8,14 @@ import { memoryLocation } from 'wouter/memory-location'
 
 import { registerActions } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
+import { liveStore, receiveClaims } from '@/client/live/store'
+import type { ProjectRecord } from '@/shared/records/list'
 import { frameOf, pageOf } from '@/test/board'
 
 import { menuPlace } from '../menus/actions'
 import { LayersList } from './layers-list'
 import { PagesList } from './pages-list'
+import { LeftPanel } from './panel'
 
 const cleanups: (() => void)[] = []
 
@@ -125,6 +128,38 @@ describe('the empty space menus', () => {
     expect(added.count).toBe(1)
   })
 
+  it('places New frame past an agent reservation on a page with no frames', async () => {
+    counted('frame.newAt', 'New frame here')
+    act(() =>
+      receiveClaims(liveStore, [
+        {
+          frame: 'studio/home/pricing',
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · a',
+          claimedAt: '2026-10-19T10:00:00.000Z',
+          expiresAt: '2999-01-01T00:00:00.000Z',
+          box: { x: 0, y: 0, width: 300, height: 200 },
+          set: 'set-1',
+        },
+      ]),
+    )
+    cleanups.push(() => act(() => receiveClaims(liveStore, [])))
+    const { container } = render(
+      <TooltipProvider>
+        <LayersList shown="studio/home" frames={[]} />
+      </TooltipProvider>,
+    )
+
+    await userEvent.pointer({
+      keys: '[MouseRight]',
+      target: container.querySelector('div[aria-hidden]') as Element,
+    })
+    await screen.findByRole('menu')
+
+    expect(menuPlace.getState().at).toEqual({ x: 300 + 80, y: 0 })
+  })
+
   it('places New frame past the drawn width of the last frame, linked widths included', async () => {
     counted('frame.newAt', 'New frame here')
     const wide = frameOf('wide', {
@@ -142,5 +177,55 @@ describe('the empty space menus', () => {
 
     // The linked width draws one gap past the frame, then the gap past that.
     expect(menuPlace.getState().at).toEqual({ x: 400 + 80 + 200 + 80, y: 40 })
+  })
+})
+
+describe('the empty space size', () => {
+  function renderPanel(): HTMLElement {
+    const home = pageOf([frameOf('hero')], 'home')
+    const record: ProjectRecord = {
+      name: 'studio',
+      path: '/board/studio',
+      modifiedAt: '2026-10-15T00:00:00.000Z',
+      title: null,
+      createdAt: null,
+      group: null,
+      archived: false,
+      projectFileError: null,
+      transitions: [],
+      checksOff: [],
+      kits: [],
+      pages: [home],
+    }
+    const { container } = render(
+      <Router hook={memoryLocation({ path: '/' }).hook}>
+        <TooltipProvider>
+          <div className="h-[600px]">
+            <LeftPanel
+              project={record}
+              page="home"
+              storage={{ getItem: () => null, setItem: () => {} }}
+            />
+          </div>
+        </TooltipProvider>
+      </Router>,
+    )
+    return container
+  }
+
+  it('fills the pages list below its last row', () => {
+    const container = renderPanel()
+    const nav = container.querySelector('nav[aria-labelledby="pages-heading"]')
+    const filler = nav?.querySelector('li[aria-hidden]')
+    expect(filler?.getBoundingClientRect().height).toBeGreaterThan(40)
+  })
+
+  it('fills the layers list below its last row', () => {
+    const container = renderPanel()
+    const section = container.querySelector(
+      'section[aria-labelledby="layers-heading"]',
+    )
+    const filler = section?.querySelector('li[aria-hidden]')
+    expect(filler?.getBoundingClientRect().height).toBeGreaterThan(40)
   })
 })
