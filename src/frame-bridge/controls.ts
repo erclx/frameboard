@@ -254,9 +254,12 @@ export const controlHandlers: Handlers = {
     return hash === null || edits.length === 0 ? null : { hash, edits }
   },
   bindings: (_args, { push, onClose }) => {
+    // A restamp can reach a page being replaced, which holds no root yet.
+    const root = document.documentElement
+    if (!root) return []
     const read = () => push(readBindings(document))
     const resized = new ResizeObserver(read)
-    resized.observe(document.documentElement)
+    resized.observe(root)
     addEventListener('scroll', read, true)
     onClose(() => {
       resized.disconnect()
