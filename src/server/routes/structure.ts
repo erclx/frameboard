@@ -199,7 +199,11 @@ const sectionAddSchema = z.object({
 })
 const sectionRenameSchema = z.object({ page: ref, section: name, name })
 const sectionSchema = z.object({ page: ref, section: name })
-const projectAddSchema = z.object({ name: name.optional() })
+const projectAddSchema = z.object({
+  name: name.optional(),
+  /** The home folder the project starts filed in. */
+  group: name.optional(),
+})
 const projectSchema = z.object({ ref })
 /** More projects than any board holds, so a body cannot grow without bound. */
 const projectRefs = z.array(ref).min(1).max(1000)
@@ -771,7 +775,11 @@ export function structureRoutes(
     const projectName =
       body.name ?? nextFreeName(START_PROJECT, await listProjects(root))
     const project = await recorded(
-      (journal) => addProject(root, projectName, new Date(), { journal }),
+      (journal) =>
+        addProject(root, projectName, new Date(), {
+          journal,
+          group: body.group,
+        }),
       onHome,
     )
     return c.json({ ok: true, data: project })
