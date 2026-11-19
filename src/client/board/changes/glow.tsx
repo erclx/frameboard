@@ -1,10 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { unseenStore } from '@/client/live/unseen'
-import { elementAt, renderedHash } from '@/shared/frame-bridge/elements'
 import type { FrameChange } from '@/shared/records/changes'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { request } from '../bridge/channel'
+import { shownHashOf, subscribeShown } from '../bridge/shown'
 import type { Box } from '../geometry/box'
 import { screen } from '../geometry/draw'
 import { OVERLAY_Z } from '../geometry/overlay'
@@ -45,9 +46,13 @@ export function ChangeGlow({ frames, container }: ChangeGlowProps) {
   useEffect(() => {
     if (!container || playing) return
     const timers = new Set<ReturnType<typeof setTimeout>>()
+    let stopped = false
 
-    const play = (frame: FrameRecord, change: FrameChange, doc: Document) => {
-      const key = nextPlay++
+    const play = async (
+      frame: FrameRecord,
+      change: FrameChange,
+      iframe: HTMLIFrameElement,
+    ) => {
       // The whole frame glows as drawn, at a previewed width included.
       const { width, height } = previewedBox(
         frame,
@@ -56,21 +61,14 @@ export function ChangeGlow({ frames, container }: ChangeGlowProps) {
       )
       const boxes = change.whole
         ? [{ x: 0, y: 0, width, height }]
-        : change.elements.flatMap((index) => {
-            const element = elementAt(doc, index)
-            if (!element) return []
-            const rect = element.getBoundingClientRect()
-            return [
-              {
-                x: rect.left,
-                y: rect.top,
-                width: rect.width,
-                height: rect.height,
-              },
-            ]
-          })
-      played.add(change.id)
-      if (boxes.length === 0) return
+        : ((
+            await request(iframe, 'element-boxes', {
+              hash: change.hash,
+              indexes: change.elements,
+            })
+          )?.map(({ box }) => box) ?? [])
+      if (stopped || boxes.length === 0) return
+      const key = nextPlay++
       setLit((current) => ({ ...current, [frame.ref]: { key, boxes } }))
       glowStore.setState((state) => ({
         glowing: { ...state.glowing, [frame.ref]: key },
@@ -100,12 +98,14 @@ export function ChangeGlow({ frames, container }: ChangeGlowProps) {
         if (!change) continue
         const replay = frame.ref in replays
         if (played.has(change.id) && !replay) continue
-        const doc = container.querySelector<HTMLIFrameElement>(
+        const iframe = container.querySelector<HTMLIFrameElement>(
           `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
-        )?.contentDocument
-        if (!doc || renderedHash(doc) !== change.hash) continue
+        )
+        if (!iframe || shownHashOf(iframe) !== change.hash) continue
         if (replay) answered.push(frame.ref)
-        play(frame, change, doc)
+        // Marked before the frame answers, so a second scan meanwhile plays it once.
+        played.add(change.id)
+        void play(frame, change, iframe)
       }
       if (answered.length > 0) {
         glowStore.setState((state) => ({
@@ -119,8 +119,8 @@ export function ChangeGlow({ frames, container }: ChangeGlowProps) {
     }
 
     scan()
-    // A load does not bubble, so a frame mounting or reloading is caught on the way down.
-    container.addEventListener('load', scan, true)
+    // A frame mounting or reloading is caught as its page announces the bytes it shows.
+    const stopShown = subscribeShown(scan)
     const stopUnseen = unseenStore.subscribe((state, previous) => {
       if (state.unseen !== previous.unseen) scan()
     })
@@ -128,7 +128,8 @@ export function ChangeGlow({ frames, container }: ChangeGlowProps) {
       if (state.replays !== previous.replays) scan()
     })
     return () => {
-      container.removeEventListener('load', scan, true)
+      stopped = true
+      stopShown()
       stopUnseen()
       stopReplays()
       for (const timer of timers) clearTimeout(timer)
