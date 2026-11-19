@@ -18,6 +18,7 @@ import {
   screenCorners,
   shownBox,
   topInset,
+  turnsWith,
 } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, LOOK_MARKER, setFrameTheme } from '@/shared/theme'
@@ -26,6 +27,7 @@ import { focusWithoutTooltip } from '../chrome/quiet-focus'
 import { PRESENT } from '../chrome/toolbar-tools'
 import { Bezel } from '../device/bezel'
 import { usePageColors } from '../device/page-colors'
+import { rotateFrame, turnRefusal } from '../device/turn'
 import { useWaitingOnFirstLoad } from '../frame-loading'
 import { useHiddenScrollbar } from '../hidden-scrollbar'
 import { LoadingBlock } from '../loading-block'
@@ -287,6 +289,7 @@ function Presenting({
   const overview = usePresent((state) => state.overview)
   const blocked = usePresent((state) => state.blocked)
   const room = useRoom(layer)
+  const canWrite = useLive((state) => state.canWrite)
   const { shown, wake } = useBarWake()
   const fullscreen = useLeaveWithFullscreen()
   useInertBehind(layer)
@@ -383,6 +386,13 @@ function Presenting({
         onPresenter={openPresenter}
         onFullscreen={toggleFullscreen}
         onLeave={leavePresenting}
+        rotateSlot={canWrite && order.some((slide) => turnsWith(slide.device))}
+        onRotate={
+          canWrite && turnsWith(frame.device)
+            ? () => rotateFrame(frame, { reveal: false })
+            : undefined
+        }
+        rotateOff={turnRefusal(frame)}
       />
     </div>
   )

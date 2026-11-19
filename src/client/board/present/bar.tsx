@@ -7,6 +7,9 @@ import {
   MonitorSpeaker,
   X,
 } from 'lucide-react'
+
+import { RotateLabel } from '../device/poses'
+
 interface PresentBarProps {
   shown: boolean
   /** Whether the overview covers the bar, which then takes no focus or press. */
@@ -26,6 +29,12 @@ interface PresentBarProps {
   onPresenter: () => void
   onFullscreen: () => void
   onLeave: () => void
+  /** Whether a slide in the deck turns, which holds Rotate's width on every slide so nothing moves. */
+  rotateSlot?: boolean
+  /** Turns the shown slide, absent while it is no phone or tablet or the tab cannot write. */
+  onRotate?: () => void
+  /** Why the shown slide cannot turn, which turns Rotate off and names the reason. */
+  rotateOff?: string
 }
 
 /**
@@ -47,6 +56,9 @@ export function PresentBar({
   onPresenter,
   onFullscreen,
   onLeave,
+  rotateSlot = false,
+  onRotate,
+  rotateOff,
 }: PresentBarProps) {
   return (
     <div
@@ -80,6 +92,13 @@ export function PresentBar({
         icon={LayoutGrid}
         onClick={onOverview}
       />
+      {onRotate ? (
+        <RotateButton off={rotateOff} onClick={onRotate} />
+      ) : rotateSlot ? (
+        <span aria-hidden className={`${ROTATE_CLASS} invisible`}>
+          <RotateLabel />
+        </span>
+      ) : null}
       <StepSlot step={step} steps={steps} />
       <Separator />
       <span className="w-[150px] truncate px-2 text-[#aaa]">{name}</span>
@@ -162,6 +181,26 @@ function StepSlot({ step, steps }: { step: number; steps: number }) {
         ))
       )}
     </span>
+  )
+}
+
+const ROTATE_CLASS =
+  'flex h-[30px] items-center gap-1 rounded-[7px] px-2 whitespace-nowrap'
+
+/** Rotate after the slide count, as `canon/design/present/bar` draws it, in the bar's own colors. */
+function RotateButton({ off, onClick }: { off?: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-disabled={off ? true : undefined}
+      title={off}
+      onClick={() => {
+        if (!off) onClick()
+      }}
+      className={`${ROTATE_CLASS} bg-white/10 text-[#fff] outline-none hover:bg-white/15 focus-visible:ring-3 focus-visible:ring-[#4e92f6] aria-disabled:cursor-not-allowed aria-disabled:opacity-40 aria-disabled:hover:bg-white/10`}
+    >
+      <RotateLabel />
+    </button>
   )
 }
 
