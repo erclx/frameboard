@@ -159,7 +159,10 @@ test.describe('a phone frame as tall as its page, entered in Play', () => {
     writeFileSync(join(folder, 'layout.json'), JSON.stringify(layout))
     writeFileSync(
       join(folder, 'about.html'),
-      '<!doctype html><title>about</title><body style="margin:0"><div id="top" style="height:2400px">about</div></body>',
+      TUNER.replace(
+        '</body>',
+        '<div id="top" style="height:2200px">about</div></body>',
+      ),
     )
     server = await serveBoard(board.root)
   })
@@ -190,5 +193,29 @@ test.describe('a phone frame as tall as its page, entered in Play', () => {
     await page.keyboard.press('Escape')
     await page.getByRole('button', { name: 'Edit' }).click()
     await expect.poll(() => pageHeight(page)).toBe(2400)
+  })
+
+  test('puts Keep values inside the phone it shows, not the stored box below it', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    await expect(frame(page)).toBeVisible()
+    await page.getByRole('button', { name: 'Play' }).click()
+    const tuner = page.frameLocator(`[data-frame="${ABOUT}"] iframe`)
+    await tuner.locator('#photo').click()
+    await expect(page.getByText('In frame, Esc to leave')).toBeVisible()
+
+    await tuner.getByRole('slider', { name: 'Brightness' }).fill('130')
+
+    const keep = page.getByRole('group', { name: 'Moved controls' })
+    await expect(keep).toContainText('1 value changed')
+    const shown = await frame(page).boundingBox()
+    const placed = await keep.boundingBox()
+    expect(shown).not.toBeNull()
+    expect(placed).not.toBeNull()
+    expect((placed?.y ?? 0) + (placed?.height ?? 0)).toBeLessThanOrEqual(
+      (shown?.y ?? 0) + (shown?.height ?? 0),
+    )
   })
 })
