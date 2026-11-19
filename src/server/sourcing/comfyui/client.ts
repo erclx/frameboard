@@ -87,7 +87,6 @@ export async function uploadImage(
   const form = new FormData()
   // Copied, since a Blob refuses a view that may sit on a SharedArrayBuffer.
   form.append('image', new Blob([upload.bytes.slice()]), upload.name)
-  form.append('overwrite', 'true')
   const answer = await call(send, routeOf(base, 'upload/image'), {
     method: 'POST',
     body: form,
