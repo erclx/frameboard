@@ -11,7 +11,7 @@ How you add an element to a frame and change its size and place.
 
 The Text and Shape tools drop a paragraph, rectangle, ellipse, or divider into a frame where you click, sizing a rectangle or ellipse to a drag that previews the shape. A blue line marks where it joins a row or column, and a dashed box follows the pointer where it lands freely.
 
-Drag an element to move it, press Delete to take it out, or double-click text to retype it, Enter adding a line. Alt+Shift+ArrowUp and ArrowDown step it among its siblings.
+Drag an element to move it, press Delete to take it out, or double-click text to retype it, a click inside it moving the caret and Enter adding a line. A click anywhere else ends the edit. Alt+Shift+ArrowUp and ArrowDown step it among its siblings.
 
 - Text beside another element, such as words around a `code`, retypes only the run you double-clicked, and Enter adds a line there only where the element already keeps its breaks
 
