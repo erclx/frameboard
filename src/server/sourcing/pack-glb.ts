@@ -27,12 +27,9 @@ interface BufferView {
 }
 
 /**
- * Packs a glTF, its one external buffer, and its external textures into one
- * GLB, each file read from `files` by the URI the glTF names. Every texture
- * becomes a buffer view behind the buffer, so the result names no outside
- * file. Refuses `source-failed` for anything it cannot pack whole, being
- * several buffers, a data URI, a missing or short file, or a texture that is
- * neither JPEG nor PNG, rather than writing a file a viewer cannot load.
+ * Packs a glTF and the files `files` holds by the URI it names into one GLB
+ * naming no outside file. Refuses `source-failed` for anything it cannot pack
+ * whole rather than writing a file a viewer cannot load.
  */
 export function packGlb(
   gltf: Record<string, unknown>,

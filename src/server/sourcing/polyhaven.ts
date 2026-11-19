@@ -39,11 +39,9 @@ export interface PackedModel {
 }
 
 /**
- * Poly Haven's models ranked against the query, numbered from 1, empty when
- * no word matches. Poly Haven has no search, so this reads the whole list
- * in one request and ranks it here: by how many distinct query words match
- * a word of the name, the tags, or the categories, then by download count,
- * then by id, so two runs list the same order.
+ * Poly Haven has no search, so this ranks its whole list here: by distinct
+ * query words matching the name, tags, or categories, then download count,
+ * then id, numbered from 1 and empty when no word matches.
  */
 export async function searchModels(
   query: string,
@@ -95,11 +93,9 @@ export async function modelById(
 }
 
 /**
- * Downloads one model's glTF and every file it includes at `size`, whole
- * and into memory, and packs them as one GLB, so a download failing on any
- * file leaves nothing to write. Refuses `usage` naming the sizes offered for
- * a size the model lacks, and `source-failed` on a failed download or a
- * glTF the packer cannot pack.
+ * Downloads every file of one model at `size` into memory and packs them as
+ * one GLB, so a failed download leaves nothing to write. Refuses `usage` with
+ * the sizes offered, and `source-failed` on a failed download or pack.
  */
 export async function fetchModel(
   id: string,
