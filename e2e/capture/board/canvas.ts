@@ -917,6 +917,25 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
+      // An open foldable turned left presented, its page between its strips.
+      section: 'present-foldable-turned',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      setup: themed(
+        both(
+          foldableShown('open', 'left'),
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          presentOnLoad,
+          readyWhen(
+            '[data-presenting] [data-bezel="foldable"][data-bezel-turn="left"] [data-bezel-strip]',
+          ),
+        ),
+      ),
+    },
+    {
       // The turned phone entered in Play, Rotate in the banner beside its text.
       section: 'play-entered-turned',
       theme,

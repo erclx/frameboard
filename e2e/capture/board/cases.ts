@@ -53,6 +53,7 @@ const WRITING_SECTIONS = [
   'present-phone-tall',
   'play-entered-phone-tall',
   'present-turned',
+  'present-foldable-turned',
   'play-entered-turned',
   'inspector-widths',
   'inspector-widths-menu',
