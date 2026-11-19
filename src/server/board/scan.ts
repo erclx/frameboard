@@ -420,8 +420,7 @@ export async function scanPage(
   const records = await Promise.all(
     names.map(async (frame): Promise<FrameRecord> => {
       const framePath = join(path, `${frame}${FRAME_EXTENSION}`)
-      // The record carries the pose alone, which only a named foldable holds,
-      // and the turn without the upright size the write keeps to restore.
+      // The record carries the pose and the turn, never the write's bookkeeping.
       const {
         foldable: _named,
         keptWidths: _kept,

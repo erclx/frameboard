@@ -245,10 +245,9 @@ export function topInset(
 }
 
 /**
- * The page's box inside a frame's box, the box less the status bar while an
- * upright phone shows and the box itself on every other device or none. A
- * frame's box keeps the screen's size, and every surface reads the page
- * through this.
+ * The page's box inside a frame's box, less the status bar while an upright
+ * phone shows. A frame's box keeps the screen's size, and every surface reads
+ * the page through this.
  */
 export function pageBox(
   box: Box,
@@ -277,8 +276,7 @@ function turnedScreenHeight(width: number): number {
 /**
  * The box a frame is shown at in present mode and entered in Play, one screen
  * tall for a page-tall phone so its page scrolls, else the stored box, which
- * a scroll frame already holds at its screen and a fixed turned one at its
- * landscape screen.
+ * a scroll frame or a fixed turned one already holds at its screen.
  */
 export function shownBox<B extends { width: number; height: number }>(frame: {
   box: B
@@ -462,9 +460,8 @@ export function bezelShadow(
 
 /**
  * The box a device's body covers around a frame's box, the box itself with
- * none. A laptop's base reaches past its lid and a phone's buttons past its
- * sides, so their sides grow by more than their top. A turned phone's
- * buttons stand on its long edges, past its top and bottom instead.
+ * none. A laptop's base and a phone's buttons reach past its sides, and a
+ * turned phone's buttons past its top and bottom instead.
  */
 export function bezelBox(
   box: Box,

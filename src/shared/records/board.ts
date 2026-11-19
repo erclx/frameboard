@@ -85,10 +85,9 @@ export const layoutEntrySchema = z.looseObject({
   // The phone's island width, `wide` alone, absent for the compact one. A
   // value no reader knows parses as written and reads as compact.
   island: z.unknown().optional(),
-  // A phone or tablet turned a quarter, `left` or `right`, absent upright,
-  // and the width and height its box held before the turn, which turning it
-  // upright restores and whose width picks the device. A turn with no
-  // readable upright size, or a value no reader knows, reads as upright.
+  // A quarter turn, `left` or `right`, and the box's size before it, which
+  // upright restores and whose width picks the device. A turn with no readable
+  // upright size, or a value no reader knows, reads as upright.
   turn: z.unknown().optional(),
   upright: z.unknown().optional(),
   // The transition the frame arrives with in present mode, over its page's.

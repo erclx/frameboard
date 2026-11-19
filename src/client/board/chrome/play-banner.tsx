@@ -17,10 +17,9 @@ function onFrameLoad(listener: () => void): () => void {
 }
 
 /**
- * The notice centered atop the canvas column while the board is in Play. It
- * adds that nothing takes a click only once it has read every shown frame,
- * so a culled frame it could not read never lets it claim so. While the
- * entered frame is a phone or a tablet, a writer can turn it from here.
+ * The Play notice, saying nothing takes a click only once it has read every
+ * shown frame, so a culled one never lets it claim so, and offering Rotate
+ * to a writer while a phone or tablet is entered.
  */
 export function PlayBanner({ frames }: { frames: readonly FrameRecord[] }) {
   const reach = useSyncExternalStore(

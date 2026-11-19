@@ -115,10 +115,9 @@ export interface FoldOptions {
   /** The phone's island width, refused on a frame whose width names no phone or that names the foldable. */
   island?: Island
   /**
-   * The turn a phone or a tablet takes, absolute so a retried call lands once:
-   * left or right lays its page out landscape, and upright restores the size
-   * it held. A quarter turn is refused on a foldable, a laptop, a frame
-   * showing no device, and a frame holding extra widths.
+   * The turn a phone or a tablet takes, absolute so a retried call lands once,
+   * upright restoring the size it held. A quarter turn refuses a foldable, a
+   * laptop, a frame showing no device, and one holding extra widths.
    */
   turn?: Turn
 }
@@ -945,10 +944,9 @@ export async function setFrameFlag(
 }
 
 /**
- * Shows or hides a frame's device, names or un-names the foldable, folds it,
- * and turns a phone or a tablet, never writing the frame's file. Naming a
- * foldable shows it and, as a pose does, sets the box to that pose's screen,
- * fixed on both axes, standing a turned frame upright first.
+ * Shows or hides a frame's device, names, folds, or turns it, never writing
+ * the frame's file. Naming a foldable shows it and sets the box to its pose's
+ * screen, fixed on both axes, standing a turned frame upright first.
  */
 export async function setFrameDevice(
   root: string,
@@ -1067,11 +1065,9 @@ function refuseTurn(
 }
 
 /**
- * A frame turned to `turn`, keeping its upright size on the first quarter
- * turn and restoring it upright, the placement itself when `turn` is absent.
- * A fixed or scroll box swaps its sides, and a hugging one takes the reference
- * height of its upright width, since its height is its page's rather than a
- * screen's, and holds one screen tall until the hug step measures it.
+ * A frame turned to `turn`, keeping its upright size on the first turn. A
+ * fixed or scroll box swaps its sides, and a hugging one, whose height is its
+ * page's, takes the reference height of its upright width wide.
  */
 function turnedPlacement(
   placement: Placement,

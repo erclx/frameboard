@@ -250,11 +250,9 @@ function PhoneMarks({ island }: { island: Island }) {
 }
 
 /**
- * A turned phone's island on the short side its turn names, standing on end
- * with its timer turned with it, and its buttons on the long edges, each as
- * far from the side the island stands on as it sat from the top upright.
- * Turned left, the left buttons lie along the bottom and the side button
- * along the top, and turned right the other way round.
+ * A turned phone's island on end on the short side its turn names, and its
+ * buttons on the long edges, as far from that side as they sat from the top
+ * upright: turned left, the left buttons lie along the bottom.
  */
 function TurnedPhoneMarks({
   island,
