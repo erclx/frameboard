@@ -11,6 +11,7 @@ import { join } from 'node:path'
 import { expect, type Page, test } from '@playwright/test'
 
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { framesLoaded } from '../support/frames'
 
 const FRAME_COUNT = 50
 const COLUMNS = 10
@@ -164,17 +165,7 @@ async function waitForLiveFrames(page: Page): Promise<void> {
   await expect(page.locator('[data-layer] iframe')).toHaveCount(FRAME_COUNT, {
     timeout: 30_000,
   })
-  await expect
-    .poll(
-      () =>
-        page.evaluate(() =>
-          [...document.querySelectorAll('iframe')].every(
-            (iframe) => iframe.contentDocument?.readyState === 'complete',
-          ),
-        ),
-      { timeout: 30_000 },
-    )
-    .toBe(true)
+  await expect.poll(() => framesLoaded(page), { timeout: 30_000 }).toBe(true)
 }
 
 test.describe('fifty live frames', () => {

@@ -226,13 +226,23 @@ test.describe('editing a selected element by hand', () => {
   })
 
   /** Settles once the server keeps the source the agent's write replaced, which a stale edit is found again from. */
-  async function keptSource(request: APIRequestContext): Promise<void> {
+  async function keptSource(
+    page: Page,
+    request: APIRequestContext,
+  ): Promise<void> {
     const at = createHash('sha256').update(original).digest('hex')
+    // Asked of the frame port the hero loads from, never the board's own.
+    const src = await page
+      .locator(`[data-frame="${HERO}"] iframe`)
+      .getAttribute('src')
+    const frames = new URL(src ?? '').origin
     await expect
       .poll(
         async () =>
           (
-            await request.get(`${server.url}/frames/${HERO}.html?at=${at}`)
+            await request.get(`${frames}/frames/${HERO}.html?at=${at}`, {
+              maxRedirects: 0,
+            })
           ).status(),
         { timeout: 10_000 },
       )
@@ -249,7 +259,7 @@ test.describe('editing a selected element by hand', () => {
       () => {},
     )
     writeFileSync(path(), original.replace('Caption', 'Byline'))
-    await keptSource(request)
+    await keptSource(page, request)
 
     const opacity = page.getByRole('textbox', { name: 'Opacity', exact: true })
     await opacity.fill('50')
@@ -275,7 +285,7 @@ test.describe('editing a selected element by hand', () => {
       '<h1 data-name="Headline" class="agent">',
     )
     writeFileSync(path(), agent)
-    await keptSource(request)
+    await keptSource(page, request)
 
     const opacity = page.getByRole('textbox', { name: 'Opacity', exact: true })
     await opacity.fill('50')

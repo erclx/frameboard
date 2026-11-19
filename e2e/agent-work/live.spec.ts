@@ -12,45 +12,31 @@ import {
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
 import { liveCanvas, liveLayer } from '../support/canvas'
+import { framePages, framesLoaded } from '../support/frames'
 
 const HOME = '/p/studio/home'
 
 /** Marks every live frame's window, so a reload shows as a frame that lost its mark. */
-function markFrames(page: Page): Promise<void> {
-  return page.evaluate(() => {
-    for (const iframe of document.querySelectorAll('iframe')) {
-      ;(iframe.contentWindow as unknown as { mark?: boolean }).mark = true
-    }
-  })
+async function markFrames(page: Page): Promise<void> {
+  for (const frame of await framePages(page)) {
+    await frame?.evaluate(() => {
+      ;(window as unknown as { mark?: boolean }).mark = true
+    })
+  }
 }
 
-function marks(page: Page): Promise<Record<string, boolean>> {
-  return page.evaluate(() =>
-    Object.fromEntries(
-      [...document.querySelectorAll<HTMLElement>('[data-frame]')].map(
-        (frame) => [
-          frame.dataset.frame ?? '',
-          Boolean(
-            (
-              frame.querySelector('iframe')?.contentWindow as unknown as {
-                mark?: boolean
-              } | null
-            )?.mark,
-          ),
-        ],
+async function marks(page: Page): Promise<Record<string, boolean>> {
+  const marked: Record<string, boolean> = {}
+  for (const holder of await page.locator('[data-frame]').elementHandles()) {
+    const ref = (await holder.getAttribute('data-frame')) ?? ''
+    const frame = await (await holder.$('iframe'))?.contentFrame()
+    marked[ref] = Boolean(
+      await frame?.evaluate(
+        () => (window as unknown as { mark?: boolean }).mark,
       ),
-    ),
-  )
-}
-
-function framesLoaded(page: Page): Promise<boolean> {
-  return page.evaluate(() =>
-    [...document.querySelectorAll('iframe')].every(
-      (iframe) =>
-        iframe.contentDocument?.readyState === 'complete' &&
-        iframe.contentDocument.body !== null,
-    ),
-  )
+    )
+  }
+  return marked
 }
 
 test.describe('the live board', () => {

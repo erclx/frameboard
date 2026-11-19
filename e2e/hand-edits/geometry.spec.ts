@@ -164,7 +164,9 @@ test.describe('frame geometry by hand', () => {
     const scrolled = () =>
       mobile
         .locator(':scope > iframe')
-        .evaluate((frame: HTMLIFrameElement) => frame.contentWindow?.scrollY)
+        .contentFrame()
+        .locator('html')
+        .evaluate(() => window.scrollY)
     await expect.poll(scrolled).toBeGreaterThan(0)
     expect(layout().frames.mobile).toMatchObject({ x: 1520, y: 0 })
 
@@ -208,7 +210,9 @@ test.describe('frame geometry by hand', () => {
       .poll(() =>
         mobile
           .locator(':scope > iframe')
-          .evaluate((frame: HTMLIFrameElement) => frame.contentWindow?.scrollY),
+          .contentFrame()
+          .locator('html')
+          .evaluate(() => window.scrollY),
       )
       .toBeGreaterThan(0)
   })

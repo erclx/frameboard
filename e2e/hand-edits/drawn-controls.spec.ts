@@ -140,9 +140,10 @@ test.describe('a phone frame as tall as its page, entered in Play', () => {
 
   const frame = (page: Page) => page.locator(`[data-frame="${ABOUT}"] iframe`)
   const scrollY = (page: Page) =>
-    frame(page).evaluate(
-      (element: HTMLIFrameElement) => element.contentWindow?.scrollY ?? -1,
-    )
+    frame(page)
+      .contentFrame()
+      .locator('html')
+      .evaluate(() => window.scrollY)
   const pageHeight = (page: Page) =>
     frame(page).evaluate((element: HTMLIFrameElement) => element.offsetHeight)
 
