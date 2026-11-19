@@ -505,6 +505,18 @@ describe('the Drives folder', () => {
     expect(readdirSync(join(root, 'drive-app/home'))).toContain('layout.json')
   })
 
+  it('lays one frame in drive-app, so the folder card draws a capture', async () => {
+    await seedDrive(root, new Date())
+    const framesOf = (path: string) =>
+      Object.keys((readJson(path) as { frames: object }).frames)
+
+    expect([
+      framesOf('drive-app/home/layout.json'),
+      readdirSync(join(root, 'drive-app/home')).includes('app.html'),
+      framesOf('drive-site/home/layout.json'),
+    ]).toEqual([['app'], true, []])
+  })
+
   it('leaves a folder a reel deleted from alone on a second seed', async () => {
     await seedDrive(root, new Date())
     rmSync(join(root, 'drive-site'), { recursive: true })
