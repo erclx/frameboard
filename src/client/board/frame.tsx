@@ -20,7 +20,6 @@ import {
   useShownTheme,
 } from '@/client/theme/store'
 import { frameUrl } from '@/shared/board-urls'
-import { renderedHash } from '@/shared/frame-bridge/elements'
 import { BEZELS, screenCorners } from '@/shared/frame-device'
 import { referenceHeight } from '@/shared/frame-sizes'
 import type { Finding } from '@/shared/records/check'
@@ -28,6 +27,7 @@ import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl, type Theme } from '@/shared/theme'
 
+import { followPage, shownHashOf } from './bridge/shown'
 import { useCompare } from './changes/compare'
 import { CompareControl, CompareView } from './changes/compare-view'
 import { UnseenDot } from './changes/dot'
@@ -138,20 +138,24 @@ export const Frame = memo(function Frame({
     return () => element.removeEventListener('load', stamp)
   }, [live])
 
-  // Drops an element selection on foreign bytes, which may have shifted every index.
+  // Drops an element selection on a new page's foreign bytes, which may have
+  // shifted every index, read as the page announces itself rather than the last one's.
   useEffect(() => {
     const element = iframe.current
     if (!live || !element) return
-    const check = () => {
+    return followPage(element, () => {
       const { page, element: selected } = selectionStore.getState()
-      const document = element.contentDocument
-      if (selected?.frame !== frame.ref || !page || !document) return
-      const shown = renderedHash(document)
-      if (shown === selected.hash || awaitingHash(frame.ref, shown)) return
-      select(selectionStore, page, [frame.ref])
-    }
-    element.addEventListener('load', check)
-    return () => element.removeEventListener('load', check)
+      const shown = shownHashOf(element)
+      if (
+        selected?.frame === frame.ref &&
+        page &&
+        shown !== selected.hash &&
+        !awaitingHash(frame.ref, shown)
+      ) {
+        select(selectionStore, page, [frame.ref])
+      }
+      return () => {}
+    })
   }, [live, frame.ref])
 
   // Read at the width's reference height, as the server's fit reads it.

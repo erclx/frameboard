@@ -26,7 +26,7 @@ import {
 } from './motion/store'
 import { enteredStore, enterFrame, leaveFrame } from './play/entered'
 import { endPreview, setPreview } from './preview/store'
-import { clear, select, selectionStore } from './selection'
+import { clear, select, selectElement, selectionStore } from './selection'
 import {
   renamingFrame,
   startFrameRename,
@@ -908,6 +908,47 @@ describe('Frame theme', () => {
     await expect.poll(() => themeOfRoot(iframeOf(container, 'a'))).toBe('light')
     expect(iframeOf(container, 'a').style.colorScheme).toBe('light')
     expect(themeOfRoot(iframeOf(container, 'b'))).toBe('dark')
+  })
+})
+
+describe('Frame on a new page', () => {
+  const SHOWN = 'c'.repeat(64)
+  const OTHER = 'd'.repeat(64)
+
+  afterEach(() => {
+    act(() => clear(selectionStore))
+  })
+
+  async function pickedOnReload(hash: string): Promise<void> {
+    const { container, rerender } = render(
+      <Frame frame={frame('a')} live version={0} />,
+    )
+    await bridged(iframeOf(container, 'a'), SHOWN)
+    act(() =>
+      selectElement(selectionStore, 'studio/home', {
+        frame: 'studio/home/a',
+        index: 4,
+        hash: SHOWN,
+      }),
+    )
+    const reloaded = loaded(iframeOf(container, 'a'))
+
+    rerender(<Frame frame={frame('a')} live version={1} />)
+    await reloaded
+    await bridgeIn(iframeOf(container, 'a'), { hash })
+  }
+
+  it('drops an element picked in other bytes to its frame', async () => {
+    await pickedOnReload(OTHER)
+
+    await expect.poll(() => selectionStore.getState().element).toBeNull()
+    expect(selectionStore.getState().frames).toEqual(['studio/home/a'])
+  })
+
+  it('keeps an element picked in the bytes the new page shows', async () => {
+    await pickedOnReload(SHOWN)
+
+    expect(selectionStore.getState().element?.index).toBe(4)
   })
 })
 
