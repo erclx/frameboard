@@ -200,6 +200,16 @@ describe('docs', () => {
     )
   })
 
+  it('states that the doctor reports both workflows’ files and the verb each serves', async () => {
+    const { contentFormat } = await docs()
+    const doctor = contentFormat.images.find((line: string) =>
+      line.startsWith('image doctor'),
+    )
+
+    expect(doctor).toContain('each bundled workflow')
+    expect(doctor).toContain('model generate')
+  })
+
   it('states what model generate reads, where it runs, and what its license records', async () => {
     const { contentFormat } = await docs()
     const generate = contentFormat.models.find((line: string) =>
