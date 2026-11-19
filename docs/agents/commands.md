@@ -71,8 +71,13 @@ The `image` commands put a picture into a project's `assets/` with a `<file>.lic
 
 - `image find "<query>"` searches Openverse for public domain images with no key and writes nothing, and `--credited` adds images that ask only for credit
 - `--save <id>` saves one result, and `--name <stem>` names the file, which otherwise takes the query
-- `image generate "<prompt>"` runs on fal or Google, whichever key the environment holds first, and spends on that key at once, so `--dry-run` answers the provider and price first
-- `image doctor` reports the GPU, a local ComfyUI server, and which keys are set, and installs nothing
+
+Generating makes an image nobody licensed, on the developer's own server or key.
+
+- `image generate "<prompt>"` runs on the first ready provider and spends on its key at once, so `--dry-run` answers the provider and price first
+- A ComfyUI server at `FRAMEBOARD_COMFYUI_URL` goes first and charges nothing, running FLUX.2 klein 4B or the workflow `--workflow <file>` names
+- `image free` unloads that server's model once a batch of runs ends
+- `image doctor` reports the GPU, the ComfyUI server's version and missing model files, and which keys are set, printing setup steps and installing nothing
 
 ## Models
 

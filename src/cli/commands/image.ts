@@ -1,7 +1,9 @@
 import type { Command } from 'commander'
 
 import { resolveProject } from '@/server/board/refs'
-import { diagnose, runNvidiaSmi } from '@/server/sourcing/doctor'
+import { freeMemory } from '@/server/sourcing/comfyui/client'
+import { readWorkflow } from '@/server/sourcing/comfyui/workflow'
+import { comfyuiUrl, diagnose, runNvidiaSmi } from '@/server/sourcing/doctor'
 import { generateImage, planGeneration } from '@/server/sourcing/generate'
 import {
   foundLicense,
@@ -15,6 +17,7 @@ import { FrameboardError } from '@/shared/errors'
 import {
   IMAGE_PROVIDERS,
   type ImageFind,
+  type ImageFree,
   type ImageGenerate,
   type SavedImage,
 } from '@/shared/records/sourcing'
@@ -36,6 +39,7 @@ interface FindOptions extends CommonOptions {
 
 interface GenerateOptions extends CommonOptions {
   provider?: string
+  workflow?: string
   width: number
   height: number
   dryRun?: boolean
@@ -128,6 +132,10 @@ export function registerImage(program: Command, context: ProgramContext): void {
         '--provider <name>',
         `run on this provider, one of ${IMAGE_PROVIDERS.join(', ')}, rather than the first ready`,
       )
+      .option(
+        '--workflow <file>',
+        'run this ComfyUI workflow in the API format on comfyui, with {{prompt}} and optionally {{width}}, {{height}}, and {{seed}} in it',
+      )
       .option('--width <px>', 'the width asked for', parseInteger(1), 1024)
       .option('--height <px>', 'the height asked for', parseInteger(1), 1024)
       .option(
@@ -140,18 +148,27 @@ export function registerImage(program: Command, context: ProgramContext): void {
       ),
     context,
     async ([prompt = ''], options) => {
+      // Read ahead of the plan, so a dry run checks the file and a bad one spends nothing.
+      const workflow =
+        options.workflow === undefined
+          ? undefined
+          : {
+              name: options.workflow,
+              graph: await readWorkflow(options.workflow),
+            }
       const plan = planGeneration(
         {
           prompt,
           size: { width: options.width, height: options.height },
           provider: options.provider,
+          workflow,
         },
         process.env,
       )
       const record: ImageGenerate = {
         version: 1,
         provider: plan.provider.name,
-        model: plan.provider.model,
+        model: plan.model,
         prompt,
         ...plan.size,
         priceUsd: plan.priceUsd,
@@ -178,6 +195,9 @@ export function registerImage(program: Command, context: ProgramContext): void {
         width: record.width,
         height: record.height,
         priceUsd: record.priceUsd,
+        // A hosted provider ignores the seed, so only a local run records one.
+        ...(plan.provider.name === 'comfyui' && { seed: plan.seed }),
+        ...(plan.workflow && { workflow: plan.workflow.name }),
         savedAt: new Date().toISOString(),
       })
       return {
@@ -191,7 +211,7 @@ export function registerImage(program: Command, context: ProgramContext): void {
     addVerb(
       image,
       'doctor',
-      'Report the GPU, a local ComfyUI server, and which provider keys are set, installing nothing',
+      "Report the GPU, a local ComfyUI server's version and missing model files, and which provider keys are set, printing setup steps and installing nothing",
     ),
     context,
     async () => {
@@ -204,14 +224,40 @@ export function registerImage(program: Command, context: ProgramContext): void {
         data: report,
         human: [
           `GPU\t${report.gpu === null ? 'none found' : `${report.gpu.name}, ${report.gpu.memoryMiB} MiB`}`,
-          `Local\t${report.local.url} ${report.local.running ? 'answers' : 'does not answer'}`,
+          `Local\t${report.local.url} ${report.local.running ? `answers, ComfyUI ${report.local.version ?? 'of unknown version'}` : 'does not answer'}`,
+          ...(report.local.missing ?? []).map(
+            (each) =>
+              `Missing\tmodels/${each.folder}/${each.file}, ${(each.bytes / 1e9).toFixed(2)} GB`,
+          ),
           ...report.providers.map(
             (each) =>
               `${each.provider}\t${each.key} ${each.ready ? 'set' : 'unset'}`,
           ),
           `Generate runs on\t${report.provider ?? 'nothing, since no key is set'}`,
+          ...(report.setup.length === 0
+            ? []
+            : [
+                '',
+                'To generate locally, run these yourself:',
+                ...report.setup,
+              ]),
         ].join('\n'),
       }
+    },
+  )
+
+  act<CommonOptions>(
+    addVerb(
+      image,
+      'free',
+      'Ask the ComfyUI server to unload its models and free their memory, which the next generate loads again',
+    ),
+    context,
+    async () => {
+      const url = comfyuiUrl(process.env)
+      await freeMemory(url, send)
+      const record: ImageFree = { version: 1, url, freed: true }
+      return { data: record, human: `Freed the models ${url} held` }
     },
   )
 

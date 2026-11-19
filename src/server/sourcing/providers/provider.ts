@@ -1,6 +1,7 @@
 import { FrameboardError } from '@/shared/errors'
 import type { ImageProviderName } from '@/shared/records/sourcing'
 
+import type { Workflow } from '../comfyui/workflow'
 import type { ImageBytes } from '../save'
 
 export interface ImageSize {
@@ -8,11 +9,21 @@ export interface ImageSize {
   height: number
 }
 
+/** A workflow file read and checked before the call, named by the path it was read from. */
+export interface NamedWorkflow {
+  name: string
+  graph: Workflow
+}
+
 /** What one provider call needs, the key read from the environment just before. */
 export interface ProviderRequest {
   prompt: string
   size: ImageSize
   key: string
+  /** The noise seed, which a hosted provider ignores. */
+  seed: number
+  /** The developer's own workflow, which a hosted provider never receives. */
+  workflow?: NamedWorkflow
 }
 
 /** One way to generate an image, each keyed by its own environment variable. */

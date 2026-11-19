@@ -42,7 +42,9 @@ describe('planGeneration', () => {
     ).toThrow(
       expect.objectContaining({
         code: 'no-provider',
-        details: { keys: ['FAL_KEY', 'GEMINI_API_KEY'] },
+        details: {
+          keys: ['FRAMEBOARD_COMFYUI_URL', 'FAL_KEY', 'GEMINI_API_KEY'],
+        },
       }),
     )
   })
@@ -77,6 +79,87 @@ describe('planGeneration', () => {
   })
 })
 
+describe('planGeneration with a ComfyUI server', () => {
+  const local = { FRAMEBOARD_COMFYUI_URL: 'http://127.0.0.1:8188' }
+
+  it('picks comfyui first when its URL is set, at no charge', () => {
+    const plan = planGeneration(
+      { prompt: 'a house', size: { width: 1280, height: 720 } },
+      { ...local, FAL_KEY: 'fal-secret' },
+    )
+
+    expect(plan.provider.name).toBe('comfyui')
+    expect(plan.model).toBe('flux-2-klein-4b-fp8')
+    expect(plan.size).toEqual({ width: 1280, height: 720 })
+    expect(plan.priceUsd).toBe(0)
+  })
+
+  it('keeps fal first when the URL is unset', () => {
+    const plan = planGeneration(
+      { prompt: 'a house', size: square },
+      { FRAMEBOARD_COMFYUI_URL: '', FAL_KEY: 'fal-secret' },
+    )
+
+    expect(plan.provider.name).toBe('fal')
+  })
+
+  it('draws the seed from the random source per call', () => {
+    const plan = planGeneration(
+      { prompt: 'a house', size: square },
+      local,
+      () => 0.5,
+    )
+
+    expect(plan.seed).toBe(4503599627370495)
+  })
+
+  it('runs a workflow on comfyui and names the model by its file', () => {
+    const plan = planGeneration(
+      {
+        prompt: 'a house',
+        size: square,
+        workflow: { name: '/work/z-image.json', graph: {} },
+      },
+      { ...local, FAL_KEY: 'fal-secret' },
+    )
+
+    expect(plan.provider.name).toBe('comfyui')
+    expect(plan.model).toBe('z-image.json')
+  })
+
+  it('refuses usage for a workflow beside a hosted provider', () => {
+    expect(() =>
+      planGeneration(
+        {
+          prompt: 'a house',
+          size: square,
+          provider: 'fal',
+          workflow: { name: 'z-image.json', graph: {} },
+        },
+        { ...local, FAL_KEY: 'fal-secret' },
+      ),
+    ).toThrow(expect.objectContaining({ code: 'usage' }))
+  })
+
+  it('refuses no-provider for a workflow when the URL is unset', () => {
+    expect(() =>
+      planGeneration(
+        {
+          prompt: 'a house',
+          size: square,
+          workflow: { name: 'z-image.json', graph: {} },
+        },
+        { FAL_KEY: 'fal-secret' },
+      ),
+    ).toThrow(
+      expect.objectContaining({
+        code: 'no-provider',
+        details: { keys: ['FRAMEBOARD_COMFYUI_URL'] },
+      }),
+    )
+  })
+})
+
 describe('generateImage', () => {
   it('sends the one request the plan names', async () => {
     const asked: string[] = []
@@ -95,5 +178,45 @@ describe('generateImage', () => {
 
     expect(asked).toEqual(['https://fal.run/fal-ai/flux/schnell'])
     expect([...image.bytes]).toEqual([1, 2, 3])
+  })
+
+  it('posts the bundled workflow filled with the prompt, size, and seed to the URL', async () => {
+    const bodies: unknown[] = []
+    const send = (async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(String(input))
+      if (url.pathname === '/prompt') {
+        bodies.push(JSON.parse(String(init?.body)))
+        return Response.json({ prompt_id: 'p1' })
+      }
+      if (url.pathname === '/history/p1') {
+        return Response.json({
+          p1: {
+            status: { completed: true },
+            outputs: {
+              '9': {
+                images: [{ filename: 'a.png', subfolder: '', type: 'output' }],
+              },
+            },
+          },
+        })
+      }
+      return new Response(new Uint8Array([4]), {
+        headers: { 'content-type': 'image/png' },
+      })
+    }) as typeof fetch
+    const plan = planGeneration(
+      { prompt: 'a house', size: { width: 768, height: 512 } },
+      { FRAMEBOARD_COMFYUI_URL: 'http://127.0.0.1:8188' },
+      () => 0.5,
+    )
+
+    const image = await generateImage(plan, send)
+
+    const sent = JSON.stringify(bodies[0])
+    expect(sent).toContain('"text":"a house"')
+    expect(sent).toContain('"width":768')
+    expect(sent).toContain('"height":512')
+    expect(sent).toContain('"noise_seed":4503599627370495')
+    expect(image.extension).toBe('png')
   })
 })

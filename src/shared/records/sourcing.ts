@@ -3,7 +3,7 @@ import { z } from 'zod'
 /** So `house.jpg` carries its license in `house.jpg.license.json` beside it. */
 export const LICENSE_FILE_SUFFIX = '.license.json'
 
-export const IMAGE_PROVIDERS = ['fal', 'google'] as const
+export const IMAGE_PROVIDERS = ['comfyui', 'fal', 'google'] as const
 
 export type ImageProviderName = (typeof IMAGE_PROVIDERS)[number]
 
@@ -131,6 +131,10 @@ const generatedLicenseSchema = z.object({
   height: z.int(),
   /** The price estimated before the call, in US dollars. */
   priceUsd: z.number(),
+  /** The noise seed a local run drew, so the same image can be made again. */
+  seed: z.int().optional(),
+  /** The workflow file `--workflow` named, absent for the bundled one. */
+  workflow: z.string().optional(),
   savedAt: z.string(),
 })
 
@@ -198,13 +202,43 @@ export const imageOfferSchema = z.object({
 
 export type ImageOffer = z.infer<typeof imageOfferSchema>
 
+/** What `image free` answers once the server unloaded its models. */
+export const imageFreeSchema = z.object({
+  version: z.literal(1),
+  /** The ComfyUI server at `FRAMEBOARD_COMFYUI_URL`, or the default address. */
+  url: z.string(),
+  freed: z.literal(true),
+})
+
+export type ImageFree = z.infer<typeof imageFreeSchema>
+
+/** A model file the bundled workflow loads, as ComfyUI's `models/<folder>/` should hold it. */
+export const missingModelSchema = z.object({
+  folder: z.string(),
+  file: z.string(),
+  bytes: z.int(),
+  /** Where the file downloads from. */
+  url: z.string(),
+})
+
+export type MissingModel = z.infer<typeof missingModelSchema>
+
 /** What `image doctor` answers, naming each key as set or unset and never its value. */
 export const imageDoctorSchema = z.object({
   version: z.literal(1),
   /** The first GPU `nvidia-smi` reports, null when it is absent or fails. */
   gpu: z.object({ name: z.string(), memoryMiB: z.int() }).nullable(),
   /** The ComfyUI server at `FRAMEBOARD_COMFYUI_URL`, or the default address. */
-  local: z.object({ url: z.string(), running: z.boolean() }),
+  local: z.object({
+    url: z.string(),
+    running: z.boolean(),
+    /** The ComfyUI version the server reports, null when none answers. */
+    version: z.string().nullable(),
+    /** The bundled workflow's files the server lacks, null when it does not answer. */
+    missing: z.array(missingModelSchema).nullable(),
+  }),
+  /** Commands that would get this machine generating locally, empty when it already can. */
+  setup: z.array(z.string()),
   /** Each provider key by its environment variable, true when set and not empty. */
   keys: z.record(z.string(), z.boolean()),
   providers: z.array(
