@@ -1049,10 +1049,9 @@ export async function setFrameDevice(
 }
 
 /**
- * Shifts, after a fold, a turn, or a naming and never a bare show or hide,
- * each frame whose body starts at or past the grown frame's old right
- * edge and shares its rows by the growth, so the gap between them stays. A
- * shrink pulls nothing back, since the developer may have arranged them since.
+ * Shifts each frame on the grown body's rows at or past its old right edge by
+ * the growth, keeping the gap. A shrink pulls none back, since the developer
+ * may have arranged them since, and a bare show or hide never calls this.
  */
 function pushAlong(layout: PageLayout, name: string, before: Placement): void {
   const was = bodyOf(before)
