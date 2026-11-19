@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.44.0](https://github.com/erclx/frameboard/compare/v0.43.0...v0.44.0) (2026-11-19)
+
+
+### Features
+
+* **assets:** place, rename, replace, or delete an asset from its tile ([#410](https://github.com/erclx/frameboard/issues/410)) ([93a0f26](https://github.com/erclx/frameboard/commit/93a0f2691e4f32afe87c92891fbf8278e0fd1cb2))
+* **inspector:** name a model's turns and hint at turning it by hand ([#405](https://github.com/erclx/frameboard/issues/405)) ([1a25ef3](https://github.com/erclx/frameboard/commit/1a25ef340b692427949665dbdf75208e35e3d7e9))
+* **models:** add model find over Poly Haven's CC0 models ([#408](https://github.com/erclx/frameboard/issues/408)) ([182644f](https://github.com/erclx/frameboard/commit/182644ffc25d5d114a07b0bcc1cabba49770ec36))
+* **present:** ring the grid's keys alone and show every slide's notes ([#412](https://github.com/erclx/frameboard/issues/412)) ([611701c](https://github.com/erclx/frameboard/commit/611701c9beedafd2d41bbf98f55f9e4316fafcdb))
+* **present:** scroll a page-tall phone frame at one screen ([#409](https://github.com/erclx/frameboard/issues/409)) ([4f1628b](https://github.com/erclx/frameboard/commit/4f1628b15af9890b1c078a145f344046d67686ee))
+* **skill:** add draw references for devices, tilt, media, speaker notes ([#411](https://github.com/erclx/frameboard/issues/411)) ([6463f4c](https://github.com/erclx/frameboard/commit/6463f4cb9cb381560885aa5a1036cb3df16ff322))
+
+
+### Bug Fixes
+
+* **live:** measure a frame placed while a waiting batch scans the board ([#407](https://github.com/erclx/frameboard/issues/407)) ([cd9bfb3](https://github.com/erclx/frameboard/commit/cd9bfb3dff82948ddb524f15074287e82bb3a898))
+
 ## [0.43.0](https://github.com/erclx/frameboard/compare/v0.42.0...v0.43.0) (2026-11-19)
 
 
