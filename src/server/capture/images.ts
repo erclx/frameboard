@@ -5,6 +5,7 @@ import type { Browser } from 'playwright-core'
 
 import { COMPOSITE_MARGIN, filmstripWidth } from '@/shared/capture-limits'
 import { FrameboardError } from '@/shared/errors'
+import { type Device, topInset } from '@/shared/frame-device'
 import { drawnExtent, linkedBoxes } from '@/shared/frame-widths'
 import type { FrameRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
@@ -15,6 +16,9 @@ import {
   LOAD_TIMEOUT_MS,
   MAX_COMPOSITE_SIDE,
   openFrame,
+  pageSize,
+  readPageColors,
+  underStatusBar,
   type WarmBrowser,
 } from './render'
 import { filmstripMoments, findMotion, type Motion, seekMotion } from './seek'
@@ -382,7 +386,7 @@ export async function captureMotionImages(
       if ('filmstrip' in timing) {
         const strip = await renderFilmstrip(browser, {
           baseUrl,
-          frame: { ref: frame.ref, box: view },
+          frame: { ref: frame.ref, box: view, device: viewDevice(frame, view) },
           theme,
           scale,
           count: timing.filmstrip,
@@ -408,6 +412,7 @@ export async function captureMotionImages(
         baseUrl,
         ref: frame.ref,
         view,
+        device: viewDevice(frame, view),
         theme,
         scale,
         motionTimeoutMs,
@@ -463,7 +468,12 @@ export async function renderFilmstrip(
     motionTimeoutMs = LOAD_TIMEOUT_MS,
   }: {
     baseUrl: string
-    frame: { ref: string; box: { width: number; height: number } }
+    frame: {
+      ref: string
+      box: { width: number; height: number }
+      /** The device the strip's page draws under, none when absent. */
+      device?: Device | null
+    }
     theme: Theme
     scale?: number
     count: number
@@ -476,6 +486,7 @@ export async function renderFilmstrip(
     baseUrl,
     ref: frame.ref,
     view,
+    device: frame.device,
     theme,
     scale,
     motionTimeoutMs,
@@ -506,6 +517,7 @@ async function holdShots(
     baseUrl,
     ref,
     view,
+    device,
     theme,
     scale,
     motionTimeoutMs,
@@ -514,6 +526,8 @@ async function holdShots(
     baseUrl: string
     ref: string
     view: { width: number; height: number }
+    /** The device the view draws its page under, a phone's status bar shown over each shot. */
+    device?: Device | null
     theme: Theme
     scale: number
     motionTimeoutMs: number
@@ -529,7 +543,7 @@ async function holdShots(
   const opened = await openFrame(browser, {
     baseUrl,
     ref,
-    box: view,
+    box: pageSize(view, device),
     theme,
     scale,
     motion: 'hold',
@@ -537,18 +551,34 @@ async function holdShots(
   try {
     // Each theme's context seeks on its own, so no shot waits on another.
     const motion = await findMotion(opened.page, ref, motionTimeoutMs)
+    const colors =
+      topInset(device) > 0 ? await readPageColors(opened.page) : null
     const held: { held: number; bytes: Buffer }[] = []
     for (const moment of moments(motion)) {
       const at = await seekMotion(opened.page, motion, moment)
+      const shot = await opened.page.screenshot(HELD_SCREENSHOT)
       held.push({
         held: at,
-        bytes: await opened.page.screenshot(HELD_SCREENSHOT),
+        bytes: colors
+          ? await underStatusBar(browser, shot, view, { colors, theme }, scale)
+          : shot,
       })
     }
     return { motion, held, videos: opened.videos, models: opened.models }
   } finally {
     await opened.close()
   }
+}
+
+/**
+ * The device a view draws its page under: the frame's own while the view
+ * is the frame's own box, and none at a linked width, which draws no device.
+ */
+function viewDevice(
+  frame: FrameRecord,
+  view: { width: number },
+): Device | undefined {
+  return view.width === frame.box.width ? frame.device : undefined
 }
 
 // One frame at a time, so a slow frame never holds several tabs open.
@@ -563,10 +593,11 @@ async function renderFrame(
 ): Promise<{ bytes: Buffer; scrollY?: number } & Unloaded> {
   const box = { width: view.width, height: view.height }
   assertScreenshotFits(frame.ref, box, scale)
+  const device = viewDevice(frame, view)
   const opened = await openFrame(browser, {
     baseUrl,
     ref: frame.ref,
-    box,
+    box: pageSize(box, device),
     theme,
     scale,
   })
@@ -575,8 +606,19 @@ async function renderFrame(
       scroll === undefined
         ? undefined
         : await opened.page.evaluate(scrollAndSettle, scroll)
+    const shot = await opened.page.screenshot(SCREENSHOT)
+    const bytes =
+      topInset(device) > 0
+        ? await underStatusBar(
+            browser,
+            shot,
+            box,
+            { colors: await readPageColors(opened.page), theme },
+            scale,
+          )
+        : shot
     return {
-      bytes: await opened.page.screenshot(SCREENSHOT),
+      bytes,
       scrollY,
       videos: opened.videos,
       models: opened.models,

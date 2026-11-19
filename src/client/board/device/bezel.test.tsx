@@ -3,7 +3,8 @@ import '../../styles.css'
 import { render } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
-import type { Device, Pose } from '@/shared/frame-device'
+import type { Device, Island, PageColors, Pose } from '@/shared/frame-device'
+import type { Theme } from '@/shared/theme'
 
 import { Bezel } from './bezel'
 
@@ -13,12 +14,18 @@ function Framed({
   height,
   zoom = 1,
   pose,
+  island,
+  colors,
+  theme,
 }: {
   device: Device
   width: number
   height: number
   zoom?: number
   pose?: Pose
+  island?: Island
+  colors?: PageColors
+  theme?: Theme
 }) {
   return (
     <div
@@ -26,7 +33,15 @@ function Framed({
       style={{ transform: `scale(${zoom})` }}
     >
       <div className="absolute" style={{ left: 100, top: 100, width, height }}>
-        <Bezel device={device} width={width} height={height} pose={pose} />
+        <Bezel
+          device={device}
+          width={width}
+          height={height}
+          pose={pose}
+          island={island}
+          colors={colors}
+          theme={theme}
+        />
       </div>
     </div>
   )
@@ -76,6 +91,113 @@ describe('Bezel', () => {
     expect(radius + borderOf(bezel)).toBe(78)
   })
 
+  describe('phone', () => {
+    const rectsOf = (container: HTMLElement, selector: string) =>
+      [...container.querySelectorAll(selector)].map((element) =>
+        element.getBoundingClientRect(),
+      )
+
+    it('hangs three buttons past the left of the body and one past the right', () => {
+      const { container } = render(
+        <Framed device="phone" width={466} height={678} />,
+      )
+
+      const left = rectsOf(container, '[data-bezel-button="left"]')
+      const right = rectsOf(container, '[data-bezel-button="right"]')
+
+      expect(left).toHaveLength(3)
+      expect(right).toHaveLength(1)
+      for (const button of left) {
+        expect(button.right).toBeCloseTo(100 - 16)
+        expect(button.width).toBeCloseTo(4)
+      }
+      expect(right[0]?.left).toBeCloseTo(100 + 466 + 16)
+      expect(right[0]?.top).toBeCloseTo(100 - 16 + 222)
+    })
+
+    it("draws a 54 tall status bar over the screen in the page's fill and text color", () => {
+      const { container } = render(
+        <Framed
+          device="phone"
+          width={466}
+          height={678}
+          colors={{ fill: 'rgb(10, 20, 30)', ink: 'rgb(200, 210, 220)' }}
+        />,
+      )
+
+      const status = container.querySelector<HTMLElement>('[data-bezel-status]')
+      const rect = status?.getBoundingClientRect()
+      const style = status ? getComputedStyle(status) : null
+
+      expect(rect?.top).toBeCloseTo(100)
+      expect(rect?.height).toBeCloseTo(54)
+      expect(rect?.width).toBeCloseTo(466)
+      expect(style?.backgroundColor).toBe('rgb(10, 20, 30)')
+      expect(style?.color).toBe('rgb(200, 210, 220)')
+      expect(container.querySelector('[data-bezel-time]')?.textContent).toBe(
+        '9:41',
+      )
+    })
+
+    it("sets the time and marks in the island's band, clear of the island", () => {
+      const { container } = render(
+        <Framed device="phone" width={320} height={568} island="wide" />,
+      )
+
+      const rect = (selector: string) =>
+        container.querySelector(selector)?.getBoundingClientRect()
+      const island = rect('[data-bezel-island]')
+      const time = rect('[data-bezel-time]')
+      const battery = rect('[data-bezel-battery]')
+      const signal = rect('[data-bezel-signal]')
+
+      expect((time?.top ?? 0) + (time?.height ?? 0) / 2).toBeCloseTo(
+        100 + 29,
+        0,
+      )
+      expect(time?.right).toBeLessThan(island?.left ?? 0)
+      expect(signal?.left).toBeGreaterThan(island?.right ?? 0)
+      expect(battery?.right).toBeLessThan(100 + 320)
+    })
+
+    it("paints its theme's own colors before the page reports any", () => {
+      const { container } = render(
+        <Framed device="phone" width={466} height={678} theme="dark" />,
+      )
+
+      const status = container.querySelector<HTMLElement>('[data-bezel-status]')
+
+      expect(status ? getComputedStyle(status).colorScheme : '').toBe('dark')
+    })
+
+    it('draws the compact island when none is picked', () => {
+      const { container } = render(
+        <Framed device="phone" width={466} height={678} />,
+      )
+
+      const [island] = rectsOf(container, '[data-bezel-island]')
+
+      expect(island?.width).toBeCloseTo(81)
+      expect(container.querySelector('[data-bezel-timer]')).toBeNull()
+    })
+
+    it('draws the wide island centered with its timer when picked', () => {
+      const { container } = render(
+        <Framed device="phone" width={466} height={678} island="wide" />,
+      )
+
+      const [island] = rectsOf(container, '[data-bezel-island]')
+
+      expect(island?.width).toBeCloseTo(126)
+      expect((island?.left ?? 0) + (island?.width ?? 0) / 2).toBeCloseTo(
+        100 + 233,
+      )
+      expect(
+        container.querySelector('[data-bezel-timer]')?.textContent,
+      ).toContain('0:42')
+    })
+  })
+
   it('draws a tablet with a 44 border and no island', () => {
     const { container } = render(
       <Framed device="tablet" width={834} height={1194} />,
@@ -85,6 +207,7 @@ describe('Bezel', () => {
 
     expect(borderOf(bezel)).toBe(44)
     expect(container.querySelector('[data-bezel-island]')).toBeNull()
+    expect(container.querySelector('[data-bezel-button]')).toBeNull()
   })
 
   describe('laptop', () => {

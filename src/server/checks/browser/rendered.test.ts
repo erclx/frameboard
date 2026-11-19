@@ -122,6 +122,48 @@ describe.skipIf(shell === null)(
       ])
     })
 
+    describe('on a phone frame showing its device', () => {
+      let temp: TempBoard
+
+      afterEach(() => {
+        temp.cleanup()
+      })
+
+      /** A 390 by 844 frame holding a block 820 tall, inside its box but past the page under the status bar. */
+      async function checkPhone(device?: 'phone') {
+        temp = writeBoard({
+          'studio/home/hero.html': `<!doctype html><html lang="en"><head><title>hero</title><style>body { margin: 0 } main { height: 820px }</style></head><body><main>Tall</main></body></html>`,
+          'studio/home/layout.json': JSON.stringify({
+            version: 1,
+            frames: { hero: { x: 0, y: 0, width: 390, height: 844, order: 0 } },
+          }),
+        })
+        const served = await serveRendered(temp.root)
+        try {
+          return await checkRendered(browser, {
+            baseUrl: served.url,
+            root: temp.root,
+            frame: { ...served.target('studio/home/hero'), device },
+            config: {},
+          })
+        } finally {
+          await served.close()
+        }
+      }
+
+      it('reads the page under the status bar, so content past it is clipped', async () => {
+        const findings = await checkPhone('phone')
+
+        expect(findings).toMatchObject([
+          { rule: 'clipped', message: expect.stringContaining('790 px') },
+        ])
+      })
+
+      it('reads the whole box with no device', async () => {
+        expect(await checkPhone()).toEqual([])
+      })
+    })
+
     describe('on a frame with an entrance animation', () => {
       let temp: TempBoard
 

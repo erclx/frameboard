@@ -3,6 +3,7 @@ import {
   isElementBox,
   isTextEditEnd,
 } from '@/shared/frame-bridge/messages'
+import { pageBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { request, subscribe } from '../bridge/channel'
@@ -117,7 +118,9 @@ export function framePoint(
   at: BoardPoint,
 ): FramePoint | null {
   const frame = frames.find((candidate) => candidate.ref === ref)
-  return frame ? { x: at.x - frame.box.x, y: at.y - frame.box.y } : null
+  if (!frame) return null
+  const page = pageBox(frame.box, frame.device)
+  return { x: at.x - page.x, y: at.y - page.y }
 }
 
 /**

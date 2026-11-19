@@ -1012,7 +1012,7 @@ describe('frames', () => {
         expect(added.box.x).toBe(1950)
       })
 
-      it('duplicate lands 80 past the body of a frame in a device', async () => {
+      it('duplicate lands 80 past the body and buttons of a frame in a device', async () => {
         const root = open()
         await setFrameDevice(root, 'webapp/home/about', true, { cwd: root })
 
@@ -1020,7 +1020,7 @@ describe('frames', () => {
           cwd: root,
         })
 
-        expect(copy.box.x).toBe(1520 + 390 + 16 + 80 + 16)
+        expect(copy.box.x).toBe(1520 + 390 + 20 + 80 + 20)
       })
 
       it('duplicate stands a laptop copy 80 clear of its source, base to body', async () => {

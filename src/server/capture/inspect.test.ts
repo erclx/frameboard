@@ -1,6 +1,23 @@
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
-import { firstDisagreement, type LiveElement, renderedOnly } from './inspect'
+import {
+  launchShellOrNull,
+  requireShell,
+  SHELL_TEST_TIMEOUT_MS,
+} from '../../../test/support/headless-shell'
+import { writeBoard } from '../../../test/support/temp-board'
+import { readFrame } from '../board/frames'
+import { startFrameHost } from './host'
+import {
+  firstDisagreement,
+  inspectFrame,
+  type LiveElement,
+  renderedOnly,
+} from './inspect'
 
 const BOX = { x: 0, y: 0, width: 10, height: 10 }
 
@@ -77,3 +94,51 @@ describe('renderedOnly', () => {
     ])
   })
 })
+
+const shell = await launchShellOrNull()
+
+describe.skipIf(shell === null)(
+  'inspectFrame on a phone frame',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    async function mainHeight(showDevice: boolean): Promise<number> {
+      const board = writeBoard({
+        'studio/home/hero.html':
+          '<!doctype html><html lang="en"><head><title>hero</title><style>body { margin: 0 } main { height: 100vh }</style></head><body><main></main></body></html>',
+        'studio/home/layout.json': JSON.stringify({
+          version: 1,
+          frames: {
+            hero: { x: 0, y: 0, width: 390, height: 844, order: 0, showDevice },
+          },
+        }),
+      })
+      const faces = mkdtempSync(join(tmpdir(), 'frameboard-faces-'))
+      const host = await startFrameHost({ root: board.root, facesDir: faces })
+      try {
+        const frame = await readFrame(board.root, 'studio/home/hero', {
+          cwd: board.root,
+        })
+        const result = await inspectFrame(requireShell(shell), {
+          baseUrl: host.url,
+          frame,
+          theme: 'light',
+        })
+        const main = result.elements.find(({ tag }) => tag === 'main')
+        if (!main) throw new Error('No main element reported')
+        return main.box.height
+      } finally {
+        await host.close()
+        board.cleanup()
+        rmSync(faces, { recursive: true, force: true })
+      }
+    }
+
+    it('reads its elements in the page under the status bar', async () => {
+      expect(await mainHeight(true)).toBe(844 - 54)
+    })
+
+    it('reads its elements in the whole box with the device off', async () => {
+      expect(await mainHeight(false)).toBe(844)
+    })
+  },
+)

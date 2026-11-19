@@ -17,7 +17,13 @@ import {
   type Structure,
   structure,
 } from '@/client/live/structure'
-import { type Device, deviceForWidth, type Pose } from '@/shared/frame-device'
+import {
+  type Device,
+  deviceForWidth,
+  type Island,
+  ISLANDS,
+  type Pose,
+} from '@/shared/frame-device'
 import type { FrameSizeName } from '@/shared/frame-sizes'
 import type { FrameRecord, ProjectKitRecord } from '@/shared/records/list'
 
@@ -413,6 +419,11 @@ const DEVICE_NAMES = {
 const DEVICE_TIP =
   'Drawn by the board around the frame, a phone from 320 wide, a tablet from 480, and a laptop from 1024. The file is unchanged, and export can include it.'
 
+const ISLAND_NAMES = {
+  compact: 'Compact',
+  wide: 'Wide',
+} as const satisfies Record<Island, string>
+
 const POSE_NAMES = {
   closed: 'Closed',
   half: 'Half open',
@@ -458,6 +469,15 @@ function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
     shown && first?.pose && frames.every((frame) => frame.pose === first.pose)
       ? first.pose
       : undefined
+  const { shown: wide, pick: pickIsland } = usePick({
+    frames,
+    valueOf: (frame) => frame.island === 'wide',
+    refusal: 'Couldn’t set the island',
+    write: (refs, picked) => calls.setIsland(refs, picked ? 'wide' : 'compact'),
+  })
+  const phones = frames.every(
+    (frame) => !frame.pose && deviceForWidth(frame.box.width) === 'phone',
+  )
 
   return (
     <>
@@ -509,6 +529,32 @@ function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
                     {DEVICE_NAMES.foldable}
                   </DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
+                {phones ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup
+                      value={wide === null ? null : wide ? 'wide' : 'compact'}
+                      onValueChange={(island: Island) =>
+                        pickIsland(island === 'wide')
+                      }
+                    >
+                      <DropdownMenuLabel className="px-2 text-label font-normal">
+                        Island
+                      </DropdownMenuLabel>
+                      {ISLANDS.map((island) => (
+                        <DropdownMenuRadioItem
+                          key={island}
+                          value={island}
+                          closeOnClick
+                          className={cn(MENU_ROW, 'pr-8 whitespace-nowrap')}
+                        >
+                          {ISLAND_NAMES[island]}
+                          <span className="sr-only"> island</span>
+                        </DropdownMenuRadioItem>
+                      ))}
+                    </DropdownMenuRadioGroup>
+                  </>
+                ) : null}
               </ChromeMenuContent>
             </DropdownMenu>
           ) : value ? (

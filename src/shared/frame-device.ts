@@ -85,6 +85,9 @@ export const BEZEL_COLORS = {
   edge: '#45484f',
   island: '#050506',
   homeBar: 'rgba(128, 128, 128, 0.6)',
+  button: '#2a2c31',
+  islandText: '#ffffff',
+  islandLive: '#34c759',
 } as const
 
 /**
@@ -93,6 +96,126 @@ export const BEZEL_COLORS = {
  */
 export const PHONE_ISLAND = { width: 81, height: 30, top: 14 } as const
 export const HOME_BAR = { width: 140, height: 5, bottom: 8 } as const
+
+/** The island's two widths, the compact pill and the wide one a call or a timer shows. */
+export const ISLANDS = ['compact', 'wide'] as const
+
+export type Island = (typeof ISLANDS)[number]
+
+/** A layout entry's `island` as an island, compact for none or a value no reader knows. */
+export function islandOf(value: unknown): Island {
+  return value === 'wide' ? 'wide' : 'compact'
+}
+
+/** The wide island's width, scaled off the picked mock's ratio to the compact one. */
+const WIDE_ISLAND_WIDTH = 126
+
+/** The phone's island at its picked width, the wide one holding a timer. */
+export function phoneIsland(island: Island): {
+  width: number
+  height: number
+  top: number
+} {
+  return island === 'wide'
+    ? { ...PHONE_ISLAND, width: WIDE_ISLAND_WIDTH }
+    : { ...PHONE_ISLAND }
+}
+
+/** What the wide island shows, a running timer no frame sets, and the heights of the level bars beside it. */
+export const WIDE_ISLAND_TIMER = '0:42'
+export const WIDE_ISLAND_LEVEL = [5, 9, 7] as const
+
+/** How far the phone's buttons stand past the body's side, in points. */
+export const BUTTON_DEPTH = 4
+
+/**
+ * The phone's side buttons, each from the body's top edge, scaled off the
+ * picked mock: the action button and two volume buttons on the left, and
+ * the side button on the right.
+ */
+export const PHONE_BUTTONS = [
+  { side: 'left', top: 142, height: 33 },
+  { side: 'left', top: 195, height: 59 },
+  { side: 'left', top: 266, height: 59 },
+  { side: 'right', top: 222, height: 95 },
+] as const satisfies readonly {
+  side: 'left' | 'right'
+  top: number
+  height: number
+}[]
+
+/**
+ * The phone's status bar, ending 10 below the island so a page under it
+ * clears the island, its time and marks in the island's band `side` in from
+ * each edge, past the screen's corner arc.
+ */
+export const STATUS_BAR = {
+  height: PHONE_ISLAND.top + PHONE_ISLAND.height + 10,
+  band: { top: PHONE_ISLAND.top, height: PHONE_ISLAND.height },
+  side: 40,
+  time: '9:41',
+  font: 16,
+} as const
+
+/** The face the status bar and the wide island draw in, a system face every surface holds. */
+export const STATUS_FONT = 'system-ui, -apple-system, sans-serif'
+
+/** The status bar's signal bars, shortest first, and its battery, each in points. */
+export const SIGNAL_BARS = [4, 6.5, 9, 11.5] as const
+export const BATTERY = { width: 25, height: 12, radius: 3.5, cap: 2 } as const
+
+/** The height the device's status bar takes off the top of a frame's box, 0 for any device but the phone. */
+export function topInset(device: Device | null | undefined): number {
+  return device === 'phone' ? STATUS_BAR.height : 0
+}
+
+/**
+ * The page's box inside a frame's box, the box less the status bar while a
+ * phone shows and the box itself on every other device or none. A frame's
+ * box keeps the screen's size, and every surface reads the page through this.
+ */
+export function pageBox(box: Box, device: Device | null | undefined): Box {
+  const inset = topInset(device)
+  return {
+    x: box.x,
+    y: box.y + inset,
+    width: box.width,
+    height: Math.max(0, box.height - inset),
+  }
+}
+
+/** The page's corners as a CSS `border-radius`, square on top under a phone's status bar. */
+export function pageCorners(device: Device): string {
+  if (device !== 'phone') return screenCorners(device)
+  const { screenRadius } = BEZELS.phone
+  return `0 0 ${screenRadius}px ${screenRadius}px`
+}
+
+/** A page's fill and text color as its status bar paints them, the fill null where the page paints none. */
+export interface PageColors {
+  fill: string | null
+  ink: string
+}
+
+/**
+ * The fill a page shows at its top and its text color, read off its root and
+ * then its body as the browser paints the canvas. Self-contained, so a
+ * browser runs it in the page by its source alone.
+ */
+export function pageColors(doc: Document = document): PageColors {
+  const view = doc.defaultView
+  const read = (element: Element | null) =>
+    element && view ? view.getComputedStyle(element) : null
+  const root = read(doc.documentElement)
+  const body = read(doc.body)
+  const painted = (color: string | undefined) =>
+    color !== undefined &&
+    color !== 'transparent' &&
+    !/^rgba\(.*,\s*0\)$/.test(color)
+  const fill =
+    [root?.backgroundColor, body?.backgroundColor].find(painted) ?? null
+  return { fill, ink: body?.color ?? root?.color ?? 'CanvasText' }
+}
 
 /** The ways a foldable is held, each a screen the frame's box takes the size of. */
 export const POSES = ['closed', 'half', 'open'] as const
@@ -191,6 +314,12 @@ export function laptopParts({
   }
 }
 
+/** How far a device's parts stand past its body's sides, a laptop's base or a phone's buttons. */
+function sideReach(device: Device, width: number): number {
+  if (device === 'laptop') return baseReach(width)
+  return device === 'phone' ? BUTTON_DEPTH : 0
+}
+
 function baseReach(width: number): number {
   return Math.round((width + 2 * BEZELS.laptop.border) * LAPTOP_BASE.reach)
 }
@@ -219,13 +348,13 @@ export function bezelShadow(
 
 /**
  * The box a device's body covers around a frame's box, the box itself with
- * none. A laptop's base reaches past its lid, so its sides grow by more
- * than its top.
+ * none. A laptop's base reaches past its lid and a phone's buttons past its
+ * sides, so their sides grow by more than their top.
  */
 export function bezelBox(box: Box, device: Device | null | undefined): Box {
   if (!device) return { ...box }
   const { border, bottom } = BEZELS[device]
-  const side = device === 'laptop' ? border + baseReach(box.width) : border
+  const side = border + sideReach(device, box.width)
   return {
     x: box.x - side,
     y: box.y - border,

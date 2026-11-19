@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { unseenStore } from '@/client/live/unseen'
+import { topInset } from '@/shared/frame-device'
 import type { FrameChange } from '@/shared/records/changes'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -59,6 +60,8 @@ export function ChangeGlow({ frames, container }: ChangeGlowProps) {
         frame.box,
         previewOf(frame.ref),
       )
+      // An element's box reads in its page, which starts under a phone's status bar.
+      const top = topInset(frame.device)
       const boxes = change.whole
         ? [{ x: 0, y: 0, width, height }]
         : ((
@@ -66,7 +69,7 @@ export function ChangeGlow({ frames, container }: ChangeGlowProps) {
               hash: change.hash,
               indexes: change.elements,
             })
-          )?.map(({ box }) => box) ?? [])
+          )?.map(({ box }) => ({ ...box, y: top + box.y })) ?? [])
       if (stopped || boxes.length === 0) return
       const key = nextPlay++
       setLit((current) => ({ ...current, [frame.ref]: { key, boxes } }))

@@ -1,4 +1,5 @@
 import type { PickAt } from '@/shared/frame-bridge/messages'
+import { pageBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { request } from '../bridge/channel'
@@ -54,10 +55,11 @@ export async function readPick(
     `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
   )
   // A page that announced nothing has no bridge to wait on, so it takes a frame note at once.
+  const page = pageBox(frame.box, frame.device)
   const shown =
     iframe && shownHashOf(iframe) !== null
       ? await request(iframe, 'pick-at', {
-          at: { x: at.x - frame.box.x, y: at.y - frame.box.y },
+          at: { x: at.x - page.x, y: at.y - page.y },
         })
       : null
   // An unloaded iframe names no file, so its click makes a frame note.

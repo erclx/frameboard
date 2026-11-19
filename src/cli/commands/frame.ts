@@ -23,7 +23,13 @@ import {
 import { fitFrame } from '@/server/capture/fit'
 import { withFrameHost } from '@/server/capture/host'
 import { FrameboardError } from '@/shared/errors'
-import { type Pose, POSES } from '@/shared/frame-device'
+import {
+  type Island,
+  islandOf,
+  ISLANDS,
+  type Pose,
+  POSES,
+} from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES } from '@/shared/frame-sizes'
 import { NO_KIT_WORD } from '@/shared/kits'
 import { SAME_AS_PAGE_WORD, transitionLabel } from '@/shared/present-transition'
@@ -78,19 +84,23 @@ function deviceHeadline({
   showDevice,
   device,
   pose,
+  island,
 }: FrameRecord): string {
   const folded = pose ? `, folded ${pose} at ${box.width} by ${box.height}` : ''
   if (!showDevice) return `Hid the device on ${ref}${folded}`
   if (!device) {
     return `Showed the device on ${ref}, though no device fits its ${box.width} px width`
   }
-  return `Showed the ${device} on ${ref}${folded}`
+  const islanded =
+    device === 'phone' ? ` with the ${islandOf(island)} island` : ''
+  return `Showed the ${device} on ${ref}${folded}${islanded}`
 }
 
 interface FoldFlags {
   /** Commander sets this true for --foldable, false for --no-foldable, and leaves it absent for neither. */
   foldable?: boolean
   pose?: Pose
+  island?: Island
 }
 
 const WIDTHS_HELP =
@@ -300,7 +310,7 @@ export function registerFrame(
   act<CommonOptions & FoldFlags>(
     verb(
       'device',
-      'Show or hide the device the board draws around a frame, the phone, tablet, or laptop its width names or the foldable the frame names, and fold a foldable, leaving the frame file as it is',
+      'Show or hide the device the board draws around a frame, the phone, tablet, or laptop its width names or the foldable the frame names, fold a foldable, and pick a phone’s island, leaving the frame file as it is',
     )
       .addArgument(
         new Argument(
@@ -325,13 +335,24 @@ export function registerFrame(
           '--pose <pose>',
           'fold a foldable, setting its box to 466 by 678 closed and 890 by 626 half or open',
         ).choices(POSES),
+      )
+      .addOption(
+        new Option(
+          '--island <width>',
+          'pick the phone island drawn over a frame 320 to 479 px wide, compact or the wide one a call or a timer shows',
+        ).choices(ISLANDS),
       ),
     context,
-    async ([ref = '', value], { foldable, pose, ...options }) => {
-      if (value === undefined && foldable === undefined && pose === undefined) {
+    async ([ref = '', value], { foldable, pose, island, ...options }) => {
+      if (
+        value === undefined &&
+        foldable === undefined &&
+        pose === undefined &&
+        island === undefined
+      ) {
         throw new FrameboardError(
           'usage',
-          'frame device takes on or off, --foldable, --no-foldable, or --pose.',
+          'frame device takes on or off, --foldable, --no-foldable, --pose, or --island.',
         )
       }
       const show =
@@ -342,7 +363,7 @@ export function registerFrame(
         await boardOf(options, io),
         ref,
         show,
-        { ...options, cwd: io.cwd, foldable, pose },
+        { ...options, cwd: io.cwd, foldable, pose, island },
       )
       return { data: record, human: deviceHeadline(record) }
     },

@@ -378,6 +378,9 @@ export function attachGestures(
   const followPins = (boxes: Readonly<Record<string, Box>>) => {
     const pins =
       target.viewport.querySelectorAll<HTMLElement>('[data-note-frame]')
+    const devices = new Map(
+      target.frames().map((frame) => [frame.ref, frame.device]),
+    )
     for (const pin of pins) {
       const ref = pin.dataset.noteFrame ?? ''
       const box = boxes[ref]
@@ -387,7 +390,7 @@ export function attachGestures(
       }
       const element = pin.dataset.noteElement
       const at = cornerOf(
-        { ref, box },
+        { ref, box, device: devices.get(ref) },
         element === undefined ? null : Number(element),
         target.layer,
       )

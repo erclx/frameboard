@@ -1,4 +1,5 @@
 import type { Gap } from '@/shared/frame-bridge/gap'
+import { pageBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { request } from '../bridge/channel'
@@ -27,7 +28,8 @@ async function askGap(
     `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
   )
   if (!iframe || shownHashOf(iframe) === null) return null
-  const point = { x: at.x - frame.box.x, y: at.y - frame.box.y }
+  const page = pageBox(frame.box, frame.device)
+  const point = { x: at.x - page.x, y: at.y - page.y }
   const shown = await request(
     iframe,
     'gap-at',

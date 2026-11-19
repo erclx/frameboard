@@ -8,7 +8,7 @@ import type { InspectedElement, InspectResult } from '@/shared/records/inspect'
 import type { FrameRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
 
-import { openFrame } from './render'
+import { openFrame, pageSize } from './render'
 
 /** One element as the page reports it, `box` null when it has no layout box. */
 export type LiveElement = Omit<InspectedElement, 'box'> & {
@@ -61,10 +61,11 @@ export async function inspectFrame(
   const hash = contentHash(bytes)
   const tree = parseFrame(bytes.toString('utf8'))
 
+  // A phone's page starts under its status bar, so its elements read in that page.
   const opened = await openFrame(browser, {
     baseUrl,
     ref: frame.ref,
-    box: frame.box,
+    box: pageSize(frame.box, frame.device),
     theme,
   })
   let live: LiveElement[]

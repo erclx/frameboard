@@ -338,6 +338,79 @@ describe.skipIf(shell === null)(
   },
 )
 
+// A red line at the page's very top on a blue fill, so a shot shows where the page starts.
+const EDGE_PAGE = `<!doctype html><html lang="en"><head><title>edge</title><style>body { margin: 0; height: 100vh; background: #00f } #line { height: 10px; background: #f00 }</style></head><body><div id="line"></div></body></html>`
+
+describe.skipIf(shell === null)(
+  'captureFrameImages of a phone frame',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    let browser: Browser
+    let board: TempBoard
+    let out: string
+
+    beforeAll(() => {
+      browser = requireShell(shell)
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterEach(() => {
+      board.cleanup()
+      rmSync(out, { recursive: true, force: true })
+    })
+
+    async function shoot(device?: 'phone') {
+      board = writeBoard({ 'studio/home/hero.html': EDGE_PAGE })
+      out = mkdtempSync(join(tmpdir(), 'frameboard-shots-'))
+      const host = await startFrameHost({ root: board.root, facesDir: out })
+      try {
+        return await captureFrameImages(browser, {
+          baseUrl: host.url,
+          frames: [
+            frameOf('hero', {
+              box: { x: 0, y: 0, width: 390, height: 600 },
+              widths: [{ width: 320, height: 500 }],
+              ...(device ? { showDevice: true, device } : {}),
+            }),
+          ],
+          themes: ['light'],
+          out,
+        })
+      } finally {
+        await host.close()
+      }
+    }
+
+    function pixel(path: string, x: number, y: number): string {
+      const { data, width } = PNG.sync.read(readFileSync(path))
+      const at = (y * width + x) * 4
+      return `#${[...data.subarray(at, at + 3)].map((byte) => byte.toString(16).padStart(2, '0')).join('')}`
+    }
+
+    it("starts the page under a status bar in the page's fill, at the box's size", async () => {
+      const [own] = await shoot('phone')
+      if (!own) throw new Error('no image')
+
+      expect([own.width, own.height]).toEqual([390, 600])
+      expect(pixel(own.path, 195, 50)).toBe('#0000ff')
+      expect(pixel(own.path, 195, 54 + 5)).toBe('#ff0000')
+    })
+
+    it('starts a linked width page at its top, since it draws no device', async () => {
+      const [, linked] = await shoot('phone')
+      if (!linked) throw new Error('no image')
+
+      expect(pixel(linked.path, 160, 5)).toBe('#ff0000')
+    })
+
+    it('starts the page at the top with the device off', async () => {
+      const [own] = await shoot()
+      if (!own) throw new Error('no image')
+
+      expect(pixel(own.path, 195, 5)).toBe('#ff0000')
+    })
+  },
+)
+
 // A red box sliding right across a white page over 2 s, so the column of its
 // left edge names the moment a shot holds.
 // canon-allow-embedded: the page whose slide the timed capture assertions hold, kept beside them

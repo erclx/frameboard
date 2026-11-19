@@ -273,8 +273,20 @@ describe.skipIf(shell === null)(
                 { width: 390, height: 844 },
               ],
             },
+            mobile: {
+              x: 1520,
+              y: 0,
+              width: 390,
+              height: 844,
+              order: 1,
+              showDevice: true,
+            },
           },
         }),
+        'studio/home/mobile.html': page(
+          '<div class="block"></div>',
+          '.block { height: 1200px }',
+        ),
       })
       host = await startFrameHost({ root: board.root, facesDir: faces })
     }, SHELL_HOOK_TIMEOUT_MS)
@@ -303,6 +315,24 @@ describe.skipIf(shell === null)(
           { width: 834, height: 400 },
           { width: 390, height: 1200 },
         ],
+      ])
+    })
+
+    it('fits a phone frame to its page and the status bar above it', async () => {
+      const frame = await readFrame(board.root, 'studio/home/mobile', {
+        cwd: board.root,
+      })
+
+      const fit = await fitFrame(browser, {
+        root: board.root,
+        cwd: board.root,
+        baseUrl: host.url,
+        frame,
+      })
+
+      expect([fit.contentHeight, fit.frame.box.height]).toEqual([
+        1200,
+        1200 + 54,
       ])
     })
   },

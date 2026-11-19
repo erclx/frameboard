@@ -842,6 +842,35 @@ describe('structureRoutes', () => {
       expect(layout().hero).not.toHaveProperty('showDevice')
     })
 
+    it('picks the wide island as one step and drops it on undo', async () => {
+      await post('/api/frame/device', {
+        refs: ['studio/home/mobile'],
+        show: true,
+      })
+
+      await post('/api/frame/device', {
+        refs: ['studio/home/mobile'],
+        island: 'wide',
+      })
+      expect(layout().mobile).toMatchObject({
+        showDevice: true,
+        island: 'wide',
+      })
+      await history.undo()
+
+      expect(layout().mobile).not.toHaveProperty('island')
+    })
+
+    it('refuses an island no phone has and writes nothing', async () => {
+      const response = await post('/api/frame/device', {
+        refs: ['studio/home/mobile'],
+        island: 'huge',
+      })
+
+      expect(response.status).toBe(400)
+      expect(layout().mobile).not.toHaveProperty('island')
+    })
+
     describe('widths', () => {
       const HERO = 'studio/home/hero'
       const setHero = (fields: Record<string, unknown>) => {

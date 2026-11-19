@@ -1,18 +1,29 @@
 import {
+  BATTERY,
   BEZEL_COLORS,
   BEZELS,
   bezelShadow,
+  BUTTON_DEPTH,
   type Device,
   FOLDABLE_ISLAND,
   foldBand,
   HOME_BAR,
+  type Island,
   islandCenter,
   LAPTOP_BASE,
   laptopParts,
-  PHONE_ISLAND,
+  type PageColors,
+  PHONE_BUTTONS,
+  phoneIsland,
   type Pose,
   screenCorners,
+  SIGNAL_BARS,
+  STATUS_BAR,
+  STATUS_FONT,
+  WIDE_ISLAND_LEVEL,
+  WIDE_ISLAND_TIMER,
 } from '@/shared/frame-device'
+import type { Theme } from '@/shared/theme'
 
 /** One screen pixel at any zoom, the width of the body's edge. */
 const EDGE = 'calc(1px / var(--zoom, 1))'
@@ -26,6 +37,9 @@ export function Bezel({
   width,
   height,
   pose = 'closed',
+  island = 'compact',
+  colors,
+  theme,
 }: {
   device: Device
   /** The frame's box, which a laptop's chin and base span. */
@@ -33,6 +47,12 @@ export function Bezel({
   height: number
   /** How a foldable is held, which no other device reads. */
   pose?: Pose
+  /** The phone's island width, which no other device reads. */
+  island?: Island
+  /** The page's fill and text color, which the phone's status bar paints, its theme's own until the page reports them. */
+  colors?: PageColors | null
+  /** The frame's theme, which a page painting no fill shows through the status bar. */
+  theme?: Theme
 }) {
   const laptop = device === 'laptop'
   return (
@@ -45,9 +65,82 @@ export function Bezel({
         boxShadow: bezelShadow(device),
       }}
     >
-      {device === 'phone' ? <PhoneMarks /> : null}
+      {device === 'phone' ? (
+        <>
+          <StatusBar colors={colors ?? null} theme={theme} />
+          <PhoneMarks island={island} />
+        </>
+      ) : null}
       {laptop ? <LaptopBody width={width} height={height} /> : null}
       {device === 'foldable' ? <FoldableMarks pose={pose} /> : null}
+    </div>
+  )
+}
+
+/**
+ * The phone's status bar over the strip above the page, in the page's fill
+ * and text color, with the time on the left and the signal and battery on
+ * the right, both in the island's band.
+ */
+function StatusBar({
+  colors,
+  theme,
+}: {
+  colors: PageColors | null
+  theme?: Theme
+}) {
+  const { screenRadius } = BEZELS.phone
+  return (
+    <div
+      data-bezel-status
+      className="absolute inset-x-0 top-0"
+      style={{
+        height: STATUS_BAR.height,
+        background: colors?.fill ?? 'Canvas',
+        color: colors?.ink ?? 'CanvasText',
+        colorScheme: theme,
+        borderRadius: `${screenRadius}px ${screenRadius}px 0 0`,
+      }}
+    >
+      <div
+        className="absolute inset-x-0 flex items-center justify-between leading-none font-semibold tabular-nums"
+        style={{
+          top: STATUS_BAR.band.top,
+          height: STATUS_BAR.band.height,
+          paddingInline: STATUS_BAR.side,
+          fontSize: STATUS_BAR.font,
+          fontFamily: STATUS_FONT,
+        }}
+      >
+        <span data-bezel-time>{STATUS_BAR.time}</span>
+        <span className="flex items-center gap-[6px]">
+          <span data-bezel-signal className="flex items-end gap-[2px]">
+            {SIGNAL_BARS.map((tall) => (
+              <span
+                key={tall}
+                className="w-[3px] rounded-[1px] bg-current"
+                style={{ height: tall }}
+              />
+            ))}
+          </span>
+          <span data-bezel-battery className="flex items-center">
+            <span
+              className="box-border flex items-center border border-current p-[1.5px] opacity-90"
+              style={{
+                width: BATTERY.width,
+                height: BATTERY.height,
+                borderRadius: BATTERY.radius,
+              }}
+            >
+              <span className="h-full w-4/5 rounded-[2px] bg-current" />
+            </span>
+            <span
+              className="ml-[1px] h-[4px] rounded-r-[1px] bg-current opacity-60"
+              style={{ width: BATTERY.cap }}
+            />
+          </span>
+        </span>
+      </div>
     </div>
   )
 }
@@ -106,21 +199,66 @@ function HomeBar() {
   )
 }
 
-function PhoneMarks() {
+function PhoneMarks({ island }: { island: Island }) {
+  const { width, height, top } = phoneIsland(island)
+  const { border } = BEZELS.phone
   return (
     <>
+      {PHONE_BUTTONS.map(({ side, top: from, height: length }) => (
+        <span
+          key={`${side} ${from}`}
+          data-bezel-button={side}
+          className="absolute"
+          style={{
+            [side]: -border - BUTTON_DEPTH,
+            top: from - border,
+            width: BUTTON_DEPTH,
+            height: length,
+            borderRadius: BUTTON_DEPTH / 2,
+            background: BEZEL_COLORS.button,
+          }}
+        />
+      ))}
       <span
         data-bezel-island
-        className="absolute left-1/2 -translate-x-1/2"
+        className="absolute left-1/2 flex -translate-x-1/2 items-center justify-between px-[11px] text-[11px] leading-none font-semibold tabular-nums"
         style={{
-          top: PHONE_ISLAND.top,
-          width: PHONE_ISLAND.width,
-          height: PHONE_ISLAND.height,
-          borderRadius: PHONE_ISLAND.height / 2,
+          top,
+          width,
+          height,
+          borderRadius: height / 2,
           background: BEZEL_COLORS.island,
+          color: BEZEL_COLORS.islandText,
+          fontFamily: STATUS_FONT,
         }}
-      />
+      >
+        {island === 'wide' ? <IslandTimer /> : null}
+      </span>
       <HomeBar />
+    </>
+  )
+}
+
+/** The wide island's running timer, a live dot and its time, with a level on the right. */
+function IslandTimer() {
+  return (
+    <>
+      <span data-bezel-timer className="flex items-center gap-[5px]">
+        <span
+          className="size-[6px] rounded-full"
+          style={{ background: BEZEL_COLORS.islandLive }}
+        />
+        {WIDE_ISLAND_TIMER}
+      </span>
+      <span className="flex items-end gap-[2px]">
+        {WIDE_ISLAND_LEVEL.map((tall) => (
+          <span
+            key={tall}
+            className="w-[2px] rounded-[1px]"
+            style={{ height: tall, background: BEZEL_COLORS.islandLive }}
+          />
+        ))}
+      </span>
     </>
   )
 }

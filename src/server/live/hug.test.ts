@@ -84,6 +84,37 @@ describe('createHug', () => {
     expect(entries().hero).toMatchObject({ width: 1440, height: 1232 })
   })
 
+  it('measures a phone frame at its page under the status bar and stores the box with it', async () => {
+    board = boardOf({
+      hero: { width: 466, height: 678, hugHeight: true, showDevice: true },
+    })
+    const boxes: number[] = []
+    const hug = createHug({
+      root: board.root,
+      measure: async (frame: FrameRecord) => {
+        boxes.push(frame.box.height)
+        return sized(466, 1000)
+      },
+    })
+
+    await hug.now(await scanBoard(board.root), [HERO])
+
+    expect(boxes).toEqual([678 - 54])
+    expect(entries().hero).toMatchObject({ width: 466, height: 1000 + 54 })
+  })
+
+  it('measures a phone frame with its device off at its whole box', async () => {
+    board = boardOf({ hero: { width: 466, height: 678, hugHeight: true } })
+    const hug = createHug({
+      root: board.root,
+      measure: async () => sized(466, 1000),
+    })
+
+    await hug.now(await scanBoard(board.root), [HERO])
+
+    expect(entries().hero).toMatchObject({ height: 1000 })
+  })
+
   it('writes nothing for a frame whose size already stands', async () => {
     board = boardOf({ card: { hugHeight: true } })
     const hug = createHug({
