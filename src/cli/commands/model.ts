@@ -1,6 +1,12 @@
 import { type Command, InvalidArgumentError } from 'commander'
 
 import { resolveProject } from '@/server/board/refs'
+import { readWorkflow } from '@/server/sourcing/comfyui/workflow'
+import {
+  generateModel,
+  planModelGeneration,
+  readPicture,
+} from '@/server/sourcing/generate-model'
 import {
   DEFAULT_MODEL_SIZE,
   fetchModel,
@@ -15,6 +21,7 @@ import { FrameboardError } from '@/shared/errors'
 import {
   MODEL_SIZES,
   type ModelFind,
+  type ModelGenerate,
   type ModelSize,
   type SavedModel,
 } from '@/shared/records/sourcing'
@@ -33,6 +40,12 @@ interface FindOptions extends CommonOptions {
   name?: string
 }
 
+interface GenerateOptions extends CommonOptions {
+  workflow?: string
+  dryRun?: boolean
+  name?: string
+}
+
 const CREDIT = `Models from ${POLYHAVEN_SOURCE.name}, ${POLYHAVEN_SOURCE.url}, CC0`
 
 export function registerModel(program: Command, context: ProgramContext): void {
@@ -41,7 +54,7 @@ export function registerModel(program: Command, context: ProgramContext): void {
   const model = program
     .command('model')
     .description(
-      "Find a public domain 3D model and save it into a project's assets as one GLB with its license",
+      "Find a public domain 3D model or make one from a picture, saving it into a project's assets as one GLB with its license",
     )
 
   act<FindOptions>(
@@ -116,6 +129,83 @@ export function registerModel(program: Command, context: ProgramContext): void {
         ),
       )
       return { data: saved, human: savedLine(saved) }
+    },
+  )
+
+  act<GenerateOptions>(
+    addVerb(
+      model,
+      'generate',
+      "Make a 3D model from a picture on the ComfyUI server at FRAMEBOARD_COMFYUI_URL and save it into the project's assets as one GLB with its license, in about a minute and with no progress line. Refuses no-provider while that address is unset",
+      { project: true },
+    )
+      .argument(
+        '<picture>',
+        "a PNG, JPEG, WebP, or GIF, read from here, the project's folder, or its assets/",
+      )
+      .option(
+        '--workflow <file>',
+        'run this ComfyUI workflow in the API format, with {{image}} and optionally {{seed}} in it, rather than the bundled Pixal3D one',
+      )
+      .option(
+        '--dry-run',
+        'answer the server, model, and picture, and make no request',
+      )
+      .option(
+        '--name <stem>',
+        "the saved file name without its extension, the picture's by default",
+      ),
+    context,
+    async ([path = ''], options) => {
+      // Read ahead of the plan, so a dry run checks the file and a bad one reaches no server.
+      const workflow =
+        options.workflow === undefined
+          ? undefined
+          : {
+              name: options.workflow,
+              graph: await readWorkflow(options.workflow, 'model'),
+            }
+      const project = await resolveProject(
+        await boardOf(options, io),
+        options.project,
+      )
+      const picture = await readPicture(path, io.cwd, project)
+      const stem = savedStem(
+        options.name,
+        picture.name.replace(/\.[^.]*$/, ''),
+        'model',
+      )
+      const plan = planModelGeneration({ picture, workflow }, process.env)
+      const record: ModelGenerate = {
+        version: 1,
+        provider: 'comfyui',
+        server: plan.server,
+        model: plan.model,
+        picture: picture.source,
+        dryRun: options.dryRun ?? false,
+        saved: null,
+      }
+      const made = `${record.model} on ${record.server} from ${picture.source.path}`
+      if (record.dryRun) {
+        return { data: record, human: `Would generate ${made}` }
+      }
+      const glb = await generateModel(plan, send)
+      const saved = await saveModel(project, stem, glb, {
+        version: 1,
+        origin: 'generated',
+        kind: 'model',
+        provider: 'comfyui',
+        server: plan.server,
+        model: plan.model,
+        ...(plan.workflow && { workflow: plan.workflow.name }),
+        picture: picture.source,
+        seed: plan.seed,
+        savedAt: new Date().toISOString(),
+      })
+      return {
+        data: { ...record, saved },
+        human: `Generated ${made}. Saved assets/${saved.path} into ${saved.project}, its license in assets/${saved.licensePath}`,
+      }
     },
   )
 

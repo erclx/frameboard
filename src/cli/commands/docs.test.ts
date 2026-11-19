@@ -70,6 +70,7 @@ describe('docs', () => {
       'image doctor',
       'image free',
       'model find',
+      'model generate',
       'page add',
       'page duplicate',
       'page rename',
@@ -197,6 +198,17 @@ describe('docs', () => {
     expect(contentFormat.models[2]).toContain(
       'orientation="<roll>deg <pitch>deg <yaw>deg"',
     )
+  })
+
+  it('states what model generate reads, where it runs, and what its license records', async () => {
+    const { contentFormat } = await docs()
+    const generate = contentFormat.models.find((line: string) =>
+      line.startsWith('model generate'),
+    )
+
+    expect(generate).toContain('FRAMEBOARD_COMFYUI_URL')
+    expect(generate).toContain('{{image}}')
+    expect(generate).toContain('image free')
   })
 
   it('states where model find searches, how it ranks, and the size it saves at', async () => {
