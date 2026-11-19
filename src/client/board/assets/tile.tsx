@@ -139,7 +139,9 @@ export function Tile({
               onCommit={(next) => rename.commit(`${next}${extension}`)}
               onCancel={rename.cancel}
             />
-            <span className="shrink-0 text-muted-foreground">{extension}</span>
+            <span className="shrink-0 pl-1 text-muted-foreground">
+              {extension}
+            </span>
           </span>
           {caption}
         </span>
