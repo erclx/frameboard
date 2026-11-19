@@ -1303,6 +1303,21 @@
         color: color-mix(in srgb, var(--muted) 60%, var(--text));
         font-weight: 400;
       }
+      .tsrc {
+        background: none !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+      }
+      .tsrc .q {
+        display: inline-grid;
+        place-items: center;
+        width: 12px;
+        height: 12px;
+        margin-left: 4px;
+        border-radius: 50%;
+        box-shadow: 0 0 0 1px var(--faint);
+        font-size: 8px;
+      }
     </style>
   </head>
   <body>
@@ -1347,8 +1362,9 @@
           ><button>Assets</button>
         </div>
         <div class="tsrc">
-          From board <code>tokens.css</code>, overridden by project
-          <code>webapp/tokens.css</code>. Click a value to edit it.
+          From board tokens.css, overridden by project tokens.css<span class="q"
+            >?</span
+          >
         </div>
         <div class="sec"><span>Color</span></div>
         <div class="thead"><span></span><span>L</span><span>D</span></div>
