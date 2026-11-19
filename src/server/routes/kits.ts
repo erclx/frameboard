@@ -23,8 +23,9 @@ import { decodeSegments } from './frames'
 const name = z.string().min(1).max(256)
 
 /**
- * A preview card's policy, running the theme script alone by hash, since a
- * saved kit's sample runs on the board's origin, and a sandbox would draw it light.
+ * The policy on every kit page and SVG, running the theme script alone by
+ * hash, since a kit file runs on the board's origin, where a frame could embed
+ * one to write as the board, and a sandbox would draw a sample light.
  */
 const PREVIEW_POLICY = `script-src 'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'`
 
@@ -149,10 +150,11 @@ export function kitRoutes(
           ),
         )
       : bytes
+    const document = type.startsWith('text/html') || type === 'image/svg+xml'
     return c.body(body, 200, {
       'Content-Type': type,
       'Cache-Control': 'no-store',
-      ...(isSample ? { 'Content-Security-Policy': PREVIEW_POLICY } : {}),
+      ...(document ? { 'Content-Security-Policy': PREVIEW_POLICY } : {}),
     })
   })
 
