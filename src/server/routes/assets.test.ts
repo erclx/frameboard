@@ -270,6 +270,106 @@ describe('assetsRoutes', () => {
     })
   })
 
+  function form(name: string, content: string): FormData {
+    const body = new FormData()
+    body.append('file', new File([content], name))
+    return body
+  }
+
+  describe('PUT', () => {
+    it('writes the new bytes under the same path', async () => {
+      writeAsset('lake.jpg', 'old')
+
+      const response = await write('PUT', 'lake.jpg', {
+        body: form('sunset.jpeg', 'new'),
+      })
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { path: 'lake.jpg', frames: [] },
+      })
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('new')
+    })
+
+    it('takes the license file out, and one undo brings back the old bytes and the license', async () => {
+      writeAsset('lake.jpg', 'old')
+      writeAsset('lake.jpg.license.json', '{"license":"CC0"}')
+
+      await write('PUT', 'lake.jpg', { body: form('lake.jpg', 'new') })
+      expect(existsSync(asset('lake.jpg.license.json'))).toBe(false)
+      await history.undo()
+
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('old')
+      expect(existsSync(asset('lake.jpg.license.json'))).toBe(true)
+    })
+
+    it('redoes a replace after its undo', async () => {
+      writeAsset('lake.jpg', 'old')
+      await write('PUT', 'lake.jpg', { body: form('lake.jpg', 'new') })
+      await history.undo()
+
+      await history.redo()
+
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('new')
+    })
+
+    it('drops the undo as overtaken when an agent rewrote the file since', async () => {
+      writeAsset('lake.jpg', 'old')
+      await write('PUT', 'lake.jpg', { body: form('lake.jpg', 'new') })
+      writeFileSync(asset('lake.jpg'), 'agent')
+
+      await expect(history.undo()).rejects.toMatchObject({
+        code: 'undo-overtaken',
+      })
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('agent')
+    })
+
+    it('refuses a file of another kind with 400 and keeps the old bytes', async () => {
+      writeAsset('lake.jpg', 'old')
+
+      const response = await write('PUT', 'lake.jpg', {
+        body: form('clip.mp4', 'video'),
+      })
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'asset-type-refused' },
+      })
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('old')
+      expect(history.counts()).toEqual({ undo: 0, redo: 0 })
+    })
+
+    it('answers 404 asset-not-found for a file that is not there', async () => {
+      const response = await write('PUT', 'gone.jpg', {
+        body: form('gone.jpg', 'new'),
+      })
+
+      expect(response.status).toBe(404)
+      expect(existsSync(asset('gone.jpg'))).toBe(false)
+    })
+
+    it('answers 400 usage for a body with no file', async () => {
+      writeAsset('lake.jpg', 'old')
+
+      const response = await write('PUT', 'lake.jpg', { body: new FormData() })
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({ error: { code: 'usage' } })
+    })
+
+    it('refuses a caller that is not a writer with 401', async () => {
+      writeAsset('lake.jpg', 'old')
+
+      const response = await write('PUT', 'lake.jpg', {
+        token: null,
+        body: form('lake.jpg', 'new'),
+      })
+
+      expect(response.status).toBe(401)
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('old')
+    })
+  })
+
   describe('GET transitions', () => {
     function writeTransition(name: string, css: string): void {
       mkdirSync(join(board.root, 'webapp/assets/transitions'), {

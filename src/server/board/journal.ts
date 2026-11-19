@@ -33,6 +33,8 @@ export interface Journal {
   moved(from: string, to: string): Promise<void>
   /** A file or folder the verb just created, whose content an undo checks before removing it. */
   created(path: string): Promise<void>
+  /** Puts the file at `from` in place of the file at `path`, keeping the replaced bytes where an undo can bring them back, in place of the verb's rename. */
+  replaced(path: string, from: string): Promise<void>
   /** Takes the path out of the board where an undo can bring it back, in place of the verb's `rm`. */
   removed(path: string): Promise<void>
 }

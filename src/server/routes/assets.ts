@@ -5,7 +5,12 @@ import { Hono } from 'hono'
 import { bodyLimit } from 'hono/body-limit'
 
 import type { AssetUsage } from '@/server/board/asset-usage'
-import { addAssets, listAssets, removeAsset } from '@/server/board/assets'
+import {
+  addAssets,
+  listAssets,
+  removeAsset,
+  replaceAsset,
+} from '@/server/board/assets'
 import { listTransitions, ownKeyframes } from '@/server/board/transitions'
 import type { History } from '@/server/history/stack'
 import { FrameboardError } from '@/shared/errors'
@@ -44,6 +49,20 @@ export function assetsRoutes(
   const authorized = requireWriter(access)
   const path = '/api/projects/:project/assets'
   const file = `${path}/*`
+  const limited = bodyLimit({
+    maxSize: limit,
+    onError: (c) =>
+      c.json(
+        {
+          ok: false,
+          error: {
+            code: 'asset-too-large',
+            message: `A drop may carry ${limit / 1024 / 1024} MiB at most. Nothing was written.`,
+          },
+        },
+        413,
+      ),
+  })
 
   /** The project folder and the file's path under `assets/`, refusing a missing project or a path segment that leaves the folder. */
   const target = (url: string, project: string) => {
@@ -120,58 +139,62 @@ export function assetsRoutes(
     return c.json({ ok: true, data })
   })
 
-  app.post(
-    path,
-    authorized,
-    bodyLimit({
-      maxSize: limit,
-      onError: (c) =>
-        c.json(
-          {
-            ok: false,
-            error: {
-              code: 'asset-too-large',
-              message: `A drop may carry ${limit / 1024 / 1024} MiB at most. Nothing was written.`,
-            },
+  app.post(path, authorized, limited, async (c) => {
+    const projectDir = projectFolder(root, c.req.param('project'))
+    if (projectDir === null)
+      return c.json(notFound(c.req.param('project')), 404)
+    const form = await c.req
+      .parseBody({ all: true })
+      .catch(() => ({}) as Record<string, unknown>)
+    const sent = [form.files].flat().filter((v) => v instanceof File)
+    if (sent.length === 0) {
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: 'usage',
+            message:
+              'Send multipart/form-data with files in the "files" field.',
           },
-          413,
-        ),
-    }),
-    async (c) => {
-      const projectDir = projectFolder(root, c.req.param('project'))
-      if (projectDir === null)
-        return c.json(notFound(c.req.param('project')), 404)
-      const form = await c.req
-        .parseBody({ all: true })
-        .catch(() => ({}) as Record<string, unknown>)
-      const sent = [form.files].flat().filter((v) => v instanceof File)
-      if (sent.length === 0) {
-        return c.json(
-          {
-            ok: false,
-            error: {
-              code: 'usage',
-              message:
-                'Send multipart/form-data with files in the "files" field.',
-            },
-          },
-          400,
-        )
-      }
-      const uploads = await Promise.all(
-        sent.map(async (file) => ({
-          name: file.name,
-          bytes: new Uint8Array(await file.arrayBuffer()),
-        })),
+        },
+        400,
       )
-      return c.json({ ok: true, data: await addAssets(projectDir, uploads) })
-    },
-  )
+    }
+    const uploads = await Promise.all(
+      sent.map(async (file) => ({
+        name: file.name,
+        bytes: new Uint8Array(await file.arrayBuffer()),
+      })),
+    )
+    return c.json({ ok: true, data: await addAssets(projectDir, uploads) })
+  })
 
   app.delete(file, authorized, async (c) => {
     const { projectDir, asset } = target(c.req.url, c.req.param('project'))
     const data = await recorded((journal) =>
       removeAsset(projectDir, asset, { journal }),
+    )
+    return c.json({ ok: true, data })
+  })
+
+  app.put(file, authorized, limited, async (c) => {
+    const { projectDir, asset } = target(c.req.url, c.req.param('project'))
+    const form = await c.req
+      .parseBody()
+      .catch(() => ({}) as Record<string, unknown>)
+    const sent = form.file
+    if (!(sent instanceof File)) {
+      throw new FrameboardError(
+        'usage',
+        'Send multipart/form-data with one file in the "file" field.',
+      )
+    }
+    const upload = {
+      name: sent.name,
+      bytes: new Uint8Array(await sent.arrayBuffer()),
+    }
+    const data = await recorded((journal) =>
+      replaceAsset(projectDir, asset, upload, { journal }),
     )
     return c.json({ ok: true, data })
   })

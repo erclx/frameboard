@@ -375,6 +375,35 @@ describe('changes', () => {
     })
   })
 
+  describe('replaced', () => {
+    beforeEach(async () => {
+      mkdirSync(at('webapp/assets'))
+      writeFileSync(at('webapp/assets/lake.jpg'), 'old')
+      writeFileSync(at('webapp/assets/new.tmp'), 'new')
+      await journal.replaced(
+        at('webapp/assets/lake.jpg'),
+        at('webapp/assets/new.tmp'),
+      )
+    })
+
+    it('holds while the file has the bytes the step wrote', async () => {
+      await expect(holds(first(), 'after')).resolves.toBe(true)
+    })
+
+    it('fails once an agent rewrote the file', async () => {
+      writeFileSync(at('webapp/assets/lake.jpg'), 'agent')
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
+    })
+
+    it('brings the replaced bytes back and holds the new ones for redo', async () => {
+      await restore(first(), 'before')
+
+      expect(read('webapp/assets/lake.jpg')).toBe('old')
+      await expect(holds(first(), 'before')).resolves.toBe(true)
+    })
+  })
+
   describe('element', () => {
     const HERO = 'webapp/home/hero.html'
 

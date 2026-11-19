@@ -96,6 +96,17 @@ export type Change =
    */
   | { kind: 'path'; path: string; present: Side; hash: string; slot: string }
   /**
+   * A file whose bytes a hand write swapped for others under the same path,
+   * the bytes of the side not standing waiting in the trash slot, with each
+   * side's content hash.
+   */
+  | {
+      kind: 'replaced'
+      path: string
+      slot: string
+      hashes: Record<Side, string>
+    }
+  /**
    * One element a hand edit rewrote, held as its span on both sides, so an undo
    * restores it and keeps every other byte as it stands.
    */
@@ -211,6 +222,12 @@ async function reads(change: Change, side: Side): Promise<boolean> {
         ? (await exists(change.path)) &&
             (await hashPath(change.path)) === change.hash
         : !(await exists(change.path)) && (await exists(change.slot))
+    case 'replaced':
+      return (
+        (await exists(change.path)) &&
+        (await exists(change.slot)) &&
+        (await hashPath(change.path)) === change.hashes[side]
+      )
     case 'element':
       return (
         (await exists(change.path)) &&
@@ -335,6 +352,9 @@ export async function restore(
       if (change.present === side) await rename(change.slot, change.path)
       else await takeOut(change.path, change.slot)
       return
+    case 'replaced':
+      await swapWithSlot(change.path, change.slot)
+      return
     case 'element':
       return rewriteFrame(change, (source) => {
         const swapped = swapSpan(source, change.span, OTHER[side])
@@ -389,6 +409,14 @@ export async function restore(
     case 'token':
       return rewriteToken(change, side)
   }
+}
+
+/** Trades the file's bytes for the ones its slot holds, keeping the others in the slot. */
+async function swapWithSlot(path: string, slot: string): Promise<void> {
+  const aside = `${slot}.swap`
+  await rename(path, aside)
+  await rename(slot, path)
+  await rename(aside, slot)
 }
 
 /**
@@ -585,6 +613,21 @@ export class StepJournal implements Journal {
       present: 'after',
       hash: await hashPath(path),
       slot: this.#slot(),
+    })
+  }
+
+  /** Puts the file at `from` in place of `path`, keeping the bytes it replaced in a trash slot. */
+  async replaced(path: string, from: string): Promise<void> {
+    const before = await hashPath(path)
+    const after = await hashPath(from)
+    const slot = this.#slot()
+    await takeOut(path, slot)
+    await rename(from, path)
+    this.changes.push({
+      kind: 'replaced',
+      path,
+      slot,
+      hashes: { before, after },
     })
   }
 

@@ -24,6 +24,7 @@ export type JournalCall =
   | { kind: 'project'; file: string; before: unknown; after: unknown }
   | { kind: 'moved'; from: string; to: string }
   | { kind: 'created'; path: string }
+  | { kind: 'replaced'; path: string }
   | { kind: 'removed'; path: string }
   | {
       kind: 'token'
@@ -70,6 +71,10 @@ export function recordingJournal(root: string): {
       },
       created: async (path) => {
         calls.push({ kind: 'created', path: at(path) })
+      },
+      replaced: async (path, from) => {
+        await rename(from, path)
+        calls.push({ kind: 'replaced', path: at(path) })
       },
       removed: async (path) => {
         await rm(path, { recursive: true })

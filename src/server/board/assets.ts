@@ -5,11 +5,12 @@ import {
   mkdir,
   readdir,
   realpath,
+  rename,
   rm,
   stat,
   writeFile,
 } from 'node:fs/promises'
-import { join, sep } from 'node:path'
+import { dirname, join, sep } from 'node:path'
 
 import {
   assetKind,
@@ -213,6 +214,47 @@ export async function removeAsset(
 
 function isScratch(name: string): boolean {
   return name.endsWith(LOCK_SUFFIX) || name.endsWith(TEMP_SUFFIX)
+}
+
+/**
+ * Writes an upload's bytes in place of an asset's, keeping its path, and
+ * takes its license file out, since the license named the bytes replaced.
+ * Refuses `asset-type-refused` for an upload a drop would refuse or whose kind
+ * differs from the file's, since every frame showing the file would change kind.
+ */
+export async function replaceAsset(
+  projectDir: string,
+  path: string,
+  upload: AssetUpload,
+  { journal }: JournalOptions = {},
+): Promise<AssetWriteResult> {
+  const file = await writableAsset(projectDir, path)
+  const refusal =
+    uploadRefusal(upload) ??
+    (assetKind(upload.name) === assetKind(path)
+      ? null
+      : `${upload.name} is not the same kind of file as ${path}, so it cannot replace it.`)
+  if (refusal !== null) {
+    throw new FrameboardError('asset-type-refused', refusal, { path })
+  }
+  const temp = join(
+    dirname(file),
+    `${randomBytes(6).toString('hex')}${TEMP_SUFFIX}`,
+  )
+  await writeFile(temp, upload.bytes, { flag: 'wx' })
+  try {
+    const license = licenseOf(file)
+    if (journal) {
+      await journal.replaced(file, temp)
+      if (license !== null) await journal.removed(license)
+    } else {
+      await rename(temp, file)
+      if (license !== null) await rm(license)
+    }
+  } finally {
+    await rm(temp, { force: true })
+  }
+  return { path, frames: [] }
 }
 
 /**
