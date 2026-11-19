@@ -9,6 +9,8 @@ import { BoardWriteError } from '@/client/live/write'
 import type {
   ImageFind,
   ImageResult,
+  ModelFind,
+  ModelResult,
   SavedImage,
 } from '@/shared/records/sourcing'
 
@@ -44,6 +46,34 @@ function answer(
     version: 1,
     query,
     licenses: credited ? ['cc0', 'pdm', 'by'] : ['cc0', 'pdm'],
+    results,
+  }
+}
+
+function model(id: string, overrides: Partial<ModelResult> = {}): ModelResult {
+  return {
+    number: 1,
+    id,
+    name: 'Sofa 02',
+    authors: ['Ann'],
+    categories: ['seating'],
+    tags: ['chair'],
+    license: 'cc0',
+    landingUrl: `https://polyhaven.com/a/${id}`,
+    thumbnail: `https://cdn.polyhaven.com/asset_img/thumbs/${id}.png`,
+    polycount: 10946,
+    dimensionsMm: null,
+    sizes: ['1k', '2k'],
+    downloadCount: 1,
+    ...overrides,
+  }
+}
+
+function modelAnswer(query: string, results: ModelResult[]): ModelFind {
+  return {
+    version: 1,
+    query,
+    source: { name: 'Poly Haven', url: 'https://polyhaven.com' },
     results,
   }
 }
@@ -406,18 +436,178 @@ describe('FindView', () => {
     ).toBeInTheDocument()
   })
 
-  it('keeps Models off in the filter menu with the line saying when they arrive', async () => {
-    const user = userEvent.setup()
-    render(<FindView project="webapp" find={vi.fn()} />)
+  describe('on Models', () => {
+    async function pickModels(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(screen.getByRole('button', { name: 'Filter: Images' }))
+      await user.click(
+        await screen.findByRole('menuitemradio', { name: 'Models' }),
+      )
+    }
 
-    await user.click(screen.getByRole('button', { name: 'Filter: Images' }))
+    it('names Poly Haven before a search and asks nothing yet', async () => {
+      const findModels = vi.fn()
+      const user = userEvent.setup()
+      render(
+        <FindView project="webapp" find={vi.fn()} findModels={findModels} />,
+      )
 
-    const models = await screen.findByRole('menuitemradio', { name: 'Models' })
-    expect(models).toHaveAttribute('aria-disabled', 'true')
-    expect(models).toHaveAccessibleDescription(
-      '3D models arrive in a later release.',
-    )
-    expect(screen.getByRole('menuitemradio', { name: 'Images' })).toBeChecked()
+      await pickModels(user)
+
+      expect(screen.getByText('Models from Poly Haven')).toBeInTheDocument()
+      expect(
+        screen.getByRole('searchbox', { name: 'Search free models' }),
+      ).toBeInTheDocument()
+      expect(findModels).not.toHaveBeenCalled()
+    })
+
+    it('searches the typed query again for models, listing each with its polycount and Poly Haven', async () => {
+      const find = vi.fn(async (_: string, query: string) =>
+        answer(query, [result('a1')]),
+      )
+      const findModels = vi.fn(async (_: string, query: string) =>
+        modelAnswer(query, [model('sofa_02', { polycount: 2728 })]),
+      )
+      render(<FindView project="webapp" find={find} findModels={findModels} />)
+      const user = await searchFor('chair')
+      await screen.findByText('Photo a1')
+
+      await pickModels(user)
+
+      const tiles = within(
+        await screen.findByRole('list', { name: 'Results' }),
+      ).getAllByRole('listitem')
+      expect(tiles).toHaveLength(1)
+      expect(tiles[0]).toHaveTextContent('Sofa 02')
+      expect(tiles[0]).toHaveTextContent('2.7k tris · Poly Haven')
+      expect(findModels).toHaveBeenCalledWith(
+        'webapp',
+        'chair',
+        expect.any(AbortSignal),
+      )
+      expect(screen.getByText('1 model from Poly Haven')).toBeInTheDocument()
+    })
+
+    it('greys out the credited choice with the reason every model is CC0', async () => {
+      const user = userEvent.setup()
+      render(<FindView project="webapp" find={vi.fn()} findModels={vi.fn()} />)
+      await pickModels(user)
+
+      await user.click(screen.getByRole('button', { name: 'Filter: Models' }))
+
+      const credited = await screen.findByRole('menuitemcheckbox', {
+        name: 'Include credited licenses',
+      })
+      expect(credited).toHaveAttribute('aria-disabled', 'true')
+      expect(credited).toHaveAccessibleDescription(
+        'Every Poly Haven model is CC0.',
+      )
+      expect(
+        screen.getByRole('menuitemradio', { name: 'Models' }),
+      ).toBeChecked()
+    })
+
+    it('saves a model once through the model route, then marks it Saved', async () => {
+      const send = vi.fn(async () => saved('chair.glb'))
+      render(
+        <FindView
+          project="webapp"
+          find={vi.fn()}
+          findModels={async (_, query) =>
+            modelAnswer(query, [model('sofa_02')])
+          }
+          save={(request) => saveResult(request, send, async () => true)}
+        />,
+      )
+      const user = userEvent.setup()
+      await pickModels(user)
+      await user.type(
+        screen.getByRole('searchbox', { name: 'Search free models' }),
+        'chair{Enter}',
+      )
+      const save = await screen.findByRole('button', { name: 'Save Sofa 02' })
+
+      await user.click(save)
+      await user.click(save)
+
+      expect(
+        await screen.findByRole('button', { name: 'Saved Sofa 02' }),
+      ).toBeVisible()
+      expect(send).toHaveBeenCalledTimes(1)
+      expect(send).toHaveBeenCalledWith(
+        '/api/projects/webapp/sourcing/models/save',
+        { id: 'sofa_02', query: 'chair' },
+      )
+    })
+
+    it('draws a grey block for a model with no thumbnail, never a broken image', async () => {
+      render(
+        <FindView
+          project="webapp"
+          find={vi.fn()}
+          findModels={async (_, query) =>
+            modelAnswer(query, [model('sofa_02', { thumbnail: null })])
+          }
+        />,
+      )
+      const user = userEvent.setup()
+      await pickModels(user)
+      await user.type(
+        screen.getByRole('searchbox', { name: 'Search free models' }),
+        'chair{Enter}',
+      )
+
+      const tile = await screen.findByRole('listitem')
+
+      expect(tile.querySelector('img')).toBeNull()
+    })
+
+    it('lists models in a read-only tab with Save off', async () => {
+      act(() => liveStore.setState({ canWrite: false }))
+      render(
+        <FindView
+          project="webapp"
+          find={vi.fn()}
+          findModels={async (_, query) =>
+            modelAnswer(query, [model('sofa_02')])
+          }
+        />,
+      )
+      const user = userEvent.setup()
+      await pickModels(user)
+      await user.type(
+        screen.getByRole('searchbox', { name: 'Search free models' }),
+        'chair{Enter}',
+      )
+
+      expect(await screen.findByText('Sofa 02')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /Save/ }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('names Poly Haven not answering', async () => {
+      render(
+        <FindView
+          project="webapp"
+          find={vi.fn()}
+          findModels={() =>
+            Promise.reject(
+              new BoardWriteError('source-failed', 'down', { status: 503 }),
+            )
+          }
+        />,
+      )
+      const user = userEvent.setup()
+      await pickModels(user)
+      await user.type(
+        screen.getByRole('searchbox', { name: 'Search free models' }),
+        'chair{Enter}',
+      )
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Poly Haven answered 503',
+      )
+    })
   })
 
   it('holds the kind and the license choice in the search field, with no rows of controls under it', () => {

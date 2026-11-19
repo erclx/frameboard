@@ -17,12 +17,15 @@ import { BoardWriteError } from '@/client/live/write'
 
 import {
   findImages,
+  findModels,
   type ImageFind,
+  type ModelFind,
+  type ResultKind,
   saveKey,
   saveResult,
   saveStore,
 } from '../sourcing'
-import { ResultTile } from './result-tile'
+import { ModelTile, ResultTile } from './result-tile'
 
 const CODE = 'font-mono text-label font-normal text-foreground'
 const LINE_BOX = 'mx-3 my-1.5 text-label font-normal leading-[1.45]'
@@ -36,38 +39,65 @@ const LINK =
 /** How many grey tiles hold the grid's shape while a search runs. */
 const PLACEHOLDERS = ['a', 'b', 'c', 'd']
 
+/** What Find searches, picked in the filter menu. */
+type Kind = 'images' | 'models'
+
+const KIND: Record<
+  Kind,
+  { label: string; source: string; field: string; result: ResultKind }
+> = {
+  images: {
+    label: 'Images',
+    source: 'Openverse',
+    field: 'Search free images',
+    result: 'image',
+  },
+  models: {
+    label: 'Models',
+    source: 'Poly Haven',
+    field: 'Search free models',
+    result: 'model',
+  },
+}
+
 type SearchState =
   | { state: 'idle' }
   | { state: 'searching'; query: string }
   | { state: 'done'; find: ImageFind }
+  | { state: 'models'; find: ModelFind }
   | { state: 'failed'; status: number | null; query: string }
 
 interface FindViewProps {
   project: string
-  /** Runs one search, the board's route in the app. */
+  /** Runs one image search, the board's route in the app. */
   find?: typeof findImages
+  /** Runs one model search, the board's route in the app. */
+  findModels?: typeof findModels
   /** Saves one result, shared with a drag of it, the board's route in the app. */
   save?: typeof saveResult
 }
 
 /**
  * Find in the Assets tab: an Openverse search for public domain images,
- * widened to credited licenses from the filter menu in the search field. A newer search abandons an older
- * one, so an older answer never replaces a newer.
+ * widened to credited licenses, or a Poly Haven search for CC0 models, both
+ * picked from the filter menu in the search field. A newer search abandons an
+ * older one, so an older answer never replaces a newer.
  */
 export function FindView({
   project,
   find = findImages,
+  findModels: findModel = findModels,
   save = saveResult,
 }: FindViewProps) {
   const canWrite = useLive((state) => state.canWrite)
   const [text, setText] = useState('')
+  const [kind, setKind] = useState<Kind>('images')
   const [credited, setCredited] = useState(false)
   const [search, setSearch] = useState<SearchState>({ state: 'idle' })
   const running = useRef<AbortController | null>(null)
   useEffect(() => () => running.current?.abort(), [])
 
-  async function run(query: string, wide: boolean) {
+  async function run(query: string, wide: boolean, on: Kind) {
     const trimmed = query.trim()
     if (trimmed === '') return
     running.current?.abort()
@@ -75,8 +105,17 @@ export function FindView({
     running.current = controller
     setSearch({ state: 'searching', query: trimmed })
     try {
-      const answer = await find(project, trimmed, wide, controller.signal)
-      if (!controller.signal.aborted) setSearch({ state: 'done', find: answer })
+      const next: SearchState =
+        on === 'models'
+          ? {
+              state: 'models',
+              find: await findModel(project, trimmed, controller.signal),
+            }
+          : {
+              state: 'done',
+              find: await find(project, trimmed, wide, controller.signal),
+            }
+      if (!controller.signal.aborted) setSearch(next)
     } catch (error) {
       if (controller.signal.aborted) return
       const status =
@@ -90,13 +129,25 @@ export function FindView({
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    void run(text, credited)
+    void run(text, credited, kind)
   }
 
   function widen(next: boolean) {
     setCredited(next)
     const last = lastQuery(search)
-    if (last !== null) void run(last, next)
+    if (last !== null) void run(last, next, kind)
+  }
+
+  function pick(next: Kind) {
+    if (next === kind) return
+    setKind(next)
+    const typed = text.trim() === '' ? lastQuery(search) : text
+    if (typed === null) {
+      running.current?.abort()
+      setSearch({ state: 'idle' })
+      return
+    }
+    void run(typed, credited, next)
   }
 
   return (
@@ -115,27 +166,39 @@ export function FindView({
         />
         <input
           type="search"
-          aria-label="Search free images"
-          placeholder="Search free images"
+          aria-label={KIND[kind].field}
+          placeholder={KIND[kind].field}
           value={text}
           spellCheck={false}
           onChange={(event) => setText(event.target.value)}
           className="min-w-0 flex-1 bg-transparent text-label font-normal outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
         />
-        <FilterMenu credited={credited} onCredited={widen} />
+        <FilterMenu
+          kind={kind}
+          onKind={pick}
+          credited={credited}
+          onCredited={widen}
+        />
       </form>
       <Body
         project={project}
+        kind={kind}
         search={search}
         credited={credited}
         canWrite={canWrite}
         onWiden={() => widen(true)}
         onRetry={() => {
           const last = lastQuery(search)
-          if (last !== null) void run(last, credited)
+          if (last !== null) void run(last, credited, kind)
         }}
-        onSave={(result, query) =>
-          void save({ project, result, query, credited }).catch(() => undefined)
+        onSave={(id, query, result) =>
+          void save({
+            project,
+            result: { id },
+            query,
+            credited: result === 'model' ? false : credited,
+            kind: result,
+          }).catch(() => undefined)
         }
       />
     </div>
@@ -144,53 +207,61 @@ export function FindView({
 
 /**
  * The kind and the license choice, folded into one control at the end of the
- * search field so results start right under it. Models stays off with its
- * reason until model search ships.
+ * search field so results start right under it. The license choice greys out
+ * under Models, since every Poly Haven model is CC0, rather than leaving the
+ * menu so its rows hold still.
  */
 function FilterMenu({
+  kind,
+  onKind,
   credited,
   onCredited,
 }: {
+  kind: Kind
+  onKind: (next: Kind) => void
   credited: boolean
   onCredited: (next: boolean) => void
 }) {
+  const models = kind === 'models'
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label="Filter: Images"
+        aria-label={`Filter: ${KIND[kind].label}`}
         className="-mr-1 flex h-5 shrink-0 items-center gap-0.5 rounded-[5px] px-1 text-label font-normal text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
       >
-        Images
+        {KIND[kind].label}
         <ChevronDown aria-hidden className="size-2.5 text-muted-foreground" />
       </DropdownMenuTrigger>
       <ChromeMenuContent align="end" sideOffset={6} className="w-[200px]">
-        <DropdownMenuRadioGroup value="images">
+        <DropdownMenuRadioGroup
+          value={kind}
+          onValueChange={(next: Kind) => onKind(next)}
+        >
           <DropdownMenuRadioItem value="images" className={MENU_ROW}>
             Images
           </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem
-            value="models"
-            disabled
-            aria-describedby="find-models-later"
-            className={MENU_ROW}
-          >
+          <DropdownMenuRadioItem value="models" className={MENU_ROW}>
             Models
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
-        <p
-          id="find-models-later"
-          className="px-2 pb-1 text-[10px] leading-[1.4] text-muted-foreground"
-        >
-          3D models arrive in a later release.
-        </p>
         <DropdownMenuSeparator />
         <DropdownMenuCheckboxItem
-          checked={credited}
+          checked={!models && credited}
+          disabled={models}
+          aria-describedby={models ? 'find-models-cc0' : undefined}
           onCheckedChange={onCredited}
           className={MENU_ROW}
         >
           Include credited licenses
         </DropdownMenuCheckboxItem>
+        {models ? (
+          <p
+            id="find-models-cc0"
+            className="px-2 pb-1 text-[10px] leading-[1.4] text-muted-foreground"
+          >
+            Every Poly Haven model is CC0.
+          </p>
+        ) : null}
       </ChromeMenuContent>
     </DropdownMenu>
   )
@@ -198,17 +269,19 @@ function FilterMenu({
 
 interface BodyProps {
   project: string
+  kind: Kind
   search: SearchState
   credited: boolean
   canWrite: boolean
   onWiden: () => void
   onRetry: () => void
-  onSave: (result: ImageFind['results'][number], query: string) => void
+  onSave: (id: string, query: string, kind: ResultKind) => void
 }
 
 /** What sits under the controls, one block per state of the search. */
 function Body({
   project,
+  kind,
   search,
   credited,
   canWrite,
@@ -216,15 +289,30 @@ function Body({
   onRetry,
   onSave,
 }: BodyProps) {
+  const { source } = KIND[kind]
+  const sourceLine = (
+    <p className={FOOT}>
+      {kind === 'models' ? 'Models' : 'Images'} from {source}
+    </p>
+  )
+  const readOnly = canWrite ? null : (
+    <p className={LINE}>
+      This tab is read-only, so results cannot be saved. Run{' '}
+      <code className={CODE}>frameboard open</code> for a tab that can.
+    </p>
+  )
   switch (search.state) {
     case 'idle':
       return (
         <>
           <p className={LINE}>
-            Search public domain photos. A result you save lands in{' '}
-            <code className={CODE}>assets/</code> with its license beside it.
+            {kind === 'models'
+              ? 'Search public domain 3D models.'
+              : 'Search public domain photos.'}{' '}
+            A result you save lands in <code className={CODE}>assets/</code>{' '}
+            with its license beside it.
           </p>
-          <p className={FOOT}>Images from Openverse</p>
+          {sourceLine}
         </>
       )
     case 'searching':
@@ -244,7 +332,7 @@ function Body({
               </li>
             ))}
           </ul>
-          <p className={FOOT}>Searching Openverse</p>
+          <p className={FOOT}>Searching {source}</p>
         </>
       )
     case 'failed':
@@ -252,16 +340,56 @@ function Body({
         <>
           <p role="alert" className={ALERT}>
             {search.status === null
-              ? 'Openverse did not answer. Check your connection, then '
-              : `Openverse answered ${search.status}. Wait a moment, then `}
+              ? `${source} did not answer. Check your connection, then `
+              : `${source} answered ${search.status}. Wait a moment, then `}
             <button type="button" onClick={onRetry} className={LINK}>
               search again
             </button>
             .
           </p>
-          <p className={FOOT}>Images from Openverse</p>
+          {sourceLine}
         </>
       )
+    case 'models': {
+      const { results, query } = search.find
+      if (results.length === 0) {
+        return (
+          <>
+            <p className={LINE}>
+              <b className="font-semibold text-foreground">No models found.</b>
+              <br />
+              Try fewer words.
+            </p>
+            {sourceLine}
+          </>
+        )
+      }
+      return (
+        <>
+          <ul aria-label="Results" className="grid grid-cols-2 gap-2 px-2 py-1">
+            {results.map((result) => (
+              <ModelTile
+                key={result.id}
+                project={project}
+                result={result}
+                query={query}
+                onSave={() => onSave(result.id, query, 'model')}
+              />
+            ))}
+          </ul>
+          <SaveFailures
+            project={project}
+            kind="model"
+            results={results.map(({ id, name }) => ({ id, label: name }))}
+          />
+          {readOnly}
+          <p className={FOOT}>
+            {results.length} {results.length === 1 ? 'model' : 'models'} from{' '}
+            {source}
+          </p>
+        </>
+      )
+    }
     case 'done': {
       const { results, query } = search.find
       if (results.length === 0) {
@@ -286,7 +414,7 @@ function Body({
                 </>
               )}
             </p>
-            <p className={FOOT}>Images from Openverse</p>
+            {sourceLine}
           </>
         )
       }
@@ -300,17 +428,19 @@ function Body({
                 result={result}
                 query={query}
                 credited={credited}
-                onSave={() => onSave(result, query)}
+                onSave={() => onSave(result.id, query, 'image')}
               />
             ))}
           </ul>
-          <SaveFailures project={project} results={results} />
-          {canWrite ? null : (
-            <p className={LINE}>
-              This tab is read-only, so results cannot be saved. Run{' '}
-              <code className={CODE}>frameboard open</code> for a tab that can.
-            </p>
-          )}
+          <SaveFailures
+            project={project}
+            kind="image"
+            results={results.map(({ id, title }) => ({
+              id,
+              label: title ?? id,
+            }))}
+          />
+          {readOnly}
           {credited ? (
             <p className={LINE}>
               A credited image must be credited where you use it. The credit is
@@ -319,7 +449,7 @@ function Body({
           ) : null}
           <p className={FOOT}>
             {results.length} {credited ? '' : 'public domain '}
-            {results.length === 1 ? 'image' : 'images'} from Openverse
+            {results.length === 1 ? 'image' : 'images'} from {source}
           </p>
         </>
       )
@@ -330,21 +460,18 @@ function Body({
 /** A line per result whose save failed, naming it and the reason. */
 function SaveFailures({
   project,
+  kind,
   results,
 }: {
   project: string
-  results: ImageFind['results']
+  kind: ResultKind
+  results: { id: string; label: string }[]
 }) {
   const saves = useStore(saveStore)
   const failed = results.flatMap((result) => {
-    const save = saves[saveKey(project, result.id)]
+    const save = saves[saveKey(project, result.id, kind)]
     return save?.state === 'failed'
-      ? [
-          {
-            id: result.id,
-            text: `${result.title ?? result.id}: ${save.message}`,
-          },
-        ]
+      ? [{ id: result.id, text: `${result.label}: ${save.message}` }]
       : []
   })
   if (failed.length === 0) return null
@@ -361,7 +488,9 @@ function SaveFailures({
 
 function lastQuery(search: SearchState): string | null {
   if (search.state === 'searching') return search.query
-  if (search.state === 'done') return search.find.query
+  if (search.state === 'done' || search.state === 'models') {
+    return search.find.query
+  }
   if (search.state === 'failed') return search.query
   return null
 }

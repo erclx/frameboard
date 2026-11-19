@@ -1,12 +1,18 @@
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter'
-import { useEffect, useRef, useState } from 'react'
+import { type RefObject, useEffect, useRef, useState } from 'react'
 import { useStore } from 'zustand'
 
 import { useLive } from '@/client/live/store'
 import { folderName } from '@/shared/names'
 
 import { resultDragData } from '../drag'
-import { type ImageResult, saveKey, saveStore } from '../sourcing'
+import {
+  type ImageResult,
+  type ModelResult,
+  saveKey,
+  type SaveState,
+  saveStore,
+} from '../sourcing'
 
 interface ResultTileProps {
   project: string
@@ -18,10 +24,7 @@ interface ResultTileProps {
   onSave: () => void
 }
 
-/**
- * One found image, its license on the thumbnail. Save shows under hover or
- * focus and stays as Saved once the file lands, so the grid never jumps.
- */
+/** One found image, its second line its size and the site it came from. */
 export function ResultTile({
   project,
   result,
@@ -49,22 +52,57 @@ export function ResultTile({
     saveStore,
     (state) => state[saveKey(project, result.id)],
   )
-  const title = result.title ?? result.id
   const meta = [sizeOf(result), siteName(result.landingUrl)]
     .filter(Boolean)
     .join(' · ')
-  const shown = save !== undefined && save.state !== 'failed'
+  return (
+    <TileBody
+      tile={tile}
+      thumbnail={thumbnailOf(result)}
+      license={result.license}
+      title={result.title ?? result.id}
+      meta={meta}
+      save={canWrite ? save : null}
+      onSave={onSave}
+    />
+  )
+}
 
+interface TileBodyProps {
+  tile: RefObject<HTMLLIElement | null>
+  thumbnail: string | null
+  license: string
+  title: string
+  meta: string
+  /** The result's save, null in a read-only tab, which draws no Save. */
+  save: SaveState | undefined | null
+  onSave: () => void
+}
+
+/**
+ * A found result's tile, its license on the thumbnail. Save shows under hover
+ * or focus and stays as Saved once the file lands, so the grid never jumps.
+ */
+function TileBody({
+  tile,
+  thumbnail,
+  license,
+  title,
+  meta,
+  save,
+  onSave,
+}: TileBodyProps) {
+  const shown = save !== null && save !== undefined && save.state !== 'failed'
   return (
     <li
       ref={tile}
       className="group relative overflow-hidden rounded-lg bg-muted hover:ring-[1.5px] hover:ring-primary has-focus-visible:ring-[1.5px] has-focus-visible:ring-primary"
     >
-      <Thumbnail url={thumbnailOf(result)} />
+      <Thumbnail url={thumbnail} />
       <span className="absolute top-[54px] left-[5px] rounded-[3px] bg-black/65 px-1 font-mono text-[9px] leading-[14px] font-medium text-white">
-        {result.license}
+        {license}
       </span>
-      {canWrite ? (
+      {save !== null ? (
         <button
           type="button"
           aria-label={`${PILL[save?.state ?? 'idle']} ${title}`}
@@ -87,6 +125,62 @@ export function ResultTile({
     </li>
   )
 }
+
+interface ModelTileProps {
+  project: string
+  result: ModelResult
+  /** The search that found it, which names the saved file. */
+  query: string
+  /** Saves the model into `assets/` as one GLB, sharing one save with a drag of it. */
+  onSave: () => void
+}
+
+/**
+ * One found Poly Haven model, drawn as an image result is, its second line
+ * the polycount and Poly Haven, which every listing of its models names.
+ */
+export function ModelTile({ project, result, query, onSave }: ModelTileProps) {
+  const canWrite = useLive((state) => state.canWrite)
+  const tile = useRef<HTMLLIElement>(null)
+  const { id } = result
+  useEffect(() => {
+    const element = tile.current
+    if (!element || !canWrite) return
+    return draggable({
+      element,
+      getInitialData: () =>
+        resultDragData({
+          request: {
+            project,
+            result: { id },
+            query,
+            credited: false,
+            kind: 'model',
+          },
+          name: folderName(query) || 'model',
+          natural: null,
+        }),
+    })
+  }, [project, id, query, canWrite])
+  const save = useStore(
+    saveStore,
+    (state) => state[saveKey(project, id, 'model')],
+  )
+  const meta = [trianglesOf(result.polycount), POLYHAVEN].filter(Boolean)
+  return (
+    <TileBody
+      tile={tile}
+      thumbnail={httpOnly(result.thumbnail)}
+      license={result.license}
+      title={result.name}
+      meta={meta.join(' · ')}
+      save={canWrite ? save : null}
+      onSave={onSave}
+    />
+  )
+}
+
+const POLYHAVEN = 'Poly Haven'
 
 const PILL = {
   idle: 'Save',
@@ -120,16 +214,29 @@ function Thumbnail({ url }: { url: string | null }) {
 function thumbnailOf(
   result: Pick<ImageResult, 'thumbnail' | 'url'>,
 ): string | null {
-  for (const candidate of [result.thumbnail, result.url]) {
-    if (candidate === null) continue
-    try {
-      const { protocol } = new URL(candidate)
-      if (protocol === 'https:' || protocol === 'http:') return candidate
-    } catch {
-      // A malformed URL falls through to the next candidate.
-    }
+  return httpOnly(result.thumbnail) ?? httpOnly(result.url)
+}
+
+function httpOnly(candidate: string | null): string | null {
+  if (candidate === null) return null
+  try {
+    const { protocol } = new URL(candidate)
+    return protocol === 'https:' || protocol === 'http:' ? candidate : null
+  } catch {
+    return null
   }
-  return null
+}
+
+/** A polycount as a short count of triangles, such as `2.7k tris`, null when Poly Haven gives none. */
+function trianglesOf(polycount: number | null): string | null {
+  if (polycount === null) return null
+  if (polycount < 1000) return `${polycount} tris`
+  const thousands = polycount / 1000
+  const shown =
+    thousands < 10
+      ? String(Math.round(thousands * 10) / 10)
+      : String(Math.round(thousands))
+  return `${shown}k tris`
 }
 
 function sizeOf({
