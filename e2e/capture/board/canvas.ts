@@ -225,6 +225,33 @@ function phoneOverflowing(turned: boolean): (page: Page) => Promise<void> {
 }
 
 /**
+ * Shows the desktop hero inside its laptop with a page of rows running far
+ * past the 900 tall box.
+ */
+async function laptopOverflowing(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const htmlPath = join(SERVED_BOARD, 'webapp/home/hero.html')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const originalHtml = readFileSync(htmlPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.frames.hero.showDevice = true
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  const row =
+    '<section style="height:240px;margin:24px 0;box-shadow:inset 0 0 0 1px #d4d4d8"></section>'
+  writeFileSync(
+    htmlPath,
+    originalHtml.replace(
+      '<h1 data-name="Headline">hero</h1>',
+      `<h1 data-name="Headline">hero</h1>${row.repeat(6)}`,
+    ),
+  )
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+    writeFileSync(htmlPath, originalHtml)
+  })
+}
+
+/**
  * Names the about frame a foldable in `pose`, at that pose's screen size,
  * putting the layout back when the page closes.
  */
@@ -755,6 +782,23 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
             'body:has([data-bezel="phone"]:not([data-bezel-turn="left"])):has([data-turns])',
             '[data-element-ghost]',
           ),
+        ),
+      ),
+    },
+    {
+      section: 'device-laptop-overflow',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          laptopOverflowing,
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/hero'] }),
+          readyWhen('body:has([data-bezel="laptop"])', '[data-element-ghost]'),
         ),
       ),
     },
