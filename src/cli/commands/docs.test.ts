@@ -198,6 +198,19 @@ describe('docs', () => {
     )
   })
 
+  it('states where model find searches, how it ranks, and the size it saves at', async () => {
+    const { contentFormat } = await docs()
+    const find = contentFormat.models.find((line: string) =>
+      line.startsWith('model find'),
+    )
+
+    expect(find).toContain('Poly Haven')
+    expect(find).toContain('then by download count')
+    expect(find).toContain(
+      '1k textures unless --size names one of 1k, 2k, 4k, 8k, 16k',
+    )
+  })
+
   it('names the kit files, the shipped kits, and where an added kit sits', async () => {
     const { contentFormat } = await docs()
 
