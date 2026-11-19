@@ -56,7 +56,8 @@ export function linkedBoxes(
   device?: Device | null,
 ): Box[] {
   const boxes: Box[] = []
-  const body = bezelBox(box, device)
+  // A turned frame shows at no other width, so a frame with widths stands upright.
+  const body = bezelBox(box, device, 'upright')
   const lid = device ? BEZELS[device].border : 0
   let x = body.x + body.width - lid
   for (const { width, height } of widths) {
@@ -76,7 +77,11 @@ export function drawnExtent(
   widths: readonly LinkedWidth[],
   device?: Device | null,
 ): Box {
-  const boxes = [bezelBox(box, device), ...linkedBoxes(box, widths, device)]
+  // Upright, whose buttons reach furthest aside, so a frame placed past a turned one clears it too.
+  const boxes = [
+    bezelBox(box, device, 'upright'),
+    ...linkedBoxes(box, widths, device),
+  ]
   const left = Math.min(...boxes.map(({ x }) => x))
   const top = Math.min(...boxes.map(({ y }) => y))
   const right = Math.max(...boxes.map(({ x, width }) => x + width))
@@ -93,6 +98,7 @@ export function xPast(
   width: number,
   device?: Device | null,
 ): number {
-  const body = bezelBox({ x: 0, y: 0, width, height: 0 }, device)
+  // A placed frame starts upright.
+  const body = bezelBox({ x: 0, y: 0, width, height: 0 }, device, 'upright')
   return edge + FRAME_GAP - body.x
 }

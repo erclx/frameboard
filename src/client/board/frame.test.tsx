@@ -288,6 +288,39 @@ describe('Frame', () => {
       )
     })
 
+    describe('Rotate under a phone', () => {
+      const phone: FrameRecord = {
+        ...frame('phone'),
+        showDevice: true,
+        device: 'phone',
+      }
+      const rotateOf = (container: HTMLElement) =>
+        container.querySelector('[data-turns]')
+
+      afterEach(() => {
+        act(() => clear(selectionStore))
+        act(() => liveStore.setState({ canWrite: false }))
+      })
+
+      it('offers Rotate to a writer once the phone is selected alone', () => {
+        act(() => liveStore.setState({ canWrite: true }))
+        const { container } = render(<Frame frame={phone} live version={0} />)
+
+        act(() => select(selectionStore, 'studio/home', [phone.ref]))
+
+        expect(rotateOf(container)).not.toBeNull()
+      })
+
+      it('offers no Rotate to a view-only tab, whose write the server refuses', () => {
+        act(() => liveStore.setState({ canWrite: false }))
+        const { container } = render(<Frame frame={phone} live version={0} />)
+
+        act(() => select(selectionStore, 'studio/home', [phone.ref]))
+
+        expect(rotateOf(container)).toBeNull()
+      })
+    })
+
     describe('a foldable', () => {
       const inbox: FrameRecord = {
         ...frame('inbox'),

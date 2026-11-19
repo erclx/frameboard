@@ -597,7 +597,54 @@ describe('frame', () => {
       expect(layout()).not.toHaveProperty('island')
     })
 
+    it('turns a phone left with --turn and back with --turn upright, writing the layout entry alone', async () => {
+      const run = on('basic')
+      const frame = join(board.root, 'webapp/home/about.html')
+      const bytes = readFileSync(frame, 'utf8')
+      const layout = () =>
+        JSON.parse(
+          readFileSync(join(board.root, 'webapp/home/layout.json'), 'utf8'),
+        ).frames.about
+      await run('frame', 'device', 'webapp/home/about', 'on')
+
+      const left = await run(
+        'frame',
+        'device',
+        'webapp/home/about',
+        '--turn',
+        'left',
+      )
+      const written = layout()
+      const upright = await run(
+        'frame',
+        'device',
+        'webapp/home/about',
+        '--turn',
+        'upright',
+      )
+
+      expect(left.exitCode).toBe(0)
+      expect(left.json().data).toMatchObject({
+        device: 'phone',
+        turn: 'left',
+        box: { width: 844, height: 390 },
+      })
+      expect(written).toMatchObject({
+        turn: 'left',
+        upright: { width: 390, height: 844 },
+      })
+      expect(upright.json().data).toMatchObject({
+        box: { width: 390, height: 844 },
+      })
+      expect(upright.json().data).not.toHaveProperty('turn')
+      expect(layout()).not.toHaveProperty('turn')
+      expect(layout()).not.toHaveProperty('upright')
+      expect(readFileSync(frame, 'utf8')).toBe(bytes)
+    })
+
     it.each([
+      ['a turn on a laptop', ['on', '--turn', 'left']],
+      ['a turn no device has', ['--turn', 'sideways']],
       ['a pose on a frame naming no foldable', ['--pose', 'open']],
       ['a pose no device has', ['--foldable', '--pose', 'tent']],
       ['an island on a frame drawing no phone', ['--island', 'wide']],

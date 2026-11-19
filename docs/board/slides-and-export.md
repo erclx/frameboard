@@ -15,6 +15,7 @@ The Slides and Export tabs, and the Motion section a moving frame adds.
 - While presenting, the arrows reveal a slide's steps in order before moving on, and the bar shows a dot per step, or the count past six
 - G while presenting, or the bar's grid button, shows every slide, the one on stage badged Now and the arrows' place ringed. Enter, a click, or a typed number and Enter jumps to that slide's first step.
 - Alt+Shift+P or the bar's Presenter view button opens a second window with the slide now, the next one, the note, a timer, and the clock, and F then takes the audience full screen
+- The bar's Rotate turns a phone or tablet slide landscape and back, and the presenter view follows it
 
 ## Speaker notes
 

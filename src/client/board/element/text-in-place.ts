@@ -119,7 +119,7 @@ export function framePoint(
 ): FramePoint | null {
   const frame = frames.find((candidate) => candidate.ref === ref)
   if (!frame) return null
-  const page = pageBox(frame.box, frame.device)
+  const page = pageBox(frame.box, frame.device, frame.turn)
   return { x: at.x - page.x, y: at.y - page.y }
 }
 

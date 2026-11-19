@@ -300,7 +300,7 @@ function EndOfDeck({
   room: { width: number; height: number }
 }) {
   const { width, height } = shownBox(like)
-  const body = bezelBox({ x: 0, y: 0, width, height }, like.device)
+  const body = bezelBox({ x: 0, y: 0, width, height }, like.device, like.turn)
   const scale = presentScale(like, room)
   return (
     <div

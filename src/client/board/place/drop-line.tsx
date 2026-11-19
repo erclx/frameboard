@@ -101,7 +101,7 @@ export function DropLine({
 
 /** A gap's line where it draws on the board, offset by its frame's place. */
 function boardLine({ frame, gap }: FrameGap): GapLine {
-  const page = pageBox(frame.box, frame.device)
+  const page = pageBox(frame.box, frame.device, frame.turn)
   return {
     ...gap.line,
     x: page.x + gap.line.x,

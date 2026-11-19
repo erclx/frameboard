@@ -54,6 +54,22 @@ describe('the island in the Show device menu', () => {
     expect(sent).toEqual([{ refs: [SWATCHES.ref], island: 'wide' }])
   })
 
+  it('names a turned phone a phone and offers its island, its box landscape', async () => {
+    const turned = {
+      ...shownAt(844),
+      box: { ...SWATCHES.box, width: 844, height: 390 },
+      device: 'phone' as const,
+      turn: 'left' as const,
+    }
+    render(<FrameSection page={PAGE} frames={[turned]} />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Phone device' }))
+
+    expect(
+      await screen.findByRole('menuitemradio', { name: 'Compact island' }),
+    ).toBeChecked()
+  })
+
   it('reads a picked wide island as checked', async () => {
     render(
       <FrameSection

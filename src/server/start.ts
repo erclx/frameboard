@@ -355,6 +355,7 @@ async function listen({
             hugHeight: frame.hugHeight,
             // A linked width draws no device, so only the frame's own box has a page under a bar.
             device: box.width === frame.box.width ? frame.device : undefined,
+            turn: frame.turn,
           },
           config: readConfig(root, frame.project),
         }),

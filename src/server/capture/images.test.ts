@@ -7,6 +7,7 @@ import { PNG } from 'pngjs'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 import { FrameboardError } from '@/shared/errors'
+import type { FrameRecord } from '@/shared/records/list'
 
 import {
   launchShellOrNull,
@@ -358,7 +359,10 @@ describe.skipIf(shell === null)(
       rmSync(out, { recursive: true, force: true })
     })
 
-    async function shoot(device?: 'phone') {
+    async function shoot(
+      device?: 'phone',
+      overrides: Partial<FrameRecord> = {},
+    ) {
       board = writeBoard({ 'studio/home/hero.html': EDGE_PAGE })
       out = mkdtempSync(join(tmpdir(), 'frameboard-shots-'))
       const host = await startFrameHost({ root: board.root, facesDir: out })
@@ -370,6 +374,7 @@ describe.skipIf(shell === null)(
               box: { x: 0, y: 0, width: 390, height: 600 },
               widths: [{ width: 320, height: 500 }],
               ...(device ? { showDevice: true, device } : {}),
+              ...overrides,
             }),
           ],
           themes: ['light'],
@@ -393,6 +398,18 @@ describe.skipIf(shell === null)(
       expect([own.width, own.height]).toEqual([390, 600])
       expect(pixel(own.path, 195, 50)).toBe('#0000ff')
       expect(pixel(own.path, 195, 54 + 5)).toBe('#ff0000')
+    })
+
+    it('starts a turned phone page at its top, with no status bar, at the landscape box', async () => {
+      const [own] = await shoot('phone', {
+        box: { x: 0, y: 0, width: 844, height: 390 },
+        widths: [],
+        turn: 'left',
+      })
+      if (!own) throw new Error('no image')
+
+      expect([own.width, own.height]).toEqual([844, 390])
+      expect(pixel(own.path, 422, 5)).toBe('#ff0000')
     })
 
     it('starts a linked width page at its top, since it draws no device', async () => {

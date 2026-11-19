@@ -145,7 +145,7 @@ export async function fitFrame(
   const measured = await measureContent(browser, {
     baseUrl,
     ref: frame.ref,
-    box: pageBox(frame.box, frame.device),
+    box: pageBox(frame.box, frame.device, frame.turn),
     hugWidth: false,
   })
   const widths: LinkedWidth[] = []
@@ -162,7 +162,7 @@ export async function fitFrame(
     frame: await fitHeight(
       options.root,
       frame.ref,
-      measured.height + topInset(frame.device),
+      measured.height + topInset(frame.device, frame.turn),
       { ...options, widths },
     ),
     contentHeight: measured.height,

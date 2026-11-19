@@ -65,7 +65,7 @@ export async function inspectFrame(
   const opened = await openFrame(browser, {
     baseUrl,
     ref: frame.ref,
-    box: pageSize(frame.box, frame.device),
+    box: pageSize(frame.box, frame.device, frame.turn),
     theme,
   })
   let live: LiveElement[]

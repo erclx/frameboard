@@ -30,6 +30,8 @@ import {
   STATUS_BAR,
   STATUS_FONT,
   topInset,
+  type Turn,
+  turnOf,
   WIDE_ISLAND_LEVEL,
   WIDE_ISLAND_TIMER,
 } from '@/shared/frame-device'
@@ -179,6 +181,8 @@ export type RenderFrame = (
     pose?: Pose
     /** The phone's island width, compact when absent. */
     island?: Island
+    /** How a phone or tablet is turned, upright when absent. */
+    turn?: Turn
     element?: number
   },
   theme: Theme,
@@ -246,7 +250,7 @@ export function createWarmRenderer({
       if (element === undefined) {
         assertScreenshotFits(
           frame.ref,
-          bezelBox({ x: 0, y: 0, ...frame.box }, device),
+          bezelBox({ x: 0, y: 0, ...frame.box }, device, frame.turn),
           scale,
         )
       }
@@ -254,7 +258,7 @@ export function createWarmRenderer({
       const opened = await openFrame(open, {
         baseUrl: baseUrl(),
         ref: frame.ref,
-        box: pageSize(frame.box, device),
+        box: pageSize(frame.box, device, frame.turn),
         theme,
         scale,
       })
@@ -262,7 +266,8 @@ export function createWarmRenderer({
       let colors: PageColors | null = null
       try {
         await hideControls(opened.page)
-        if (topInset(device) > 0) colors = await readPageColors(opened.page)
+        if (topInset(device, frame.turn) > 0)
+          colors = await readPageColors(opened.page)
         shot =
           element === undefined
             ? await opened.page.screenshot({
@@ -282,6 +287,7 @@ export function createWarmRenderer({
               device,
               pose: frame.pose,
               island: frame.island,
+              turn: frame.turn,
               bar: { colors, theme },
             },
             scale,
@@ -341,18 +347,20 @@ async function drawBezel(
     device,
     pose = 'closed',
     island = 'compact',
+    turn,
     bar,
   }: {
     device: Device
     pose?: Pose
     island?: Island
+    turn?: Turn
     /** The page's colors and theme, which a phone's status bar paints. */
     bar: { colors: PageColors | null; theme: Theme }
   },
   scale: number,
 ): Promise<Buffer> {
-  const outer = bezelBox({ x: 0, y: 0, ...box }, device)
-  const page = pageBox({ x: 0, y: 0, ...box }, device)
+  const outer = bezelBox({ x: 0, y: 0, ...box }, device, turn)
+  const page = pageBox({ x: 0, y: 0, ...box }, device, turn)
   const laptop = device === 'laptop'
   const context = await browser.newContext({
     viewport: { width: outer.width, height: outer.height },
@@ -360,9 +368,12 @@ async function drawBezel(
   })
   try {
     const tab = await context.newPage()
+    const sideways = turnOf(turn)
     const marks =
       device === 'phone'
-        ? statusBarHtml(bar.colors, bar.theme) + phoneMarks(island)
+        ? sideways === 'upright'
+          ? statusBarHtml(bar.colors, bar.theme) + phoneMarks(island)
+          : turnedPhoneMarks(island, sideways)
         : laptop
           ? laptopMarks(box)
           : device === 'foldable'
@@ -372,7 +383,7 @@ async function drawBezel(
     await tab.setContent(
       `<!doctype html><html><body style="margin:0;background:transparent">` +
         `<div style="position:absolute;left:${-outer.x}px;top:${-outer.y}px;width:${box.width}px;height:${box.height}px">` +
-        `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="position:absolute;left:0;top:${page.y}px;width:${page.width}px;height:${page.height}px;border-radius:${pageCorners(device)}">` +
+        `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="position:absolute;left:0;top:${page.y}px;width:${page.width}px;height:${page.height}px;border-radius:${pageCorners(device, turn)}">` +
         `<div style="position:absolute;inset:0;border-radius:${radius};box-shadow:${bezelShadow(device, { board: false })}">${marks}</div>` +
         `</div></body></html>`,
       { waitUntil: 'load' },
@@ -394,7 +405,7 @@ export async function underStatusBar(
   { colors, theme }: { colors: PageColors | null; theme: Theme },
   scale: number,
 ): Promise<Buffer> {
-  const page = pageBox({ x: 0, y: 0, ...box }, 'phone')
+  const page = pageBox({ x: 0, y: 0, ...box }, 'phone', 'upright')
   const context = await browser.newContext({
     viewport: box,
     deviceScaleFactor: scale,
@@ -424,8 +435,9 @@ export function readPageColors(page: Page): Promise<PageColors> {
 export function pageSize(
   box: { width: number; height: number },
   device: Device | null | undefined,
+  turn: Turn | undefined,
 ): { width: number; height: number } {
-  const page = pageBox({ x: 0, y: 0, ...box }, device)
+  const page = pageBox({ x: 0, y: 0, ...box }, device, turn)
   return { width: page.width, height: Math.max(1, page.height) }
 }
 
@@ -480,14 +492,37 @@ function phoneMarks(island: Island): string {
       `<span style="position:absolute;${side}:${-border - BUTTON_DEPTH}px;top:${top - border}px;width:${BUTTON_DEPTH}px;height:${height}px;border-radius:${BUTTON_DEPTH / 2}px;background:${BEZEL_COLORS.button}"></span>`,
   ).join('')
   const shape = phoneIsland(island)
-  const timer =
-    island === 'wide'
-      ? `<span style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:3px;background:${BEZEL_COLORS.islandLive}"></span>${WIDE_ISLAND_TIMER}</span>` +
-        `<span style="display:flex;align-items:flex-end;gap:2px">${WIDE_ISLAND_LEVEL.map((tall) => `<span style="width:2px;height:${tall}px;border-radius:1px;background:${BEZEL_COLORS.islandLive}"></span>`).join('')}</span>`
-      : ''
   return (
     buttons +
-    `<span style="${pill(shape.width, shape.height, BEZEL_COLORS.island)}top:${shape.top}px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;padding:0 11px;color:${BEZEL_COLORS.islandText};font:600 11px/1 ${STATUS_FONT};font-variant-numeric:tabular-nums">${timer}</span>` +
+    `<span style="${pill(shape.width, shape.height, BEZEL_COLORS.island)}top:${shape.top}px;${ISLAND_TEXT}">${islandTimer(island)}</span>` +
+    `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
+  )
+}
+
+const ISLAND_TEXT = `box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;padding:0 11px;color:${BEZEL_COLORS.islandText};font:600 11px/1 ${STATUS_FONT};font-variant-numeric:tabular-nums`
+
+function islandTimer(island: Island): string {
+  if (island !== 'wide') return ''
+  return (
+    `<span style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:3px;background:${BEZEL_COLORS.islandLive}"></span>${WIDE_ISLAND_TIMER}</span>` +
+    `<span style="display:flex;align-items:flex-end;gap:2px">${WIDE_ISLAND_LEVEL.map((tall) => `<span style="width:2px;height:${tall}px;border-radius:1px;background:${BEZEL_COLORS.islandLive}"></span>`).join('')}</span>`
+  )
+}
+
+/** A turned phone's island on end and its buttons on the long edges, as the board's bezel draws them. */
+function turnedPhoneMarks(island: Island, turn: 'left' | 'right'): string {
+  const { border } = BEZELS.phone
+  const from = turn === 'left' ? 'left' : 'right'
+  const buttons = PHONE_BUTTONS.map(({ side, top, height }) => {
+    const edge = (side === 'left') === (turn === 'left') ? 'bottom' : 'top'
+    return `<span style="position:absolute;${edge}:${-border - BUTTON_DEPTH}px;${from}:${top - border}px;width:${height}px;height:${BUTTON_DEPTH}px;border-radius:${BUTTON_DEPTH / 2}px;background:${BEZEL_COLORS.button}"></span>`
+  }).join('')
+  const shape = phoneIsland(island)
+  const center = shape.top + shape.height / 2
+  const left = turn === 'left' ? `${center}px` : `calc(100% - ${center}px)`
+  return (
+    buttons +
+    `<span style="position:absolute;left:${left};top:50%;transform:translate(-50%,-50%) rotate(${turn === 'left' ? -90 : 90}deg);width:${shape.width}px;height:${shape.height}px;border-radius:${shape.height / 2}px;background:${BEZEL_COLORS.island};${ISLAND_TEXT}">${islandTimer(island)}</span>` +
     `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
   )
 }

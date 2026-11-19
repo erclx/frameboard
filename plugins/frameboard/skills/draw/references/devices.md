@@ -1,11 +1,11 @@
 ---
 title: Devices
-description: When a frame shows a device body, how its width picks a phone, tablet, or laptop, and how the foldable and its pose set the frame's box
+description: When a frame shows a device body, how its width picks a phone, tablet, or laptop, how a phone or tablet turns, and how the foldable and its pose set the frame's box
 ---
 
 # Devices
 
-Read this when the developer wants a screen shown in a phone, a tablet, a laptop, or the foldable. Take the sizes, the body measures, and the refusals from the `showDevice`, `foldable`, and `pose` entries of `frameboard docs --json`, since they describe the installed version.
+Read this when the developer wants a screen shown in a phone, a tablet, a laptop, or the foldable. Take the sizes, the body measures, and the refusals from the `showDevice`, `turn`, `foldable`, and `pose` entries of `frameboard docs --json`, since they describe the installed version.
 
 ## Show a device only when the body is the point
 
@@ -19,7 +19,7 @@ A device body frames a screen for a viewer who is not the developer, such as a l
 The frame's width names the device, so choose the size name for the screen first and the body follows.
 
 - A phone, tablet, or laptop is the width's band, and a width below the phone band shows none
-- Resize the frame to change the device, and never write a second file to show another one
+- Resize an upright frame to change the device, and never write a second file to show another one. A turned frame keeps the device its upright width picked.
 - Place a responsive page once with extra widths, and know that a linked width draws no body
 
 ## Name the foldable instead of resizing to it
@@ -31,9 +31,18 @@ The foldable is the one device a width does not pick. A frame names it, and its 
 - One file shows every pose, so change the pose rather than copying the frame, and write the page to reflow at each width
 - Read the pose back from `list --json`, which reports it on a frame that names the foldable even while the body is hidden
 
+## Turn a phone or a tablet rather than drawing it sideways
+
+`frameboard frame device --turn left` lays the page out landscape at the device's upright height, and `--turn upright` puts it back at the size it held. The frame file never changes, so one file shows both ways.
+
+- Write the page to hold up at the turned width, since a turned phone is about twice as wide as it is tall and its status bar is gone
+- Never resize a phone to a landscape width by hand, since that width picks a tablet and draws no turned body
+- Read the turn back from `list --json`, which reports `turn` while the frame is turned and leaves it out upright
+- Take the refusals from the `turn` entry of `docs`, which names the devices and frames that do not turn
+
 ## Leave the page's top alone
 
-While a phone shows, the board starts the page under a status bar it draws itself. Never pad the top for it, and never state the page's height from the box, since the page's height follows the device and `docs` holds the measure.
+While an upright phone shows, the board starts the page under a status bar it draws itself, and a turned one draws none. Never pad the top for it, and never state the page's height from the box, since the page's height follows the device and `docs` holds the measure.
 
 ## Check it
 

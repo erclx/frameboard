@@ -859,7 +859,7 @@ describe('Canvas', () => {
     expect(y + 698 * k).toBeCloseTo(472)
   })
 
-  it('fits a phone to the padding alone, with no room kept under it', () => {
+  it('fits a phone with room under its body for Rotate and the chip', () => {
     const { container } = renderCanvas(
       page('studio/phone-fit', [
         {
@@ -872,7 +872,20 @@ describe('Canvas', () => {
 
     const { y, k } = viewOf(container)
 
-    expect(y + 694 * k).toBeCloseTo(536)
+    // 600 tall less 64 of padding and 64 for Rotate and the chip.
+    expect(y + 694 * k).toBeCloseTo(472)
+  })
+
+  it('fits a frame wearing no device to the padding alone, with no room kept under it', () => {
+    const { container } = renderCanvas(
+      page('studio/bare-fit', [
+        frame('about', { x: 0, y: 0, width: 466, height: 678 }),
+      ]),
+    )
+
+    const { y, k } = viewOf(container)
+
+    expect(y + 678 * k).toBeCloseTo(536)
   })
 
   it('pans the layer on a wheel without a React commit', async () => {

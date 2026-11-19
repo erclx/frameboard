@@ -5,12 +5,13 @@ import { userEvent } from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createStructure } from '@/client/live/structure'
-import type { Pose } from '@/shared/frame-device'
+import type { Pose, Turn } from '@/shared/frame-device'
 import { ringFocused } from '@/test/focus-ring'
 
 import type { Box } from '../geometry/box'
 import { attachCanvas } from '../view'
-import { PoseButtons } from './poses'
+import { PoseButtons, RotateButtons } from './poses'
+import { turnRefusal } from './turn'
 
 const REF = 'studio/home/inbox'
 
@@ -198,5 +199,91 @@ describe('PoseButtons', () => {
     const bar = container.querySelector('[data-poses]')
 
     expect(bar?.getBoundingClientRect().top).toBeGreaterThanOrEqual(100 + 20)
+  })
+})
+
+describe('RotateButtons', () => {
+  afterEach(() => {
+    for (const detach of detaches.splice(0)) detach()
+  })
+
+  function Rotate({
+    turn,
+    off,
+    calls,
+  }: {
+    turn?: Turn
+    off?: string
+    calls: ReturnType<typeof server>['calls']
+  }) {
+    return (
+      <div className="absolute" style={{ left: 100, top: 100, width: 390 }}>
+        <RotateButtons
+          frameRef={REF}
+          name="inbox"
+          turn={turn}
+          below={20}
+          off={off}
+          calls={calls}
+        />
+      </div>
+    )
+  }
+
+  it('names the group by its frame and shows Rotate alone', () => {
+    const { calls } = server()
+
+    render(<Rotate calls={calls} />)
+
+    expect(screen.getByRole('group', { name: 'Turn of inbox' })).toBeVisible()
+    expect(
+      screen.getAllByRole('button').map((button) => button.textContent),
+    ).toEqual(['Rotate'])
+  })
+
+  it.each([
+    [undefined, 'left'],
+    ['left', 'right'],
+    ['right', 'upright'],
+  ] as const)(
+    'turns a frame held %s on to %s, sending the target turn',
+    async (turn, next) => {
+      attachView()
+      const { calls, sent } = server()
+      render(<Rotate turn={turn} calls={calls} />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Rotate' }))
+
+      expect(sent).toEqual([{ refs: [REF], turn: next }])
+    },
+  )
+
+  it('writes nothing while off, and says why', async () => {
+    const { calls, sent } = server()
+    render(<Rotate off="Unlock inbox to turn it" calls={calls} />)
+    const rotate = screen.getByRole('button', { name: 'Rotate' })
+
+    await userEvent.click(rotate)
+
+    expect(sent).toEqual([])
+    expect(rotate).toHaveAttribute('aria-disabled', 'true')
+    expect(rotate).toHaveAttribute('title', 'Unlock inbox to turn it')
+  })
+
+  it.each([
+    ['a locked frame', { locked: true, widths: [] }, 'Unlock inbox'],
+    [
+      'a frame holding extra widths',
+      { locked: false, widths: [{ width: 430, height: 932 }] },
+      'Clear the extra widths',
+    ],
+  ])('turns %s off, naming why', (_label, flags, reason) => {
+    expect(turnRefusal({ name: 'inbox', ...flags })).toContain(reason)
+  })
+
+  it('leaves a free frame on', () => {
+    expect(
+      turnRefusal({ name: 'inbox', locked: false, widths: [] }),
+    ).toBeUndefined()
   })
 })

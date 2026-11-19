@@ -25,6 +25,7 @@ import {
   screenCorners,
   shownBox,
   topInset,
+  turnsWith,
 } from '@/shared/frame-device'
 import { referenceHeight } from '@/shared/frame-sizes'
 import type { Finding } from '@/shared/records/check'
@@ -40,7 +41,8 @@ import { UnseenDot } from './changes/dot'
 import { ClaimTag } from './claims/tag'
 import { Bezel } from './device/bezel'
 import { usePageColors } from './device/page-colors'
-import { PoseButtons } from './device/poses'
+import { PoseButtons, RotateButtons } from './device/poses'
+import { turnRefusal } from './device/turn'
 import { FINDINGS_MARK, severityOf } from './findings/level'
 import { FindingsList } from './findings/list'
 import { FindingsCount } from './findings/mark'
@@ -108,6 +110,7 @@ export const Frame = memo(function Frame({
   )
   const iframe = useRef<HTMLIFrameElement>(null)
   const playing = useMode((state) => state.mode === 'play')
+  const canWrite = useLive((state) => state.canWrite)
   // While notes are hidden, a slide holding one says so on its label.
   const notesShown = useNotesShown()
   const noteMark = !notesShown && Boolean(frame.speakerNotes) && !playing
@@ -173,7 +176,7 @@ export const Frame = memo(function Frame({
   const previewWidth = preview?.width
   const { hugHeight } = frame
   // The page starts under a phone's status bar, so the box holds the page and the bar.
-  const statusBar = topInset(frame.device)
+  const statusBar = topInset(frame.device, frame.turn)
   useEffect(() => {
     const element = iframe.current
     if (!live || !element || previewWidth === undefined || !hugHeight) return
@@ -210,6 +213,8 @@ export const Frame = memo(function Frame({
         box: { width, height },
         device: frame.device,
         scroll: frame.scroll,
+        turn: frame.turn,
+        hugHeight: frame.hugHeight,
       }).height
     : height
   const colors = usePageColors(iframe, live && statusBar > 0, theme)
@@ -248,7 +253,7 @@ export const Frame = memo(function Frame({
   // The page stands under a phone's status bar, square where the two meet.
   const page = frame.device
     ? {
-        borderRadius: pageCorners(frame.device),
+        borderRadius: pageCorners(frame.device, frame.turn),
         ...(statusBar
           ? { marginTop: statusBar, height: `calc(100% - ${statusBar}px)` }
           : {}),
@@ -360,6 +365,7 @@ export const Frame = memo(function Frame({
           height={drawnHeight}
           pose={frame.pose}
           island={frame.island}
+          turn={frame.turn}
           colors={colors}
           theme={theme}
         />
@@ -374,6 +380,15 @@ export const Frame = memo(function Frame({
           pose={frame.pose}
           below={below}
           off={frame.locked ? `Unlock ${frame.name} to fold it` : undefined}
+        />
+      ) : null}
+      {turnsWith(frame.device) && selectedAlone && !playing && canWrite ? (
+        <RotateButtons
+          frameRef={frame.ref}
+          name={frame.name}
+          turn={frame.turn}
+          below={below}
+          off={turnRefusal(frame)}
         />
       ) : null}
       {frame.scroll && live && !playing ? (

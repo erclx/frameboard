@@ -23,9 +23,15 @@ The inspector holds each frame-level setting.
 
 - A frame given several widths draws each beside it, and a click or drag on one acts on the frame. The inspector's Also shows at row lists, adds, and removes them.
 - The inspector's Height row holds a frame at a fixed height, at its content's height, or at one screen its page scrolls past. A frame taken through Fit and back to Scroll returns to the screen it left.
-- Its Show device switch draws the phone, tablet, or laptop the width names, from 320, 480, and 1024 wide, leaving the file alone, with a phone's page under its status bar
-- The device name beside it offers a phone's Compact or Wide island and Foldable, whose buttons under the body fold it to each screen's size, and Include device adds the body to an export
 - In Edit a scroll frame draws a rail beside it, which a drag or click scrolls while the wheel still pans the board, and the icon ending a frame's label opens it alone in a new tab
+
+### Device
+
+The inspector's Show device switch draws a body around the frame and leaves its file alone.
+
+- The switch draws the phone, tablet, or laptop the width names, from 320, 480, and 1024 wide, with a phone's page under its status bar
+- The device name beside it offers a phone's Compact or Wide island and Foldable, whose buttons under the body fold it to each screen's size, and Include device adds the body to an export
+- Rotate under a selected phone or tablet turns it left, then right, then upright, laying its page out landscape, and Play's banner offers the same while one is entered
 
 ## Layers, find, and menus
 

@@ -37,13 +37,13 @@ Owns `linked-box.tsx`, the views of a frame at each width its entry lists, drawn
 
 ### `src/client/board/device/`
 
-Owns `bezel.tsx`, the body drawn around a frame showing a `device`, `page-colors.ts`, the colors a phone's status bar paints, and `poses.tsx`, a selected foldable's buttons. All read `src/shared/frame-device.ts`, as the PNG route and capture do. A phone's page starts under its status bar, so a board point maps into it through `pageBox`.
+Owns `bezel.tsx`, the body around a frame showing a `device`, `page-colors.ts`, a status bar's colors, `poses.tsx`, the bar under a selected device, and `turn.ts`, the Rotate action. All read `src/shared/frame-device.ts`, as capture does, and a board point maps into a phone's page through `pageBox`.
 
 - The body is a `box-shadow` spread that misses a square corner, so the page rounds to `pageCorners`, square on top under a phone's status bar, and every other box on its screen to `screenCorners`
-- A laptop's lid is that spread, and its chin and wider base are positioned boxes from `laptopParts`, since one spread holds one width on every side
-- The body and the island scale with the canvas, its hairline edge stays one screen pixel at any zoom, and it takes no pointer events
+- A laptop's lid is that spread, its chin and base boxes from `laptopParts`, and the body scales with the canvas, its edge one screen pixel at any zoom, taking no pointer events
 - The label, the open-alone link, and the rail stand past the border, a laptop's lid, and the In frame tag below the body, a laptop's base, and a linked width draws no device
-- Present and entered Play show a page-tall phone one screen tall through `shownBox`, and present centers by `bezelBox` and fits by `bezelReach`, since a laptop reaches further below than above
+- Every geometry helper takes the frame's `turn` as a required argument, so a turned phone drops its status bar and its buttons reach past its top and bottom on every surface
+- Present and Play show a page-tall phone one screen tall through `shownBox`, centered by `bezelBox` and fit by `bezelReach`
 
 ### `src/client/board/scroll/`
 

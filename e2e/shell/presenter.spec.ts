@@ -54,6 +54,44 @@ async function presentWithPresenter(page: Page): Promise<Page> {
   return presenter
 }
 
+test.describe('a phone slide turned from the present bar', () => {
+  /** Shows `about` in its phone, a fixed 390 by 844 screen. */
+  test.beforeEach(async () => {
+    const folder = join(board.root, 'webapp/home')
+    const layout = JSON.parse(readFileSync(join(folder, 'layout.json'), 'utf8'))
+    layout.frames.about = { ...layout.frames.about, showDevice: true }
+    writeFileSync(join(folder, 'layout.json'), JSON.stringify(layout))
+    await server.stop()
+    server = await serveBoard(board.root)
+  })
+
+  test('turns the shown phone landscape and the presenter view follows', async ({
+    page,
+  }) => {
+    // Turning writes the layout, which only a tab holding the access cookie may.
+    await page.goto(await server.ticketUrl())
+    const presenter = await presentWithPresenter(page)
+    await presenter.keyboard.press('ArrowRight')
+    await expect(shown(page)).toHaveAttribute('title', 'about')
+    const size = (frame: ReturnType<typeof shown>) =>
+      frame.evaluate((element: HTMLIFrameElement) => [
+        element.offsetWidth,
+        element.offsetHeight,
+      ])
+    // Upright, the page stands under the 54 tall status bar.
+    await expect.poll(() => size(shown(page))).toEqual([390, 790])
+
+    await page.mouse.move(10, 10)
+    await page
+      .getByRole('toolbar', { name: 'Presenting' })
+      .getByRole('button', { name: 'Rotate' })
+      .click()
+
+    await expect.poll(() => size(shown(page))).toEqual([844, 390])
+    await expect.poll(() => size(nowSlide(presenter))).toEqual([844, 390])
+  })
+})
+
 test.describe('the presenter view', () => {
   test('steps the audience from its own keys and closes when the audience leaves', async ({
     page,

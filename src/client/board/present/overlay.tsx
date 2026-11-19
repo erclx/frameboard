@@ -17,6 +17,7 @@ import {
   screenCorners,
   shownBox,
   topInset,
+  turnsWith,
 } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 import { frameThemeUrl } from '@/shared/theme'
@@ -27,6 +28,7 @@ import { focusWithoutTooltip } from '../chrome/quiet-focus'
 import { PRESENT } from '../chrome/toolbar-tools'
 import { Bezel } from '../device/bezel'
 import { usePageColors } from '../device/page-colors'
+import { rotateFrame, turnRefusal } from '../device/turn'
 import { useWaitingOnFirstLoad } from '../frame-loading'
 import { useThemeInFrame } from '../frame-theme'
 import { useHiddenScrollbar } from '../hidden-scrollbar'
@@ -290,6 +292,7 @@ function Presenting({
   const overview = usePresent((state) => state.overview)
   const blocked = usePresent((state) => state.blocked)
   const room = useRoom(layer)
+  const canWrite = useLive((state) => state.canWrite)
   const { shown, wake } = useBarWake()
   const fullscreen = useLeaveWithFullscreen()
   useInertBehind(layer)
@@ -386,6 +389,13 @@ function Presenting({
         onPresenter={openPresenter}
         onFullscreen={toggleFullscreen}
         onLeave={leavePresenting}
+        rotateSlot={canWrite && order.some((slide) => turnsWith(slide.device))}
+        onRotate={
+          canWrite && turnsWith(frame.device)
+            ? () => rotateFrame(frame, { reveal: false })
+            : undefined
+        }
+        rotateOff={turnRefusal(frame)}
       />
     </div>
   )
@@ -417,7 +427,7 @@ export function ScaledFrame({
   room: { width: number; height: number }
 } & LiveProps) {
   const { width, height } = shownBox(frame)
-  const body = bezelBox({ x: 0, y: 0, width, height }, frame.device)
+  const body = bezelBox({ x: 0, y: 0, width, height }, frame.device, frame.turn)
   const scale = presentScale(frame, room)
   // Centers by the body, which a laptop's reaches further below than above.
   const shiftX = width / 2 - (body.x + body.width / 2)
@@ -605,7 +615,15 @@ function PresentedFrame({
 }: {
   frame: Pick<
     FrameRecord,
-    'ref' | 'name' | 'box' | 'scroll' | 'device' | 'pose' | 'island'
+    | 'ref'
+    | 'name'
+    | 'box'
+    | 'scroll'
+    | 'hugHeight'
+    | 'device'
+    | 'pose'
+    | 'island'
+    | 'turn'
   >
 } & LiveProps) {
   const iframe = useRef<HTMLIFrameElement>(null)
@@ -614,10 +632,10 @@ function PresentedFrame({
   useHiddenScrollbar(iframe, true, shown.height < frame.box.height)
   // The screen rounds under its bezel, whose body cannot cover a square corner.
   const corners = frame.device ? screenCorners(frame.device) : undefined
-  const statusBar = topInset(frame.device)
+  const statusBar = topInset(frame.device, frame.turn)
   const page = frame.device
     ? {
-        borderRadius: pageCorners(frame.device),
+        borderRadius: pageCorners(frame.device, frame.turn),
         ...(statusBar
           ? { marginTop: statusBar, height: `calc(100% - ${statusBar}px)` }
           : {}),
@@ -678,6 +696,7 @@ function PresentedFrame({
           height={shown.height}
           pose={frame.pose}
           island={frame.island}
+          turn={frame.turn}
           colors={colors}
           theme={theme}
         />

@@ -5,6 +5,7 @@ import { isDeepStrictEqual } from 'node:util'
 
 import { FrameboardError } from '@/shared/errors'
 import {
+  type Device,
   deviceForWidth,
   type Island,
   islandOf,
@@ -12,6 +13,8 @@ import {
   type Pose,
   POSE_SIZES,
   poseOf,
+  type Turn,
+  turnOf,
 } from '@/shared/frame-device'
 import {
   DEFAULT_FRAME_SIZE,
@@ -111,6 +114,12 @@ export interface FoldOptions {
   pose?: Pose
   /** The phone's island width, refused on a frame whose width names no phone or that names the foldable. */
   island?: Island
+  /**
+   * The turn a phone or a tablet takes, absolute so a retried call lands once,
+   * upright restoring the size it held. A quarter turn refuses a foldable, a
+   * laptop, a frame showing no device, and one holding extra widths.
+   */
+  turn?: Turn
 }
 
 export type FrameFlag = 'hidden' | 'locked'
@@ -471,6 +480,13 @@ function resizedPlacement(
       'usage',
       `${frameRef} is a foldable, whose poses are its sizes, so it shows at no other width.`,
       { ref: frameRef, widths: options.widths },
+    )
+  }
+  if (placement.turn && options.widths && options.widths.length > 0) {
+    throw new FrameboardError(
+      'usage',
+      `${frameRef} is turned ${placement.turn}, and each extra width is an upright preview, so it shows at no other width. Turn it upright first.`,
+      { ref: frameRef, turn: placement.turn, widths: options.widths },
     )
   }
   const scroll = options.scroll ?? placement.scroll
@@ -928,9 +944,9 @@ export async function setFrameFlag(
 }
 
 /**
- * Shows or hides a frame's device, names or un-names the foldable, and folds
- * it, never writing the frame's file. Naming a foldable shows it and, as a
- * pose does, sets the box to that pose's screen, fixed on both axes.
+ * Shows or hides a frame's device, names, folds, or turns it, never writing
+ * the frame's file. Naming a foldable shows it and sets the box to its pose's
+ * screen, fixed on both axes, standing a turned frame upright first.
  */
 export async function setFrameDevice(
   root: string,
@@ -940,12 +956,19 @@ export async function setFrameDevice(
     foldable: name,
     pose: fold,
     island: pick,
+    turn,
     ...options
   }: RefOptions & JournalOptions & FoldOptions,
 ): Promise<FrameRecord> {
-  return updatePlacement(root, ref, options, (placement, frameRef) => {
+  return updatePlacement(root, ref, options, (stood, frameRef) => {
+    const foldable = name ?? stood.foldable === true
+    const shown = show ?? (name === true || stood.showDevice === true)
+    if (turn && turn !== 'upright') {
+      refuseTurn(stood, frameRef, turn, { foldable, shown })
+    }
+    const placement = turnedPlacement(stood, foldable ? 'upright' : turn)
     const {
-      showDevice: held,
+      showDevice: _held,
       device: _device,
       foldable: named,
       pose: stored,
@@ -953,7 +976,6 @@ export async function setFrameDevice(
       island: picked,
       ...rest
     } = placement
-    const foldable = name ?? named === true
     if (fold && !foldable) {
       throw new FrameboardError(
         'usage',
@@ -961,7 +983,7 @@ export async function setFrameDevice(
         { ref: frameRef, pose: fold },
       )
     }
-    if (pick && (foldable || deviceForWidth(placement.box.width) !== 'phone')) {
+    if (pick && (foldable || drawnDevice(placement) !== 'phone')) {
       throw new FrameboardError(
         'usage',
         `${frameRef} draws no phone, so it has no island. A frame 320 to 479 px wide that names no foldable draws one.`,
@@ -969,7 +991,6 @@ export async function setFrameDevice(
       )
     }
     const island = pick ?? islandOf(picked)
-    const shown = show ?? (name === true || held === true)
     const base = {
       ...rest,
       ...(shown ? { showDevice: true as const } : {}),
@@ -1000,6 +1021,76 @@ export async function setFrameDevice(
       hugHeight: false,
     }
   })
+}
+
+/** The device a frame's width picks, its upright width while turned, shown or not. */
+function drawnDevice(placement: Placement): Device | null {
+  return deviceForWidth(placement.upright?.width ?? placement.box.width)
+}
+
+/**
+ * Refuses a quarter turn the board has no drawn answer for: a foldable, a
+ * laptop, a frame showing no device, and a frame whose extra widths are each
+ * an upright preview of their own.
+ */
+function refuseTurn(
+  placement: Placement,
+  frameRef: string,
+  turn: Turn,
+  { foldable, shown }: { foldable: boolean; shown: boolean },
+): void {
+  if (foldable) {
+    throw new FrameboardError(
+      'usage',
+      `${frameRef} is a foldable, whose poses are its sizes, so it does not turn.`,
+      { ref: frameRef, turn },
+    )
+  }
+  const device = drawnDevice(placement)
+  if (!shown || (device !== 'phone' && device !== 'tablet')) {
+    throw new FrameboardError(
+      'usage',
+      `${frameRef} draws no phone or tablet, so it does not turn. Show the device on a frame 320 to 1023 px wide first.`,
+      { ref: frameRef, turn },
+    )
+  }
+  if (placement.widths.length > 0) {
+    const widths = placement.widths.map((linked) => linked.width)
+    throw new FrameboardError(
+      'usage',
+      `${frameRef} also shows at ${widths.join(', ')} px, each an upright preview, so it does not turn. Clear them with frame resize --no-widths first.`,
+      { ref: frameRef, turn, widths },
+    )
+  }
+}
+
+/**
+ * A frame turned to `turn`, keeping its upright size on the first turn. A
+ * fixed or scroll box swaps its sides, and a hugging one, whose height is its
+ * page's, takes the reference height of its upright width wide.
+ */
+function turnedPlacement(
+  placement: Placement,
+  turn: Turn | undefined,
+): Placement {
+  if (turn === undefined) return placement
+  const { turn: held, upright, ...rest } = placement
+  if (turn === 'upright') {
+    return upright ? { ...rest, box: { ...placement.box, ...upright } } : rest
+  }
+  if (held) return { ...placement, turn }
+  const size = { width: placement.box.width, height: placement.box.height }
+  const hugs = placement.hugHeight && !placement.scroll
+  return {
+    ...rest,
+    turn,
+    upright: size,
+    box: {
+      ...placement.box,
+      width: hugs ? referenceHeight(size.width) : size.height,
+      height: size.width,
+    },
+  }
 }
 
 /**
@@ -1226,6 +1317,8 @@ class PageLayout {
       pose,
       keptWidths,
       island,
+      turn,
+      upright,
       transition,
       speakerNotes,
       kit,
@@ -1264,6 +1357,9 @@ class PageLayout {
         ? { pose }
         : {}),
       ...(island ? { island } : {}),
+      ...(turn && upright
+        ? { turn, upright: { width: upright.width, height: upright.height } }
+        : {}),
       ...(transition ? { transition: { ...transition } } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
       ...(kit ? { kit } : {}),
@@ -1277,6 +1373,10 @@ class PageLayout {
     }
     if (!showDevice && held?.showDevice === true) delete entry.showDevice
     if (!island && islandOf(held?.island) === 'wide') delete entry.island
+    if (!turn && turnOf(held?.turn) !== 'upright') {
+      delete entry.turn
+      delete entry.upright
+    }
     if (typeof held?.device === 'string') delete entry.device
     if (!transition && storedTransitionOf(held?.transition)) {
       delete entry.transition

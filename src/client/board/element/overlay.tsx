@@ -86,7 +86,7 @@ function ElementGhosts({ frames, container }: ElementOverlayProps) {
   return ghosts.map(({ key, box }) => {
     const frame = drawn.find(({ ref }) => ref === key.frame)
     if (!frame) return null
-    const page = pageBox(frame.box, frame.device)
+    const page = pageBox(frame.box, frame.device, frame.turn)
     return (
       <div
         key={`${key.frame}:${key.index}`}
@@ -154,7 +154,7 @@ function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
   const pending = usePendingBox(frame?.ref ?? '')
   const measured = useMeasures(container, elements)
   const shown = pending ?? frame?.box
-  const at = shown && pageBox(shown, frame?.device)
+  const at = shown && pageBox(shown, frame?.device, frame?.turn)
   if (!at || !measured) return null
   const members: GroupMember[] = measured.map(
     ({ index, box, read, placed, nested }) => ({
@@ -235,7 +235,7 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
   const rect = measure?.box ?? null
   const held = useStore(heldStore, (state) => state.held)
   const shown = pending ?? frame?.box
-  const at = shown && pageBox(shown, frame?.device)
+  const at = shown && pageBox(shown, frame?.device, frame?.turn)
   const holds = held !== null && held.key.frame === element?.frame
   // A box measured under another key ends the hold.
   const settled = holds && rect !== null && !sameKey(held.key, element)

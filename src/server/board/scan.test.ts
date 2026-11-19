@@ -488,6 +488,48 @@ describe('placeFrames', () => {
     },
   )
 
+  it.each([
+    ['a turned phone as a phone', 390, 844, 'phone'],
+    ['a turned tablet as a tablet', 834, 1194, 'tablet'],
+  ] as const)(
+    'reads %s, by its upright width',
+    (_label, width, height, device) => {
+      const placed = placeFrames(
+        {
+          hero: {
+            ...entry,
+            width: height,
+            height: width,
+            showDevice: true,
+            turn: 'left',
+            upright: { width, height },
+          },
+        },
+        ['hero'],
+      )
+
+      expect(placed.get('hero')).toMatchObject({ device, turn: 'left' })
+    },
+  )
+
+  it.each([
+    ['no upright size', { turn: 'right' }],
+    [
+      'an unknown turn',
+      { turn: 'sideways', upright: { width: 390, height: 844 } },
+    ],
+  ])('reads a turn with %s as upright, picking by the box', (_label, keys) => {
+    const placed = placeFrames(
+      {
+        hero: { ...entry, width: 844, height: 390, showDevice: true, ...keys },
+      },
+      ['hero'],
+    )
+
+    expect(placed.get('hero')?.device).toBe('tablet')
+    expect(placed.get('hero')).not.toHaveProperty('turn')
+  })
+
   it('draws none of the widths a foldable entry lists', () => {
     const placed = placeFrames(
       {

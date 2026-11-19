@@ -3,10 +3,12 @@ import '../../styles.css'
 import { render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { liveStore } from '@/client/live/store'
 import { frameOf } from '@/test/board'
 import { contrastOnPage } from '@/test/contrast'
 import { BRIDGE } from '@/test/frame-bridge'
 
+import { enterFrame, leaveFrame } from '../play/entered'
 import { PlayBanner } from './play-banner'
 
 const HINT = 'Nothing on this page takes a click'
@@ -24,6 +26,57 @@ function Live({ frameRef, body }: { frameRef: string; body: string }) {
 describe('PlayBanner', () => {
   afterEach(() => {
     document.documentElement.classList.remove('dark')
+    leaveFrame()
+    liveStore.setState({ canWrite: false })
+  })
+
+  describe('Rotate', () => {
+    it.each([
+      ['a phone', 'phone'],
+      ['a tablet', 'tablet'],
+    ] as const)(
+      'offers Rotate to a writer while %s is entered',
+      (_label, device) => {
+        liveStore.setState({ canWrite: true })
+        const a = frameOf('a', { showDevice: true, device })
+        enterFrame(a.ref)
+
+        render(<PlayBanner frames={[a]} />)
+
+        expect(screen.getByRole('button', { name: 'Rotate' })).toBeVisible()
+      },
+    )
+
+    it.each([
+      [
+        'a laptop entered',
+        { showDevice: true, device: 'laptop' as const },
+        true,
+      ],
+      ['a phone with no device shown', {}, true],
+      [
+        'a view-only tab',
+        { showDevice: true, device: 'phone' as const },
+        false,
+      ],
+    ])('offers no Rotate with %s', (_label, flags, canWrite) => {
+      liveStore.setState({ canWrite })
+      const a = frameOf('a', flags)
+      enterFrame(a.ref)
+
+      render(<PlayBanner frames={[a]} />)
+
+      expect(screen.queryByRole('button', { name: 'Rotate' })).toBeNull()
+    })
+
+    it('offers no Rotate while no frame is entered', () => {
+      liveStore.setState({ canWrite: true })
+      const a = frameOf('a', { showDevice: true, device: 'phone' })
+
+      render(<PlayBanner frames={[a]} />)
+
+      expect(screen.queryByRole('button', { name: 'Rotate' })).toBeNull()
+    })
   })
 
   it.each(['light', 'dark'])(

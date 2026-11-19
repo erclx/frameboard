@@ -148,7 +148,7 @@ function spotFor(
   const centered = clicked && (kind === 'rectangle' || kind === 'ellipse')
   const inset = centered ? SHAPE_SIDE / 2 : 0
   const round = (value: number) => Math.round(value * 100) / 100
-  const page = pageBox(frame.box, frame.device)
+  const page = pageBox(frame.box, frame.device, frame.turn)
   return {
     left: round(point.x - page.x - gap.origin.x - inset),
     top: round(point.y - page.y - gap.origin.y - inset),

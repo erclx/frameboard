@@ -10,7 +10,9 @@ import {
   islandOf,
   laptopParts,
   nearestPose,
+  nextTurn,
   pageBox,
+  pageCorners,
   PHONE_ISLAND,
   phoneIsland,
   POSE_SIZES,
@@ -19,6 +21,10 @@ import {
   shownBox,
   STATUS_BAR,
   topInset,
+  turnOf,
+  turnsWith,
+  uprightOf,
+  uprightWidth,
 } from './frame-device'
 import { drawnExtent } from './frame-widths'
 
@@ -40,7 +46,7 @@ describe('deviceForWidth', () => {
 
 describe('bezelBox', () => {
   it('grows a phone frame by 16 points above and below and by its buttons aside', () => {
-    expect(bezelBox(frame, 'phone')).toEqual({
+    expect(bezelBox(frame, 'phone', 'upright')).toEqual({
       x: 80,
       y: 24,
       width: 430,
@@ -49,7 +55,7 @@ describe('bezelBox', () => {
   })
 
   it('grows a tablet frame by 44 points on every side', () => {
-    expect(bezelBox(frame, 'tablet')).toEqual({
+    expect(bezelBox(frame, 'tablet', 'upright')).toEqual({
       x: 56,
       y: -4,
       width: 478,
@@ -59,7 +65,7 @@ describe('bezelBox', () => {
 
   it('grows a laptop frame by its lid above, and its chin, base, and the base reach below and aside', () => {
     const desktop = { x: 0, y: 0, width: 1440, height: 900 }
-    expect(bezelBox(desktop, 'laptop')).toEqual({
+    expect(bezelBox(desktop, 'laptop', 'upright')).toEqual({
       x: -109,
       y: -20,
       width: 1658,
@@ -69,7 +75,7 @@ describe('bezelBox', () => {
 
   it('grows a foldable frame by 20 points on every side', () => {
     const open = { x: 0, y: 0, width: 890, height: 626 }
-    expect(bezelBox(open, 'foldable')).toEqual({
+    expect(bezelBox(open, 'foldable', 'upright')).toEqual({
       x: -20,
       y: -20,
       width: 930,
@@ -78,13 +84,13 @@ describe('bezelBox', () => {
   })
 
   it('keeps the box with no device', () => {
-    expect(bezelBox(frame, null)).toEqual(frame)
+    expect(bezelBox(frame, null, 'upright')).toEqual(frame)
   })
 })
 
 describe('bezelReach', () => {
   it('reaches a phone frame by its drop shadow, past the body on every side', () => {
-    expect(bezelReach(frame, 'phone')).toEqual({
+    expect(bezelReach(frame, 'phone', 'upright')).toEqual({
       x: 52,
       y: 8,
       width: 486,
@@ -94,7 +100,7 @@ describe('bezelReach', () => {
 
   it('reaches a laptop frame by its base aside and by its shadow above and below', () => {
     const desktop = { x: 0, y: 0, width: 1440, height: 900 }
-    expect(bezelReach(desktop, 'laptop')).toEqual({
+    expect(bezelReach(desktop, 'laptop', 'upright')).toEqual({
       x: -110,
       y: -40,
       width: 1660,
@@ -104,7 +110,7 @@ describe('bezelReach', () => {
 
   it('reaches an open foldable frame by its drop shadow', () => {
     const open = { x: 0, y: 0, width: 890, height: 626 }
-    expect(bezelReach(open, 'foldable')).toEqual({
+    expect(bezelReach(open, 'foldable', 'upright')).toEqual({
       x: -60,
       y: -40,
       width: 1010,
@@ -113,8 +119,8 @@ describe('bezelReach', () => {
   })
 
   it.each(DEVICES)('holds the whole %s body and its edge', (device) => {
-    const body = bezelBox(frame, device)
-    const reach = bezelReach(frame, device)
+    const body = bezelBox(frame, device, 'upright')
+    const reach = bezelReach(frame, device, 'upright')
     expect(reach.x).toBeLessThan(body.x)
     expect(reach.y).toBeLessThan(body.y)
     expect(reach.x + reach.width).toBeGreaterThan(body.x + body.width)
@@ -122,7 +128,7 @@ describe('bezelReach', () => {
   })
 
   it('keeps the box with no device', () => {
-    expect(bezelReach(frame, null)).toEqual(frame)
+    expect(bezelReach(frame, null, 'upright')).toEqual(frame)
   })
 })
 
@@ -138,13 +144,13 @@ describe('laptopParts', () => {
 describe('drawnExtent with a device', () => {
   it('holds the bezel, so a frame placed past it lands clear', () => {
     const extent = drawnExtent(frame, [], 'phone')
-    expect(extent).toEqual(bezelBox(frame, 'phone'))
+    expect(extent).toEqual(bezelBox(frame, 'phone', 'upright'))
   })
 
   it('holds the laptop base reaching past the lid', () => {
     const desktop = { x: 0, y: 0, width: 1440, height: 900 }
     expect(drawnExtent(desktop, [], 'laptop')).toEqual(
-      bezelBox(desktop, 'laptop'),
+      bezelBox(desktop, 'laptop', 'upright'),
     )
   })
 
@@ -187,7 +193,7 @@ describe('pageBox', () => {
     expect(STATUS_BAR.height - (PHONE_ISLAND.top + PHONE_ISLAND.height)).toBe(
       10,
     )
-    expect(pageBox(phone, 'phone')).toEqual({
+    expect(pageBox(phone, 'phone', 'upright')).toEqual({
       x: 100,
       y: 94,
       width: 466,
@@ -198,13 +204,13 @@ describe('pageBox', () => {
   it.each([null, undefined, 'tablet', 'laptop', 'foldable'] as const)(
     'keeps the box as the page with %s',
     (device) => {
-      expect(pageBox(phone, device)).toEqual(phone)
-      expect(topInset(device)).toBe(0)
+      expect(pageBox(phone, device, 'upright')).toEqual(phone)
+      expect(topInset(device, 'upright')).toBe(0)
     },
   )
 
   it('leaves no page in a phone box shorter than the status bar', () => {
-    expect(pageBox({ ...phone, height: 40 }, 'phone').height).toBe(0)
+    expect(pageBox({ ...phone, height: 40 }, 'phone', 'upright').height).toBe(0)
   })
 })
 
@@ -305,5 +311,146 @@ describe('shownBox', () => {
 
   it('shows a phone-wide frame wearing no device at its stored box', () => {
     expect(shownBox({ box: at(2328), scroll: false })).toEqual(at(2328))
+  })
+})
+
+describe('a turned phone or tablet', () => {
+  const landscape = { x: 100, y: 40, width: 844, height: 390 }
+
+  it.each([
+    ['left', 'left'],
+    ['right', 'right'],
+    ['upright', 'upright'],
+    [undefined, 'upright'],
+    ['sideways', 'upright'],
+    [1, 'upright'],
+  ] as const)('reads a stored turn of %s as %s', (stored, turn) => {
+    expect(turnOf(stored)).toBe(turn)
+  })
+
+  it.each([
+    [undefined, 'left'],
+    ['upright', 'left'],
+    ['left', 'right'],
+    ['right', 'upright'],
+  ] as const)('rotates from %s on to %s', (turn, next) => {
+    expect(nextTurn(turn)).toBe(next)
+  })
+
+  it.each([
+    ['phone', true],
+    ['tablet', true],
+    ['laptop', false],
+    ['foldable', false],
+    [null, false],
+  ] as const)('turns a %s: %s', (device, turns) => {
+    expect(turnsWith(device)).toBe(turns)
+  })
+
+  it.each([
+    ['a size', { width: 390, height: 844 }, { width: 390, height: 844 }],
+    ['no size', undefined, null],
+    ['a fraction', { width: 390.5, height: 844 }, null],
+    ['a zero side', { width: 0, height: 844 }, null],
+    ['a string side', { width: '390', height: 844 }, null],
+  ] as const)('reads an upright key holding %s', (_label, stored, size) => {
+    expect(uprightOf(stored)).toEqual(size)
+  })
+
+  it.each([
+    [
+      'turned with a kept size',
+      { turn: 'left', upright: { width: 390, height: 844 } },
+      390,
+    ],
+    ['turned with no kept size', { turn: 'left' }, 844],
+    [
+      'upright with a stale kept size',
+      { upright: { width: 390, height: 844 } },
+      844,
+    ],
+  ] as const)(
+    'picks the device by the upright width when %s',
+    (_label, keys, width) => {
+      expect(uprightWidth({ width: 844, ...keys })).toBe(width)
+    },
+  )
+
+  it.each(['left', 'right'] as const)(
+    'drops a phone’s status bar turned %s, its page the whole box',
+    (turn) => {
+      expect(topInset('phone', turn)).toBe(0)
+      expect(pageBox(landscape, 'phone', turn)).toEqual(landscape)
+      expect(pageCorners('phone', turn)).toBe('62px')
+    },
+  )
+
+  it('keeps an upright phone’s page square on top under its bar', () => {
+    expect(pageCorners('phone', 'upright')).toBe('0 0 62px 62px')
+  })
+
+  it.each(['left', 'right'] as const)(
+    'stands a phone’s buttons past its long edges turned %s, never its short ones',
+    (turn) => {
+      expect(bezelBox(landscape, 'phone', turn)).toEqual({
+        x: 84,
+        y: 20,
+        width: 876,
+        height: 430,
+      })
+    },
+  )
+
+  it('grows a turned tablet by 44 points on every side, as upright', () => {
+    const tablet = { x: 100, y: 40, width: 1194, height: 834 }
+    expect(bezelBox(tablet, 'tablet', 'left')).toEqual({
+      x: 56,
+      y: -4,
+      width: 1282,
+      height: 922,
+    })
+  })
+
+  it.each(['phone', 'tablet'] as const)(
+    'reaches past the whole turned %s body and its edge',
+    (device) => {
+      const body = bezelBox(landscape, device, 'right')
+      const reach = bezelReach(landscape, device, 'right')
+      expect(reach.x).toBeLessThan(body.x)
+      expect(reach.y).toBeLessThan(body.y)
+      expect(reach.x + reach.width).toBeGreaterThan(body.x + body.width)
+      expect(reach.y + reach.height).toBeGreaterThan(body.y + body.height)
+    },
+  )
+
+  it.each(['laptop', 'foldable'] as const)(
+    'draws a %s upright whatever turn it holds',
+    (device) => {
+      const box = { x: 0, y: 0, width: 1440, height: 900 }
+      expect(bezelBox(box, device, 'left')).toEqual(
+        bezelBox(box, device, 'upright'),
+      )
+    },
+  )
+
+  it('shows a turned page-tall hugging phone one landscape screen tall, at its upright width', () => {
+    const box = { x: 0, y: 0, width: 844, height: 1500 }
+    expect(
+      shownBox({ box, device: 'phone', turn: 'left', hugHeight: true }),
+    ).toEqual({ x: 0, y: 0, width: 844, height: 390 })
+  })
+
+  it('shows a turned fixed phone at its stored box, which is its landscape screen', () => {
+    const box = { x: 0, y: 0, width: 667, height: 375 }
+    expect(
+      shownBox({ box, device: 'phone', turn: 'right', hugHeight: false }),
+    ).toEqual(box)
+  })
+
+  it('shows a turned scroll phone at its stored box', () => {
+    const box = { x: 0, y: 0, width: 844, height: 390 }
+    expect(
+      shownBox({ box, device: 'phone', turn: 'left', scroll: true }),
+    ).toEqual(box)
   })
 })

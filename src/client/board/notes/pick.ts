@@ -55,7 +55,7 @@ export async function readPick(
     `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
   )
   // A page that announced nothing has no bridge to wait on, so it takes a frame note at once.
-  const page = pageBox(frame.box, frame.device)
+  const page = pageBox(frame.box, frame.device, frame.turn)
   const shown =
     iframe && shownHashOf(iframe) !== null
       ? await request(iframe, 'pick-at', {
