@@ -29,8 +29,9 @@ Never link the viewer or a model by a web address, since a frame loads nothing o
 
 Every staging choice is an attribute on the element, so set one with `frameboard edit --attr` on a placed frame rather than rewriting the file.
 
-- Set `camera-orbit` for the angle, and `max-camera-orbit` beside it once the distance passes the model's own framing, since the viewer ignores the distance otherwise
-- Set `orientation` to turn the model itself and `scale` to size it
+- Set `camera-orbit` for the angle, and `max-camera-orbit` beside it once the distance passes the model's own framing, since the viewer ignores the distance otherwise. The inspector shows the angle under Camera.
+- Set `orientation` to turn the model itself and `scale` to size it. The inspector shows `orientation` under Model.
+- Turn a model with `orientation` rather than a CSS `transform`, since the inspector hides its box rotation for a model whose `style` sets no `transform` and no `rotate`
 - Set `animation-name` and `autoplay` only for a model that carries a clip
 - Read the element again before staging it, since the developer may have turned it by hand on the board
 

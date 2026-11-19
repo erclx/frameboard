@@ -78,26 +78,49 @@ describe('ModelSection', () => {
     )
 
     expect(screen.getByText('phone.glb')).toBeVisible()
-    expect(screen.getByRole('textbox', { name: 'Angle across' })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: 'Camera around' })).toHaveValue(
       '-40°',
     )
-    expect(screen.getByRole('textbox', { name: 'Angle down' })).toHaveValue(
+    expect(screen.getByRole('textbox', { name: 'Camera height' })).toHaveValue(
       '60°',
     )
     expect(screen.getByRole('textbox', { name: 'Rotation X' })).toHaveValue(
       '20°',
     )
     expect(screen.getByRole('textbox', { name: 'Scale' })).toHaveValue('2')
-    expect(screen.getByRole('button', { name: 'Animation' })).toHaveTextContent(
+    expect(screen.getByRole('button', { name: 'Clip' })).toHaveTextContent(
       'Run',
     )
-    expect(screen.getByRole('switch', { name: 'Autoplay' })).toBeChecked()
+    expect(screen.getByRole('switch', { name: 'Play on load' })).toBeChecked()
+  })
+
+  it('names the double-click that turns the model by hand', () => {
+    renderSection(readingOf())
+
+    const hint = screen.getByText(/the model to turn it by hand/)
+
+    expect(hint).toBeVisible()
+    expect(hint).toHaveTextContent(
+      'Double-click the model to turn it by hand. Esc leaves.',
+    )
+  })
+
+  it('counts the clips the file holds', () => {
+    renderSection(readingOf())
+
+    expect(screen.getByText('Clip in this file · 2')).toBeVisible()
+  })
+
+  it('drops the count for a model with no clip', () => {
+    renderSection(readingOf({ clips: [] }))
+
+    expect(screen.getByText('Clip in this file')).toBeVisible()
   })
 
   it('writes an angle as the orbit with its reach beside it', async () => {
     const { writes } = renderSection(readingOf())
 
-    await typeInto('Angle across', '-40')
+    await typeInto('Camera around', '-40')
 
     expect(writes).toEqual([
       [
@@ -110,7 +133,7 @@ describe('ModelSection', () => {
   it('shows an angle on the live viewer before it is written', async () => {
     const { staged } = renderSection(readingOf())
 
-    await typeInto('Angle down', '30')
+    await typeInto('Camera height', '30')
 
     expect(staged.at(0)).toEqual([
       { name: 'camera-orbit', value: '0deg 30deg auto' },
@@ -144,7 +167,7 @@ describe('ModelSection', () => {
   it('writes nothing for a value left where it was', async () => {
     const { writes } = renderSection(readingOf())
 
-    await typeInto('Angle across', '0')
+    await typeInto('Camera around', '0')
 
     expect(writes).toEqual([])
   })
@@ -165,7 +188,7 @@ describe('ModelSection', () => {
   it('writes the clip picked as the animation name', async () => {
     const { writes } = renderSection(readingOf())
 
-    await userEvent.click(screen.getByRole('button', { name: 'Animation' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Clip' }))
     await userEvent.click(
       await screen.findByRole('menuitemradio', { name: 'Run' }),
     )
@@ -176,7 +199,7 @@ describe('ModelSection', () => {
   it('offers no clip to pick for a model that carries none', () => {
     renderSection(readingOf({ clips: [] }))
 
-    const picker = screen.getByRole('button', { name: 'Animation' })
+    const picker = screen.getByRole('button', { name: 'Clip' })
 
     expect(picker).toBeDisabled()
     expect(picker).toHaveTextContent('None')
@@ -185,7 +208,7 @@ describe('ModelSection', () => {
   it('states autoplay when its switch turns on', async () => {
     const { writes } = renderSection(readingOf())
 
-    await userEvent.click(screen.getByRole('switch', { name: 'Autoplay' }))
+    await userEvent.click(screen.getByRole('switch', { name: 'Play on load' }))
 
     expect(writes).toEqual([[{ name: 'autoplay', value: '' }]])
   })
@@ -195,7 +218,7 @@ describe('ModelSection', () => {
       readingOf({ staged: { ...UNSTAGED, autoplay: '' } }),
     )
 
-    await userEvent.click(screen.getByRole('switch', { name: 'Autoplay' }))
+    await userEvent.click(screen.getByRole('switch', { name: 'Play on load' }))
 
     expect(writes).toEqual([[{ name: 'autoplay', value: null }]])
   })
@@ -203,8 +226,10 @@ describe('ModelSection', () => {
   it('takes no edit while the board cannot write', () => {
     renderSection(readingOf(), { disabled: true })
 
-    expect(screen.getByRole('textbox', { name: 'Angle across' })).toBeDisabled()
-    expect(screen.getByRole('switch', { name: 'Autoplay' })).toBeDisabled()
+    expect(
+      screen.getByRole('textbox', { name: 'Camera around' }),
+    ).toBeDisabled()
+    expect(screen.getByRole('switch', { name: 'Play on load' })).toBeDisabled()
   })
 })
 

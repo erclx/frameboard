@@ -1,5 +1,6 @@
 import { useRef } from 'react'
 
+import { Kbd } from '@/client/components/ui/kbd'
 import type { ModelReading, ModelStage } from '@/shared/frame-bridge/model'
 
 import {
@@ -29,6 +30,9 @@ const DEGREES: Intl.NumberFormatOptions = {
   maximumFractionDigits: 2,
 }
 const RATIO: Intl.NumberFormatOptions = { maximumFractionDigits: 2 }
+
+/** Clears a word prefix such as Around, where the default clears one letter. */
+const WORD_INSET = 'pl-[58px]'
 
 const CAPTION =
   'mb-[3px] ml-0.5 block text-(length:--text-caption) text-muted-foreground'
@@ -107,6 +111,12 @@ export function ModelSection({ model, disabled, write }: ModelSectionProps) {
     (_from, value) => [scaleStage(value)],
   )
 
+  // A file with no clip drops the count rather than reading zero beside an off list.
+  const clipCaption =
+    reading.clips.length === 0
+      ? 'Clip in this file'
+      : `Clip in this file · ${reading.clips.length}`
+
   return (
     <section
       aria-labelledby="inspector-model"
@@ -123,14 +133,23 @@ export function ModelSection({ model, disabled, write }: ModelSectionProps) {
           {fileName(reading.src)}
         </span>
       </div>
+      <p className="mb-2 rounded-md bg-muted px-2 py-1.5 text-(length:--text-caption) leading-snug text-muted-foreground">
+        <b className="font-semibold text-foreground">Double-click</b> the model
+        to turn it by hand.{' '}
+        <Kbd className="h-4 bg-background text-[10px] text-foreground ring-1 ring-border">
+          Esc
+        </Kbd>{' '}
+        leaves.
+      </p>
       <div role="group" aria-labelledby="inspector-model-angle">
         <span id="inspector-model-angle" className={CAPTION}>
-          Angle
+          Camera · where you look from
         </span>
         <div className="grid grid-cols-2 gap-1.5">
           <NumberField
-            prefix="H"
-            label="Angle across"
+            prefix="Around"
+            inset={WORD_INSET}
+            label="Camera around"
             value={angle.theta}
             min={-180}
             max={180}
@@ -139,8 +158,9 @@ export function ModelSection({ model, disabled, write }: ModelSectionProps) {
             {...angled('theta')}
           />
           <NumberField
-            prefix="V"
-            label="Angle down"
+            prefix="Height"
+            inset={WORD_INSET}
+            label="Camera height"
             value={angle.phi}
             min={0}
             max={180}
@@ -156,7 +176,7 @@ export function ModelSection({ model, disabled, write }: ModelSectionProps) {
         className="mt-1.5"
       >
         <span id="inspector-model-rotation" className={CAPTION}>
-          Rotation
+          Model · how it sits
         </span>
         <div className="grid grid-cols-3 gap-1.5">
           <NumberField
@@ -185,7 +205,7 @@ export function ModelSection({ model, disabled, write }: ModelSectionProps) {
           />
         </div>
       </div>
-      <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+      <div className="mt-1.5">
         <NumberField
           label="Scale"
           caption="Scale"
@@ -196,29 +216,29 @@ export function ModelSection({ model, disabled, write }: ModelSectionProps) {
           disabled={disabled}
           {...scaled}
         />
-        <div className="min-w-0">
-          <span className={CAPTION}>Animation</span>
-          <TypePicker
-            label="Animation"
-            className="w-full"
-            shown={clip ?? 'None'}
-            current={clip}
-            options={reading.clips.map((name) => ({ name, value: name }))}
-            // A model with no clip has nothing to pick.
-            disabled={disabled || reading.clips.length === 0}
-            onPick={(name) =>
-              void stageAndWrite(
-                model,
-                [{ name: 'animation-name', value: name }],
-                write,
-              )
-            }
-          />
-        </div>
+      </div>
+      <div className="mt-1.5">
+        <span className={CAPTION}>{clipCaption}</span>
+        <TypePicker
+          label="Clip"
+          className="w-full"
+          shown={clip ?? 'None'}
+          current={clip}
+          options={reading.clips.map((name) => ({ name, value: name }))}
+          // A model with no clip has nothing to pick.
+          disabled={disabled || reading.clips.length === 0}
+          onPick={(name) =>
+            void stageAndWrite(
+              model,
+              [{ name: 'animation-name', value: name }],
+              write,
+            )
+          }
+        />
       </div>
       <SwitchRow
         className="mt-1.5 h-6"
-        label="Autoplay"
+        label="Play on load"
         on={reading.staged.autoplay !== null}
         disabled={disabled}
         onTurn={() =>

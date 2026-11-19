@@ -103,7 +103,7 @@ async function tiltedHero(page: Page): Promise<void> {
 
 /** The Model section once the viewer lists its clip, which it does only after the model draws. */
 const MODEL_READ =
-  'section[aria-labelledby="inspector-model"] button[aria-label="Animation"]:not(:disabled)'
+  'section[aria-labelledby="inspector-model"] button[aria-label="Clip"]:not(:disabled)'
 
 /**
  * Serves hero with a model whose clip never plays, restoring hero on close.
