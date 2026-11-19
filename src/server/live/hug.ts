@@ -5,7 +5,7 @@ import { type MeasuredSize, setMeasured } from '@/server/board/frames'
 import { LAYOUT_FILE } from '@/server/board/scan'
 import type { ContentSize } from '@/server/capture/fit'
 import { FrameboardError } from '@/shared/errors'
-import { pageBox, topInset } from '@/shared/frame-device'
+import { pageBox, sideInset, topInset } from '@/shared/frame-device'
 import { referenceHeight } from '@/shared/frame-sizes'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
 
@@ -159,12 +159,12 @@ async function measureParts(
 ): Promise<MeasuredSize> {
   const size: MeasuredSize = {}
   if (parts !== 'linked') {
-    // A phone's page starts under its status bar, so the box holds the page and the bar.
+    // A phone's page stands inside its status bar or side strips, so the box holds the page and both.
     const page = pageBox(frame.box, frame.device, frame.turn)
     const own = await measure({ ...frame, box: page })
     if (!own.empty) {
       Object.assign(size, {
-        width: own.width,
+        width: own.width + 2 * sideInset(frame.device, frame.turn),
         height: own.height + topInset(frame.device, frame.turn),
       })
     }

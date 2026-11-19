@@ -129,6 +129,27 @@ describe('createHug', () => {
     expect(entries().hero).toMatchObject({ width: 844, height: 1500 })
   })
 
+  it('stores a turned phone hugging its width at its content plus both side insets', async () => {
+    board = boardOf({
+      hero: {
+        width: 844,
+        height: 390,
+        hugWidth: true,
+        showDevice: true,
+        turn: 'left',
+        upright: { width: 390, height: 844 },
+      },
+    })
+    const hug = createHug({
+      root: board.root,
+      measure: async () => sized(700, 390),
+    })
+
+    await hug.now(await scanBoard(board.root), [HERO])
+
+    expect(entries().hero).toMatchObject({ width: 700 + 2 * 54 })
+  })
+
   it('measures a phone frame with its device off at its whole box', async () => {
     board = boardOf({ hero: { width: 466, height: 678, hugHeight: true } })
     const hug = createHug({
