@@ -10,6 +10,7 @@ import {
 } from '@/shared/frame-bridge/messages'
 
 import { chromeHandlers } from './chrome'
+import { controlHandlers } from './controls'
 import { gapHandlers } from './gap'
 import { addressed, type Handler, type Handlers, onceParsed } from './handler'
 import { keyHandlers } from './keys'
@@ -20,6 +21,7 @@ import { modelHandlers } from './model'
 import { motionHandlers } from './motion'
 import { presentHandlers } from './present'
 import { previewHandlers } from './preview'
+import { reachHandlers } from './reach'
 import { stepHandlers } from './steps'
 import { openTextEdit } from './text-edit'
 
@@ -42,6 +44,7 @@ const committed = new Map<string, () => void>()
 
 const handlers: Handlers = {
   ...chromeHandlers,
+  ...controlHandlers,
   ...gapHandlers,
   ...keyHandlers,
   ...liveElementHandlers,
@@ -50,6 +53,7 @@ const handlers: Handlers = {
   ...modelHandlers,
   ...motionHandlers,
   ...presentHandlers,
+  ...reachHandlers,
   ...stepHandlers,
   'element-box': (address) => {
     const element = addressed(address)
