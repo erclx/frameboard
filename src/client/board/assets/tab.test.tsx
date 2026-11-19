@@ -210,7 +210,7 @@ describe('AssetsTab', () => {
       expect(screen.getByText('2 frames')).toBeVisible()
       expect(
         screen.getByRole('button', {
-          name: 'Copy path of icons/star.svg, SVG, 149 B, 2 frames',
+          name: 'Copy path of icons/star.svg, SVG · 2 frames, 149 B',
         }),
       ).toBeVisible()
     })

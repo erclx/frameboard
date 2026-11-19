@@ -163,7 +163,10 @@ export function createApp({
   app.route('/', structureRoutes(root, actions.access, history, measure, given))
   app.route('/', historyRoutes(actions.access, history))
   app.route('/', notesRoutes(root, actions.access, delivery, dispatch))
-  app.route('/', assetsRoutes(root, actions.access, { usage: assetUsage }))
+  app.route(
+    '/',
+    assetsRoutes(root, actions.access, history, { usage: assetUsage }),
+  )
   app.route('/', sourcingRoutes(root, actions.access))
   app.route('/', elementsRoutes(root, actions.access, selection, given))
   app.route('/', findRoutes(root))

@@ -37,6 +37,7 @@ import {
   type SelectionStore,
   selectionStore,
 } from '../selection'
+import { canvasView } from '../view'
 import { type AssetSize, naturalSize, placedSize } from './asset-size'
 import type { FlowGuess } from './flow-guess'
 import { type FrameGap, gapUnder, moveGapUnder } from './gap'
@@ -279,6 +280,32 @@ export async function placeFileFrame(
     reportRefusal("Couldn't add a frame")(error)
     return null
   }
+}
+
+/**
+ * Lands a file in a frame of its own at the center of the view, the landing
+ * a drop on bare canvas makes, doing nothing while no canvas is mounted.
+ */
+export function placeAtCenter(
+  file: PlaceableFile,
+  {
+    view = canvasView,
+    live = liveStore,
+  }: { view?: typeof canvasView; live?: LiveStore } = {},
+): void {
+  const page = view.page()
+  const visible = view.visible()
+  if (page === null || visible === null) return
+  const frames =
+    live
+      .getState()
+      .board?.projects.flatMap((project) => project.pages)
+      .find((record) => record.ref === page)?.frames ?? []
+  const at = {
+    x: visible.x + visible.width / 2,
+    y: visible.y + visible.height / 2,
+  }
+  void placeFileFrame(page, frames, at, file)
 }
 
 /**

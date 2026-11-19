@@ -8,7 +8,10 @@ import {
   describeUsage,
   formatLength,
   formatSize,
+  frameLabel,
   linkPath,
+  stemOf,
+  tileLabel,
 } from './describe'
 
 describe('describeAsset', () => {
@@ -89,5 +92,44 @@ describe('assetUrl', () => {
     expect(assetUrl('my studio', 'img/a b.png')).toBe(
       '/frames/my%20studio/assets/img/a%20b.png',
     )
+  })
+})
+
+describe('stemOf', () => {
+  it('splits at the last dot, keeping the dot with the extension', () => {
+    expect(stemOf('hero.v2.png')).toEqual({
+      stem: 'hero.v2',
+      extension: '.png',
+    })
+  })
+
+  it('takes a name with no dot, or a leading dot alone, whole as the stem', () => {
+    expect(stemOf('LICENSE')).toEqual({ stem: 'LICENSE', extension: '' })
+    expect(stemOf('.env')).toEqual({ stem: '.env', extension: '' })
+  })
+})
+
+describe('tileLabel', () => {
+  it('holds the caption as drawn ahead of the size, so the name contains the visible text', () => {
+    expect(
+      tileLabel({
+        path: 'img/lake.jpg',
+        kind: 'image',
+        size: 2_000,
+        frames: 1,
+      }),
+    ).toBe('Copy path of img/lake.jpg, image · 1 frame, 2 KB')
+  })
+
+  it('uses the kind and size caption a listing with no counts draws', () => {
+    expect(tileLabel({ path: 'lake.jpg', kind: 'image', size: 2_000 })).toBe(
+      'Copy path of lake.jpg, image · 2 KB',
+    )
+  })
+})
+
+describe('frameLabel', () => {
+  it('names a frame by its page and its own name', () => {
+    expect(frameLabel('studio/home/hero')).toBe('home / hero')
   })
 })

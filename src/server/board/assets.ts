@@ -1,15 +1,19 @@
 import { randomBytes } from 'node:crypto'
+import { existsSync, readFileSync } from 'node:fs'
 import {
   link,
   mkdir,
   readdir,
+  readFile,
   realpath,
+  rename,
   rm,
   stat,
   writeFile,
 } from 'node:fs/promises'
-import { join, sep } from 'node:path'
+import { basename, dirname, join, sep } from 'node:path'
 
+import { type FrameTarget, readFrame } from '@/server/checks/frame-source'
 import {
   assetKind,
   extensionOf,
@@ -19,10 +23,23 @@ import {
   type PlaceableKind,
 } from '@/shared/asset-kinds'
 import { ASSETS_FOLDER } from '@/shared/board-files'
-import { NAME_MAX_LENGTH, nextFreeName } from '@/shared/names'
-import type { AssetAddResult, AssetFile } from '@/shared/records/assets'
+import { FrameboardError } from '@/shared/errors'
+import { PROJECT_KITS } from '@/shared/kits'
+import {
+  isValidName,
+  NAME_MAX_LENGTH,
+  namesCollide,
+  nextFreeName,
+} from '@/shared/names'
+import type {
+  AssetAddResult,
+  AssetFile,
+  AssetWriteResult,
+} from '@/shared/records/assets'
 import { LICENSE_FILE_SUFFIX } from '@/shared/records/sourcing'
 
+import { framesLinking, rewriteAssetLinks } from './asset-links'
+import type { JournalOptions } from './journal'
 import { isCode, LOCK_SUFFIX, TEMP_SUFFIX } from './json-record'
 
 /** One dropped file, by the name it came with. */
@@ -105,30 +122,12 @@ export async function resolveAsset(
   projectDir: string,
   path: string,
 ): Promise<ResolvedAsset> {
-  const missing = {
-    ok: false,
-    code: 'asset-missing',
-    message: `assets/${path} is not a file in the project's assets folder`,
-  } as const
-  const segments = path.split('/')
-  if (
-    segments.some(
-      (segment) =>
-        segment === '' || segment.startsWith('.') || isScratch(segment),
-    )
-  ) {
-    return missing
-  }
-  const folder = join(projectDir, ASSETS_FOLDER)
-  try {
-    const real = await realpath(folder)
-    const target = await realpath(join(folder, ...segments))
-    if (!target.startsWith(real + sep) || !(await stat(target)).isFile()) {
-      return missing
+  if ((await confinedAsset(projectDir, path)) === null) {
+    return {
+      ok: false,
+      code: 'asset-missing',
+      message: `assets/${path} is not a file in the project's assets folder`,
     }
-  } catch (error) {
-    if (isCode(error, 'ENOENT') || isCode(error, 'ENOTDIR')) return missing
-    throw error
   }
   const kind = assetKind(path)
   if (!isPlaceableKind(kind)) {
@@ -141,8 +140,258 @@ export async function resolveAsset(
   return { ok: true, kind }
 }
 
+/**
+ * The absolute path of a file under the project's `assets/`, or null for a
+ * path naming a dot, lock, or temp segment, or whose real path leaves the
+ * folder or is not a file.
+ */
+async function confinedAsset(
+  projectDir: string,
+  path: string,
+): Promise<string | null> {
+  const segments = path.split('/')
+  if (
+    segments.some(
+      (segment) =>
+        segment === '' || segment.startsWith('.') || isScratch(segment),
+    )
+  ) {
+    return null
+  }
+  const folder = join(projectDir, ASSETS_FOLDER)
+  const file = join(folder, ...segments)
+  try {
+    const real = await realpath(folder)
+    const target = await realpath(file)
+    if (!target.startsWith(real + sep) || !(await stat(target)).isFile()) {
+      return null
+    }
+  } catch (error) {
+    if (isCode(error, 'ENOENT') || isCode(error, 'ENOTDIR')) return null
+    throw error
+  }
+  return file
+}
+
+/**
+ * A file a hand write may change, refusing `asset-not-found` for one
+ * `confinedAsset` refuses, a license file, or a kit's file, which the Theme
+ * tab owns.
+ */
+async function writableAsset(
+  projectDir: string,
+  path: string,
+): Promise<string> {
+  const file =
+    path.split('/')[0] === PROJECT_KITS || path.endsWith(LICENSE_FILE_SUFFIX)
+      ? null
+      : await confinedAsset(projectDir, path)
+  if (file === null) {
+    throw new FrameboardError(
+      'asset-not-found',
+      `assets/${path} is not a file in the project's assets folder.`,
+      { path },
+    )
+  }
+  return file
+}
+
+/** The license file beside an asset, when it has one. */
+function licenseOf(file: string): string | null {
+  const license = `${file}${LICENSE_FILE_SUFFIX}`
+  return existsSync(license) ? license : null
+}
+
+/**
+ * Deletes an asset and its license file, each taken out through the journal
+ * where one is given, so an undo brings both back.
+ */
+export async function removeAsset(
+  projectDir: string,
+  path: string,
+  { journal }: JournalOptions = {},
+): Promise<AssetWriteResult> {
+  const file = await writableAsset(projectDir, path)
+  for (const each of [file, licenseOf(file)]) {
+    if (each === null) continue
+    if (journal) await journal.removed(each)
+    else await rm(each)
+  }
+  return { path, frames: [] }
+}
+
 function isScratch(name: string): boolean {
   return name.endsWith(LOCK_SUFFIX) || name.endsWith(TEMP_SUFFIX)
+}
+
+/**
+ * Writes an upload's bytes under an asset's path and takes its license out, since it named the old bytes.
+ * Refuses `asset-type-refused` for an upload a drop refuses or of another kind, which frames would change under.
+ */
+export async function replaceAsset(
+  projectDir: string,
+  path: string,
+  upload: AssetUpload,
+  { journal }: JournalOptions = {},
+): Promise<AssetWriteResult> {
+  const file = await writableAsset(projectDir, path)
+  const refusal =
+    uploadRefusal(upload) ??
+    (assetKind(upload.name) === assetKind(path)
+      ? null
+      : `${upload.name} is not the same kind of file as ${path}, so it cannot replace it.`)
+  if (refusal !== null) {
+    throw new FrameboardError('asset-type-refused', refusal, { path })
+  }
+  const temp = join(
+    dirname(file),
+    `${randomBytes(6).toString('hex')}${TEMP_SUFFIX}`,
+  )
+  await writeFile(temp, upload.bytes, { flag: 'wx' })
+  try {
+    const license = licenseOf(file)
+    if (journal) {
+      await journal.replaced(file, temp)
+      if (license !== null) await journal.removed(license)
+    } else {
+      await rename(temp, file)
+      if (license !== null) await rm(license)
+    }
+  } finally {
+    await rm(temp, { force: true })
+  }
+  return { path, frames: [] }
+}
+
+/** Checks the frames a rename would rewrite, by ref, throwing to refuse it. */
+export type RenameGate = (refs: string[]) => Promise<void>
+
+export interface RenameOptions extends JournalOptions {
+  gate?: RenameGate
+}
+
+/**
+ * Renames an asset and its license and repoints every linking frame, writing nothing until the gate passes,
+ * and puts written frames back when a later write fails, so no project is left half renamed.
+ * Refuses `invalid-name` off the name rule or for a new extension, and `name-taken` for a name held in any case.
+ */
+export async function renameAsset(
+  root: string,
+  project: string,
+  path: string,
+  name: string,
+  { journal, gate = async () => {} }: RenameOptions = {},
+): Promise<AssetWriteResult> {
+  const projectDir = join(root, project)
+  const file = await writableAsset(projectDir, path)
+  const folder = dirname(file)
+  const from = basename(file)
+  const renamed = [...path.split('/').slice(0, -1), name].join('/')
+  if (name === from) return { path, frames: [] }
+  if (
+    !isValidName(name) ||
+    isScratch(name) ||
+    name.endsWith(LICENSE_FILE_SUFFIX) ||
+    extensionOf(name) !== extensionOf(from)
+  ) {
+    throw new FrameboardError(
+      'invalid-name',
+      `${name} is not a name ${from} can take. Use letters, digits, dots, dashes, and underscores, keep the .${extensionOf(from)} ending, and stay within ${NAME_MAX_LENGTH} characters.`,
+      { path, name },
+    )
+  }
+  const taken = (await readdir(folder)).find(
+    (entry) =>
+      entry !== from &&
+      entry !== `${from}${LICENSE_FILE_SUFFIX}` &&
+      (namesCollide(entry, name) ||
+        namesCollide(entry, `${name}${LICENSE_FILE_SUFFIX}`)),
+  )
+  if (taken !== undefined) {
+    throw new FrameboardError(
+      'name-taken',
+      `assets/${[...path.split('/').slice(0, -1), taken].join('/')} already exists. Pick another name.`,
+      { path, name },
+    )
+  }
+
+  const frames = await framesLinking(root, project, path)
+  const ref = ({ page, name: frame }: FrameTarget) =>
+    `${project}/${page}/${frame}`
+  await gate(frames.map(ref))
+
+  const target = join(folder, name)
+  const rewrites = frames.flatMap((frame) => {
+    const source = readFrame(frame)
+    if (!Buffer.from(source.html, 'utf8').equals(readFileSync(source.path))) {
+      throw new FrameboardError(
+        'invalid-utf8',
+        `${ref(frame)} is not UTF-8, so the rename cannot point its links at ${name}. Nothing was renamed.`,
+        { frame: ref(frame) },
+      )
+    }
+    const after = rewriteAssetLinks(source, file, target)
+    return after === null
+      ? []
+      : [{ path: source.path, ref: ref(frame), before: source.html, after }]
+  })
+  const written: typeof rewrites = []
+  const license = licenseOf(file)
+  try {
+    for (const rewrite of rewrites) {
+      await writeFrameWhole(rewrite.path, rewrite.before, rewrite.after)
+      written.push(rewrite)
+    }
+    if (journal) {
+      for (const each of written) {
+        journal.rewritten(each.path, each.ref, each.before, each.after)
+      }
+      await journal.moved(file, target)
+      if (license !== null) {
+        await journal.moved(license, `${target}${LICENSE_FILE_SUFFIX}`)
+      }
+    } else {
+      await rename(file, target)
+      if (license !== null) {
+        await rename(license, `${target}${LICENSE_FILE_SUFFIX}`)
+      }
+    }
+  } catch (error) {
+    for (const each of written.toReversed()) {
+      await writeFrameWhole(each.path, each.after, each.before).catch(() => {})
+    }
+    throw error
+  }
+  return { path: renamed, frames: written.map((each) => each.ref) }
+}
+
+/**
+ * Writes a frame file whole through a temp file, refusing with
+ * `stale-address` when the file no longer holds `before`, so an agent's
+ * write that landed since is never overwritten.
+ */
+async function writeFrameWhole(
+  path: string,
+  before: string,
+  after: string,
+): Promise<void> {
+  const temp = join(
+    dirname(path),
+    `.${basename(path)}.${randomBytes(6).toString('hex')}${TEMP_SUFFIX}`,
+  )
+  await writeFile(temp, after)
+  try {
+    if ((await readFile(path, 'utf8')) !== before) {
+      throw new FrameboardError(
+        'stale-address',
+        `An agent changed ${basename(path)} while the rename read it, so nothing was renamed. Try again.`,
+        { path },
+      )
+    }
+    await rename(temp, path)
+  } finally {
+    await rm(temp, { force: true })
+  }
 }
 
 /**

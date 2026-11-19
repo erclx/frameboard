@@ -23,13 +23,13 @@ Owns the left panel, being `project-header.tsx` with the way home, the name, and
 
 ### `src/client/board/assets/`
 
-Owns the Assets tab, whose Files, Find, and Generate row sits in `tab.tsx`. Files in `files.tsx` lists the project's `assets/` files as tiles grouped by folder in `groups.ts`, under a name search and kind chips. A kit's files under `kits/` stay out of the list and the counts, and one line sends the reader to the Theme tab instead.
+Owns the Assets tab, whose Files, Find, and Generate row sits in `tab.tsx`. Files in `files.tsx` lists the project's `assets/` files as tiles grouped by folder in `groups.ts`, under a name search and kind chips, and a kit's files under `kits/` show as one line pointing at the Theme tab.
 
-- Root files come first, each folder's group collapses from its heading, and a chip with no files hides
-- A tile's `<type> · <frames>` line reads `Unused` for a file no frame links, and its size stays in its accessible name
-- A tile click copies `../assets/<path>`, each segment encoded
-- A drop on the tab, or the header's `+` picker, posts the files through `writeBoard`, and a tab with no write access says why and adds nothing
-- Refusals show as an inline line under the drop hint rather than a toast, and a drop reloads only the frames linking a dropped file, through the `assets/` watch
+- Root files come first, a folder's group collapses from its heading, a chip with no files hides, and a tile reads `Unused` for a file no frame links
+- A tile click copies `../assets/<path>`, each segment encoded, and the tile's size stays in its accessible name
+- A drop or the header's `+` picker posts through `writeBoard`, refusals show inline under the drop hint, and a read-only tab says why and adds nothing
+- A tile's menu opens from a right-click or a writing tab's ⋯, offering Place on canvas through `placeAtCenter` and Show frames using it, and Copy path alone when read-only
+- Rename edits the stem in `RenameField`, Replace file… bumps the tile's `?v=` so its thumbnail reloads, and Delete asks first only for a file some frame links
 
 ### `src/client/board/assets/find/`
 
@@ -51,3 +51,9 @@ Owns the first-run guide, the card a new board's empty page shows, asking for a 
 - `state.ts` keeps the step in the tab, so it outlives the canvas a rename remounts, and Skip or Finish ends it until reload
 - A tab `main.tsx` booted on `/` lands on the start page once per tab while the board is untouched, and home renders nothing until access is known
 - Each answer goes through a write the board already makes, so Undo takes each back, and Finish writes the frame and fits the view to it
+
+## Gotchas
+
+- Each asset write from the tile menu is one undo step. Rename and delete carry the license file, and replace takes it out, since the license named the bytes it replaced.
+- A rename rewrites the loads in each linking frame's own file through `src/server/board/asset-links.ts`, and refuses `asset-held` while a session holds one of those frames.
+- A link in a linked sheet or a script string is not a load the rename sees, so it breaks for the link check to report.
