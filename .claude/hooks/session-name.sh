@@ -52,7 +52,7 @@ fi
 
 # The record decides rather than the exit code, since a refusal carries no
 # `sessions`. A session counts as named when its roster name appears anywhere
-# in the reply, so a heading naming it beside a command quoting its id passes.
+# in the reply, so a heading naming it beside its quoted id passes.
 flagged=$(printf '%s' "$roster" | jq -r --arg reply "$reply" '
   if (.sessions | type) != "array" then "unread"
   else

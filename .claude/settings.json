@@ -7,11 +7,11 @@
     "deny": [
       "Agent",
       "Task",
-      "Bash(canon pr merge:*)",
       "Bash(gh pr merge:*)",
       "Bash(canon browser *install-browser*)",
       "Bash(canon pr frames *--drop*)",
-      "Bash(canon pr frames *--prune*)"
+      "Bash(canon pr frames *--prune*)",
+      "Bash(gh api *pulls/*/merge*)"
     ],
     "allow": [
       "Bash(git push --force-with-lease)",
@@ -25,7 +25,8 @@
       "Bash(canon pr frames:*)",
       "Bash(canon pr tick:*)",
       "Bash(canon pr lift:*)"
-    ]
+    ],
+    "ask": ["Bash(canon pr merge:*)"]
   },
   "hooks": {
     "PreToolUse": [
@@ -120,6 +121,17 @@
           {
             "type": "command",
             "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-name.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/records-push.sh",
+            "timeout": 30
           }
         ]
       }
