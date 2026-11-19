@@ -18,5 +18,5 @@ Owns the Text, Shape, and Image tools, keys T, R, O, L, and Cmd+Shift+K, which d
 - A point over a leaf, an inline element, an element holding text, an empty box, or anything in an SVG takes its parent and the gap beside it, so a click on a placed shape lands beside it
 - `placesFree` in `tool.ts` lands an element free at the drawn point unless its container is flex or grid or its static parent would move an element anchored above it, and a Divider joins the flow
 - `drop-line.tsx` marks the gap with a 2px blue line, never over bare canvas, a loading frame, or a carried element's own spot, and gives way to `drop-ghost.tsx` where a tile or a free click lands
-- A placed Text opens with its word selected, and a line break is a newline in its one text node, never a `<br>`, sent with `white-space: pre-line` in the same write
+- A placed Text opens empty as a caret alone, with no outline, marks, or chip until the edit ends, which deletes it left blank. A break is a newline, never a `<br>`, with `white-space: pre-line`
 - `asset-size.ts` caps a file at its container and, placed free, at the frame past the point, and `asset-drop.ts` swallows a system file dropped on the hit layer so it never opens in place of the board
