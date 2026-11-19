@@ -141,8 +141,11 @@ test.describe("a slide's speaker notes", () => {
     const frameFile = readFileSync(join(board.root, `${HERO}.html`), 'utf8')
     await selectHero(page)
     await page.getByRole('tab', { name: 'Slides' }).click()
+    await page.getByRole('button', { name: 'Notes hidden' }).click()
 
-    const notes = page.getByRole('textbox', { name: 'Speaker notes' })
+    const notes = page
+      .locator(`[data-speaker-notes="${HERO}"]`)
+      .getByRole('textbox', { name: 'Speaker notes' })
     await notes.fill('Open on the price.\nThen the demo.')
     await notes.press('ControlOrMeta+Enter')
     await expect
@@ -158,6 +161,28 @@ test.describe("a slide's speaker notes", () => {
     expect(readFileSync(join(board.root, `${HERO}.html`), 'utf8')).toBe(
       frameFile,
     )
+  })
+
+  test('shows every slide its strip from one button, kept across a reload, and hides them all', async ({
+    page,
+  }) => {
+    // Counted by element, since a narrow frame's strip hides its field below 200 px on screen.
+    const strips = page.locator('[data-speaker-notes]')
+    await selectHero(page)
+    await page.getByRole('tab', { name: 'Slides' }).click()
+
+    await page.getByRole('button', { name: 'Notes hidden' }).click()
+    await expect(strips).toHaveCount(2)
+
+    await page.reload()
+    await selectHero(page)
+    await page.getByRole('tab', { name: 'Slides' }).click()
+    await expect(strips).toHaveCount(2)
+
+    await page
+      .getByRole('button', { name: 'Notes shown', pressed: true })
+      .click()
+    await expect(strips).toHaveCount(0)
   })
 })
 

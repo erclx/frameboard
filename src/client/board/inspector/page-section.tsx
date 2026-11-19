@@ -1,5 +1,7 @@
+import { NotebookText } from 'lucide-react'
 import type { ReactNode } from 'react'
 
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import {
@@ -18,6 +20,7 @@ import { liveIframe } from '../frame-dom'
 import { reportRefusal } from '../left-panel/page-actions'
 import { playPreview, previewTransition, stopPreview } from '../present/preview'
 import { EditKeyframes } from '../present/transition'
+import { setNotesShown, useNotesShown } from '../speaker-notes/shown'
 import type { TileOption } from './effect-tiles'
 import { EffectTiles } from './effect-tiles'
 import { TypePicker } from './element/typography'
@@ -211,7 +214,32 @@ export function PageSection({
           />
         </Setting>
       ) : null}
+      <NotesButton />
     </section>
+  )
+}
+
+/**
+ * Shows a speaker notes strip under every slide of the page, or puts every
+ * one away. It writes no file, so a reader tab can press it too.
+ */
+function NotesButton() {
+  const shown = useNotesShown()
+  return (
+    <button
+      type="button"
+      aria-pressed={shown}
+      onClick={() => setNotesShown(!shown)}
+      className={cn(
+        'mt-2.5 inline-flex h-6 items-center gap-1.5 rounded-[7px] px-[9px] text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+        shown
+          ? 'bg-foreground text-background hover:bg-foreground/85'
+          : 'bg-input text-foreground hover:bg-accent',
+      )}
+    >
+      <NotebookText aria-hidden className="size-[13px]" strokeWidth={1.6} />
+      {shown ? 'Notes shown' : 'Notes hidden'}
+    </button>
   )
 }
 
