@@ -130,10 +130,9 @@ export function declaredValues(style: string, property: string): string[] {
 }
 
 /**
- * The part of a decoded style's last shorthand that a paint longhand or a
- * padding side reads from, which `setDeclaration` writes in place of the
- * longhand. Undefined for a property with no such shorthand, or a shorthand
- * holding no such part.
+ * The part of a decoded style's last shorthand a paint longhand or padding
+ * side reads, which `setDeclaration` writes in place of the longhand.
+ * Undefined where no shorthand or no such part is declared.
  */
 export function shorthandValue(
   style: string,
@@ -248,10 +247,9 @@ function paddingShorthand([
 }
 
 /**
- * Folds a style's padding declarations into one `padding` once all four sides
- * are declared inline, since the shorthand then overrides nothing a sheet sets.
- * Leaves the style as written where a side cannot be read, as behind `!important`
- * or a comment, or where a logical side or a later shorthand would disagree.
+ * Folds the padding into one `padding` once all four sides are inline, so it
+ * overrides nothing a sheet sets. Leaves it as written where a side is no plain
+ * length, or a comment, a logical side, or a later shorthand would disagree.
  */
 function foldPadding(style: string): string {
   const { segments } = declarations(style)
