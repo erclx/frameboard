@@ -52,8 +52,7 @@ export function GenerateView({
 
   if (offer === undefined) return null
   const provider = offer?.provider ?? null
-  const enabled = offer?.enabled === true
-  const ready = enabled && canWrite && provider !== null && prompt.trim() !== ''
+  const ready = canWrite && provider !== null && prompt.trim() !== ''
 
   async function start() {
     if (!ready || busy.current) return
@@ -110,7 +109,7 @@ export function GenerateView({
   )
 }
 
-/** The line or tile under the button, by whether Generate can run and how the last run went. */
+/** The line or tile under the button, by whether a provider is set up and how the last run went. */
 function Below({
   project,
   offer,
@@ -124,15 +123,6 @@ function Below({
     return (
       <p className={LINE}>
         The provider did not load. Reload the board to try again.
-      </p>
-    )
-  }
-  if (!offer.enabled) {
-    return (
-      <p className={LINE}>
-        Generate is off in this release, since a script inside a frame could
-        still spend on your key. Run{' '}
-        <code className={CODE}>frameboard image generate</code> instead.
       </p>
     )
   }

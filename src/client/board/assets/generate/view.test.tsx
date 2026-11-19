@@ -13,7 +13,6 @@ import { GenerateView } from './view'
 function offer(overrides: Partial<ImageOffer> = {}): ImageOffer {
   return {
     version: 1,
-    enabled: true,
     provider: {
       name: 'fal',
       model: 'fal-ai/flux/schnell',
@@ -86,26 +85,6 @@ describe('GenerateView', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('about $0.0032 an image')).toBeInTheDocument()
     expect(screen.getByText(/The bill is yours/)).toHaveTextContent('FAL_KEY')
-    expect(generate).not.toHaveBeenCalled()
-  })
-
-  it('stays off with its reason while generating from the board is switched off', async () => {
-    const generate = vi.fn()
-    render(
-      <GenerateView
-        project="webapp"
-        load={async () => offer({ enabled: false })}
-        generate={generate}
-      />,
-    )
-    const user = await describeImage('a house at dusk')
-
-    await user.click(screen.getByRole('button', { name: 'Generate' }))
-
-    expect(screen.getByRole('button', { name: 'Generate' })).toBeDisabled()
-    expect(
-      screen.getByText(/Generate is off in this release/),
-    ).toBeInTheDocument()
     expect(generate).not.toHaveBeenCalled()
   })
 

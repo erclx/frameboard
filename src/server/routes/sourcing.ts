@@ -296,7 +296,6 @@ function offer(env: Environment): ImageOffer {
     const plan = planGeneration({ prompt: '', size: GENERATE_SIZE }, env)
     return {
       version: 1,
-      enabled: true,
       provider: {
         name: plan.provider.name,
         model: plan.provider.model,
@@ -309,7 +308,7 @@ function offer(env: Environment): ImageOffer {
   } catch (error) {
     if (!(error instanceof FrameboardError) || error.code !== 'no-provider')
       throw error
-    return { version: 1, enabled: true, provider: null, keys }
+    return { version: 1, provider: null, keys }
   }
 }
 

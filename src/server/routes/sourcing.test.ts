@@ -408,7 +408,6 @@ describe('sourcingRoutes', () => {
       expect(text).not.toContain(FAL_KEY)
       expect(JSON.parse(text).data).toEqual({
         version: 1,
-        enabled: true,
         provider: {
           name: 'fal',
           model: 'fal-ai/flux/schnell',
