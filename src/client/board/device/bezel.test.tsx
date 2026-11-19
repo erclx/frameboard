@@ -291,7 +291,7 @@ describe('Bezel', () => {
     it.each([
       ['an upright phone', 'phone', 'upright'],
       ['a turned tablet', 'tablet', 'left'],
-      ['a turned foldable', 'foldable', 'right'],
+      ['an upright foldable', 'foldable', 'upright'],
     ] as const)('draws no side strips on %s', (_label, device, turn) => {
       const { container } = render(
         <Framed device={device} width={844} height={390} turn={turn} />,
@@ -517,6 +517,73 @@ describe('Bezel', () => {
     const centerOf = (rect: DOMRect | undefined) => ({
       x: (rect?.left ?? 0) + (rect?.width ?? 0) / 2,
       y: (rect?.top ?? 0) + (rect?.height ?? 0) / 2,
+    })
+
+    it.each([
+      ['closed', 'left', 678, 466],
+      ['open', 'left', 626, 890],
+      ['half', 'right', 626, 890],
+    ] as const)(
+      "fills a 54 wide strip down each side edge in the page's fill, %s turned %s, the island inside one",
+      (pose, turn, width, height) => {
+        const { container } = render(
+          <Framed
+            device="foldable"
+            width={width}
+            height={height}
+            pose={pose}
+            turn={turn}
+            colors={{ fill: 'rgb(10, 20, 30)', ink: 'rgb(200, 210, 220)' }}
+          />,
+        )
+
+        const strips = [
+          ...container.querySelectorAll<HTMLElement>('[data-bezel-strip]'),
+        ]
+        const [left, right] = strips.map((strip) =>
+          strip.getBoundingClientRect(),
+        )
+        const island = rectOf(container, '[data-bezel-island]')
+        const holder = turn === 'left' ? left : right
+
+        expect(strips.map((strip) => strip.dataset.bezelStrip)).toEqual([
+          'left',
+          'right',
+        ])
+        expect(left?.left).toBeCloseTo(100)
+        expect(right?.right).toBeCloseTo(100 + width)
+        expect(left?.width).toBeCloseTo(54)
+        expect(right?.width).toBeCloseTo(54)
+        expect(left?.height).toBeCloseTo(height)
+        expect(
+          getComputedStyle(strips[0] ?? document.body).backgroundColor,
+        ).toBe('rgb(10, 20, 30)')
+        expect(getComputedStyle(strips[0] ?? document.body).borderRadius).toBe(
+          '48px 0px 0px 48px',
+        )
+        expect(island?.left).toBeGreaterThanOrEqual(holder?.left ?? 0)
+        expect(island?.right).toBeLessThanOrEqual(holder?.right ?? 0)
+      },
+    )
+
+    it('paints its fold over its strips, so the shade runs across them', () => {
+      const { container } = render(
+        <Framed
+          device="foldable"
+          width={626}
+          height={890}
+          pose="half"
+          turn="left"
+        />,
+      )
+
+      const strip = container.querySelector('[data-bezel-strip]')
+      const fold = container.querySelector('[data-bezel-fold]')
+
+      expect(strip).not.toBeNull()
+      expect(fold && strip?.compareDocumentPosition(fold)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      )
     })
 
     it('stands the closed island on end at the middle of the left side, with no fold', () => {
