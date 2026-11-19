@@ -27,7 +27,6 @@ Owns folders, filing projects one level deep by the `group` key in `project.json
 
 - `entries.ts` stands a folder where its first member would, sorting through that member and rising with the pinned when pinned itself or holding a pinned member
 - Two groups differing only in case or trailing space read as one folder, and a rename refuses a name another folder holds in any case, since writing it would merge the two
-- A project added from a folder files under the folder's own spelling through `addProjectIn`, so the add lands in one undo step and opens its name for typing
 - A grid folder card opens `panel.tsx` and a list row opens in place, and Move to folder, New folder, or a card dragged onto another through `drop.ts` files a project
 - `title-click.ts` holds a click on a folder's name 300ms, so a double click renames in place without opening the folder first
 - A drop hint sits in a card's well clear of its name, and below `sm` a row hides it from sight while its status text stays for assistive tech
