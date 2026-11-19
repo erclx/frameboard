@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.46.0](https://github.com/erclx/frameboard/compare/v0.45.0...v0.46.0) (2026-11-19)
+
+
+### Features
+
+* **assets:** run generate from the assets tab ([#428](https://github.com/erclx/frameboard/issues/428)) ([6720a83](https://github.com/erclx/frameboard/commit/6720a8321d33dbe96ac306be36ed5ed49a9e7212))
+* **device:** push the frames to its right when a fold or turn grows one ([#425](https://github.com/erclx/frameboard/issues/425)) ([d0ab297](https://github.com/erclx/frameboard/commit/d0ab297b8d898d6ab307906abdd75d03a54bc430))
+* **home:** add a project from an open folder ([#422](https://github.com/erclx/frameboard/issues/422)) ([1b839ef](https://github.com/erclx/frameboard/commit/1b839ef4eaaa1331f8f1ce319c7100150cd887ab))
+* **inspector:** reword the widths row and the theme source note ([#421](https://github.com/erclx/frameboard/issues/421)) ([6af4e78](https://github.com/erclx/frameboard/commit/6af4e78f6edf808be78e1e4c1c67ef61785287a1))
+* **menus:** open menus in empty list space, lead with Use auto layout ([#424](https://github.com/erclx/frameboard/issues/424)) ([3841ab6](https://github.com/erclx/frameboard/commit/3841ab6bd73faeceb16f8ef686447392b6bbeb98))
+
+
+### Bug Fixes
+
+* **assets:** rename a file's layer with it and keep Find's search ([#423](https://github.com/erclx/frameboard/issues/423)) ([37d50c6](https://github.com/erclx/frameboard/commit/37d50c6ebe2d2d126061909b0eb2db0a62350772))
+* **place:** show a drop ghost, fit dropped media, and shorten padding ([#427](https://github.com/erclx/frameboard/issues/427)) ([bb7ae42](https://github.com/erclx/frameboard/commit/bb7ae425cc076816fd6247a6e81c524a2d073037))
+
 ## [0.45.0](https://github.com/erclx/frameboard/compare/v0.44.0...v0.45.0) (2026-11-19)
 
 
