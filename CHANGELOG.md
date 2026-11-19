@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.47.0](https://github.com/erclx/frameboard/compare/v0.46.0...v0.47.0) (2026-11-19)
+
+
+### Features
+
+* **device:** inset a turned foldable's page on its island side ([#434](https://github.com/erclx/frameboard/issues/434)) ([437be95](https://github.com/erclx/frameboard/commit/437be95810b9464fab5434c0d7f2879b89aefac9))
+* **device:** inset a turned phone's page on both short sides ([#429](https://github.com/erclx/frameboard/issues/429)) ([969495c](https://github.com/erclx/frameboard/commit/969495c2962b0f9d5ed25ad1f3fd2e0f93b85f6f))
+* **place:** open new text as a bare caret, drop small selection marks ([#435](https://github.com/erclx/frameboard/issues/435)) ([4637ee1](https://github.com/erclx/frameboard/commit/4637ee170d24facd5e6018f3c0f339c6cb3baa6f))
+
+
+### Bug Fixes
+
+* **device:** draw no overflow ghosts under any shown device body ([#432](https://github.com/erclx/frameboard/issues/432)) ([5e23422](https://github.com/erclx/frameboard/commit/5e23422a00a90f1d2993051326b1bb7b141248d5))
+* **edit:** place the caret where a click lands in an open text edit ([#433](https://github.com/erclx/frameboard/issues/433)) ([98630c9](https://github.com/erclx/frameboard/commit/98630c9d66edee8dd03dea7283755d550e0add6e))
+* **edit:** write one padding only once all four sides are inline ([#430](https://github.com/erclx/frameboard/issues/430)) ([64e7235](https://github.com/erclx/frameboard/commit/64e72358fe2cf1e38fff8a10270a671a51aa9c4a))
+
 ## [0.46.0](https://github.com/erclx/frameboard/compare/v0.45.0...v0.46.0) (2026-11-19)
 
 
