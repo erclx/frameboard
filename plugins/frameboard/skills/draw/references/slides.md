@@ -31,6 +31,7 @@ A deck's words for the presenter belong in speaker notes, so keep them out of th
 - The presenter view's own window shows the note beside the slide, and the slide itself never does. The `present` block's line that present mode never shows it means the slide and not that window, so a note is not a caption.
 - Write a note for a slide whose point is spoken, and leave the rest bare
 - Read a slide's note before rewriting the slide, since the developer may have typed one in the strip under it
+- Expect that strip under every slide of the page or none, set by the Notes button in the Slides tab, with a hidden note marked on the slide's label
 
 ## Capture a stepped slide
 
