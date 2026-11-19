@@ -356,7 +356,7 @@ async function drawBezel(
     pose?: Pose
     island?: Island
     turn?: Turn
-    /** The page's colors and theme, which a phone's status bar or side strips paint. */
+    /** The page's colors and theme, which a phone's status bar or a turned phone's or foldable's side strips paint. */
     bar: { colors: PageColors | null; theme: Theme }
   },
   scale: number,
@@ -380,7 +380,10 @@ async function drawBezel(
         : laptop
           ? laptopMarks(box)
           : device === 'foldable'
-            ? foldableMarks(pose, sideways)
+            ? (sideways === 'upright'
+                ? ''
+                : sideStripsHtml(bar.colors, bar.theme, { device })) +
+              foldableMarks(pose, sideways)
             : ''
     const radius = screenCorners(device)
     await tab.setContent(
@@ -398,25 +401,32 @@ async function drawBezel(
 }
 
 /**
- * A phone frame's shot of its page set under the status bar upright, or
- * between the side strips turned, at the frame's box with no body, so a
- * capture holds the screen the board draws.
+ * A phone frame's shot of its page set under the status bar upright, or a
+ * phone's or foldable's between the side strips turned, at the frame's box
+ * with no body, so a capture holds the screen the board draws.
  */
 export async function underPageInsets(
   browser: Browser,
   shot: Buffer,
   box: { width: number; height: number },
   {
+    device,
     turn,
     colors,
     theme,
-  }: { turn: Turn | undefined; colors: PageColors | null; theme: Theme },
+  }: {
+    device: Device | null | undefined
+    turn: Turn | undefined
+    colors: PageColors | null
+    theme: Theme
+  },
   scale: number,
 ): Promise<Buffer> {
-  const page = pageBox({ x: 0, y: 0, ...box }, 'phone', turn)
-  const chrome = isTurned('phone', turn)
-    ? sideStripsHtml(colors, theme, { rounded: false })
-    : statusBarHtml(colors, theme, { rounded: false })
+  const page = pageBox({ x: 0, y: 0, ...box }, device, turn)
+  const chrome =
+    device && isTurned(device, turn)
+      ? sideStripsHtml(colors, theme, { device, rounded: false })
+      : statusBarHtml(colors, theme, { rounded: false })
   const context = await browser.newContext({
     viewport: box,
     deviceScaleFactor: scale,
@@ -483,17 +493,20 @@ export function statusBarHtml(
 }
 
 /**
- * A turned phone's two side strips as the board draws them, the side inset
- * wide in the page's fill or its theme's own, rounded on the screen's outer
- * corners inside a body and square on a frame's bare box.
+ * A turned phone's or foldable's two side strips as the board draws them, the
+ * side inset wide in the page's fill or its theme's own, rounded on the
+ * screen's outer corners inside a body and square on a frame's bare box.
  */
 export function sideStripsHtml(
   colors: PageColors | null,
   theme: Theme,
-  { rounded = true }: { rounded?: boolean } = {},
+  {
+    device = 'phone',
+    rounded = true,
+  }: { device?: Device; rounded?: boolean } = {},
 ): string {
-  const radius = rounded ? BEZELS.phone.screenRadius : 0
-  const width = sideInset('phone', 'left')
+  const radius = rounded ? BEZELS[device].screenRadius : 0
+  const width = sideInset(device, 'left')
   const strip = (side: 'left' | 'right', corners: string) =>
     `<div style="position:absolute;${side}:0;top:0;bottom:0;width:${width}px;border-radius:${corners};color-scheme:${theme};background:${colors?.fill ?? 'Canvas'}"></div>`
   return (

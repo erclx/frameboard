@@ -508,6 +508,50 @@ describe.skipIf(shell === null)(
       expect(island).toEqual([5, 5, 6, 255])
     })
 
+    it('draws a closed foldable turned left with its page between its strips and the island in the left one', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/edge',
+          box: { width: 678, height: 466 },
+          device: 'foldable',
+          pose: 'closed',
+          turn: 'left',
+        },
+        'light',
+      )
+      // The island's middle, 14 in from the screen's left edge and 15 into its 30 width, halfway down.
+      const island = await pixelAt(
+        requireShell(shell),
+        bytes,
+        20 + 29,
+        20 + 233,
+      )
+      // Past the island's far side in the left strip, and as deep into the right one.
+      const left = await pixelAt(requireShell(shell), bytes, 20 + 50, 20 + 5)
+      const right = await pixelAt(requireShell(shell), bytes, 20 + 628, 20 + 5)
+      // The page's first column, past the left strip.
+      const start = await pixelAt(
+        requireShell(shell),
+        bytes,
+        20 + 54 + 2,
+        20 + 5,
+      )
+
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        718, 506,
+      ])
+      expect(island).toEqual([5, 5, 6, 255])
+      expect(left).toEqual([0, 128, 0, 255])
+      expect(right).toEqual([0, 128, 0, 255])
+      expect(start).toEqual([255, 0, 0, 255])
+    })
+
     it('runs a turned half open foldable’s fold across the screen', async () => {
       const render = createWarmRenderer({
         baseUrl: () => host.url,

@@ -575,7 +575,7 @@ async function holdShots(
               browser,
               shot,
               view,
-              { turn, colors, theme },
+              { device, turn, colors, theme },
               scale,
             )
           : shot,
@@ -630,6 +630,7 @@ async function renderFrame(
           shot,
           box,
           {
+            device,
             turn: frame.turn,
             colors: await readPageColors(opened.page),
             theme,

@@ -360,7 +360,7 @@ describe.skipIf(shell === null)(
     })
 
     async function shoot(
-      device?: 'phone',
+      device?: 'phone' | 'foldable',
       overrides: Partial<FrameRecord> = {},
     ) {
       board = writeBoard({ 'studio/home/hero.html': EDGE_PAGE })
@@ -413,6 +413,21 @@ describe.skipIf(shell === null)(
       expect(pixel(own.path, 54 + 2, 5)).toBe('#ff0000')
       expect(pixel(own.path, 50, 5)).toBe('#0000ff')
       expect(pixel(own.path, 844 - 50, 5)).toBe('#0000ff')
+    })
+
+    it("starts a turned foldable page at its top between two 54 wide strips in the page's fill", async () => {
+      const [own] = await shoot('foldable', {
+        box: { x: 0, y: 0, width: 678, height: 466 },
+        widths: [],
+        pose: 'closed',
+        turn: 'left',
+      })
+      if (!own) throw new Error('no image')
+
+      expect([own.width, own.height]).toEqual([678, 466])
+      expect(pixel(own.path, 54 + 2, 5)).toBe('#ff0000')
+      expect(pixel(own.path, 50, 5)).toBe('#0000ff')
+      expect(pixel(own.path, 678 - 50, 5)).toBe('#0000ff')
     })
 
     it('starts a linked width page at its top, since it draws no device', async () => {
