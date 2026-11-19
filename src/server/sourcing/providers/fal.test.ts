@@ -6,6 +6,7 @@ const request = {
   prompt: 'a house',
   size: { width: 1024, height: 768 },
   key: 'fal-secret',
+  seed: 1,
 }
 
 /** A fake fal answering one status and body, recording each request. */

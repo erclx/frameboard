@@ -16,7 +16,11 @@ describe('diagnose', () => {
       queryGpu: noGpu,
     })
 
-    expect(report.keys).toEqual({ FAL_KEY: true, GEMINI_API_KEY: false })
+    expect(report.keys).toEqual({
+      FRAMEBOARD_COMFYUI_URL: false,
+      FAL_KEY: true,
+      GEMINI_API_KEY: false,
+    })
     expect(report.provider).toBe('fal')
     expect(JSON.stringify(report)).not.toContain('fal-secret')
   })

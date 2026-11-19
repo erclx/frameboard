@@ -274,7 +274,7 @@ describe('sourcingRoutes', () => {
           height: 1024,
           priceUsd: 0.0032,
         },
-        keys: ['FAL_KEY', 'GEMINI_API_KEY'],
+        keys: ['FRAMEBOARD_COMFYUI_URL', 'FAL_KEY', 'GEMINI_API_KEY'],
       })
     })
 
@@ -285,7 +285,11 @@ describe('sourcingRoutes', () => {
 
       const { data } = await response.json()
       expect(data.provider).toBeNull()
-      expect(data.keys).toEqual(['FAL_KEY', 'GEMINI_API_KEY'])
+      expect(data.keys).toEqual([
+        'FRAMEBOARD_COMFYUI_URL',
+        'FAL_KEY',
+        'GEMINI_API_KEY',
+      ])
     })
   })
 

@@ -3,7 +3,7 @@ import { z } from 'zod'
 /** So `house.jpg` carries its license in `house.jpg.license.json` beside it. */
 export const LICENSE_FILE_SUFFIX = '.license.json'
 
-export const IMAGE_PROVIDERS = ['fal', 'google'] as const
+export const IMAGE_PROVIDERS = ['comfyui', 'fal', 'google'] as const
 
 export type ImageProviderName = (typeof IMAGE_PROVIDERS)[number]
 
@@ -131,6 +131,10 @@ const generatedLicenseSchema = z.object({
   height: z.int(),
   /** The price estimated before the call, in US dollars. */
   priceUsd: z.number(),
+  /** The noise seed a local run drew, so the same image can be made again. */
+  seed: z.int().optional(),
+  /** The workflow file `--workflow` named, absent for the bundled one. */
+  workflow: z.string().optional(),
   savedAt: z.string(),
 })
 
