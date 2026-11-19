@@ -93,6 +93,7 @@ export function FolderRow({
           folder={folder}
           onOpen={onToggle}
           withOpen={!open}
+          withNew
           trigger={
             <button
               type="button"

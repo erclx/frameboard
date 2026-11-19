@@ -28,6 +28,7 @@ const IDS = [
   'folder.rename',
   'folder.ungroup',
   'folder.pin',
+  'folder.new',
 ] as const
 
 interface FolderMenuProps {
@@ -38,6 +39,8 @@ interface FolderMenuProps {
   onOpen?: () => void
   /** Leaves Open out, as on a list row already expanded. */
   withOpen?: boolean
+  /** Adds New project, as a list row has no header to hold a button. */
+  withNew?: boolean
 }
 
 /**
@@ -49,6 +52,7 @@ export function FolderMenu({
   trigger,
   onOpen,
   withOpen = true,
+  withNew = false,
 }: FolderMenuProps) {
   const content = useRef<HTMLDivElement>(null)
   const keyboard = useKeyboardOpen(content)
@@ -61,7 +65,7 @@ export function FolderMenu({
     >
       <ContextMenuTrigger render={trigger} onKeyDown={keyboard.onKeyDown} />
       <ContextMenuContent ref={content}>
-        <FolderItems onOpen={onOpen} withOpen={withOpen} />
+        <FolderItems onOpen={onOpen} withOpen={withOpen} withNew={withNew} />
       </ContextMenuContent>
     </ContextMenu>
   )
@@ -111,11 +115,13 @@ export function FolderMore({
 function FolderItems({
   onOpen,
   withOpen = true,
+  withNew = false,
 }: {
   onOpen?: () => void
   withOpen?: boolean
+  withNew?: boolean
 }) {
-  const [open, rename, ungroup, pin] = useActions(IDS)
+  const [open, rename, ungroup, pin, add] = useActions(IDS)
   return (
     <>
       <ContextMenuGroup>
@@ -129,6 +135,7 @@ function FolderItems({
           Rename
         </MenuItem>
         <MenuItem action={ungroup}>Ungroup</MenuItem>
+        {withNew ? <MenuItem action={add}>New project</MenuItem> : null}
       </ContextMenuGroup>
       <ContextMenuSeparator />
       <MenuItem action={pin}>{pin?.checked?.() ? 'Unpin' : 'Pin'}</MenuItem>
