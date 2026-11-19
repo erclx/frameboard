@@ -32,6 +32,24 @@ export const assetAddResultSchema = z.object({
 
 export type AssetAddResult = z.infer<typeof assetAddResultSchema>
 
+/** A rename's body: the file's new name in its own folder, keeping its extension. */
+export const assetRenameSchema = z.object({ name: z.string().min(1) })
+
+/** A hand asset write's answer: the file's path after it, and each frame ref it rewrote. */
+export const assetWriteResultSchema = z.object({
+  path: z.string(),
+  frames: z.array(z.string()),
+})
+
+export type AssetWriteResult = z.infer<typeof assetWriteResultSchema>
+
+export const assetFramesSchema = z.object({
+  path: z.string(),
+  frames: z.array(z.string()),
+})
+
+export type AssetFrames = z.infer<typeof assetFramesSchema>
+
 /**
  * A project's own transitions as present mode plays them, sorted by name.
  * `css` holds each one's keyframes alone, under the names

@@ -100,6 +100,10 @@ export const EXIT_CODES = {
   'source-failed': 13,
   // An image provider refused or failed a generation, with its status in the details and never the key.
   'provider-failed': 13,
+  // A hand write naming a path that is not a file in the project's assets folder.
+  'asset-not-found': 3,
+  // A rename refused, since a frame it would rewrite is held by another session, named in the details.
+  'asset-held': 4,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES

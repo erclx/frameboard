@@ -59,6 +59,8 @@ export const canvasView = {
   fitTo: (boxes: readonly Box[]): void => controls?.fitTo(boxes),
   panBy: (dx: number, dy: number): void => controls?.panBy(dx, dy),
   centerOn: (box: Box, scale?: number): void => controls?.centerOn(box, scale),
+  /** The board area the mounted canvas shows, null with none mounted. */
+  visible: (): Box | null => controls?.visible() ?? null,
   /**
    * Centers a box not wholly in view, fitting a larger one unless `fit` is
    * false, and reports as a hand move, which stops Follow.

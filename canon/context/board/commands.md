@@ -40,14 +40,14 @@ Owns `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, plus Ctrl+Y off a Mac,
 Owns the edit history undo reads, covering hand edits, moves, resizes, reorders, renames, adds, duplicates, and deletes as small before-and-after records. Only the board's own writes record, so the CLI verbs, a note write, and an asset drop pass no journal and an agent's change never enters the developer's history.
 
 - A board verb handed a `Journal` from `src/server/board/journal.ts` reports each change it made, and `History.record` keeps them as one step, at most 100 steps deep
-- A change is one layout or section entry, page order, rename, hashed path, hand-edited or placed element, or token, so an agent's write elsewhere in the file neither blocks nor is reverted by an undo
+- A change is one layout or section entry, page order, rename, hashed or swapped path, hand-edited or placed element, or token, so an agent's write elsewhere neither blocks nor is reverted by an undo
 - Every change of a step is checked under its records' locks before any is written, and an undo whose target an agent changed later is refused with `undo-overtaken`, dropped, and named in a toast
 - A delete moves the path into `.run/trash/<step>/`, so its undo is a rename back, and the history and the trash both empty when the server starts and stops
 - A rename and its undo broadcast `renamed` ahead of the batch, and the socket moves the selection, flips, and unseen marks first, since the renamed board prunes a selection it lacks
 
 ### `src/server/history/changes.ts`
 
-Owns the change kinds a step holds and what each restores, which is only what the developer set, so a write by an agent or by the server around it survives.
+Owns the change kinds a step holds and what each restores, which is only what the developer set, so a write by an agent or by the server around it survives. A frame an asset rename rewrote is the one change held whole, so any agent write to it overtakes the step.
 
 - A hand edit's undo restores its element while the agent left it alone, found by index or else by a unique byte match, and answers the hash it left so the element can stay selected
 - That element span is byte-exact only while every frame writer splices inside the target's start tag or between its tags, which `src/server/edit/property.test.ts` checks, so a new writer keeps to that

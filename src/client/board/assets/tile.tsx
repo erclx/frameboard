@@ -1,8 +1,20 @@
 import { draggable } from '@atlaskit/pragmatic-drag-and-drop/adapter/element-adapter'
 import { Box, Music, Play } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { type RefObject, useEffect, useRef, useState } from 'react'
 
+import {
+  AssetMenu,
+  type AssetMenuActs,
+  AssetMore,
+} from '@/client/board/menus/asset'
+import { RenameField } from '@/client/components/rename-field'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+} from '@/client/components/ui/popover'
 import { useLive } from '@/client/live/store'
+import { jumpToFrame } from '@/client/palette/targets'
 import { isPlaceableKind } from '@/shared/asset-kinds'
 import type { AssetFile } from '@/shared/records/assets'
 
@@ -11,9 +23,11 @@ import {
   describeAsset,
   describeUsage,
   formatLength,
-  formatSize,
+  frameLabel,
   kindLabel,
   linkPath,
+  stemOf,
+  tileLabel,
 } from './describe'
 import { tileDragData } from './drag'
 import { fileName } from './groups'
@@ -21,6 +35,14 @@ import { fileName } from './groups'
 interface TileProps {
   project: string
   file: AssetFile
+  /** Bumped by a replace, so the thumbnail loads the new bytes from the same path. */
+  version?: number
+  /** The menu's writes, each absent where the tile cannot make it. */
+  acts?: Omit<AssetMenuActs, 'copy'>
+  /** Reads the refs of the frames linking the file, for Show frames using it. */
+  loadFrames?: () => Promise<string[]>
+  /** Set while the name shows as the rename field, saving the stem it is given with the extension kept. */
+  rename?: { commit: (name: string) => void; cancel: () => void }
 }
 
 type Copy = 'idle' | 'copied' | 'failed'
@@ -29,14 +51,24 @@ const COPIED_MS = 1500
 
 /**
  * One asset tile, its size kept in the accessible name. A click copies the
- * path a frame links it by, and media drags onto a frame while the tab writes.
+ * path a frame links it by, media drags onto a frame while the tab writes,
+ * and a right-click or the corner's ⋯ opens the tile's menu.
  */
-export function Tile({ project, file }: TileProps) {
+export function Tile({
+  project,
+  file,
+  version = 0,
+  acts = {},
+  loadFrames,
+  rename,
+}: TileProps) {
   const [copy, setCopy] = useState<Copy>('idle')
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
   useEffect(() => () => clearTimeout(timer.current), [])
   const button = useRef<HTMLButtonElement>(null)
+  const item = useRef<HTMLLIElement>(null)
   const [active, setActive] = useState(false)
+  const [listing, setListing] = useState<FramesListing | null>(null)
   const canWrite = useLive((state) => state.canWrite)
   const { path, kind } = file
   const usage = describeUsage(file)
@@ -48,7 +80,24 @@ export function Tile({ project, file }: TileProps) {
       element,
       getInitialData: () => tileDragData({ project, path, kind }),
     })
-  }, [project, path, kind, canWrite])
+  }, [project, path, kind, canWrite, rename])
+
+  function showFrames() {
+    if (!loadFrames) return
+    setListing({ state: 'loading' })
+    loadFrames().then(
+      (refs) => setListing({ state: 'ready', refs }),
+      () => setListing({ state: 'failed' }),
+    )
+  }
+
+  const menuActs: AssetMenuActs = {
+    ...acts,
+    copy: () => void copyPath(),
+    showFrames: loadFrames ? showFrames : undefined,
+  }
+  // The size moves the address on both sides of a replace's undo, which a counter alone would leave cached.
+  const url = `${assetUrl(project, path)}${version > 0 ? `?v=${file.size}-${version}` : ''}`
 
   async function copyPath() {
     let next: Copy = 'copied'
@@ -62,43 +111,164 @@ export function Tile({ project, file }: TileProps) {
     timer.current = setTimeout(() => setCopy('idle'), COPIED_MS)
   }
 
-  return (
-    <li>
-      <button
-        ref={button}
-        type="button"
-        onClick={() => void copyPath()}
-        onPointerEnter={() => setActive(true)}
-        onPointerLeave={() => setActive(false)}
-        onFocus={() => setActive(true)}
-        onBlur={() => setActive(false)}
-        aria-label={`Copy path of ${[file.path, kindLabel(kind), formatSize(file.size), usage].filter(Boolean).join(', ')}`}
-        className="group relative block w-full overflow-hidden rounded-lg bg-muted text-left outline-none hover:ring-[1.5px] hover:ring-primary focus-visible:ring-[1.5px] focus-visible:ring-primary"
-      >
-        <Thumbnail project={project} file={file} playing={active} />
-        <span
-          aria-live="polite"
-          className={`absolute top-[5px] right-[5px] rounded-[5px] bg-card px-1.5 py-0.5 text-[10px] text-foreground shadow-[0_1px_3px_rgba(0,0,0,.3)] group-hover:visible group-focus-visible:visible ${copy === 'idle' ? 'invisible' : ''}`}
-        >
-          {PILL[copy]}
-        </span>
-        <span className="block truncate px-[7px] py-[5px] text-label font-normal">
-          <span title={file.path}>{fileName(file.path)}</span>
-          <span className="block text-[10px] text-muted-foreground">
-            {usage === null ? (
-              describeAsset(file)
-            ) : (
-              <>
-                {kindLabel(kind)} ·{' '}
-                <span className={file.frames === 0 ? UNUSED : undefined}>
-                  {usage}
-                </span>
-              </>
-            )}
+  const caption = (
+    <span className="block text-[10px] text-muted-foreground">
+      {usage === null ? (
+        describeAsset(file)
+      ) : (
+        <>
+          {kindLabel(kind)} ·{' '}
+          <span className={file.frames === 0 ? UNUSED : undefined}>
+            {usage}
           </span>
+        </>
+      )}
+    </span>
+  )
+
+  if (rename) {
+    const { stem, extension } = stemOf(fileName(path))
+    return (
+      <li className="overflow-hidden rounded-lg bg-muted ring-[1.5px] ring-primary">
+        <Thumbnail project={project} file={file} url={url} />
+        <span className="block px-[7px] py-[5px] text-label font-normal">
+          <span className="flex min-w-0 items-center">
+            <RenameField
+              hug
+              name={stem}
+              label={`Rename ${path}`}
+              onCommit={(next) => rename.commit(`${next}${extension}`)}
+              onCancel={rename.cancel}
+            />
+            <span className="shrink-0 pl-1 text-muted-foreground">
+              {extension}
+            </span>
+          </span>
+          {caption}
         </span>
-      </button>
+      </li>
+    )
+  }
+
+  return (
+    <li ref={item} className="group/tile relative">
+      <AssetMenu
+        acts={menuActs}
+        frames={file.frames}
+        canWrite={canWrite}
+        trigger={
+          <button
+            ref={button}
+            type="button"
+            onClick={() => void copyPath()}
+            onPointerEnter={() => setActive(true)}
+            onPointerLeave={() => setActive(false)}
+            onFocus={() => setActive(true)}
+            onBlur={() => setActive(false)}
+            aria-label={tileLabel(file)}
+            className="group relative block w-full overflow-hidden rounded-lg bg-muted text-left outline-none group-has-[[data-popup-open]]/tile:ring-[1.5px] group-has-[[data-popup-open]]/tile:ring-primary hover:ring-[1.5px] hover:ring-primary focus-visible:ring-[1.5px] focus-visible:ring-primary data-[popup-open]:ring-[1.5px] data-[popup-open]:ring-primary"
+          >
+            <Thumbnail
+              project={project}
+              file={file}
+              playing={active}
+              url={url}
+            />
+            <span
+              aria-live="polite"
+              className={`absolute top-[5px] rounded-[5px] bg-card px-1.5 py-0.5 text-[10px] text-foreground shadow-[0_1px_3px_rgba(0,0,0,.3)] ${canWrite ? 'right-[30px]' : 'right-[5px] group-hover:visible group-focus-visible:visible'} ${copy === 'idle' ? 'invisible' : ''}`}
+            >
+              {PILL[copy]}
+            </span>
+            <span className="block truncate px-[7px] py-[5px] text-label font-normal">
+              <span title={file.path}>{fileName(file.path)}</span>
+              {caption}
+            </span>
+          </button>
+        }
+      />
+      {canWrite ? (
+        <AssetMore
+          path={path}
+          acts={menuActs}
+          frames={file.frames}
+          tile={button}
+          className="invisible absolute top-[5px] right-[5px] grid size-5 place-items-center rounded-[5px] bg-card text-foreground shadow-[0_1px_3px_rgba(0,0,0,.3)] outline-none group-focus-within/tile:visible group-hover/tile:visible hover:bg-accent focus-visible:ring-[1.5px] focus-visible:ring-primary data-[popup-open]:visible"
+        />
+      ) : null}
+      <FramesPopover
+        anchor={item}
+        listing={listing}
+        onClose={() => setListing(null)}
+      />
     </li>
+  )
+}
+
+type FramesListing =
+  | { state: 'loading' }
+  | { state: 'ready'; refs: string[] }
+  | { state: 'failed' }
+
+/**
+ * The frames linking the file, opened from Show frames using it, a click on
+ * one jumping the canvas to it.
+ */
+function FramesPopover({
+  anchor,
+  listing,
+  onClose,
+}: {
+  anchor: RefObject<HTMLElement | null>
+  listing: FramesListing | null
+  onClose: () => void
+}) {
+  return (
+    <Popover
+      open={listing !== null}
+      onOpenChange={(open) => {
+        if (!open) onClose()
+      }}
+    >
+      <PopoverContent
+        anchor={anchor}
+        side="right"
+        align="start"
+        className="w-52 gap-1 p-1 text-label"
+      >
+        <PopoverTitle className="px-2 pt-1 pb-0.5 text-[10px] font-normal text-muted-foreground">
+          Frames using it
+        </PopoverTitle>
+        {listing?.state === 'loading' ? (
+          <p className="px-2 py-1 text-muted-foreground">Reading frames…</p>
+        ) : listing?.state === 'failed' ? (
+          <p className="px-2 py-1 text-destructive">
+            The frames did not load. Try again.
+          </p>
+        ) : listing?.state === 'ready' && listing.refs.length === 0 ? (
+          <p className="px-2 py-1 text-muted-foreground">No frames use it.</p>
+        ) : (
+          <ul>
+            {listing?.state === 'ready'
+              ? listing.refs.map((ref) => (
+                  <li key={ref}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose()
+                        jumpToFrame(ref)
+                      }}
+                      className="flex h-7 w-full items-center rounded-md px-2 text-left outline-none hover:bg-accent focus-visible:bg-accent"
+                    >
+                      <span className="truncate">{frameLabel(ref)}</span>
+                    </button>
+                  </li>
+                ))
+              : null}
+          </ul>
+        )}
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -116,7 +286,9 @@ const PILL: Record<Copy, string> = {
 
 const THUMB = 'grid h-[72px] place-items-center text-muted-foreground'
 
-interface ThumbnailProps extends TileProps {
+interface ThumbnailProps {
+  project: string
+  file: AssetFile
   /** Whether its tile is hovered or focused, which plays a video muted. */
   playing?: boolean
   /** Where the file loads from, the board's asset route by default. */

@@ -8,6 +8,8 @@ import {
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
 import { type AssetUsage, createAssetUsage } from '../board/asset-usage'
+import { claim } from '../claims/store'
+import { History } from '../history/stack'
 import { assetsRoutes } from './assets'
 
 const TOKEN = 'a'.repeat(64)
@@ -15,9 +17,11 @@ const PORT = 4173
 
 describe('assetsRoutes', () => {
   let board: FixtureBoard
+  let history: History
 
   beforeEach(() => {
     board = copyFixtureBoard('basic')
+    history = new History(board.root)
   })
 
   afterEach(() => {
@@ -33,6 +37,7 @@ describe('assetsRoutes', () => {
         cookieName: 'frameboard-key-111111111111',
         isOwnOrigin: (host) => host === `127.0.0.1:${PORT}`,
       },
+      history,
       { limit, usage },
     )
   }
@@ -162,6 +167,407 @@ describe('assetsRoutes', () => {
         error: { code: 'asset-too-large' },
       })
       expect(existsSync(join(board.root, 'webapp/assets'))).toBe(false)
+    })
+  })
+
+  function asset(path: string): string {
+    return join(board.root, 'webapp/assets', path)
+  }
+
+  function writeAsset(path: string, content: string): void {
+    mkdirSync(join(asset(path), '..'), { recursive: true })
+    writeFileSync(asset(path), content)
+  }
+
+  function frame(path: string): string {
+    return join(board.root, 'webapp', path)
+  }
+
+  function write(
+    method: 'DELETE' | 'PATCH' | 'PUT',
+    path: string,
+    {
+      token = TOKEN as string | null,
+      body = undefined as BodyInit | undefined,
+      project = 'webapp',
+    } = {},
+  ) {
+    return routes().request(`/api/projects/${project}/assets/${path}`, {
+      method,
+      headers: token === null ? {} : { authorization: `Bearer ${token}` },
+      body,
+    })
+  }
+
+  describe('GET a file', () => {
+    it('answers the frames linking it, each by ref', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeFileSync(frame('home/hero.html'), '<img src="../assets/lake.jpg">')
+
+      const response = await routes().request(
+        '/api/projects/webapp/assets/lake.jpg',
+      )
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { path: 'lake.jpg', frames: ['webapp/home/hero'] },
+      })
+    })
+
+    it('answers no frames for a file no frame links', async () => {
+      writeAsset('lake.jpg', 'pixels')
+
+      const response = await routes().request(
+        '/api/projects/webapp/assets/lake.jpg',
+      )
+
+      expect((await response.json()).data.frames).toEqual([])
+    })
+  })
+
+  describe('DELETE', () => {
+    it('deletes the file and answers its path', async () => {
+      writeAsset('lake.jpg', 'pixels')
+
+      const response = await write('DELETE', 'lake.jpg')
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { path: 'lake.jpg', frames: [] },
+      })
+      expect(existsSync(asset('lake.jpg'))).toBe(false)
+    })
+
+    it('takes the license file with it, and one undo brings both back', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeAsset('lake.jpg.license.json', '{"license":"CC0"}')
+
+      await write('DELETE', 'lake.jpg')
+      expect(existsSync(asset('lake.jpg.license.json'))).toBe(false)
+      await history.undo()
+
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('pixels')
+      expect(readFileSync(asset('lake.jpg.license.json'), 'utf8')).toBe(
+        '{"license":"CC0"}',
+      )
+      expect(history.counts()).toEqual({ undo: 0, redo: 1 })
+    })
+
+    it('deletes a file in a subfolder named by encoded segments', async () => {
+      writeAsset('img/my logo.svg', '<svg/>')
+
+      const response = await write('DELETE', 'img/my%20logo.svg')
+
+      expect(response.status).toBe(200)
+      expect(existsSync(asset('img/my logo.svg'))).toBe(false)
+    })
+
+    it('answers 404 asset-not-found for a file that is not there and records nothing', async () => {
+      const response = await write('DELETE', 'gone.png')
+
+      expect(response.status).toBe(404)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'asset-not-found' },
+      })
+      expect(history.counts()).toEqual({ undo: 0, redo: 0 })
+    })
+
+    it('refuses an encoded path leaving the folder and leaves the file outside alone', async () => {
+      writeFileSync(join(board.root, 'webapp/outside.css'), 'x')
+
+      const response = await write('DELETE', '..%2Foutside.css')
+
+      expect(response.status).toBe(404)
+      expect(existsSync(join(board.root, 'webapp/outside.css'))).toBe(true)
+    })
+
+    it("refuses a kit's file, which the Theme tab owns", async () => {
+      writeAsset('kits/clean/kit.css', 'x')
+
+      const response = await write('DELETE', 'kits/clean/kit.css')
+
+      expect(response.status).toBe(404)
+      expect(existsSync(asset('kits/clean/kit.css'))).toBe(true)
+    })
+
+    it('refuses a caller that is not a writer with 401 and keeps the file', async () => {
+      writeAsset('lake.jpg', 'pixels')
+
+      const response = await write('DELETE', 'lake.jpg', { token: null })
+
+      expect(response.status).toBe(401)
+      expect(existsSync(asset('lake.jpg'))).toBe(true)
+    })
+  })
+
+  function form(name: string, content: string): FormData {
+    const body = new FormData()
+    body.append('file', new File([content], name))
+    return body
+  }
+
+  describe('PUT', () => {
+    it('writes the new bytes under the same path', async () => {
+      writeAsset('lake.jpg', 'old')
+
+      const response = await write('PUT', 'lake.jpg', {
+        body: form('sunset.jpeg', 'new'),
+      })
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { path: 'lake.jpg', frames: [] },
+      })
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('new')
+    })
+
+    it('takes the license file out, and one undo brings back the old bytes and the license', async () => {
+      writeAsset('lake.jpg', 'old')
+      writeAsset('lake.jpg.license.json', '{"license":"CC0"}')
+
+      await write('PUT', 'lake.jpg', { body: form('lake.jpg', 'new') })
+      expect(existsSync(asset('lake.jpg.license.json'))).toBe(false)
+      await history.undo()
+
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('old')
+      expect(existsSync(asset('lake.jpg.license.json'))).toBe(true)
+    })
+
+    it('redoes a replace after its undo', async () => {
+      writeAsset('lake.jpg', 'old')
+      await write('PUT', 'lake.jpg', { body: form('lake.jpg', 'new') })
+      await history.undo()
+
+      await history.redo()
+
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('new')
+    })
+
+    it('drops the undo as overtaken when an agent rewrote the file since', async () => {
+      writeAsset('lake.jpg', 'old')
+      await write('PUT', 'lake.jpg', { body: form('lake.jpg', 'new') })
+      writeFileSync(asset('lake.jpg'), 'agent')
+
+      await expect(history.undo()).rejects.toMatchObject({
+        code: 'undo-overtaken',
+      })
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('agent')
+    })
+
+    it('refuses a file of another kind with 400 and keeps the old bytes', async () => {
+      writeAsset('lake.jpg', 'old')
+
+      const response = await write('PUT', 'lake.jpg', {
+        body: form('clip.mp4', 'video'),
+      })
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'asset-type-refused' },
+      })
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('old')
+      expect(history.counts()).toEqual({ undo: 0, redo: 0 })
+    })
+
+    it('answers 404 asset-not-found for a file that is not there', async () => {
+      const response = await write('PUT', 'gone.jpg', {
+        body: form('gone.jpg', 'new'),
+      })
+
+      expect(response.status).toBe(404)
+      expect(existsSync(asset('gone.jpg'))).toBe(false)
+    })
+
+    it('answers 400 usage for a body with no file', async () => {
+      writeAsset('lake.jpg', 'old')
+
+      const response = await write('PUT', 'lake.jpg', { body: new FormData() })
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({ error: { code: 'usage' } })
+    })
+
+    it('refuses a caller that is not a writer with 401', async () => {
+      writeAsset('lake.jpg', 'old')
+
+      const response = await write('PUT', 'lake.jpg', {
+        token: null,
+        body: form('lake.jpg', 'new'),
+      })
+
+      expect(response.status).toBe(401)
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('old')
+    })
+  })
+
+  function rename(path: string, name: string) {
+    return write('PATCH', path, {
+      body: JSON.stringify({ name }),
+    })
+  }
+
+  describe('PATCH', () => {
+    it('moves the file and points a linking frame at the new name', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeFileSync(
+        frame('home/hero.html'),
+        '<img src="../assets/lake.jpg" alt="Lake">',
+      )
+
+      const response = await rename('lake.jpg', 'shore.jpg')
+
+      expect(await response.json()).toEqual({
+        ok: true,
+        data: { path: 'shore.jpg', frames: ['webapp/home/hero'] },
+      })
+      expect(existsSync(asset('lake.jpg'))).toBe(false)
+      expect(readFileSync(asset('shore.jpg'), 'utf8')).toBe('pixels')
+      expect(readFileSync(frame('home/hero.html'), 'utf8')).toBe(
+        '<img src="../assets/shore.jpg" alt="Lake">',
+      )
+    })
+
+    it('rewrites a style url and a srcset candidate, keeping a query and the other candidates', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeAsset('lake-2x.jpg', 'pixels')
+      writeFileSync(
+        frame('home/hero.html'),
+        '<style>.a { background: url("../assets/lake.jpg?v=2") }</style><img srcset="../assets/lake.jpg 1x, ../assets/lake-2x.jpg 2x">',
+      )
+
+      await rename('lake.jpg', 'shore.jpg')
+
+      expect(readFileSync(frame('home/hero.html'), 'utf8')).toBe(
+        '<style>.a { background: url("../assets/shore.jpg?v=2") }</style><img srcset="../assets/shore.jpg 1x, ../assets/lake-2x.jpg 2x">',
+      )
+    })
+
+    it('moves the license file with it', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeAsset('lake.jpg.license.json', '{}')
+
+      await rename('lake.jpg', 'shore.jpg')
+
+      expect(existsSync(asset('shore.jpg.license.json'))).toBe(true)
+      expect(existsSync(asset('lake.jpg.license.json'))).toBe(false)
+    })
+
+    it('undoes the move, the license, and the frame rewrite in one step', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeAsset('lake.jpg.license.json', '{}')
+      writeFileSync(frame('home/hero.html'), '<img src="../assets/lake.jpg">')
+      await rename('lake.jpg', 'shore.jpg')
+
+      await history.undo()
+
+      expect(existsSync(asset('lake.jpg'))).toBe(true)
+      expect(existsSync(asset('lake.jpg.license.json'))).toBe(true)
+      expect(existsSync(asset('shore.jpg'))).toBe(false)
+      expect(readFileSync(frame('home/hero.html'), 'utf8')).toBe(
+        '<img src="../assets/lake.jpg">',
+      )
+      expect(history.counts()).toEqual({ undo: 0, redo: 1 })
+    })
+
+    it('drops the undo as overtaken when an agent rewrote a linking frame since, leaving its write', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeFileSync(frame('home/hero.html'), '<img src="../assets/lake.jpg">')
+      await rename('lake.jpg', 'shore.jpg')
+      writeFileSync(frame('home/hero.html'), '<p>agent</p>')
+
+      await expect(history.undo()).rejects.toMatchObject({
+        code: 'undo-overtaken',
+      })
+      expect(readFileSync(frame('home/hero.html'), 'utf8')).toBe('<p>agent</p>')
+      expect(existsSync(asset('shore.jpg'))).toBe(true)
+    })
+
+    it('refuses a name another file holds in any case as 409 name-taken, moving nothing', async () => {
+      writeAsset('lake.jpg', 'a')
+      writeAsset('Shore.jpg', 'b')
+
+      const response = await rename('lake.jpg', 'shore.jpg')
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'name-taken' },
+      })
+      expect(readFileSync(asset('lake.jpg'), 'utf8')).toBe('a')
+    })
+
+    it('takes a case-only rename of the same file', async () => {
+      writeAsset('lake.jpg', 'a')
+
+      const response = await rename('lake.jpg', 'Lake.jpg')
+
+      expect(response.status).toBe(200)
+      expect(readFileSync(asset('Lake.jpg'), 'utf8')).toBe('a')
+    })
+
+    it('refuses a name changing the extension as 400 invalid-name', async () => {
+      writeAsset('lake.jpg', 'a')
+
+      const response = await rename('lake.jpg', 'lake.png')
+
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'invalid-name' },
+      })
+      expect(existsSync(asset('lake.jpg'))).toBe(true)
+    })
+
+    it('refuses a name off the board rule as 400 invalid-name', async () => {
+      writeAsset('lake.jpg', 'a')
+
+      const response = await rename('lake.jpg', '../lake.jpg')
+
+      expect(response.status).toBe(400)
+      expect(existsSync(asset('lake.jpg'))).toBe(true)
+    })
+
+    it('refuses as 409 asset-held naming the session when a linking frame is claimed, writing nothing', async () => {
+      writeAsset('lake.jpg', 'pixels')
+      writeFileSync(frame('home/hero.html'), '<img src="../assets/lake.jpg">')
+      await claim(
+        board.root,
+        {
+          frame: 'webapp/home/hero',
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · webapp',
+        },
+        new Date(),
+      )
+
+      const response = await rename('lake.jpg', 'shore.jpg')
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        error: { code: 'asset-held', details: { tag: 'claude · webapp' } },
+      })
+      expect(existsSync(asset('lake.jpg'))).toBe(true)
+      expect(readFileSync(frame('home/hero.html'), 'utf8')).toBe(
+        '<img src="../assets/lake.jpg">',
+      )
+    })
+
+    it('answers 404 asset-not-found for a file that is not there', async () => {
+      const response = await rename('gone.jpg', 'shore.jpg')
+
+      expect(response.status).toBe(404)
+    })
+
+    it('refuses a caller that is not a writer with 401', async () => {
+      writeAsset('lake.jpg', 'a')
+
+      const response = await write('PATCH', 'lake.jpg', {
+        token: null,
+        body: JSON.stringify({ name: 'shore.jpg' }),
+      })
+
+      expect(response.status).toBe(401)
+      expect(existsSync(asset('lake.jpg'))).toBe(true)
     })
   })
 

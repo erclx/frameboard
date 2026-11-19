@@ -375,6 +375,63 @@ describe('changes', () => {
     })
   })
 
+  describe('replaced', () => {
+    beforeEach(async () => {
+      mkdirSync(at('webapp/assets'))
+      writeFileSync(at('webapp/assets/lake.jpg'), 'old')
+      writeFileSync(at('webapp/assets/new.tmp'), 'new')
+      await journal.replaced(
+        at('webapp/assets/lake.jpg'),
+        at('webapp/assets/new.tmp'),
+      )
+    })
+
+    it('holds while the file has the bytes the step wrote', async () => {
+      await expect(holds(first(), 'after')).resolves.toBe(true)
+    })
+
+    it('fails once an agent rewrote the file', async () => {
+      writeFileSync(at('webapp/assets/lake.jpg'), 'agent')
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
+    })
+
+    it('brings the replaced bytes back and holds the new ones for redo', async () => {
+      await restore(first(), 'before')
+
+      expect(read('webapp/assets/lake.jpg')).toBe('old')
+      await expect(holds(first(), 'before')).resolves.toBe(true)
+    })
+  })
+
+  describe('rewritten', () => {
+    beforeEach(() => {
+      writeFileSync(at('webapp/home/hero.html'), '<img src="../assets/b.jpg">')
+      journal.rewritten(
+        at('webapp/home/hero.html'),
+        'webapp/home/hero',
+        '<img src="../assets/a.jpg">',
+        '<img src="../assets/b.jpg">',
+      )
+    })
+
+    it('fails once an agent wrote anywhere in the frame', async () => {
+      writeFileSync(
+        at('webapp/home/hero.html'),
+        '<img src="../assets/b.jpg"><p>agent</p>',
+      )
+
+      await expect(holds(first(), 'after')).resolves.toBe(false)
+    })
+
+    it('writes the frame back whole and answers its hash', async () => {
+      const hash = await restore(first(), 'before')
+
+      expect(read('webapp/home/hero.html')).toBe('<img src="../assets/a.jpg">')
+      expect(hash).toBe(contentHash('<img src="../assets/a.jpg">'))
+    })
+  })
+
   describe('element', () => {
     const HERO = 'webapp/home/hero.html'
 
