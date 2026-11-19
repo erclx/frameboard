@@ -10,6 +10,7 @@ import {
   islandOf,
   laptopParts,
   nearestPose,
+  nextTurn,
   pageBox,
   pageCorners,
   PHONE_ISLAND,
@@ -21,6 +22,7 @@ import {
   STATUS_BAR,
   topInset,
   turnOf,
+  turnsWith,
   uprightOf,
   uprightWidth,
 } from './frame-device'
@@ -324,6 +326,25 @@ describe('a turned phone or tablet', () => {
     [1, 'upright'],
   ] as const)('reads a stored turn of %s as %s', (stored, turn) => {
     expect(turnOf(stored)).toBe(turn)
+  })
+
+  it.each([
+    [undefined, 'left'],
+    ['upright', 'left'],
+    ['left', 'right'],
+    ['right', 'upright'],
+  ] as const)('rotates from %s on to %s', (turn, next) => {
+    expect(nextTurn(turn)).toBe(next)
+  })
+
+  it.each([
+    ['phone', true],
+    ['tablet', true],
+    ['laptop', false],
+    ['foldable', false],
+    [null, false],
+  ] as const)('turns a %s: %s', (device, turns) => {
+    expect(turnsWith(device)).toBe(turns)
   })
 
   it.each([

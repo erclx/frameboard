@@ -9,6 +9,7 @@ import type { Claim } from '@/shared/records/claims'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { POSE_BAR_ROOM } from '../device/poses'
+import { showsDeviceBar } from '../device/turn'
 import { useDrawnBox } from '../geometry/write'
 import { inspectorTabStore } from '../inspector/tab-store'
 import { reportRefusal } from '../left-panel/page-actions'
@@ -142,11 +143,10 @@ function StripAt({
       }
       style={{
         left: body.x,
-        // A foldable's pose buttons take the room right under its body.
-        top:
-          frame.device === 'foldable'
-            ? `calc(${body.y + body.height}px + ${POSE_BAR_ROOM}px / var(--zoom, 1))`
-            : body.y + body.height,
+        // A device's bar takes the room right under its body.
+        top: showsDeviceBar(frame.device)
+          ? `calc(${body.y + body.height}px + ${POSE_BAR_ROOM}px / var(--zoom, 1))`
+          : body.y + body.height,
         width: `calc(${body.width}px * var(--zoom, 1))`,
       }}
       onPointerDown={(event) => event.stopPropagation()}

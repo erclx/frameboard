@@ -179,6 +179,20 @@ export function turnOf(value: unknown): Turn {
   return value === 'left' || value === 'right' ? value : 'upright'
 }
 
+/**
+ * The turn Rotate goes to next, a quarter counterclockwise from upright so
+ * the island stands on the left, then on the right, then upright again.
+ */
+export function nextTurn(turn: Turn | undefined): Turn {
+  const at = TURNS.indexOf(turnOf(turn))
+  return TURNS[(at + 1) % TURNS.length] ?? 'upright'
+}
+
+/** Whether a device turns, which only a phone or a tablet does. */
+export function turnsWith(device: Device | null | undefined): boolean {
+  return device === 'phone' || device === 'tablet'
+}
+
 /** A turned frame's box before the turn, which turning it upright restores. */
 export interface UprightSize {
   width: number
@@ -216,9 +230,7 @@ export function isTurned(
   device: Device | null | undefined,
   turn: Turn | undefined,
 ): boolean {
-  return (
-    (device === 'phone' || device === 'tablet') && turnOf(turn) !== 'upright'
-  )
+  return turnsWith(device) && turnOf(turn) !== 'upright'
 }
 
 /**

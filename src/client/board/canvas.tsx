@@ -38,6 +38,7 @@ import {
   type View,
 } from './cull'
 import { POSE_BAR_ROOM } from './device/poses'
+import { showsDeviceBar } from './device/turn'
 import { useElementActions } from './element/actions'
 import { BindingLinks } from './element/binding-links'
 import { ElementOverlay } from './element/overlay'
@@ -109,7 +110,7 @@ const SCALE_EXTENT: [number, number] = [0.02, 4]
 
 const FIT_PADDING = 64
 
-/** The screen pixels a fit keeps clear under a foldable at the bottom, for its pose buttons and the size chip below them. */
+/** The screen pixels a fit keeps clear under a device at the bottom, for its bar and the size chip below it. */
 const FOLD_CHROME_ROOM = POSE_BAR_ROOM + 24
 /** Screen pixels a press may move and still count as a click. */
 const PLAY_CLICK_SLOP = 3
@@ -1170,7 +1171,7 @@ function fitView(
   const bottom = Math.max(...boxes.map((box) => box.y + box.height))
   // The floating toolbar sits in the bottom padding, where a foldable's buttons would land.
   const room = boxes.some(
-    (box) => box.device === 'foldable' && box.y + box.height === bottom,
+    (box) => showsDeviceBar(box.device) && box.y + box.height === bottom,
   )
     ? FOLD_CHROME_ROOM
     : 0

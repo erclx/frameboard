@@ -25,6 +25,7 @@ import {
   screenCorners,
   shownBox,
   topInset,
+  turnsWith,
 } from '@/shared/frame-device'
 import { referenceHeight } from '@/shared/frame-sizes'
 import type { Finding } from '@/shared/records/check'
@@ -40,7 +41,8 @@ import { UnseenDot } from './changes/dot'
 import { ClaimTag } from './claims/tag'
 import { Bezel } from './device/bezel'
 import { usePageColors } from './device/page-colors'
-import { PoseButtons } from './device/poses'
+import { PoseButtons, RotateButtons } from './device/poses'
+import { turnRefusal } from './device/turn'
 import { FINDINGS_MARK, severityOf } from './findings/level'
 import { FindingsList } from './findings/list'
 import { FindingsCount } from './findings/mark'
@@ -371,6 +373,15 @@ export const Frame = memo(function Frame({
           pose={frame.pose}
           below={below}
           off={frame.locked ? `Unlock ${frame.name} to fold it` : undefined}
+        />
+      ) : null}
+      {turnsWith(frame.device) && selectedAlone && !playing ? (
+        <RotateButtons
+          frameRef={frame.ref}
+          name={frame.name}
+          turn={frame.turn}
+          below={below}
+          off={turnRefusal(frame)}
         />
       ) : null}
       {frame.scroll && live && !playing ? (
