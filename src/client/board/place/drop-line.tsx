@@ -29,10 +29,9 @@ interface DropLineProps {
 }
 
 /**
- * The line at the gap a placement would land in, for a tool, a carried
- * element, or a dragged tile, and nothing over bare canvas, a loading frame,
- * or where a drop would leave the element in place. Where a tool's click
- * lands free, `PlaceGhost` shows the spot instead.
+ * The line at the gap a tool, a carried element, or a dragged tile lands in,
+ * none over bare canvas, a loading frame, or a no-op drop, and `PlaceGhost`
+ * in its place where a tool's click lands free.
  */
 export function DropLine({
   viewport,
@@ -66,8 +65,7 @@ export function DropLine({
     if (!placing || !target || !container) return
     const newest = newestOnly()
     const move = (event: PointerEvent) => {
-      // A shape drag lands where its press began, so the line holds there,
-      // and `ShapeDraft` draws the box in place of the ghost.
+      // A shape drag lands at its press, where `ShapeDraft` draws in place of the ghost.
       if (!carried && event.buttons & 1 && sizesByDrag()) {
         newest(null, () => setGhost(null))
         return

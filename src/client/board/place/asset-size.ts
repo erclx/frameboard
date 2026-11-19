@@ -51,10 +51,9 @@ export function placedSize(
 const LEAST_ROOM = 24
 
 /**
- * A file dropped free at the pointer, fitted to the container's `room` and
- * to the frame `past` the pointer, its distance to the right and bottom
- * edges, so it never lands past either. Under `LEAST_ROOM` left on an axis,
- * it fits that much and steps `back` from the pointer to stay inside.
+ * A file dropped free, fitted to the container's `room` and to the distance
+ * `past` the pointer to the frame's right and bottom edges, stepping `back`
+ * where under `LEAST_ROOM` is left, so it never lands past either edge.
  */
 export function fitFromPointer(
   natural: AssetSize | null,

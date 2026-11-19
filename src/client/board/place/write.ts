@@ -222,10 +222,9 @@ function spotFor(
 }
 
 /**
- * Places `file` into the frame under a board point as `placeElement` places
- * an asset, at the size a drag drew, else at its natural size read first,
- * capped at its container's width and, placed free, at the frame past the
- * point.
+ * Places `file` under a board point as `placeElement` places an asset, at
+ * the size a drag drew, else at its natural size read first, capped at its
+ * container's width and, placed free, at the frame past the point.
  */
 export async function placeFile(
   container: ParentNode,
