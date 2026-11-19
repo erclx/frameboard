@@ -45,10 +45,9 @@ export interface GenerationPlan {
 }
 
 /**
- * The provider a generation runs on, the one named or else the first whose
- * key is set, with the size it produces and its price. Makes no request.
- * A workflow runs on comfyui alone. Refuses `no-provider` when none is
- * ready, and `usage` for an unknown name or a workflow beside a hosted one.
+ * The provider named, else the first whose key is set, with its size and
+ * price, making no request. A workflow runs on comfyui alone. Refuses
+ * `no-provider` when none is ready, and `usage` for an unknown name or a workflow beside a hosted one.
  */
 export function planGeneration(
   request: {
