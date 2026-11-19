@@ -150,6 +150,47 @@ function sorted(declared: Record<string, string>): string {
   return JSON.stringify(Object.entries(declared).sort())
 }
 
+const PADDING_SIDES = ['top', 'right', 'bottom', 'left'] as const
+
+/** The four sides a style's padding sets, read in declaration order. */
+function paddingOf(declared: Record<string, string>): string[] {
+  const sides = ['', '', '', '']
+  for (const [property, value] of Object.entries(declared)) {
+    if (property === 'padding') {
+      const [top = '', right = top, bottom = top, left = right] =
+        value.split(/\s+/)
+      sides.splice(0, 4, top, right, bottom, left)
+    }
+    const side = PADDING_SIDES.findIndex(
+      (each) => property === `padding-${each}`,
+    )
+    if (side >= 0) sides[side] = value
+  }
+  return sides
+}
+
+/**
+ * Whether `written` is `wanted` with its padding folded into one shorthand
+ * setting the same four sides, which a padding side edit may write.
+ */
+function foldsPadding(
+  wanted: Record<string, string>,
+  written: Record<string, string>,
+): boolean {
+  const isPadding = (property: string) =>
+    property === 'padding' ||
+    PADDING_SIDES.some((side) => property === `padding-${side}`)
+  const others = (declared: Record<string, string>) =>
+    Object.fromEntries(
+      Object.entries(declared).filter(([property]) => !isPadding(property)),
+    )
+  return (
+    Object.keys(written).filter(isPadding).join() === 'padding' &&
+    sorted(others(written)) === sorted(others(wanted)) &&
+    paddingOf(written).join() === paddingOf(wanted).join()
+  )
+}
+
 /**
  * The UTF-16 span an edit may touch: the text between the tags, the edited
  * attribute with the whitespace ahead of it, or the gap after the last
@@ -272,8 +313,9 @@ function checkEdit(source: string, index: number, change: SingleChange): void {
     }
     if (change.value.trim() === '') delete wanted[change.property]
     else wanted[change.property] = change.value.trim()
+    const declared = decodeStyle(attributeOf(written, 'style'))
     holds(
-      sorted(decodeStyle(attributeOf(written, 'style'))) === sorted(wanted),
+      sorted(declared) === sorted(wanted) || foldsPadding(wanted, declared),
       'the declarations are not the original with the one change',
     )
     setAttributeOf(target, 'style', attributeIn(written, 'style'))
@@ -292,6 +334,7 @@ const FIXTURE_CHANGES: readonly SingleChange[] = [
   { kind: 'style', property: 'color', value: 'blue' },
   { kind: 'style', property: 'color', value: '' },
   { kind: 'style', property: 'font-family', value: "'Geist', serif" },
+  { kind: 'style', property: 'padding-top', value: '48px' },
   { kind: 'attribute', name: 'title', value: 'a "q" & b' },
   { kind: 'text', value: 'Ship <it> & go' },
 ]

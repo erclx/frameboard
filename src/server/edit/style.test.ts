@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { declaredValues, setDeclaration } from './style'
+import { declaredValues, setDeclaration, shorthandValue } from './style'
 
 describe('setDeclaration', () => {
   it('should replace a declaration in place and keep the others as written', () => {
@@ -257,5 +257,96 @@ describe('declaredValues', () => {
         'color',
       ),
     ).toEqual(['red', 'blue'])
+  })
+})
+
+describe('setDeclaration on a padding side', () => {
+  it('should fold four agreeing sides into one value', () => {
+    expect(
+      setDeclaration(
+        'padding-top: 4px; padding-right: 8px; padding-bottom: 4px; padding-left: 4px',
+        'padding-right',
+        '4px',
+      ),
+    ).toEqual({ ok: true, style: 'padding: 4px' })
+  })
+
+  it('should fold a side written over a shorthand into the shorthand', () => {
+    expect(
+      setDeclaration('color: red; padding: 8px 16px', 'padding-top', '16px'),
+    ).toEqual({ ok: true, style: 'color: red; padding: 16px 16px 8px' })
+  })
+
+  it.each([
+    ['8px 16px', '8px', 'padding: 8px 16px'],
+    ['8px 16px 4px', '8px', 'padding: 8px 16px 4px'],
+    ['8px 16px 4px 2px', '8px', 'padding: 8px 16px 4px 2px'],
+  ])('should write the shortest form of %s', (shorthand, top, folded) => {
+    expect(setDeclaration(`padding: ${shorthand}`, 'padding-top', top)).toEqual(
+      { ok: true, style: folded },
+    )
+  })
+
+  it('should leave two sides alone while the other two come from a sheet', () => {
+    expect(
+      setDeclaration('padding-left: 24px', 'padding-right', '24px'),
+    ).toEqual({ ok: true, style: 'padding-left: 24px; padding-right: 24px' })
+  })
+
+  it.each([
+    ['a shorthand holding var()', 'padding: var(--space)'],
+    ['an important side', 'padding: 4px; padding-left: 4px !important'],
+    ['a commented side', 'padding: 4px; padding-left: /* x */ 4px'],
+    ['a logical side', 'padding: 4px; padding-inline: 2px'],
+    [
+      'a side the shorthand after it overrides',
+      'padding-left: 2px; padding: 4px',
+    ],
+    ['a value no length reads', 'padding: 4px; padding-left: 1fr'],
+    ['a unitless side', 'padding: 4px; padding-left: 2'],
+    ['a negative side', 'padding: 4px; padding-left: -2px'],
+    ['a number ending on its dot', 'padding: 4px; padding-left: 4.px'],
+  ])('should not fold %s', (_, style) => {
+    expect(setDeclaration(style, 'padding-top', '8px')).toEqual({
+      ok: true,
+      style: `${style}; padding-top: 8px`,
+    })
+  })
+
+  it('should keep a lone shorthand as written when a side drops', () => {
+    expect(
+      setDeclaration('padding:4px; padding-top: 8px', 'padding-top', ''),
+    ).toEqual({ ok: true, style: 'padding:4px' })
+  })
+
+  it('should leave the padding as written on an edit to another property', () => {
+    expect(
+      setDeclaration(
+        'padding-top: 4px; padding-right: 4px; padding-bottom: 4px; padding-left: 4px',
+        'color',
+        'red',
+      ),
+    ).toEqual({
+      ok: true,
+      style:
+        'padding-top: 4px; padding-right: 4px; padding-bottom: 4px; padding-left: 4px; color: red',
+    })
+  })
+})
+
+describe('shorthandValue', () => {
+  it.each([
+    ['padding-top', '1px'],
+    ['padding-right', '2px'],
+    ['padding-bottom', '3px'],
+    ['padding-left', '2px'],
+  ])('should read %s from a padding shorthand', (property, side) => {
+    expect(shorthandValue('padding: 1px 2px 3px', property)).toBe(side)
+  })
+
+  it('should read no side from a shorthand holding var()', () => {
+    expect(shorthandValue('padding: var(--space)', 'padding-top')).toBe(
+      undefined,
+    )
   })
 })
