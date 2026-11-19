@@ -53,6 +53,10 @@ A responsive page is one frame file shown at several widths, so every fix to the
 
 `frame device <frame-ref> on`, or `--device on` on `frame add`, has the board draw the frame inside the device its width names, being a phone from 320 to 479 wide, a tablet from 480 to 1023, and a laptop from 1024 up. The frame file and its size stay as they are, and `off` hides it.
 
+- A phone draws a status bar over the top 54 px of the box and lays the page out under it, so a 390 by 844 frame holds a 390 by 790 page
+- `capture` draws the bar too, and a hugging height counts it
+- `--island wide` gives the phone its wide island, and `--island compact` takes it back
+
 The older `phone` and `tablet` read as `on`, and `none` as `off`. A frame can also name a foldable over the device its width picks, through three flags on the same verb.
 
 - `--foldable` names it and shows it, in the pose nearest the frame's width
