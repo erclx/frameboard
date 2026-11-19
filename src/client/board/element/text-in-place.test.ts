@@ -339,6 +339,33 @@ describe('editTextInPlace', () => {
     expect(opened).toBe(false)
   })
 
+  it('opens an empty element when asked, holding a caret one line tall', async () => {
+    const { container, shown, heading } = await mount('<h1></h1>')
+
+    const opened = await editTextInPlace(container, KEY, recorder().write, {
+      empty: true,
+    }).opened
+
+    expect(opened).toBe(true)
+    expect(heading.getAttribute('contenteditable')).toBe('plaintext-only')
+    expect(shown.activeElement).toBe(heading)
+    expect(shown.getSelection()?.isCollapsed).toBe(true)
+    expect(heading.getBoundingClientRect().height).toBeGreaterThan(0)
+  })
+
+  it('gives an empty element back its own height once the edit ends', async () => {
+    const { container, heading } = await mount('<h1></h1>')
+    const edit = editTextInPlace(container, KEY, recorder().write, {
+      empty: true,
+    })
+    await edit.opened
+
+    press(heading, 'Escape')
+    await expect.poll(() => edit.isOpen()).toBe(false)
+
+    expect(heading.getBoundingClientRect().height).toBe(0)
+  })
+
   it('refuses an empty box, as a placed shape is', async () => {
     const { container, heading } = await mount('<h1></h1>')
 
@@ -422,12 +449,9 @@ describe('editTextInPlace on a run beside a child element', () => {
     const { container, shown, heading } = await mount(MIXED)
     const { code, last } = runs(heading)
 
-    const opened = await editTextInPlace(
-      container,
-      KEY,
-      recorder().write,
-      middleOf(shown, last),
-    ).opened
+    const opened = await editTextInPlace(container, KEY, recorder().write, {
+      at: middleOf(shown, last),
+    }).opened
 
     expect(opened).toBe(true)
     expect(shown.activeElement).toBe(heading)
@@ -439,7 +463,8 @@ describe('editTextInPlace on a run beside a child element', () => {
     const { container, shown, heading } = await mount(MIXED)
     const { code, last } = runs(heading)
     const { changes, write } = recorder()
-    await editTextInPlace(container, KEY, write, middleOf(shown, last)).opened
+    await editTextInPlace(container, KEY, write, { at: middleOf(shown, last) })
+      .opened
 
     caretIn(shown, last, last.length)
     inputs(heading, '!')
@@ -455,7 +480,8 @@ describe('editTextInPlace on a run beside a child element', () => {
     const { container, shown, heading } = await mount(MIXED)
     const { last } = runs(heading)
     const { changes, write } = recorder()
-    await editTextInPlace(container, KEY, write, middleOf(shown, last)).opened
+    await editTextInPlace(container, KEY, write, { at: middleOf(shown, last) })
+      .opened
 
     caretIn(shown, heading, heading.childNodes.length)
     inputs(heading, '!')
@@ -469,12 +495,9 @@ describe('editTextInPlace on a run beside a child element', () => {
   it('leaves a composition the browser will not cancel to the browser, splicing none of it', async () => {
     const { container, shown, heading } = await mount(MIXED)
     const { last } = runs(heading)
-    await editTextInPlace(
-      container,
-      KEY,
-      recorder().write,
-      middleOf(shown, last),
-    ).opened
+    await editTextInPlace(container, KEY, recorder().write, {
+      at: middleOf(shown, last),
+    }).opened
 
     caretIn(shown, last, last.length)
     inputs(heading, 'か', {
@@ -489,7 +512,8 @@ describe('editTextInPlace on a run beside a child element', () => {
     const { container, iframe, shown, heading } = await mount(MIXED)
     const { first, last } = runs(heading)
     const { changes, write } = recorder()
-    await editTextInPlace(container, KEY, write, middleOf(shown, last)).opened
+    await editTextInPlace(container, KEY, write, { at: middleOf(shown, last) })
+      .opened
 
     // What the browser writes natively for a composition left at the first run.
     first.data = 'Oneか'
@@ -508,12 +532,9 @@ describe('editTextInPlace on a run beside a child element', () => {
   it('puts the run back where it was when a composition detached it', async () => {
     const { container, iframe, shown, heading } = await mount(MIXED)
     const { last } = runs(heading)
-    const edit = editTextInPlace(
-      container,
-      KEY,
-      recorder().write,
-      middleOf(shown, last),
-    )
+    const edit = editTextInPlace(container, KEY, recorder().write, {
+      at: middleOf(shown, last),
+    })
     await edit.opened
 
     last.remove()
@@ -528,7 +549,8 @@ describe('editTextInPlace on a run beside a child element', () => {
     const { container, iframe, shown, heading } = await mount(MIXED)
     const { code, last } = runs(heading)
     const { changes, write } = recorder()
-    await editTextInPlace(container, KEY, write, middleOf(shown, last)).opened
+    await editTextInPlace(container, KEY, write, { at: middleOf(shown, last) })
+      .opened
 
     caretIn(shown, code.firstChild ?? code, 1)
     inputs(heading, 'z')
@@ -544,7 +566,8 @@ describe('editTextInPlace on a run beside a child element', () => {
     const { container, shown, heading } = await mount(MIXED)
     const { last } = runs(heading)
     const { changes, write } = recorder()
-    await editTextInPlace(container, KEY, write, middleOf(shown, last)).opened
+    await editTextInPlace(container, KEY, write, { at: middleOf(shown, last) })
+      .opened
 
     caretIn(shown, last, last.length)
     press(heading, 'Enter')
@@ -562,7 +585,8 @@ describe('editTextInPlace on a run beside a child element', () => {
     )
     const { first } = runs(heading)
     const { changes, write } = recorder()
-    await editTextInPlace(container, KEY, write, middleOf(shown, first)).opened
+    await editTextInPlace(container, KEY, write, { at: middleOf(shown, first) })
+      .opened
 
     expect(first.data).toBe('One ')
     press(heading, 'Escape')
@@ -576,12 +600,9 @@ describe('editTextInPlace on a run beside a child element', () => {
     const { container, shown, heading } = await mount(MIXED)
     const { code } = runs(heading)
 
-    const opened = await editTextInPlace(
-      container,
-      KEY,
-      recorder().write,
-      middleOf(shown, code),
-    ).opened
+    const opened = await editTextInPlace(container, KEY, recorder().write, {
+      at: middleOf(shown, code),
+    }).opened
 
     expect(opened).toBe(false)
     expect(heading.hasAttribute('contenteditable')).toBe(false)
@@ -590,12 +611,9 @@ describe('editTextInPlace on a run beside a child element', () => {
   it('puts the old run back when the write is refused', async () => {
     const { container, shown, heading } = await mount(MIXED)
     const { last } = runs(heading)
-    await editTextInPlace(
-      container,
-      KEY,
-      recorder(false).write,
-      middleOf(shown, last),
-    ).opened
+    await editTextInPlace(container, KEY, recorder(false).write, {
+      at: middleOf(shown, last),
+    }).opened
 
     caretIn(shown, last, last.length)
     inputs(heading, '!')
@@ -616,12 +634,9 @@ describe('editTextInPlace on a run beside a child element', () => {
       if (!code || !em || !two)
         throw new Error('The heading holds no children.')
       const { changes, write } = recorder()
-      const edit = editTextInPlace(
-        mounted.container,
-        KEY,
-        write,
-        middleOf(mounted.shown, two),
-      )
+      const edit = editTextInPlace(mounted.container, KEY, write, {
+        at: middleOf(mounted.shown, two),
+      })
       await edit.opened
       return { ...mounted, code, em, two, edit, changes }
     }
@@ -752,12 +767,9 @@ describe('caretAt on an open edit', () => {
     )
     const [, code, last] = heading.childNodes
     if (!code?.firstChild || !last) throw new Error('No run beside a code.')
-    const edit = editTextInPlace(
-      container,
-      KEY,
-      recorder().write,
-      pointAt(shown, last, 2),
-    )
+    const edit = editTextInPlace(container, KEY, recorder().write, {
+      at: pointAt(shown, last, 2),
+    })
     await edit.opened
 
     const placed = await edit.caretAt(pointAt(shown, code.firstChild, 1))
@@ -772,12 +784,9 @@ describe('caretAt on an open edit', () => {
     )
     const [, , last] = heading.childNodes
     if (!last) throw new Error('No run beside a code.')
-    const edit = editTextInPlace(
-      container,
-      KEY,
-      recorder().write,
-      pointAt(shown, last, 2),
-    )
+    const edit = editTextInPlace(container, KEY, recorder().write, {
+      at: pointAt(shown, last, 2),
+    })
     await edit.opened
 
     const placed = await edit.caretAt(pointAt(shown, last, 3))

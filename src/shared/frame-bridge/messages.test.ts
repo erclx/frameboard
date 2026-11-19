@@ -201,6 +201,7 @@ describe('isTextEditArgs', () => {
   it.each([
     ['an address alone', { index: 2, hash: 'a' }],
     ['an address with a point', { index: 2, hash: 'a', at: { x: 4, y: -1.5 } }],
+    ['an address opening empty', { index: 2, hash: 'a', empty: true }],
   ])('accepts %s', (_case, value) => {
     expect(isTextEditArgs(value)).toBe(true)
   })
@@ -213,6 +214,7 @@ describe('isTextEditArgs', () => {
     ],
     ['a point that is not a record', { index: 2, hash: 'a', at: 4 }],
     ['a bad address', { index: -1, hash: 'a', at: { x: 0, y: 0 } }],
+    ['an empty flag that is not a boolean', { index: 2, hash: 'a', empty: 1 }],
   ])('refuses %s', (_case, value) => {
     expect(isTextEditArgs(value)).toBe(false)
   })

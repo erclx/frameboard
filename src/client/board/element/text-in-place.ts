@@ -28,6 +28,14 @@ export interface TextEditing {
   caretAt: (at: FramePoint) => Promise<boolean>
 }
 
+/** Where an in-place text edit opens, and whether an element with no text may. */
+export interface TextEditOptions {
+  /** A frame point picking the run of text beside child elements. */
+  at?: FramePoint
+  /** Opens an element holding no text, as only a placed Text is, holding a caret. */
+  empty?: boolean
+}
+
 /** An in-place text edit the board asked a frame to open. */
 export interface TextEdit extends TextEditing {
   /** Whether the frame opened it, false for an element holding anything but text. */
@@ -53,7 +61,7 @@ export function editTextInPlace(
   container: ParentNode,
   key: ElementKey,
   write: WriteText,
-  at?: FramePoint,
+  { at, empty = false }: TextEditOptions = {},
 ): TextEdit {
   const iframe = shownFrame(container, key.frame)
   if (!iframe) {
@@ -71,7 +79,12 @@ export function editTextInPlace(
   const edit = subscribe(
     iframe,
     'text-edit',
-    { index: key.index, hash: key.hash, ...(at ? { at } : {}) },
+    {
+      index: key.index,
+      hash: key.hash,
+      ...(at ? { at } : {}),
+      ...(empty ? { empty } : {}),
+    },
     (end) => {
       if (!isTextEditEnd(end)) return
       open = false

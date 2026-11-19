@@ -703,7 +703,7 @@ export function Canvas({
       return Promise.resolve(true)
     }
     selectElement(selectionStore, page.ref, key)
-    const edit = editTextInPlace(layer, key, write, at)
+    const edit = editTextInPlace(layer, key, write, { at })
     editing.current = { key, edit }
     return edit.opened
   }

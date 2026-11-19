@@ -36,29 +36,36 @@ function collapsesBreaks(element: HTMLElement): boolean {
 /**
  * Opens an element's text for typing, answering the open edit or null, or
  * only the run at `at` beside child elements. A break is a newline, never a
- * `<br>`, and a reload ends the edit with nothing to write.
+ * `<br>`, and a reload ends the edit with nothing to write. An element with
+ * no text opens only when `empty` asks, as a placed Text does.
  */
 export function openTextEdit(
   found: Element,
   end: EndTextEdit,
   at?: FramePoint,
+  empty = false,
 ): OpenTextEdit | null {
   if (!(found instanceof HTMLElement)) return null
   if (found.childElementCount > 0) {
     const run = at && runAt(found, at)
     return run ? openRunEdit(found, run, end) : null
   }
-  if ((found.textContent ?? '').trim() === '') return null
+  const blank = (found.textContent ?? '').trim() === ''
+  if (blank && !empty) return null
   const element: HTMLElement = found
   const source = element.textContent ?? ''
   const collapses = collapsesBreaks(element)
   const before = collapses ? source.replace(SPACES, ' ').trim() : source
   const whiteSpace = element.style.whiteSpace
+  const minHeight = element.style.minHeight
   if (before !== source) element.textContent = before
+  // An element with no text lays out no line, so the caret would draw none.
+  if (blank) element.style.minHeight = '1lh'
   let open = true
 
   const close = () => {
     open = false
+    if (blank) element.style.minHeight = minHeight
     element.removeAttribute('contenteditable')
     element.removeAttribute(EDITING)
     element.removeEventListener('keydown', keydown)
