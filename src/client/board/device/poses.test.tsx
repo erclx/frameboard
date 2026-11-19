@@ -2,23 +2,48 @@ import '../../styles.css'
 
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { createStructure } from '@/client/live/structure'
 import type { Pose } from '@/shared/frame-device'
 import { ringFocused } from '@/test/focus-ring'
 
+import type { Box } from '../geometry/box'
+import { attachCanvas } from '../view'
 import { PoseButtons } from './poses'
 
 const REF = 'studio/home/inbox'
 
-function server() {
+/** A server answering each fold with the frame at `box`, the box the pose sets. */
+function server(box: Box = { x: 0, y: 0, width: 466, height: 900 }) {
   const sent: unknown[] = []
   const calls = createStructure(async (_url, init) => {
     sent.push(JSON.parse(String(init?.body)))
-    return Response.json({ ok: true, data: [] })
+    return Response.json({ ok: true, data: [{ ref: REF, box }] })
   })
   return { calls, sent }
+}
+
+const detaches: (() => void)[] = []
+
+/** A canvas showing 800 by 600 from the origin, recording each travel. */
+function attachView() {
+  const centered: Box[] = []
+  detaches.push(
+    attachCanvas(
+      {
+        zoomBy: () => {},
+        zoomTo: () => {},
+        fit: () => {},
+        fitTo: () => {},
+        panBy: () => {},
+        centerOn: (box) => centered.push(box),
+        visible: () => ({ x: 0, y: 0, width: 800, height: 600 }),
+      },
+      'studio/home',
+    ),
+  )
+  return { centered }
 }
 
 function Bar({
@@ -45,7 +70,10 @@ function Bar({
 }
 
 describe('PoseButtons', () => {
-  afterEach(() => document.documentElement.classList.remove('dark'))
+  afterEach(() => {
+    document.documentElement.classList.remove('dark')
+    for (const detach of detaches.splice(0)) detach()
+  })
 
   it('names the group by its frame and presses the pose it is in', () => {
     const { calls } = server()
@@ -74,6 +102,43 @@ describe('PoseButtons', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Open' }))
 
     expect(sent).toEqual([{ refs: [REF], pose: 'open' }])
+  })
+
+  describe('bringing the frame into view', () => {
+    it('centers the box a pose grew past the view', async () => {
+      const view = attachView()
+      const grown = { x: 300, y: 0, width: 600, height: 400 }
+      const { calls } = server(grown)
+      render(<Bar pose="closed" calls={calls} />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Open' }))
+
+      await vi.waitFor(() => expect(view.centered).toEqual([grown]))
+    })
+
+    it('leaves the view on a box still wholly in it', async () => {
+      const view = attachView()
+      const inside = { x: 100, y: 100, width: 400, height: 300 }
+      const { calls, sent } = server(inside)
+      render(<Bar pose="closed" calls={calls} />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Open' }))
+
+      await vi.waitFor(() => expect(sent).toHaveLength(1))
+      expect(view.centered).toEqual([])
+    })
+
+    it('leaves the view on a box larger than it', async () => {
+      const view = attachView()
+      const huge = { x: 300, y: 0, width: 1200, height: 400 }
+      const { calls, sent } = server(huge)
+      render(<Bar pose="closed" calls={calls} />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'Open' }))
+
+      await vi.waitFor(() => expect(sent).toHaveLength(1))
+      expect(view.centered).toEqual([])
+    })
   })
 
   it('writes nothing on the pose it is already in', async () => {

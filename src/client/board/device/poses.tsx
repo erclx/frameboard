@@ -3,6 +3,7 @@ import { type Structure, structure } from '@/client/live/structure'
 import { type Pose, POSES } from '@/shared/frame-device'
 
 import { reportRefusal } from '../left-panel/page-actions'
+import { canvasView } from '../view'
 
 /** The screen pixels the bar takes below a foldable's body, its gap included, which chrome under it stands past. */
 export const POSE_BAR_ROOM = 40
@@ -63,6 +64,13 @@ export function PoseButtons({
                 if (off || on) return
                 calls
                   .setPose([frameRef], each)
+                  .then((frames) => {
+                    // A press is the developer's move, so the grown box comes into view as a nudge's does.
+                    const folded = frames.find(
+                      (frame) => frame.ref === frameRef,
+                    )
+                    if (folded) canvasView.reveal(folded.box, { fit: false })
+                  })
                   .catch(reportRefusal('Couldn’t fold the frame'))
               }}
               className={cn(
