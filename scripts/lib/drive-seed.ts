@@ -43,8 +43,8 @@ const DEVICE = { project: 'webapp', page: 'device', frame: 'phone' }
 /** The feed in a phone frame as tall as its page, off Scroll, so present mode and Play show one screen that scrolls. */
 const PHONE_FEED = { project: 'webapp', page: 'phone-feed', frame: 'feed' }
 
-/** The feed's twelve sections, their gaps, and padding, under the phone's status bar. */
-const PHONE_FEED_HEIGHT = 1942
+/** The feed's twelve 172 tall sections, their gaps, and padding, 2272, under the phone's 54 tall status bar. */
+const PHONE_FEED_HEIGHT = 2326
 
 /**
  * One frame naming the foldable, closed, holding a page that goes from one

@@ -293,7 +293,7 @@ describe('the phone feed page', () => {
     }
     expect(frames.feed).toMatchObject({
       width: 390,
-      height: 1942,
+      height: 2326,
       showDevice: true,
     })
     expect(frames.feed?.scroll).toBeUndefined()
