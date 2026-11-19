@@ -297,15 +297,14 @@ async function searchFailed(page: Page): Promise<void> {
   )
 }
 
-/** Answers Generate's offer with fal ready and generating switched off. */
-async function offerOff(page: Page): Promise<void> {
+/** Answers Generate's offer with fal ready, so no key is needed to capture it. */
+async function offerReady(page: Page): Promise<void> {
   await page.route('**/sourcing/provider', (route) =>
     route.fulfill({
       json: {
         ok: true,
         data: {
           version: 1,
-          enabled: false,
           provider: {
             name: 'fal',
             model: 'fal-ai/flux/schnell',
@@ -950,7 +949,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
-      section: 'assets-generate-off',
+      section: 'assets-generate-idle',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -958,7 +957,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       mask: [AVATAR],
       setup: themed(
         both(
-          offerOff,
+          offerReady,
           leftTab('Assets'),
           leftTab('Generate'),
           readyWhen('textarea[aria-label="Describe the image"]'),
