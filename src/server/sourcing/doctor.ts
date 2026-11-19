@@ -14,27 +14,92 @@ export const PROBE_TIMEOUT_MS = 1000
 /** The oldest ComfyUI whose native nodes run FLUX.2 klein, the release groundwork 54 ran. */
 export const MIN_COMFYUI_VERSION = '0.46.0'
 
-/** The files the bundled workflow loads, with the size and source each was measured at. */
+/** The files the bundled image workflow loads, with the size and source each was measured at. */
 export const BUNDLED_MODELS: readonly MissingModel[] = [
   {
+    for: 'image',
     folder: 'diffusion_models',
     file: 'flux-2-klein-4b-fp8.safetensors',
     bytes: 4_070_624_520,
     url: 'https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/resolve/main/flux-2-klein-4b-fp8.safetensors',
   },
   {
+    for: 'image',
     folder: 'text_encoders',
     file: 'qwen_3_4b.safetensors',
     bytes: 8_044_982_048,
     url: 'https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors',
   },
   {
+    for: 'image',
     folder: 'vae',
     file: 'flux2-vae.safetensors',
     bytes: 336_213_556,
     url: 'https://huggingface.co/Comfy-Org/flux2-dev/resolve/main/split_files/vae/flux2-vae.safetensors',
   },
 ]
+
+/**
+ * The files the bundled Pixal3D workflow loads, sized as groundwork 54
+ * measured them. TRELLIS.2's model sits behind a switch the workflow leaves
+ * off, and ComfyUI still checks that every loader's file exists.
+ */
+export const BUNDLED_MODEL_FILES: readonly MissingModel[] = [
+  {
+    for: 'model',
+    folder: 'diffusion_models',
+    file: 'pixal3d_int8_convrot.safetensors',
+    bytes: 5_584_555_824,
+    url: 'https://huggingface.co/Comfy-Org/Pixal3D/resolve/main/diffusion_models/pixal3d_int8_convrot.safetensors',
+  },
+  {
+    for: 'model',
+    folder: 'diffusion_models',
+    file: 'trellis_2_int8_convrot.safetensors',
+    bytes: 5_253_048_192,
+    url: 'https://huggingface.co/Comfy-Org/TRELLIS.2/resolve/main/diffusion_models/trellis_2_int8_convrot.safetensors',
+  },
+  {
+    for: 'model',
+    folder: 'vae',
+    file: 'trellis_2_shape_vae_bf16.safetensors',
+    bytes: 1_095_844_024,
+    url: 'https://huggingface.co/Comfy-Org/Pixal3D/resolve/main/vae/trellis_2_shape_vae_bf16.safetensors',
+  },
+  {
+    for: 'model',
+    folder: 'vae',
+    file: 'trellis_2_texture_vae_bf16.safetensors',
+    bytes: 948_461_364,
+    url: 'https://huggingface.co/Comfy-Org/Pixal3D/resolve/main/vae/trellis_2_texture_vae_bf16.safetensors',
+  },
+  {
+    for: 'model',
+    folder: 'clip_vision',
+    file: 'dino_v3_L_naf_fp32.safetensors',
+    bytes: 1_215_214_176,
+    url: 'https://huggingface.co/Comfy-Org/Pixal3D/resolve/main/clip_vision/dino_v3_L_naf_fp32.safetensors',
+  },
+  {
+    for: 'model',
+    folder: 'background_removal',
+    file: 'birefnet.safetensors',
+    bytes: 444_473_596,
+    url: 'https://huggingface.co/Comfy-Org/BiRefNet/resolve/main/background_removal/birefnet.safetensors',
+  },
+  {
+    for: 'model',
+    folder: 'geometry_estimation',
+    file: 'moge_2_vitl_normal_fp16.safetensors',
+    bytes: 661_859_924,
+    url: 'https://huggingface.co/Comfy-Org/MoGe/resolve/main/geometry_estimation/moge_2_vitl_normal_fp16.safetensors',
+  },
+]
+
+const EVERY_MODEL = [...BUNDLED_MODELS, ...BUNDLED_MODEL_FILES]
+
+/** The share of the card a generation may fill, on the operator's rule, so the start command reserves the rest. */
+export const GPU_SHARE = 0.9
 
 /** The ComfyUI server `FRAMEBOARD_COMFYUI_URL` names, else the default address. */
 export function comfyuiUrl(env: Environment): string {
@@ -83,7 +148,7 @@ export async function diagnose({
     gpu,
     local: { url, running, version: version ?? null, missing },
     setup: setupSteps({
-      nvidia: gpu !== null,
+      gpu,
       version,
       missing,
       urlSet: Boolean(env.FRAMEBOARD_COMFYUI_URL?.trim()),
@@ -143,7 +208,7 @@ async function missingModels(
   url: string,
   send: typeof fetch,
 ): Promise<MissingModel[]> {
-  const folders = [...new Set(BUNDLED_MODELS.map((each) => each.folder))]
+  const folders = [...new Set(EVERY_MODEL.map((each) => each.folder))]
   const listed = await Promise.all(
     folders.map(async (folder): Promise<[string, unknown[]]> => {
       try {
@@ -158,7 +223,7 @@ async function missingModels(
     }),
   )
   const held = new Map<string, unknown[]>(listed)
-  return BUNDLED_MODELS.filter(
+  return EVERY_MODEL.filter(
     (model) => !held.get(model.folder)?.includes(model.file),
   )
 }
@@ -168,16 +233,22 @@ async function missingModels(
  * it already can. The doctor prints them and never runs one.
  */
 function setupSteps({
-  nvidia,
+  gpu,
   version,
   missing,
   urlSet,
 }: {
-  nvidia: boolean
+  gpu: { memoryMiB: number } | null
   version: string | null | undefined
   missing: readonly MissingModel[] | null
   urlSet: boolean
 }): string[] {
+  const nvidia = gpu !== null
+  // ComfyUI leaves --reserve-vram free of the whole card, so reserving the rest of the share caps every process on it.
+  const reserve =
+    gpu === null
+      ? ''
+      : ` --reserve-vram ${Math.ceil(((1 - GPU_SHARE) * gpu.memoryMiB) / 1024)}`
   const exportUrl = urlSet
     ? []
     : [`export FRAMEBOARD_COMFYUI_URL=${DEFAULT_COMFYUI_URL}`]
@@ -189,8 +260,8 @@ function setupSteps({
         ? 'uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130'
         : 'uv pip install torch torchvision torchaudio',
       'uv pip install -r requirements.txt',
-      ...BUNDLED_MODELS.map(download),
-      'python main.py --listen 127.0.0.1 --port 8188',
+      ...EVERY_MODEL.map(download),
+      `python main.py --listen 127.0.0.1 --port 8188${reserve}`,
       ...exportUrl,
     ]
   }

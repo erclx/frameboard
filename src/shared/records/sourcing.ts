@@ -275,8 +275,10 @@ export const imageFreeSchema = z.object({
 
 export type ImageFree = z.infer<typeof imageFreeSchema>
 
-/** A model file the bundled workflow loads, as ComfyUI's `models/<folder>/` should hold it. */
+/** A model file a bundled workflow loads, as ComfyUI's `models/<folder>/` should hold it. */
 export const missingModelSchema = z.object({
+  /** The verb whose bundled workflow loads it, `image` for image generate and `model` for model generate. */
+  for: z.enum(['image', 'model']),
   folder: z.string(),
   file: z.string(),
   bytes: z.int(),
@@ -297,7 +299,7 @@ export const imageDoctorSchema = z.object({
     running: z.boolean(),
     /** The ComfyUI version the server reports, null when none answers. */
     version: z.string().nullable(),
-    /** The bundled workflow's files the server lacks, null when it does not answer. */
+    /** Each bundled workflow's files the server lacks, image ones first, null when it does not answer. */
     missing: z.array(missingModelSchema).nullable(),
   }),
   /** Commands that would get this machine generating locally, empty when it already can. */

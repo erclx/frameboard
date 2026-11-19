@@ -99,10 +99,27 @@ function comfyServer(version: string, folders: Record<string, string[]>) {
   return { send, asked }
 }
 
-const allModels = {
+const imageModels = {
   diffusion_models: ['flux-2-klein-4b-fp8.safetensors'],
   text_encoders: ['qwen_3_4b.safetensors', 'other.safetensors'],
   vae: ['flux2-vae.safetensors'],
+}
+
+const allModels = {
+  ...imageModels,
+  diffusion_models: [
+    'flux-2-klein-4b-fp8.safetensors',
+    'pixal3d_int8_convrot.safetensors',
+    'trellis_2_int8_convrot.safetensors',
+  ],
+  vae: [
+    'flux2-vae.safetensors',
+    'trellis_2_shape_vae_bf16.safetensors',
+    'trellis_2_texture_vae_bf16.safetensors',
+  ],
+  clip_vision: ['dino_v3_L_naf_fp32.safetensors'],
+  background_removal: ['birefnet.safetensors'],
+  geometry_estimation: ['moge_2_vitl_normal_fp16.safetensors'],
 }
 
 const rtx = async () => 'NVIDIA GeForce RTX 5090, 32607\n'
@@ -126,12 +143,16 @@ describe('diagnose with a ComfyUI server', () => {
   })
 
   it('names a missing model file with its folder, size, and download', async () => {
-    const { send } = comfyServer('0.46.0', { ...allModels, vae: [] })
+    const { send } = comfyServer('0.46.0', {
+      ...allModels,
+      vae: allModels.vae.filter((file) => file !== 'flux2-vae.safetensors'),
+    })
 
     const report = await diagnose({ env, send, queryGpu: rtx })
 
     expect(report.local.missing).toEqual([
       {
+        for: 'image',
         folder: 'vae',
         file: 'flux2-vae.safetensors',
         bytes: 336213556,
@@ -141,6 +162,30 @@ describe('diagnose with a ComfyUI server', () => {
     expect(report.setup).toEqual([
       'curl -L -o models/vae/flux2-vae.safetensors https://huggingface.co/Comfy-Org/flux2-dev/resolve/main/split_files/vae/flux2-vae.safetensors  # 0.34 GB',
     ])
+  })
+
+  it('names each Pixal3D file a server holding only the image files lacks, with its folder', async () => {
+    const { send } = comfyServer('0.46.0', imageModels)
+
+    const report = await diagnose({ env, send, queryGpu: rtx })
+
+    expect(
+      report.local.missing?.map((each) => [
+        each.for,
+        `${each.folder}/${each.file}`,
+      ]),
+    ).toEqual([
+      ['model', 'diffusion_models/pixal3d_int8_convrot.safetensors'],
+      ['model', 'diffusion_models/trellis_2_int8_convrot.safetensors'],
+      ['model', 'vae/trellis_2_shape_vae_bf16.safetensors'],
+      ['model', 'vae/trellis_2_texture_vae_bf16.safetensors'],
+      ['model', 'clip_vision/dino_v3_L_naf_fp32.safetensors'],
+      ['model', 'background_removal/birefnet.safetensors'],
+      ['model', 'geometry_estimation/moge_2_vitl_normal_fp16.safetensors'],
+    ])
+    expect(report.setup).toContain(
+      'curl -L -o models/diffusion_models/pixal3d_int8_convrot.safetensors https://huggingface.co/Comfy-Org/Pixal3D/resolve/main/diffusion_models/pixal3d_int8_convrot.safetensors  # 5.58 GB',
+    )
   })
 
   it('asks for an update when the server is older than v0.46.0', async () => {
@@ -173,6 +218,18 @@ describe('diagnose with a ComfyUI server', () => {
     )
     expect(report.setup.at(-1)).toBe(
       'export FRAMEBOARD_COMFYUI_URL=http://127.0.0.1:8188',
+    )
+  })
+
+  it('starts the server reserving a tenth of the card, so a run never fills past 90 percent', async () => {
+    const report = await diagnose({
+      env: {},
+      send: nothingListening,
+      queryGpu: rtx,
+    })
+
+    expect(report.setup).toContain(
+      'python main.py --listen 127.0.0.1 --port 8188 --reserve-vram 4',
     )
   })
 

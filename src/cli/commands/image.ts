@@ -227,7 +227,7 @@ export function registerImage(program: Command, context: ProgramContext): void {
           `Local\t${report.local.url} ${report.local.running ? `answers, ComfyUI ${report.local.version ?? 'of unknown version'}` : 'does not answer'}`,
           ...(report.local.missing ?? []).map(
             (each) =>
-              `Missing\tmodels/${each.folder}/${each.file}, ${(each.bytes / 1e9).toFixed(2)} GB`,
+              `Missing\tmodels/${each.folder}/${each.file}, ${(each.bytes / 1e9).toFixed(2)} GB, for ${each.for} generate`,
           ),
           ...report.providers.map(
             (each) =>
