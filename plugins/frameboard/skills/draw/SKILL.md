@@ -63,10 +63,13 @@ Run these on each frame once it is placed.
 Each feature past the core loop keeps its judgment in its own file. Read the one matching the task before the first write, and skip the rest.
 
 - When copying a live site's page onto the board, read `${CLAUDE_SKILL_DIR}/references/lift.md`
-- When the task is presenting a page, such as a deck, a slide transition, or an element a press reveals, read `${CLAUDE_SKILL_DIR}/references/slides.md`
+- When the task is presenting a page, such as a deck, a slide transition, speaker notes, or an element a press reveals, read `${CLAUDE_SKILL_DIR}/references/slides.md`
 - When drawing sliders or other controls that tune an element the developer keeps values for, read `${CLAUDE_SKILL_DIR}/references/controls.md`
 - When a frame's `list --json` record carries `kit`, the project holds `assets/kits/` or `assets/kit/`, or the developer asks for a look or a new kit, read `${CLAUDE_SKILL_DIR}/references/kits.md`
 - When a frame needs a photo or a picture you would otherwise fetch or generate yourself, read `${CLAUDE_SKILL_DIR}/references/images.md`
+- When a frame shows a device body, or the developer names a phone, a tablet, a laptop, or the foldable, read `${CLAUDE_SKILL_DIR}/references/devices.md`
+- When an element should lean or turn in 3D, such as a tilted card or a screenshot at an angle, read `${CLAUDE_SKILL_DIR}/references/tilt.md`
+- When a frame plays a video or a sound, read `${CLAUDE_SKILL_DIR}/references/media.md`
 - When a frame shows a 3D model, or the developer asks for an object they can turn, read `${CLAUDE_SKILL_DIR}/references/models.md`
 
 ## Keep frames in their sections
