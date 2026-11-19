@@ -611,6 +611,29 @@ describe('ElementOverlay', () => {
       expect(ghosts(drawn)).toEqual([])
     })
 
+    // Drawn upright first, so the empty read follows a ghost that had arrived.
+    it.each(['phone', 'tablet', 'foldable'] as const)(
+      'drops the ghost once a selected %s turns to one screen',
+      async (device) => {
+        const container = await mountFrame(PAST)
+        const upright = { ...HERO, device }
+        act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+        const { container: drawn, rerender } = render(
+          <ElementOverlay frames={[upright]} container={container} />,
+        )
+        await waitFor(() => expect(ghosts(drawn)).toHaveLength(1))
+
+        rerender(
+          <ElementOverlay
+            frames={[{ ...upright, turn: 'left' }]}
+            container={container}
+          />,
+        )
+
+        expect(ghosts(drawn)).toEqual([])
+      },
+    )
+
     it('draws none while nothing on the frame is selected', async () => {
       const container = await mountFrame(PAST)
 
