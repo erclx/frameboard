@@ -225,6 +225,81 @@ describe('Bezel', () => {
       expect(container.querySelector('[data-bezel-status]')).toBeNull()
     })
 
+    it.each(['left', 'right'] as const)(
+      "fills a 54 wide strip down each short side in the page's fill turned %s, the island inside one",
+      (turn) => {
+        const { container } = render(
+          <Framed
+            device="phone"
+            width={844}
+            height={390}
+            turn={turn}
+            colors={{ fill: 'rgb(10, 20, 30)', ink: 'rgb(200, 210, 220)' }}
+          />,
+        )
+
+        const strips = [
+          ...container.querySelectorAll<HTMLElement>('[data-bezel-strip]'),
+        ]
+        const [left, right] = strips.map((strip) =>
+          strip.getBoundingClientRect(),
+        )
+        const [island] = rectsOf(container, '[data-bezel-island]')
+
+        expect(strips.map((strip) => strip.dataset.bezelStrip)).toEqual([
+          'left',
+          'right',
+        ])
+        expect(left?.left).toBeCloseTo(100)
+        expect(right?.right).toBeCloseTo(100 + 844)
+        for (const rect of [left, right]) {
+          expect(rect?.width).toBeCloseTo(54)
+          expect(rect?.height).toBeCloseTo(390)
+        }
+        for (const strip of strips) {
+          expect(getComputedStyle(strip).backgroundColor).toBe(
+            'rgb(10, 20, 30)',
+          )
+        }
+        const holder = turn === 'left' ? left : right
+        expect(island?.left).toBeGreaterThanOrEqual(holder?.left ?? 0)
+        expect(island?.right).toBeLessThanOrEqual(holder?.right ?? 0)
+      },
+    )
+
+    it("paints the strips in its theme's own colors before the page reports any", () => {
+      const { container } = render(
+        <Framed
+          device="phone"
+          width={844}
+          height={390}
+          turn="left"
+          theme="dark"
+        />,
+      )
+
+      const strips = [
+        ...container.querySelectorAll<HTMLElement>('[data-bezel-strip]'),
+      ]
+
+      expect(strips).toHaveLength(2)
+      for (const strip of strips) {
+        expect(getComputedStyle(strip).colorScheme).toBe('dark')
+      }
+    })
+
+    it.each([
+      ['an upright phone', 'phone', 'upright'],
+      ['a turned tablet', 'tablet', 'left'],
+      ['a turned foldable', 'foldable', 'right'],
+    ] as const)('draws no side strips on %s', (_label, device, turn) => {
+      const { container } = render(
+        <Framed device={device} width={844} height={390} turn={turn} />,
+      )
+
+      expect(container.querySelector('[data-bezel-strip]')).toBeNull()
+    })
+
     it('stands the island on end on the left short side turned left', () => {
       const { container } = render(
         <Framed device="phone" width={844} height={390} turn="left" />,
