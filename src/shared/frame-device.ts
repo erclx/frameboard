@@ -145,10 +145,9 @@ export const PHONE_BUTTONS = [
 }[]
 
 /**
- * The phone's status bar, drawn over the top of its screen while the device
- * shows, ending 10 below the island so a page starting under it clears the
- * island. Its time and marks sit in the island's band, `side` in from each
- * edge, past the screen's corner arc.
+ * The phone's status bar, ending 10 below the island so a page under it
+ * clears the island, its time and marks in the island's band `side` in from
+ * each edge, past the screen's corner arc.
  */
 export const STATUS_BAR = {
   height: PHONE_ISLAND.top + PHONE_ISLAND.height + 10,
