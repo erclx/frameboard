@@ -185,6 +185,36 @@ async function devicesTurned(page: Page): Promise<void> {
 }
 
 /**
+ * Turns the about frame's phone left with a page of rows running far past
+ * the 390 tall box, as a page-tall phone's page does once turned.
+ */
+async function turnedPhoneOverflowing(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const htmlPath = join(SERVED_BOARD, 'webapp/home/about.html')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const originalHtml = readFileSync(htmlPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  Object.assign(layout.frames.about, {
+    width: 844,
+    height: 390,
+    showDevice: true,
+    turn: 'left',
+    upright: { width: 390, height: 844 },
+  })
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  const row =
+    '<section style="height:140px;margin:16px 0;box-shadow:inset 0 0 0 1px #d4d4d8"></section>'
+  writeFileSync(
+    htmlPath,
+    originalHtml.replace('<h1>about</h1>', `<h1>about</h1>${row.repeat(6)}`),
+  )
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+    writeFileSync(htmlPath, originalHtml)
+  })
+}
+
+/**
  * Names the about frame a foldable in `pose`, at that pose's screen size,
  * putting the layout back when the page closes.
  */
@@ -693,6 +723,27 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           onCanvas({ select: ['webapp/home/about'] }),
           readyWhen(
             'body:has([data-bezel="phone"][data-bezel-turn="left"]):has([data-bezel="tablet"][data-bezel-turn="left"]):has([data-turns])',
+          ),
+        ),
+      ),
+    },
+    {
+      section: 'device-turned-overflow',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      // A selected turned phone keeps its page's rows inside its box, with no overflow ghost under it.
+      setup: themed(
+        both(
+          asWriter,
+          turnedPhoneOverflowing,
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          readyWhen(
+            'body:has([data-bezel="phone"][data-bezel-turn="left"]):has([data-turns])',
+            '[data-element-ghost]',
           ),
         ),
       ),
