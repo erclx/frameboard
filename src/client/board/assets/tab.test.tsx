@@ -12,6 +12,7 @@ import {
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { leftTabStore } from '@/client/board/left-panel/tab-store'
 import { liveStore } from '@/client/live/store'
 import type { AssetAddResult, AssetFile } from '@/shared/records/assets'
 import { contrastOnPage } from '@/test/contrast'
@@ -126,6 +127,57 @@ describe('AssetsTab', () => {
     expect(await screen.findByText('assets/ · 0 files')).toBeVisible()
     expect(screen.getByText(/No files in/)).toBeVisible()
     expect(screen.getByText('Drop files here to add them.')).toBeVisible()
+  })
+
+  describe('kit files', () => {
+    const WITH_KITS: AssetFile[] = [
+      { path: 'lake.jpg', kind: 'image', size: 2_000 },
+      { path: 'kits/clean/kit.css', kind: 'stylesheet', size: 900 },
+      { path: 'kits/clean/kit.json', kind: 'other', size: 120 },
+      { path: 'kits/sketch/kit.css', kind: 'stylesheet', size: 900 },
+    ]
+
+    afterEach(() => {
+      leftTabStore.setState({ tab: 'design' })
+    })
+
+    it('leaves them out of the list and the count', async () => {
+      render(<AssetsTab project="studio" load={listing(WITH_KITS)} />)
+
+      expect(await screen.findByText('assets/ · 1 file')).toBeVisible()
+      expect(screen.queryByText('kit.css')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /^Other/ }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('opens the Theme tab from the line naming how many kits it manages', async () => {
+      const user = userEvent.setup()
+      render(<AssetsTab project="studio" load={listing(WITH_KITS)} />)
+
+      await user.click(await screen.findByRole('button', { name: 'Theme tab' }))
+
+      expect(screen.getByText(/2 kits are managed in the/)).toBeVisible()
+      expect(leftTabStore.getState().tab).toBe('theme')
+    })
+
+    it('reads as empty beside the kits line when kits are all it holds', async () => {
+      render(<AssetsTab project="studio" load={listing(WITH_KITS.slice(3))} />)
+
+      expect(await screen.findByText('assets/ · 0 files')).toBeVisible()
+      expect(screen.getByText(/No files in/)).toBeVisible()
+      expect(screen.getByText(/1 kit is managed in the/)).toBeVisible()
+    })
+
+    it('draws no kits line for a project with no kits', async () => {
+      render(<AssetsTab project="studio" load={listing(FILES)} />)
+
+      await screen.findByText('assets/ · 5 files')
+
+      expect(
+        screen.queryByRole('button', { name: 'Theme tab' }),
+      ).not.toBeInTheDocument()
+    })
   })
 
   it('says so when the list does not load', async () => {

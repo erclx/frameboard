@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, Plus, Search } from 'lucide-react'
 import { type DragEvent, useEffect, useRef, useState } from 'react'
 
+import { leftTabStore } from '@/client/board/left-panel/tab-store'
 import { useLive } from '@/client/live/store'
 import type { AssetAddResult, AssetList } from '@/shared/records/assets'
 
@@ -10,6 +11,7 @@ import {
   CHIP_LABELS,
   chipCounts,
   groupAssets,
+  withoutKits,
 } from './groups'
 import { fetchAssets } from './list'
 import { Tile } from './tile'
@@ -84,11 +86,12 @@ export function FilesView({
       </p>
     )
   }
-  const count = list.files.length
-  const chips = chipCounts(list.files)
+  const { files, kits } = withoutKits(list.files)
+  const count = files.length
+  const chips = chipCounts(files)
   // A chip whose last file went away falls back to All rather than hiding every tile.
   const chip = chips.some((entry) => entry.chip === picked) ? picked : 'all'
-  const groups = groupAssets(list.files, { chip, search })
+  const groups = groupAssets(files, { chip, search })
   const clearFilter = () => {
     setSearch('')
     setPicked('all')
@@ -212,6 +215,19 @@ export function FilesView({
           )}
         </>
       )}
+      {kits > 0 ? (
+        <p className="mx-3 mt-1.5 mb-0.5 text-[10px] leading-[1.4] text-muted-foreground">
+          {kits === 1 ? '1 kit is' : `${kits} kits are`} managed in the{' '}
+          <button
+            type="button"
+            onClick={() => leftTabStore.setState({ tab: 'theme' })}
+            className="rounded-sm text-foreground underline underline-offset-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            Theme tab
+          </button>
+          .
+        </p>
+      ) : null}
       <div className="m-2 rounded-[10px] border-[1.5px] border-dashed border-border p-3 text-center leading-normal text-muted-foreground">
         {canWrite ? (
           <>
