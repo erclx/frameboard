@@ -39,6 +39,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
    - Resize an axis only to fix it, since a resize stops that axis hugging
    - Pass `--scroll` for a page meant to scroll at a screen height, such as one with a sticky section, rather than running `frame fit`, which grows it to its full length
    - Place one frame with `--widths 834,390` for a responsive page, rather than copying its file per width, so every fix lands once and the board draws each width beside it
+   - Leave the top of a phone frame unpadded for the status bar. While its device shows, the board draws the bar over the top 54 px of the box and starts the page under it, so a page at 390 × 844 lays out at 390 × 790.
 
 ## Check it and hand it back
 
