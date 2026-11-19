@@ -149,8 +149,7 @@ async function settle(
     undefined,
     { timeout: SETTLE_TIMEOUT },
   )
-  // Each frame sits on its own port, so its page is waited on from inside it.
-  // A frame's fonts load after its `readyState`, outside the outer document's.
+  // Waited on from inside, since a frame on its own port hides its fonts.
   for (const frame of page.mainFrame().childFrames()) {
     await frame
       .waitForFunction(

@@ -61,8 +61,7 @@ test.describe("a frame's script against the board", () => {
   test("refuses every write the frame posts with the board's cookie", async ({
     page,
   }) => {
-    // The board's own page writes with the same cookie, so the refusals
-    // below come from the frame's origin alone.
+    // The board's own write passes, so each refusal is the frame's origin.
     const own = await page.evaluate(
       async () => (await fetch('/api/redo', { method: 'POST' })).status,
     )

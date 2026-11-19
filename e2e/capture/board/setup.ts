@@ -499,8 +499,7 @@ export function readyWhen(
     })
     await page.addInitScript(
       ({ target, missing, frames }) => {
-        // The board's page alone, since a frame's held image would hold the
-        // frame's load, which stamps the iframe a case waits on.
+        // A frame's held image would hold the load that stamps its iframe.
         if (window !== window.top) return
         let left = frames
         const painted = () =>

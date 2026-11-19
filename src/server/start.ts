@@ -303,8 +303,7 @@ async function listen({
     },
   )
   const selection = createSelectionHolder(() => tabs.writers)
-  // Frames load from their own port, whose `Origin` the write guard refuses,
-  // so a frame's script cannot write as the board.
+  // A frame's script carries this port's `Origin`, which the guard refuses.
   const frameOrigin = await startFrameOrigin({
     root,
     facesDir,
@@ -341,8 +340,7 @@ async function listen({
       launch,
     }),
   )
-  // The warm browser reads frames where a tab does, so a render, a check, and
-  // a fit see what the board shows.
+  // Renders, checks, and fits read frames where a tab does.
   const baseUrl = () => `http://${HOSTNAME}:${frameOrigin.port}`
   const renderFrame = createWarmRenderer({ baseUrl, browser, scale: 2 })
   const renderFilmstrip = createWarmFilmstripRenderer({ baseUrl, browser })

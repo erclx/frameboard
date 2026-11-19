@@ -47,8 +47,7 @@ export function frameOriginApp(
     if (type.startsWith('text/html') || type.startsWith('image/svg+xml')) {
       c.res.headers.set('Content-Security-Policy', FRAME_ANCESTORS)
     }
-    // Any loopback page can embed these files already, so reading them from
-    // the board's page grants nothing new, and no credential is allowed.
+    // Any loopback page can embed these files, so a read grants nothing new.
     const origin = c.req.header('Origin')
     if (origin !== undefined && LOOPBACK_ORIGIN.test(origin)) {
       c.res.headers.set('Access-Control-Allow-Origin', origin)

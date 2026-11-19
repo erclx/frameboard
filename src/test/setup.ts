@@ -6,8 +6,7 @@ import { afterEach, beforeEach } from 'vitest'
 import { liveStore } from '@/client/live/store'
 
 beforeEach(() => {
-  // The test server stands in for the frame port, so a frame loads on the
-  // test page's own origin and a test can read into it.
+  // The test page's own origin stands in, so a test can read into a frame.
   liveStore.setState({ framePort: Number(location.port) })
 })
 

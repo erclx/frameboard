@@ -7,10 +7,9 @@ import { defineConfig } from 'vite'
 
 const offset = Number(process.env.WORKTREE_PORT_OFFSET ?? 0)
 const vitePort = 5173 + offset
-// The board server `scripts/dev.ts` starts and proxies the API, socket, and
-// look to. It sits above Vite's port because `canon pr local` reports the
-// lowest page port, which has to be Vite's. Frames load from the board's
-// frame port directly, which its socket names.
+// The board server behind the API, socket, and look proxies, above Vite's port
+// since `canon pr local` reports the lowest. Frames load from its frame port,
+// which its socket names.
 const boardServer = `http://127.0.0.1:${6173 + offset}`
 const viteOrigins = new Set([
   `http://localhost:${vitePort}`,

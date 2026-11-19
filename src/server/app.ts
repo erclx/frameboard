@@ -191,9 +191,7 @@ export function createApp({
   if (checks) app.route('/', checkRoutes(actions.access, checks))
   if (thumbnails) app.route('/', thumbnailRoutes(root, thumbnails))
   if (preview) app.route('/', previewRoutes(root, actions.access, preview))
-  // The look stays for the typography picker's faces. A frame page here would
-  // run on the board's origin and write as the board, so an old address is
-  // sent to the frame port and nothing under it is served.
+  // A frame page here would write as the board, so frames redirect away.
   app.route('/', frames.lookRoutes)
   app.on(['GET', 'HEAD'], '/frames/*', (c) => {
     const url = new URL(c.req.url)

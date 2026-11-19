@@ -62,14 +62,12 @@ export function markPointerFocus(
   const onFocusOut = (event: FocusEvent) => {
     if (event.target instanceof Element) event.target.removeAttribute(MARK)
   }
-  // Heard for a key, since Tab inside a frame leaves with no key seen here.
-  // Kept past focus coming back, since the frame's push can land after it.
+  // Kept past focus coming back, since a frame's key push can land after it.
   let unhearFrame = () => {}
   const onFrameKey = () => {
     pointer = false
     const active = document.activeElement
-    // Focus already came back on the key that left the frame, so the mark
-    // the pointer reading set is wrong.
+    // Focus came back on this key, so the pointer reading's mark is wrong.
     if (active && !(active instanceof HTMLIFrameElement)) {
       active.removeAttribute(MARK)
     }

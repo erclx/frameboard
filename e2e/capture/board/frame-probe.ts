@@ -44,10 +44,9 @@ const PROBE = 'capture-probe'
 const ACT = 'capture-act'
 
 /**
- * Lets a board capture script read and drive the pages in its frames, which
- * sit on their own port and hide their documents. Each frame reports the
- * `selectors` it holds on every animation frame, for `frames` frames, and
- * the board page reads the latest report through `window.frameReport`.
+ * Lets a board capture script read and drive frames on their own port. Each
+ * frame reports `selectors` every animation frame for `frames` frames, read
+ * on the board through `window.frameReport`.
  */
 export async function probeFrames(
   page: Page,
