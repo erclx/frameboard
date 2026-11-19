@@ -2,16 +2,21 @@ import {
   BEZEL_COLORS,
   BEZELS,
   bezelShadow,
+  BUTTON_DEPTH,
   type Device,
   FOLDABLE_ISLAND,
   foldBand,
   HOME_BAR,
+  type Island,
   islandCenter,
   LAPTOP_BASE,
   laptopParts,
-  PHONE_ISLAND,
+  PHONE_BUTTONS,
+  phoneIsland,
   type Pose,
   screenCorners,
+  WIDE_ISLAND_LEVEL,
+  WIDE_ISLAND_TIMER,
 } from '@/shared/frame-device'
 
 /** One screen pixel at any zoom, the width of the body's edge. */
@@ -26,6 +31,7 @@ export function Bezel({
   width,
   height,
   pose = 'closed',
+  island = 'compact',
 }: {
   device: Device
   /** The frame's box, which a laptop's chin and base span. */
@@ -33,6 +39,8 @@ export function Bezel({
   height: number
   /** How a foldable is held, which no other device reads. */
   pose?: Pose
+  /** The phone's island width, which no other device reads. */
+  island?: Island
 }) {
   const laptop = device === 'laptop'
   return (
@@ -45,7 +53,7 @@ export function Bezel({
         boxShadow: bezelShadow(device),
       }}
     >
-      {device === 'phone' ? <PhoneMarks /> : null}
+      {device === 'phone' ? <PhoneMarks island={island} /> : null}
       {laptop ? <LaptopBody width={width} height={height} /> : null}
       {device === 'foldable' ? <FoldableMarks pose={pose} /> : null}
     </div>
@@ -106,21 +114,65 @@ function HomeBar() {
   )
 }
 
-function PhoneMarks() {
+function PhoneMarks({ island }: { island: Island }) {
+  const { width, height, top } = phoneIsland(island)
+  const { border } = BEZELS.phone
   return (
     <>
+      {PHONE_BUTTONS.map(({ side, top: from, height: length }) => (
+        <span
+          key={`${side} ${from}`}
+          data-bezel-button={side}
+          className="absolute"
+          style={{
+            [side]: -border - BUTTON_DEPTH,
+            top: from - border,
+            width: BUTTON_DEPTH,
+            height: length,
+            borderRadius: BUTTON_DEPTH / 2,
+            background: BEZEL_COLORS.button,
+          }}
+        />
+      ))}
       <span
         data-bezel-island
-        className="absolute left-1/2 -translate-x-1/2"
+        className="absolute left-1/2 flex -translate-x-1/2 items-center justify-between px-[11px] text-[11px] leading-none font-semibold tabular-nums"
         style={{
-          top: PHONE_ISLAND.top,
-          width: PHONE_ISLAND.width,
-          height: PHONE_ISLAND.height,
-          borderRadius: PHONE_ISLAND.height / 2,
+          top,
+          width,
+          height,
+          borderRadius: height / 2,
           background: BEZEL_COLORS.island,
+          color: BEZEL_COLORS.islandText,
         }}
-      />
+      >
+        {island === 'wide' ? <IslandTimer /> : null}
+      </span>
       <HomeBar />
+    </>
+  )
+}
+
+/** The wide island's running timer, a live dot and its time, with a level on the right. */
+function IslandTimer() {
+  return (
+    <>
+      <span data-bezel-timer className="flex items-center gap-[5px]">
+        <span
+          className="size-[6px] rounded-full"
+          style={{ background: BEZEL_COLORS.islandLive }}
+        />
+        {WIDE_ISLAND_TIMER}
+      </span>
+      <span className="flex items-end gap-[2px]">
+        {WIDE_ISLAND_LEVEL.map((tall) => (
+          <span
+            key={tall}
+            className="w-[2px] rounded-[1px]"
+            style={{ height: tall, background: BEZEL_COLORS.islandLive }}
+          />
+        ))}
+      </span>
     </>
   )
 }

@@ -85,6 +85,9 @@ export const BEZEL_COLORS = {
   edge: '#45484f',
   island: '#050506',
   homeBar: 'rgba(128, 128, 128, 0.6)',
+  button: '#2a2c31',
+  islandText: '#ffffff',
+  islandLive: '#34c759',
 } as const
 
 /**
@@ -93,6 +96,53 @@ export const BEZEL_COLORS = {
  */
 export const PHONE_ISLAND = { width: 81, height: 30, top: 14 } as const
 export const HOME_BAR = { width: 140, height: 5, bottom: 8 } as const
+
+/** The island's two widths, the compact pill and the wide one a call or a timer shows. */
+export const ISLANDS = ['compact', 'wide'] as const
+
+export type Island = (typeof ISLANDS)[number]
+
+/** A layout entry's `island` as an island, compact for none or a value no reader knows. */
+export function islandOf(value: unknown): Island {
+  return value === 'wide' ? 'wide' : 'compact'
+}
+
+/** The wide island's width, scaled off the picked mock's ratio to the compact one. */
+const WIDE_ISLAND_WIDTH = 126
+
+/** The phone's island at its picked width, the wide one holding a timer. */
+export function phoneIsland(island: Island): {
+  width: number
+  height: number
+  top: number
+} {
+  return island === 'wide'
+    ? { ...PHONE_ISLAND, width: WIDE_ISLAND_WIDTH }
+    : { ...PHONE_ISLAND }
+}
+
+/** What the wide island shows, a running timer no frame sets, and the heights of the level bars beside it. */
+export const WIDE_ISLAND_TIMER = '0:42'
+export const WIDE_ISLAND_LEVEL = [5, 9, 7] as const
+
+/** How far the phone's buttons stand past the body's side, in points. */
+export const BUTTON_DEPTH = 4
+
+/**
+ * The phone's side buttons, each from the body's top edge, scaled off the
+ * picked mock: the action button and two volume buttons on the left, and
+ * the side button on the right.
+ */
+export const PHONE_BUTTONS = [
+  { side: 'left', top: 142, height: 33 },
+  { side: 'left', top: 195, height: 59 },
+  { side: 'left', top: 266, height: 59 },
+  { side: 'right', top: 222, height: 95 },
+] as const satisfies readonly {
+  side: 'left' | 'right'
+  top: number
+  height: number
+}[]
 
 /** The ways a foldable is held, each a screen the frame's box takes the size of. */
 export const POSES = ['closed', 'half', 'open'] as const
@@ -191,6 +241,12 @@ export function laptopParts({
   }
 }
 
+/** How far a device's parts stand past its body's sides, a laptop's base or a phone's buttons. */
+function sideReach(device: Device, width: number): number {
+  if (device === 'laptop') return baseReach(width)
+  return device === 'phone' ? BUTTON_DEPTH : 0
+}
+
 function baseReach(width: number): number {
   return Math.round((width + 2 * BEZELS.laptop.border) * LAPTOP_BASE.reach)
 }
@@ -219,13 +275,13 @@ export function bezelShadow(
 
 /**
  * The box a device's body covers around a frame's box, the box itself with
- * none. A laptop's base reaches past its lid, so its sides grow by more
- * than its top.
+ * none. A laptop's base reaches past its lid and a phone's buttons past its
+ * sides, so their sides grow by more than their top.
  */
 export function bezelBox(box: Box, device: Device | null | undefined): Box {
   if (!device) return { ...box }
   const { border, bottom } = BEZELS[device]
-  const side = device === 'laptop' ? border + baseReach(box.width) : border
+  const side = border + sideReach(device, box.width)
   return {
     x: box.x - side,
     y: box.y - border,

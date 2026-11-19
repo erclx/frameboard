@@ -8,16 +8,21 @@ import {
   bezelBox,
   BEZELS,
   bezelShadow,
+  BUTTON_DEPTH,
   type Device,
   FOLDABLE_ISLAND,
   foldBand,
   HOME_BAR,
+  type Island,
   islandCenter,
   LAPTOP_BASE,
   laptopParts,
-  PHONE_ISLAND,
+  PHONE_BUTTONS,
+  phoneIsland,
   type Pose,
   screenCorners,
+  WIDE_ISLAND_LEVEL,
+  WIDE_ISLAND_TIMER,
 } from '@/shared/frame-device'
 import { frameThemeUrl, LOOK_MARKER, type Theme } from '@/shared/theme'
 
@@ -163,6 +168,8 @@ export type RenderFrame = (
     device?: Device
     /** How a foldable is held, which draws its island and fold, closed when absent. */
     pose?: Pose
+    /** The phone's island width, compact when absent. */
+    island?: Island
     element?: number
   },
   theme: Theme,
@@ -256,7 +263,13 @@ export function createWarmRenderer({
         await opened.close()
       }
       return device
-        ? drawBezel(open, shot, frame.box, { device, pose: frame.pose }, scale)
+        ? drawBezel(
+            open,
+            shot,
+            frame.box,
+            { device, pose: frame.pose, island: frame.island },
+            scale,
+          )
         : shot
     })
     queue = run.catch(() => {})
@@ -308,7 +321,11 @@ async function drawBezel(
   browser: Browser,
   shot: Buffer,
   box: { width: number; height: number },
-  { device, pose = 'closed' }: { device: Device; pose?: Pose },
+  {
+    device,
+    pose = 'closed',
+    island = 'compact',
+  }: { device: Device; pose?: Pose; island?: Island },
   scale: number,
 ): Promise<Buffer> {
   const outer = bezelBox({ x: 0, y: 0, ...box }, device)
@@ -321,8 +338,7 @@ async function drawBezel(
     const page = await context.newPage()
     const marks =
       device === 'phone'
-        ? `<span style="${pill(PHONE_ISLAND.width, PHONE_ISLAND.height, BEZEL_COLORS.island)}top:${PHONE_ISLAND.top}px"></span>` +
-          `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
+        ? phoneMarks(island)
         : laptop
           ? laptopMarks(box)
           : device === 'foldable'
@@ -353,6 +369,26 @@ function laptopMarks(box: { width: number; height: number }): string {
   return (
     `<span style="position:absolute;box-sizing:border-box;left:${chin.x}px;top:${chin.y}px;width:${chin.width}px;height:${chin.height}px;background:${BEZEL_COLORS.body};border-left:${edge};border-right:${edge}"></span>` +
     `<span style="position:absolute;box-sizing:border-box;left:${base.x}px;top:${base.y}px;width:${base.width}px;height:${base.height}px;background:${BEZEL_COLORS.base};border:${edge};border-radius:0 0 ${LAPTOP_BASE.radius}px ${LAPTOP_BASE.radius}px"></span>`
+  )
+}
+
+/** The phone's buttons, island, and home bar as the board draws them. */
+function phoneMarks(island: Island): string {
+  const { border } = BEZELS.phone
+  const buttons = PHONE_BUTTONS.map(
+    ({ side, top, height }) =>
+      `<span style="position:absolute;${side}:${-border - BUTTON_DEPTH}px;top:${top - border}px;width:${BUTTON_DEPTH}px;height:${height}px;border-radius:${BUTTON_DEPTH / 2}px;background:${BEZEL_COLORS.button}"></span>`,
+  ).join('')
+  const shape = phoneIsland(island)
+  const timer =
+    island === 'wide'
+      ? `<span style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:3px;background:${BEZEL_COLORS.islandLive}"></span>${WIDE_ISLAND_TIMER}</span>` +
+        `<span style="display:flex;align-items:flex-end;gap:2px">${WIDE_ISLAND_LEVEL.map((tall) => `<span style="width:2px;height:${tall}px;border-radius:1px;background:${BEZEL_COLORS.islandLive}"></span>`).join('')}</span>`
+      : ''
+  return (
+    buttons +
+    `<span style="${pill(shape.width, shape.height, BEZEL_COLORS.island)}top:${shape.top}px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;padding:0 11px;color:${BEZEL_COLORS.islandText};font:600 11px/1 system-ui,sans-serif;font-variant-numeric:tabular-nums">${timer}</span>` +
+    `<span style="${pill(HOME_BAR.width, HOME_BAR.height, BEZEL_COLORS.homeBar)}bottom:${HOME_BAR.bottom}px"></span>`
   )
 }
 

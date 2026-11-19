@@ -7,8 +7,11 @@ import {
   DEVICES,
   foldBand,
   islandCenter,
+  islandOf,
   laptopParts,
   nearestPose,
+  PHONE_BUTTONS,
+  phoneIsland,
   POSE_SIZES,
   poseOf,
   screenCorners,
@@ -32,11 +35,11 @@ describe('deviceForWidth', () => {
 })
 
 describe('bezelBox', () => {
-  it('grows a phone frame by 16 points on every side', () => {
+  it('grows a phone frame by 16 points above and below and by its buttons aside', () => {
     expect(bezelBox(frame, 'phone')).toEqual({
-      x: 84,
+      x: 80,
       y: 24,
-      width: 422,
+      width: 430,
       height: 876,
     })
   })
@@ -149,6 +152,35 @@ describe('drawnExtent with a device', () => {
       width: 390 + 80 + 834 + 44,
       height: 1194 + 44,
     })
+  })
+})
+
+describe('the phone body', () => {
+  it('hangs its buttons within a 678 tall body, three on the left and one on the right', () => {
+    const body = 678 + 32
+    expect(PHONE_BUTTONS.filter(({ side }) => side === 'left')).toHaveLength(3)
+    expect(PHONE_BUTTONS.filter(({ side }) => side === 'right')).toHaveLength(1)
+    for (const { top, height } of PHONE_BUTTONS) {
+      expect(top + height).toBeLessThan(body / 2)
+    }
+  })
+
+  it('draws the wide island wider than the compact one at the same height and place', () => {
+    const compact = phoneIsland('compact')
+    const wide = phoneIsland('wide')
+    expect(wide.width).toBeGreaterThan(compact.width)
+    expect(wide.height).toBe(compact.height)
+    expect(wide.top).toBe(compact.top)
+  })
+
+  it.each([
+    ['wide', 'wide'],
+    ['compact', 'compact'],
+    [undefined, 'compact'],
+    ['huge', 'compact'],
+    [true, 'compact'],
+  ] as const)('reads an island key of %s as %s', (value, island) => {
+    expect(islandOf(value)).toBe(island)
   })
 })
 
