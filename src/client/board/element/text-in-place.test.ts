@@ -713,6 +713,23 @@ describe('editTextWhenShown', () => {
         ?.hasAttribute('contenteditable'),
     ).toBe(false)
   })
+
+  it('removes the text once, letting the flag go, when another element is selected before it opens', async () => {
+    const { container } = await mount()
+    const key = { ...KEY, hash: NEXT }
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', key)
+    let removed = 0
+    editTextWhenShown(container, key, recorder().write, selection, () => {
+      removed += 1
+    })
+
+    selectElement(selection, 'studio/home', { ...key, index: 2 })
+    selectElement(selection, 'studio/home', { ...key, index: 4 })
+
+    expect(removed).toBe(1)
+    expect(newTextStore.getState().key).toBeNull()
+  })
 })
 
 describe('editTextWhenShown on a placed Text', () => {
