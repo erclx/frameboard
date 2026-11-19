@@ -202,6 +202,16 @@ export const imageOfferSchema = z.object({
 
 export type ImageOffer = z.infer<typeof imageOfferSchema>
 
+/** What `image free` answers once the server unloaded its models. */
+export const imageFreeSchema = z.object({
+  version: z.literal(1),
+  /** The ComfyUI server at `FRAMEBOARD_COMFYUI_URL`, or the default address. */
+  url: z.string(),
+  freed: z.literal(true),
+})
+
+export type ImageFree = z.infer<typeof imageFreeSchema>
+
 /** What `image doctor` answers, naming each key as set or unset and never its value. */
 export const imageDoctorSchema = z.object({
   version: z.literal(1),

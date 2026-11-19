@@ -10,6 +10,11 @@ export const DEFAULT_COMFYUI_URL = 'http://127.0.0.1:8188'
 /** How long a probe waits, so a machine with nothing listening answers at once. */
 export const PROBE_TIMEOUT_MS = 1000
 
+/** The ComfyUI server `FRAMEBOARD_COMFYUI_URL` names, else the default address. */
+export function comfyuiUrl(env: Environment): string {
+  return env.FRAMEBOARD_COMFYUI_URL?.trim() || DEFAULT_COMFYUI_URL
+}
+
 /** Runs `nvidia-smi` with the arguments given, answering its stdout or null when it fails or is absent. */
 export type GpuQuery = (args: string[]) => Promise<string | null>
 
@@ -34,7 +39,7 @@ export async function diagnose({
   send: typeof fetch
   queryGpu: GpuQuery
 }): Promise<ImageDoctor> {
-  const url = env.FRAMEBOARD_COMFYUI_URL?.trim() || DEFAULT_COMFYUI_URL
+  const url = comfyuiUrl(env)
   const [gpu, running] = await Promise.all([
     readGpu(queryGpu),
     probe(url, send),
