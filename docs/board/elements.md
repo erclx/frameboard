@@ -19,7 +19,7 @@ Drag a corner of selected upright text, a shape, an image, a video, a model, or 
 
 ## Where a new element lands
 
-Past a frame's edge, an Absolute element shows as a dashed ghost a press drags back, unless the frame scrolls.
+Past a frame's edge, an Absolute element shows as a dashed ghost a press drags back, unless the frame scrolls or is turned.
 
 - A new element lands where you drew it unless its parent lays out as flex or grid, where it joins the flow, and a divider always joins the flow
 - Position's In flow and Absolute move it either way afterward
