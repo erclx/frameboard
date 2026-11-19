@@ -46,10 +46,10 @@ function renderRow(
 }
 
 const chips = () =>
-  within(screen.getByRole('group', { name: 'Also shows at' }))
+  within(screen.getByRole('group', { name: 'More widths' }))
     .queryAllByRole('listitem')
     .map((item) => item.textContent)
-    .filter(Boolean)
+    .filter((text) => /^\d+$/.test(text ?? ''))
 
 async function openMenu() {
   await userEvent.click(screen.getByRole('button', { name: 'Add a width' }))
@@ -148,19 +148,16 @@ describe('WidthsRow', () => {
     expect(screen.getByRole('button', { name: 'Add a width' })).toBeDisabled()
   })
 
-  it('describes the list through its label’s tip, with no standing line', () => {
+  it('titles the row More widths, says what it does in one line, and labels the plus', () => {
     renderRow(HERO)
 
-    expect(
-      screen.getByRole('group', { name: 'Also shows at' }),
-    ).toHaveAccessibleDescription(
-      'Each is drawn beside the frame from the same file.',
+    const row = screen.getByRole('group', { name: 'More widths' })
+    expect(row).toHaveAccessibleDescription(
+      'Show this frame at other widths beside it, to see how the page responds.',
     )
     expect(
-      screen.queryByText('Each is drawn beside the frame from the same file.', {
-        selector: 'p',
-      }),
-    ).toBeNull()
+      within(row).getByRole('button', { name: 'Add a width' }),
+    ).toHaveTextContent('Add a width')
   })
 
   it('holds the plus with its reason for a frame hugging its width', async () => {

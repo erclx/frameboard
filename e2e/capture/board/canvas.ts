@@ -721,7 +721,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // A frame holding two linked widths, a chip each in the Also shows at row.
+      // A frame holding two linked widths, a chip each in the More widths row.
       setup: themed(
         both(
           asWriter,
