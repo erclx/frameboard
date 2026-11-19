@@ -44,6 +44,37 @@ export function subscribeShown(listener: Listener): () => void {
   return () => listeners.delete(listener)
 }
 
+/**
+ * Keeps what `open` starts on each page an iframe shows, closing it as the
+ * page goes and opening it again on the next, since a request lives in one
+ * document. A restamp keeps the page, and a page that never announces itself,
+ * such as a kit preview, never opens.
+ */
+export function followPage(
+  iframe: HTMLIFrameElement,
+  open: () => () => void,
+): () => void {
+  let close: (() => void) | null = null
+  const sync = () => {
+    const shown = shownHashOf(iframe) !== null
+    if (shown && !close) {
+      close = open()
+    } else if (!shown && close) {
+      close()
+      close = null
+    }
+  }
+  sync()
+  const stop = subscribeShown((changed) => {
+    if (changed === iframe) sync()
+  })
+  return () => {
+    stop()
+    close?.()
+    close = null
+  }
+}
+
 /** The live iframe of a frame in a canvas layer, null for a placeholder. */
 function iframeIn(
   container: ParentNode,

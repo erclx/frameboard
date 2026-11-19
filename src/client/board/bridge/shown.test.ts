@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { BRIDGE_TAG } from '@/shared/frame-bridge/messages'
 
 import { request } from './channel'
-import { holdShown, shownHashOf, subscribeShown } from './shown'
+import { followPage, holdShown, shownHashOf, subscribeShown } from './shown'
 
 const HASH = 'c'.repeat(64)
 const NEXT = 'd'.repeat(64)
@@ -108,5 +108,78 @@ describe('holdShown', () => {
 
     expect(shownHashOf(iframe)).toBe(NEXT)
     expect(changed).toEqual([iframe])
+  })
+})
+
+describe('followPage', () => {
+  /** Each open and close `followPage` ran, an open naming the hash's first letter. */
+  function follow(iframe: HTMLIFrameElement): string[] {
+    const seen: string[] = []
+    stops.push(
+      followPage(iframe, () => {
+        seen.push(`open ${shownHashOf(iframe)?.slice(0, 1)}`)
+        return () => seen.push('close')
+      }),
+    )
+    return seen
+  }
+
+  it('opens at once on a page already shown', async () => {
+    const iframe = await mount(page(HASH))
+    await expect.poll(() => shownHashOf(iframe)).toBe(HASH)
+
+    const seen = follow(iframe)
+
+    expect(seen).toEqual(['open c'])
+  })
+
+  it('waits for a page still loading to announce itself', async () => {
+    const iframe = document.createElement('iframe')
+    frames.push(iframe)
+    document.body.append(iframe)
+    const seen = follow(iframe)
+
+    await show(iframe, page(HASH))
+
+    await expect.poll(() => seen).toEqual(['open c'])
+  })
+
+  it('closes on the page going and opens again on the next', async () => {
+    const iframe = await mount(page(HASH))
+    await expect.poll(() => shownHashOf(iframe)).toBe(HASH)
+    const seen = follow(iframe)
+
+    await show(iframe, page(NEXT))
+
+    await expect.poll(() => seen).toEqual(['open c', 'close', 'open d'])
+  })
+
+  it('keeps the page open across a restamp', async () => {
+    const iframe = await mount(page(HASH))
+    await expect.poll(() => shownHashOf(iframe)).toBe(HASH)
+    const seen = follow(iframe)
+
+    holdShown(iframe, NEXT)
+
+    expect(seen).toEqual(['open c'])
+  })
+
+  it('never opens on a page with no bridge', async () => {
+    const iframe = await mount(page(HASH, ''))
+    const seen = follow(iframe)
+
+    await show(iframe, page(NEXT, ''))
+
+    expect(seen).toEqual([])
+  })
+
+  it('closes what it opened once stopped', async () => {
+    const iframe = await mount(page(HASH))
+    await expect.poll(() => shownHashOf(iframe)).toBe(HASH)
+    const seen = follow(iframe)
+
+    stops.pop()?.()
+
+    expect(seen).toEqual(['open c', 'close'])
   })
 })
