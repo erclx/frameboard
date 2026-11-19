@@ -180,8 +180,11 @@ describe('FindView', () => {
       true,
       expect.any(AbortSignal),
     )
+    await user.click(screen.getByRole('button', { name: 'Filter: Images' }))
     expect(
-      screen.getByRole('switch', { name: 'Include credited licenses' }),
+      await screen.findByRole('menuitemcheckbox', {
+        name: 'Include credited licenses',
+      }),
     ).toBeChecked()
   })
 
@@ -251,7 +254,7 @@ describe('FindView', () => {
     )
   })
 
-  it('searches again with credited licenses when the switch turns on, and says a credit is owed', async () => {
+  it('searches again with credited licenses when the menu turns them on, and says a credit is owed', async () => {
     const find = vi.fn(async (_: string, query: string, credited: boolean) =>
       answer(
         query,
@@ -263,8 +266,11 @@ describe('FindView', () => {
     const user = await searchFor('house')
     await screen.findByRole('list', { name: 'Results' })
 
+    await user.click(screen.getByRole('button', { name: 'Filter: Images' }))
     await user.click(
-      screen.getByRole('switch', { name: 'Include credited licenses' }),
+      await screen.findByRole('menuitemcheckbox', {
+        name: 'Include credited licenses',
+      }),
     )
 
     await waitFor(() =>
@@ -400,13 +406,31 @@ describe('FindView', () => {
     ).toBeInTheDocument()
   })
 
-  it('keeps Models off with the line saying when they arrive', () => {
+  it('keeps Models off in the filter menu with the line saying when they arrive', async () => {
+    const user = userEvent.setup()
     render(<FindView project="webapp" find={vi.fn()} />)
 
-    const models = screen.getByRole('button', { name: 'Models' })
-    expect(models).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Filter: Images' }))
+
+    const models = await screen.findByRole('menuitemradio', { name: 'Models' })
+    expect(models).toHaveAttribute('aria-disabled', 'true')
     expect(models).toHaveAccessibleDescription(
       '3D models arrive in a later release.',
     )
+    expect(screen.getByRole('menuitemradio', { name: 'Images' })).toBeChecked()
+  })
+
+  it('holds the kind and the license choice in the search field, with no rows of controls under it', () => {
+    render(<FindView project="webapp" find={vi.fn()} />)
+
+    const search = screen.getByRole('search')
+
+    expect(
+      within(search).getByRole('button', { name: 'Filter: Images' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('group', { name: 'What to find' }),
+    ).not.toBeInTheDocument()
   })
 })
