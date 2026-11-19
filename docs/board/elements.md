@@ -33,7 +33,7 @@ Images, videos, audio, and 3D models come from the project's `assets/` folder an
   - A tile let go over empty canvas makes a frame the file's size, outlined while you drag, and one undo takes the frame and its media back
   - Find in the Assets tab searches Openverse for public domain photos, or Poly Haven for CC0 3D models from its filter menu. Save brings one into `assets/` with its license, and a dragged result saves, then lands.
     - Find keeps its last search after another tab, until the board reloads
-  - Generate shows the provider and its price, and stays off in this release, so `frameboard image generate` makes an image instead
+  - Generate shows the provider and its price before anything runs, and one press makes the image into `assets/` with its license, spending on that provider's key
 - A model lands 240 by 135 as a `<model-viewer>`, and the first one placed copies the viewer's script into `assets/` and links it in the frame's head
 - A dropped video is written with `controls`, so Play shows the browser's own strip to pause it and turn on its sound
 - A selected video in Edit draws a bar inside its bottom edge, and an audio's bar sits under it
