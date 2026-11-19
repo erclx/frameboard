@@ -18,6 +18,7 @@ import { measureHandlers } from './measure'
 import { mediaHandlers } from './media'
 import { modelHandlers } from './model'
 import { previewHandlers } from './preview'
+import { stepHandlers } from './steps'
 import { openTextEdit } from './text-edit'
 
 // The frame route injects this as a script, which leaves no element behind,
@@ -45,6 +46,7 @@ const handlers: Handlers = {
   ...measureHandlers,
   ...mediaHandlers,
   ...modelHandlers,
+  ...stepHandlers,
   'element-box': (address) => {
     const element = addressed(address)
     if (!element) return null
