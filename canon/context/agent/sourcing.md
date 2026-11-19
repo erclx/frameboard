@@ -20,11 +20,17 @@ Owns finding, generating, and saving, apart from `src/cli/` because the board's 
 - `save.ts` holds a download whole before any write, lands an image or a packed model through `addAssets`, and names the license file after it, taking the file back out when that write fails
 - `generate.ts` picks the provider named, else the first in `PROVIDERS` whose key is set, and prices it with no request, so `--dry-run` and a refusal spend nothing
 
-The model generation and the doctor sit beside them.
+### `src/server/sourcing/generate-model.ts`
 
-- `generate-model.ts` reads the picture from here, the project, or its `assets/`, and checks its bytes are a picture
+Owns planning and running a model generation, apart from `generate.ts` because a model runs on the developer's own server alone and takes a picture rather than a prompt.
+
+- It reads the picture from here, the project, or its `assets/`, and checks its bytes are a picture
 - It carries a project asset's own license origin forward, and refuses `no-provider` while `FRAMEBOARD_COMFYUI_URL` is unset
-- `doctor.ts` reads the GPU through `nvidia-smi` and asks ComfyUI for its version and both bundled workflows' files, each tagged with its verb
+
+### `src/server/sourcing/doctor.ts`
+
+Owns `image doctor`'s reading, the GPU through `nvidia-smi` and ComfyUI's version and both bundled workflows' files, each tagged with its verb.
+
 - It builds setup steps it prints and never runs
 - Its start command passes `--reserve-vram` at a tenth of the card, since Frameboard never starts the server and a run is capped at 90 percent
 
@@ -37,11 +43,13 @@ Owns talking to a ComfyUI server the developer starts, apart from the providers 
 - An upload never overwrites, so a run fills the name the server answered rather than the one sent
 - A run waits up to `RUN_TIMEOUT_MS`, since a first call loads the model for 20 seconds or more
 
-The workflows fill their inputs from placeholders.
+### `src/server/sourcing/comfyui/workflow.ts`
 
-- `workflow.ts` fills `{{prompt}}`, `{{image}}`, `{{width}}`, `{{height}}`, and `{{seed}}`, a lone number placeholder as a number
+Owns the workflows a run sends, filling their inputs from placeholders.
+
+- It fills `{{prompt}}`, `{{image}}`, `{{width}}`, `{{height}}`, and `{{seed}}`, a lone number placeholder as a number
 - It refuses `usage` for an image workflow with no `{{prompt}}` or a model one with no `{{image}}`
-- `flux2-klein.json` is the bundled FLUX.2 klein 4B workflow an image run takes without `--workflow`
+- `flux2-klein.json` beside it is the bundled FLUX.2 klein 4B workflow an image run takes without `--workflow`
 - `pixal3d.json` is the bundled Pixal3D workflow a model run takes, at 100,000 triangles and 2048 px textures, its four sampler seeds all `{{seed}}`
 
 ### `src/server/sourcing/providers/`
@@ -63,14 +71,10 @@ Owns the four `image` verbs. It resolves the project and the file stem before an
 
 ### `src/cli/commands/model.ts`
 
-Owns `model find`, which takes the flags `image find` takes plus `--size`, resolving the project and stem before any request the same way.
+Owns `model find`, which takes the flags `image find` takes plus `--size`, and `model generate <picture>`, each resolving everything it reads before any request, so a dry run or a refusal reaches no server.
 
-- Its JSON and human output both name Poly Haven, which the API's terms ask of any surface listing its models
-- A saved model lands at `1k` textures unless `--size` names another, and a size the model lacks refuses `usage` with the sizes it offers
-
-It also owns `model generate <picture>`, which checks any `--workflow`, resolves the project, and reads the picture before any request, so a dry run or a refusal reaches no server.
-
-- Its license carries `kind: 'model'`, the server, the model or workflow file, the seed, and the picture, beside the image license, which carries no `kind`
+- `find` output names Poly Haven, which the API's terms ask of any surface listing its models, and saves at `1k` textures unless `--size` names a size the model offers
+- A generated model's license carries `kind: 'model'`, the server, the model or workflow file, the seed, and the picture, beside the image license, which carries no `kind`
 - A picture outside the project's `assets/` is named by its file name alone, never a path on the machine
 - It shows no progress, since ComfyUI reports progress only over its socket
 
