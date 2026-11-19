@@ -175,8 +175,7 @@ function StatusBar({
 /**
  * A turned phone's or foldable's two strips down the side edges its island
  * stands on, each the side inset wide in the page's fill, rounded on the
- * screen's outer corners, so the page between them clears the island as a
- * phone's status bar clears it upright.
+ * screen's outer corners, so the page between them clears the island.
  */
 function SideStrips({
   device,

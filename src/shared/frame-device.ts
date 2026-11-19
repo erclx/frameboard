@@ -246,9 +246,8 @@ export function topInset(
 
 /**
  * The width a turned phone's or foldable's page stands in from each side edge
- * its island can stand on, so the island never covers it and the page stays
- * centered. A phone's is its status bar's height, and a foldable, which has
- * no bar, takes the same 10 past its island. 0 for any other device or hold.
+ * its island can stand on, 10 past the island as a phone's status bar ends,
+ * so the island never covers it and the page stays centered. 0 otherwise.
  */
 export function sideInset(
   device: Device | null | undefined,
