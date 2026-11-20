@@ -59,7 +59,10 @@ export function elementTree(
       parent: parent === body ? null : (index.get(parent) ?? null),
       tag: element.tagName,
       name: elementName(element),
-      textOnly: ownText(element) !== null,
+      // A placed Text opens as an empty paragraph, which reads as text before its first word.
+      textOnly:
+        ownText(element) !== null ||
+        (element.tagName === 'p' && isEmpty(element)),
       layout: layouts[at] ?? 'block',
       round: (rounds[at] ?? false) && isEmpty(element),
       placed: isPlaced(facts[at]),
