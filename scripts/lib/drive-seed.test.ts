@@ -16,7 +16,7 @@ import { listTransitionNames } from '@/server/board/transitions'
 import { checkFrame } from '@/server/checks/frame'
 import { claim, readClaims } from '@/server/claims/store'
 
-import { seedDrive, type Seeded } from './drive-seed.ts'
+import { seedDrive } from './drive-seed.ts'
 
 const FIXTURE = join(
   import.meta.dirname,
@@ -131,7 +131,7 @@ describe('the motion page', () => {
   it('lays one desktop frame whose box slides on a finite timeline', async () => {
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.motion).toBe('laid')
+    expect(seeded.seeds.motion).toBe('laid')
     expect(readJson('marketing/motion/layout.json')).toEqual({
       version: 1,
       frames: {
@@ -158,7 +158,7 @@ describe('the motion page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.motion).toBe('kept')
+    expect(seeded.seeds.motion).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })
@@ -177,7 +177,7 @@ describe('the raw colors page', () => {
     const seeded = await seedDrive(root, new Date())
 
     const html = readFileSync(join(root, 'webapp/raw/swatches.html'), 'utf8')
-    expect(seeded.raw).toBe('laid')
+    expect(seeded.seeds.raw).toBe('laid')
     expect(html).toContain(
       `data-name="Equal" style="color: ${lightValue('--accent')}"`,
     )
@@ -189,27 +189,27 @@ describe('the raw colors page', () => {
     ).toEqual(['swatches'])
   })
 
-  it("lists the page after the webapp project's own", async () => {
+  it("lists the seeded pages after the webapp project's own, in module name order", async () => {
     await seedDrive(root, new Date())
 
     expect(readJson('webapp/project.json')).toMatchObject({
       pages: [
         'settings',
         'home',
-        'raw',
-        'feed',
         'deck',
+        'device',
+        'feed',
+        'fold',
+        'hug',
+        'mixed',
+        'model',
+        'phone-feed',
+        'raw',
         'shapes',
         'stacked',
-        'tuner',
-        'mixed',
         'tilt',
-        'model',
-        'device',
-        'fold',
-        'phone-feed',
+        'tuner',
         'widths',
-        'hug',
       ],
     })
   })
@@ -221,7 +221,7 @@ describe('the raw colors page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.raw).toBe('kept')
+    expect(seeded.seeds.raw).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })
@@ -230,38 +230,13 @@ describe('the scroll feed page', () => {
   it('lays one phone frame that scrolls a page longer than its screen', async () => {
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.feed).toBe('laid')
+    expect(seeded.seeds.feed).toBe('laid')
     expect(readJson('webapp/feed/layout.json')).toMatchObject({
       frames: { 'feed-scroll': { width: 390, height: 844, scroll: true } },
     })
     expect(
       readFileSync(join(root, 'webapp/feed/feed-scroll.html'), 'utf8'),
     ).toContain('data-name="Section 12"')
-  })
-
-  it('lists the page after the raw colors page', async () => {
-    await seedDrive(root, new Date())
-
-    expect(readJson('webapp/project.json')).toMatchObject({
-      pages: [
-        'settings',
-        'home',
-        'raw',
-        'feed',
-        'deck',
-        'shapes',
-        'stacked',
-        'tuner',
-        'mixed',
-        'tilt',
-        'model',
-        'device',
-        'fold',
-        'phone-feed',
-        'widths',
-        'hug',
-      ],
-    })
   })
 
   it('leaves a hand-edited feed page alone on a second seed', async () => {
@@ -271,7 +246,7 @@ describe('the scroll feed page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.feed).toBe('kept')
+    expect(seeded.seeds.feed).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })
@@ -280,7 +255,7 @@ describe('the device page', () => {
   it('lays one phone frame drawn inside its device', async () => {
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.device).toBe('laid')
+    expect(seeded.seeds.device).toBe('laid')
     expect(readJson('webapp/device/layout.json')).toMatchObject({
       frames: { phone: { width: 390, showDevice: true } },
     })
@@ -291,7 +266,7 @@ describe('the phone feed page', () => {
   it('lays the feed in a phone frame as tall as its page, off Scroll', async () => {
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.phoneFeed).toBe('laid')
+    expect(seeded.seeds['phone-feed']).toBe('laid')
     const { frames } = readJson('webapp/phone-feed/layout.json') as {
       frames: Record<string, Record<string, unknown>>
     }
@@ -308,7 +283,7 @@ describe('the foldable page', () => {
   it('lays one frame naming the foldable, closed at the cover screen', async () => {
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.fold).toBe('laid')
+    expect(seeded.seeds.fold).toBe('laid')
     expect(readJson('webapp/fold/layout.json')).toMatchObject({
       frames: {
         inbox: {
@@ -327,7 +302,7 @@ describe('the deck page', () => {
   it('lays three slides in a row with a page transition', async () => {
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.deck).toBe('laid')
+    expect(seeded.seeds.deck).toBe('laid')
     expect(readJson('webapp/deck/layout.json')).toMatchObject({
       present: { transition: { name: 'push', ms: 500 } },
       frames: {
@@ -352,7 +327,7 @@ describe('the deck page', () => {
   it("brings the closing slide in with a transition the board lists as webapp's own", async () => {
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.transition).toBe('laid')
+    expect(seeded.seeds.transition).toBe('laid')
     expect(await listTransitionNames(join(root, 'webapp'))).toEqual(['wipe'])
     expect(readJson('webapp/deck/layout.json')).toMatchObject({
       frames: { '03-closing': { transition: { name: 'wipe', ms: 700 } } },
@@ -366,7 +341,7 @@ describe('the deck page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.transition).toBe('kept')
+    expect(seeded.seeds.transition).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe(
       '@keyframes enter { from { opacity: 0 } }',
     )
@@ -388,7 +363,7 @@ describe('the deck page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.deck).toBe('kept')
+    expect(seeded.seeds.deck).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })
@@ -398,7 +373,7 @@ describe('the free shapes page', () => {
     const seeded = await seedDrive(root, new Date())
 
     const html = readFileSync(join(root, 'webapp/shapes/group.html'), 'utf8')
-    expect(seeded.shapes).toBe('laid')
+    expect(seeded.seeds.shapes).toBe('laid')
     expect(html.match(/position: absolute/g)).toHaveLength(4)
     expect(html).toContain(
       '<p data-name="Flowing" style="margin: 0; padding: 40px 160px">',
@@ -412,7 +387,7 @@ describe('the free shapes page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.shapes).toBe('kept')
+    expect(seeded.seeds.shapes).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })
@@ -426,7 +401,7 @@ describe('the stacked page', () => {
   it('lays three frames in a column, each 8 px under the one above', async () => {
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.stacked).toBe('laid')
+    expect(seeded.seeds.stacked).toBe('laid')
     expect(readJson('webapp/stacked/layout.json')).toMatchObject({
       frames: {
         top: { x: 0, y: 0, height: 240 },
@@ -457,7 +432,7 @@ describe('the stacked page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.stacked).toBe('kept')
+    expect(seeded.seeds.stacked).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited</p>')
   })
 })
@@ -465,7 +440,7 @@ describe('the stacked page', () => {
 describe('a kept page whose project listing was reset', () => {
   it.each<{
     project: string
-    page: Exclude<keyof Seeded, 'reserved'>
+    page: string
     own: string[]
   }>([
     { project: 'marketing', page: 'crowd', own: ['launch', 'states'] },
@@ -484,7 +459,7 @@ describe('a kept page whose project listing was reset', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded[page]).toBe('kept')
+    expect(seeded.seeds[page]).toBe('kept')
     expect(
       (readJson(`${project}/project.json`) as { pages: string[] }).pages,
     ).toContain(page)
@@ -507,8 +482,8 @@ describe('a kept page whose project listing was reset', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.crowd).toBe('kept')
-    expect(seeded.motion).toBe('kept')
+    expect(seeded.seeds.crowd).toBe('kept')
+    expect(seeded.seeds.motion).toBe('kept')
     expect(readdirSync(join(root, 'marketing'))).not.toContain('project.json')
   })
 })
@@ -517,7 +492,7 @@ describe('the Drives folder', () => {
   it('files two projects of one page each in one folder', async () => {
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.folder).toBe('laid')
+    expect(seeded.seeds.folder).toBe('laid')
     expect([
       readJson('drive-app/project.json'),
       readJson('drive-site/project.json'),
@@ -546,7 +521,7 @@ describe('the Drives folder', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.folder).toBe('kept')
+    expect(seeded.seeds.folder).toBe('kept')
     expect(readdirSync(root)).not.toContain('drive-site')
   })
 })
@@ -555,7 +530,7 @@ describe('the extra width page', () => {
   it('lays one desktop frame that also shows at 834', async () => {
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.widths).toBe('laid')
+    expect(seeded.seeds.widths).toBe('laid')
     expect(readJson('webapp/widths/layout.json')).toMatchObject({
       frames: { panel: { widths: [{ width: 834, height: 1194 }] } },
     })
@@ -566,7 +541,7 @@ describe('the extra width page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.widths).toBe('kept')
+    expect(seeded.seeds.widths).toBe('kept')
   })
 })
 
@@ -574,7 +549,7 @@ describe('the width-hugging frame page', () => {
   it('lays one frame that hugs its width', async () => {
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.hug).toBe('laid')
+    expect(seeded.seeds.hug).toBe('laid')
     expect(readJson('webapp/hug/layout.json')).toMatchObject({
       frames: { badge: { width: 320, height: 200, hugWidth: true } },
     })
@@ -585,7 +560,7 @@ describe('the width-hugging frame page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.hug).toBe('kept')
+    expect(seeded.seeds.hug).toBe('kept')
   })
 })
 
@@ -593,7 +568,7 @@ describe('the long sheet path project', () => {
   it('lays one page and a token sheet under a folder name with no break in it', async () => {
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.longPath).toBe('laid')
+    expect(seeded.seeds['long-path']).toBe('laid')
     const project = 'northwindbrandsystemworkspacedesigntokens'
     expect(readJson(`${project}/project.json`)).toEqual({
       version: 1,
@@ -609,7 +584,7 @@ describe('the long sheet path project', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.longPath).toBe('kept')
+    expect(seeded.seeds['long-path']).toBe('kept')
   })
 })
 
@@ -674,7 +649,7 @@ describe('the drawn controls page', () => {
       join(root, 'webapp/tuner/photo-tuner.html'),
       'utf8',
     )
-    expect(seeded.tuner).toBe('laid')
+    expect(seeded.seeds.tuner).toBe('laid')
     expect(html.match(/data-binds="#photo --/g)).toHaveLength(3)
     expect(
       checkFrame({
@@ -693,7 +668,7 @@ describe('the drawn controls page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.tuner).toBe('kept')
+    expect(seeded.seeds.tuner).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })
@@ -703,7 +678,7 @@ describe('the mixed text page', () => {
     const seeded = await seedDrive(root, new Date())
 
     const html = readFileSync(join(root, 'webapp/mixed/notes.html'), 'utf8')
-    expect(seeded.mixed).toBe('laid')
+    expect(seeded.seeds.mixed).toBe('laid')
     expect(html).toContain(
       '<li>Wipes in beside it, <code>wipe</code> same press</li>',
     )
@@ -716,7 +691,7 @@ describe('the mixed text page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.mixed).toBe('kept')
+    expect(seeded.seeds.mixed).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })
@@ -726,7 +701,7 @@ describe('the model page', () => {
     const seeded = await seedDrive(root, new Date())
 
     const html = readFileSync(join(root, 'webapp/model/spin.html'), 'utf8')
-    expect(seeded.model).toBe('laid')
+    expect(seeded.seeds.model).toBe('laid')
     expect(html).toContain(
       '<script type="module" src="../assets/model-viewer.min.js"></script>',
     )
@@ -744,7 +719,7 @@ describe('the model page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.model).toBe('kept')
+    expect(seeded.seeds.model).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })
@@ -754,7 +729,7 @@ describe('the tilted card page', () => {
     const seeded = await seedDrive(root, new Date())
 
     const html = readFileSync(join(root, 'webapp/tilt/card.html'), 'utf8')
-    expect(seeded.tilt).toBe('laid')
+    expect(seeded.seeds.tilt).toBe('laid')
     expect(html).toContain(
       'transform: perspective(800px) rotateX(20deg) rotateY(-30deg)',
     )
@@ -767,7 +742,7 @@ describe('the tilted card page', () => {
 
     const seeded = await seedDrive(root, new Date())
 
-    expect(seeded.tilt).toBe('kept')
+    expect(seeded.seeds.tilt).toBe('kept')
     expect(readFileSync(edited, 'utf8')).toBe('<p>edited by a reel</p>')
   })
 })

@@ -15,6 +15,9 @@ if (!copy) {
 
 const board = join(copy, 'test', 'fixtures', 'boards', 'basic')
 const seeded = await seedDrive(board, new Date())
+const states = Object.entries(seeded.seeds).map(
+  ([page, state]) => `${page} ${state}`,
+)
 console.log(
-  `Seeded ${board}: crowd page ${seeded.crowd}, motion page ${seeded.motion}, raw colors page ${seeded.raw}, feed page ${seeded.feed}, deck page ${seeded.deck}, device page ${seeded.device}, foldable page ${seeded.fold}, phone feed page ${seeded.phoneFeed}, webapp transition ${seeded.transition}, shapes page ${seeded.shapes}, stacked page ${seeded.stacked}, tuner page ${seeded.tuner}, mixed text page ${seeded.mixed}, tilted card page ${seeded.tilt}, model page ${seeded.model}, extra width page ${seeded.widths}, hugging frame page ${seeded.hug}, Drives folder ${seeded.folder}, long sheet path ${seeded.longPath}, reserved ${seeded.reserved.join(', ')}`,
+  `Seeded ${board}: ${states.join(', ')}, reserved ${seeded.reserved.join(', ')}`,
 )
