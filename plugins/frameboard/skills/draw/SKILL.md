@@ -91,7 +91,7 @@ Run `frameboard editing <page>/<frame> --json` before you change an existing fra
 - A claim lapses five minutes after you last ran it, so run it again while you are still at work
 - Drop it with `frameboard editing <page>/<frame> --release --json` as soon as you are done rather than letting it lapse, since the developer's hand edits on it wait for your claim to end
 - A refusal with `frame-claimed` means another session holds the frame. Leave it alone, or ask the developer, rather than writing it anyway, since nothing else stops you.
-- A locked frame refuses a move, a resize, or a delete as `frame-locked` but not a write to its file, so rewrite it only when the developer names it, and never clear the lock yourself
+- Treat a frame the developer locked as one to keep as they left it. Rewrite its file only when they name it, since the lock never stops a write, and never clear the lock yourself.
 - Leave a hidden frame out of `show`, and tell the developer when you change one
 
 ## Read what the developer picked
