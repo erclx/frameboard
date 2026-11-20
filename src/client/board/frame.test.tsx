@@ -330,15 +330,33 @@ describe('Frame', () => {
         turn: 'left',
       }
 
+      const watching: (() => void)[] = []
+
+      afterEach(() => {
+        while (watching.length > 0) watching.pop()?.()
+      })
+
+      // Watches from before the rows land, so `settled` waits for the push a mounted rail would draw from.
       async function overflowing(phone: FrameRecord) {
         const rendered = render(<Frame frame={phone} live version={0} />)
         const iframe = iframeOf(rendered.container, 'a')
         await bridged(iframe)
+        const watched = await ask(iframe, 'scroll', {})
+        watching.push(watched.close)
         iframe.contentDocument?.body.insertAdjacentHTML(
           'beforeend',
           '<div style="height:2000px"></div>',
         )
-        return { ...rendered, iframe }
+        const settled = async () => {
+          await expect
+            .poll(() => watched.pushes.some((view) => view && view.size < 1))
+            .toBe(true)
+          await act(async () => {
+            const { close } = await ask(iframe, 'live-body', {})
+            close()
+          })
+        }
+        return { ...rendered, iframe, settled }
       }
 
       it('draws the scroll rail while its page runs past the box', async () => {
@@ -363,17 +381,22 @@ describe('Frame', () => {
       })
 
       it('draws no rail once it hugs its page', async () => {
-        const { container } = await overflowing({ ...turned, hugHeight: true })
+        const { container, settled } = await overflowing({
+          ...turned,
+          hugHeight: true,
+        })
+        await settled()
 
         expect(container.querySelector('[data-rail]')).toBeNull()
       })
 
       it('draws no rail upright, where an overflowing row is one a press drags back', async () => {
         const { turn: _turn, ...upright } = turned
-        const { container } = await overflowing({
+        const { container, settled } = await overflowing({
           ...upright,
           box: { x: 0, y: 0, width: 390, height: 844 },
         })
+        await settled()
 
         expect(container.querySelector('[data-rail]')).toBeNull()
       })
