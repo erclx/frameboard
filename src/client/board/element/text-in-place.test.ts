@@ -740,21 +740,29 @@ describe('editTextWhenShown on a placed Text', () => {
     const selection = createSelectionStore()
     selectElement(selection, 'studio/home', key)
     const { changes, write } = recorder()
-    let removed = 0
+    const leaving: boolean[] = []
     const edit = editTextWhenShown(
       mounted.container,
       key,
       write,
       selection,
-      () => {
-        removed += 1
+      (mark) => {
+        leaving.push(mark)
       },
     )
     await show(mounted.iframe, source('<h1></h1>', NEXT))
     const heading = mounted.iframe.contentDocument?.querySelector('h1')
     if (!heading) throw new Error('The frame shows no heading.')
     await expect.poll(() => edit.isOpen()).toBe(true)
-    return { ...mounted, key, heading, edit, changes, removed: () => removed }
+    return {
+      ...mounted,
+      key,
+      heading,
+      edit,
+      changes,
+      leaving,
+      removed: () => leaving.length,
+    }
   }
 
   it('opens it empty, flagged as the new text while open', async () => {
@@ -807,6 +815,37 @@ describe('editTextWhenShown on a placed Text', () => {
 
     expect(removed()).toBe(1)
     expect(newTextStore.getState().key).toBeNull()
+  })
+
+  it('removes it once, marked as leaving, when the board page hides with nothing typed', async () => {
+    const { heading, edit, leaving } = await placed()
+
+    window.dispatchEvent(new PageTransitionEvent('pagehide'))
+    window.dispatchEvent(new PageTransitionEvent('pagehide'))
+
+    expect(leaving).toEqual([true])
+    expect(edit.isOpen()).toBe(false)
+    expect(newTextStore.getState().key).toBeNull()
+    await expect.poll(() => heading.hasAttribute('contenteditable')).toBe(false)
+  })
+
+  it('removes nothing when the board page hides after the text is written', async () => {
+    const { heading, changes, removed } = await placed()
+    heading.textContent = 'Hello'
+    press(heading, 'Escape')
+    await expect.poll(() => changes).toHaveLength(1)
+
+    window.dispatchEvent(new PageTransitionEvent('pagehide'))
+
+    expect(removed()).toBe(0)
+  })
+
+  it('marks an Esc with nothing typed as not leaving', async () => {
+    const { heading, leaving } = await placed()
+
+    press(heading, 'Escape')
+
+    await expect.poll(() => leaving).toEqual([false])
   })
 })
 

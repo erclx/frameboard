@@ -214,25 +214,32 @@ export const newTextStore = createStore<{ key: ElementKey | null }>()(() => ({
 /**
  * Opens a placed Text, empty, once its frame shows the key's bytes. It ends
  * written, or blank and handed to `remove` once, by an end with no text, a
- * cancel, or a selection moving on before it opens.
+ * cancel, a selection moving on, or the page leaving, marked as `leaving`.
  */
 export function editTextWhenShown(
   container: HTMLElement,
   key: ElementKey,
   write: WriteText,
   selection: SelectionStore,
-  remove: () => void,
+  remove: (leaving: boolean) => void,
 ): TextEditing {
   let current: TextEdit | null = null
   let waiting = true
   let ended = false
   newTextStore.setState({ key })
-  const end = (empty: boolean) => {
+  const board = container.ownerDocument.defaultView
+  const end = (empty: boolean, leaving = false) => {
     if (ended) return
     ended = true
+    board?.removeEventListener('pagehide', leave)
     if (newTextStore.getState().key === key)
       newTextStore.setState({ key: null })
-    if (empty) remove()
+    if (empty) remove(leaving)
+  }
+  function leave() {
+    stop()
+    current?.cancel()
+    end(true, true)
   }
   const written: WriteText = (changes) => {
     end(false)
@@ -264,6 +271,7 @@ export function editTextWhenShown(
   })
   // A load does not bubble, so a frame reloading is caught on the way down.
   container.addEventListener('load', attempt, true)
+  board?.addEventListener('pagehide', leave)
   attempt()
   return {
     cancel: () => {

@@ -458,6 +458,23 @@ test.describe('placing text and shapes into a frame', () => {
     await expect.poll(read).toBe(original)
   })
 
+  test('a placed Text left empty through a board reload is taken out of the file', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const original = read()
+    const headline = await centerOf(page, 'h1')
+
+    await tools(page).getByRole('button', { name: 'Text' }).click()
+    await page.mouse.click(headline.x, headline.y + 8)
+    await expect(hero(page).locator('[data-name="Text"]')).toBeFocused()
+    await expect.poll(read).toContain('data-name="Text"')
+    await page.reload()
+
+    await expect.poll(read).toBe(original)
+  })
+
   test('a click inside a text open for typing moves the caret there, and a click outside ends the edit', async ({
     page,
   }) => {
