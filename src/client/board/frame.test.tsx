@@ -321,6 +321,64 @@ describe('Frame', () => {
       })
     })
 
+    describe('a turned fixed phone', () => {
+      const turned: FrameRecord = {
+        ...frame('a'),
+        box: { x: 0, y: 0, width: 844, height: 390 },
+        showDevice: true,
+        device: 'phone',
+        turn: 'left',
+      }
+
+      async function overflowing(phone: FrameRecord) {
+        const rendered = render(<Frame frame={phone} live version={0} />)
+        const iframe = iframeOf(rendered.container, 'a')
+        await bridged(iframe)
+        iframe.contentDocument?.body.insertAdjacentHTML(
+          'beforeend',
+          '<div style="height:2000px"></div>',
+        )
+        return { ...rendered, iframe }
+      }
+
+      it('draws the scroll rail while its page runs past the box', async () => {
+        const { container } = await overflowing(turned)
+
+        await expect
+          .poll(() => container.querySelector('[data-rail-thumb]'))
+          .not.toBeNull()
+      })
+
+      it("hides its page's own scrollbar, as a scroll frame does", async () => {
+        const { iframe } = await overflowing(turned)
+
+        await expect
+          .poll(
+            () =>
+              iframe.contentDocument &&
+              getComputedStyle(iframe.contentDocument.documentElement)
+                .scrollbarWidth,
+          )
+          .toBe('none')
+      })
+
+      it('draws no rail once it hugs its page', async () => {
+        const { container } = await overflowing({ ...turned, hugHeight: true })
+
+        expect(container.querySelector('[data-rail]')).toBeNull()
+      })
+
+      it('draws no rail upright, where an overflowing row is one a press drags back', async () => {
+        const { turn: _turn, ...upright } = turned
+        const { container } = await overflowing({
+          ...upright,
+          box: { x: 0, y: 0, width: 390, height: 844 },
+        })
+
+        expect(container.querySelector('[data-rail]')).toBeNull()
+      })
+    })
+
     describe('a foldable', () => {
       const inbox: FrameRecord = {
         ...frame('inbox'),
