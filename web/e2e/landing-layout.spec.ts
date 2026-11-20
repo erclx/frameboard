@@ -15,6 +15,7 @@ const WIDTHS = [
 const SECTION_CONTENT = [
   '#hero [data-film]',
   '#walkthrough [data-track]',
+  '#themes > .wrap',
   '#close > .wrap',
 ]
 

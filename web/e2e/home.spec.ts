@@ -76,11 +76,38 @@ test.describe('hero picture', () => {
     await page.goto('/')
     await heroPicture(page).toBe('/hero-loop-dark.webp')
 
-    await page.getByRole('button', { name: 'Pause' }).click()
+    await page.getByRole('button', { name: 'Pause', exact: true }).click()
     await heroPicture(page).toBe('/hero-still-dark.png')
 
-    await page.getByRole('button', { name: 'Play' }).click()
+    await page.getByRole('button', { name: 'Play', exact: true }).click()
     await heroPicture(page).toBe('/hero-loop-dark.webp')
+  })
+})
+
+test.describe('themes clips', () => {
+  // jsdom has no IntersectionObserver or playback, so only a browser shows the real observer leaving every clip still.
+  test('a reduced-motion reader sees no clip play as the section scrolls into view', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await expect(page.getByRole('button', { name: 'Play clips' })).toBeVisible()
+    await expect(page.locator('#themes video')).toHaveCount(6)
+
+    await page.locator('#themes ul').scrollIntoViewIfNeeded()
+    // Two frames let the observer deliver its entries for the clips now in view.
+    await page.evaluate(
+      () =>
+        new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        ),
+    )
+
+    const playing = await page
+      .locator('#themes video')
+      .evaluateAll((videos: HTMLVideoElement[]) =>
+        videos.filter((video) => !video.paused).map((video) => video.src),
+      )
+    expect(playing).toEqual([])
   })
 })
 
