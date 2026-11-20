@@ -55,9 +55,10 @@ Two of those need a companion command or variable.
 Owns the shell scripts and the verify runner the commands above call, and every `.sh` file lives here but the plugin's resolver and `.claude/hooks/`.
 
 - `dev.ts` starts the board from source on the port `vite.config.ts` proxies to, then Vite, and `preview.ts` runs the built CLI's `serve --open-route`, then `open --no-open`
-- `worktree-port.sh` hashes a worktree's name into a port offset from 1 to 50, 0 being the main checkout, and `WORKTREE_PORT_OFFSET` breaks the 1 in 50 collision by hand
+- `worktree-port.sh` hashes a worktree's name into an offset from 1 to 50, 0 on the main checkout, skips one landing a base on a fetch-blocked port, and yields to `WORKTREE_PORT_OFFSET`
 - `evidence-capture.sh` backs `screenshot` with a throwaway copy of `basic` at pinned file times, since a run in the fixture rewrites `notes.json` and leaves a change log
 - `screenshot-compare.ts` serves its own boards through `e2e/support/board-server.ts`, so it reads the e2e helper from outside the runner's folder
+- `scripts/lib/drive-pages/` holds one module per page `scripts/lib/drive-seed.ts` lays, keyed by file name and laid in name order, so a new page is a new file
 
 ### `.husky/`
 

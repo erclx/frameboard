@@ -103,3 +103,5 @@ Generating makes an image nobody licensed, on the developer's own server or key.
 ## Design references
 
 `references sync <folder>` fills a folder of design references from the frames its `frames.json` maps, and `--check` exits 14 when the folder has drifted. It needs `oxfmt` installed in that project or beside Frameboard, an optional peer, and prints the install command without it.
+
+A sync leaves a held PNG alone while its frame's HTML, assets, and size stay the same, since a fresh render of the same HTML can differ in its fonts. `--rerender` redraws every PNG.
