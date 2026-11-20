@@ -3,11 +3,9 @@ type Theme = 'light' | 'dark'
 const STORAGE_KEY = 'theme'
 
 /**
- * Wires every theme button on the page, the bar's and the footer's. A stored
- * choice arrives as `data-theme` on the root, set before first paint by
- * `public/theme-init.js`, and with none the page follows the system. A click
- * on any button sets the other theme, stores it, and relabels them all, so
- * each names the theme its next press switches to.
+ * Wires every theme button on the page. `public/theme-init.js` sets a stored
+ * choice as `data-theme` before first paint, else the system theme applies.
+ * A click on any button switches and stores the theme and relabels them all.
  */
 export function wireThemeButtons(
   buttons: readonly HTMLButtonElement[],
