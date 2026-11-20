@@ -82,8 +82,7 @@ describe('double-clicking an element in a frame', () => {
       .toBeTruthy()
     const heading = iframe.contentDocument?.querySelector('h1')
     if (!heading) throw new Error('the frame shows no heading')
-    // A pick goes to the bridge only once the board heard it announce these bytes,
-    // which can land after the heading shows, so an earlier click picks no element.
+    // The board picks only once it heard these bytes announced, which can trail the heading.
     await expect.poll(() => shownHashOf(iframe)).toBe(HASH)
     return { drawn: drawn.getBoundingClientRect(), hit, heading }
   }
