@@ -15,11 +15,9 @@ interface Clip {
 }
 
 /**
- * Plays each clip in `#themes` only while half of it is in view. The section
- * button holds every clip, and a clip's own button plays or pauses it alone.
- * Under reduced motion the section starts paused, so a clip plays only once
- * its button is pressed. The section button ships hidden and each clip button
- * disabled, so a page without scripts shows posters and no dead control.
+ * Plays each `#themes` clip while half of it shows, the section starting held
+ * under reduced motion. The controls ship hidden or disabled, so a page with no
+ * scripts shows posters and no dead control.
  */
 export function wireThemes(root: ParentNode = document): void {
   const section = root.querySelector<HTMLButtonElement>('#themes .pause')
