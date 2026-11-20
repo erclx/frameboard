@@ -1,9 +1,14 @@
 import { z } from 'zod'
 
-/** What `references sync` returns, each path relative to the folder and sorted. */
+/**
+ * What `references sync` returns, each path relative to the folder and sorted.
+ * `kept` names each held PNG left in place, since its frame's HTML, assets,
+ * and size held still, and `written` the files the sync wrote.
+ */
 export const referencesSyncSchema = z.object({
   folder: z.string(),
   written: z.array(z.string()),
+  kept: z.array(z.string()),
   removed: z.array(z.string()),
 })
 

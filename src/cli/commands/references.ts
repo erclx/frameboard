@@ -15,7 +15,7 @@ import {
   type ProgramContext,
 } from '../program'
 
-type SyncOptions = CommonOptions & { check?: boolean }
+type SyncOptions = CommonOptions & { check?: boolean; rerender?: boolean }
 
 export function registerReferences(
   program: Command,
@@ -29,12 +29,16 @@ export function registerReferences(
   const command = addVerb(
     references,
     'sync',
-    "Write each frame <folder>/frames.json maps as its HTML, a PNG per theme, and the project assets it loads, removing every other file below the folder's first level",
+    "Write each frame <folder>/frames.json maps as its HTML, a PNG per theme, and the project assets it loads, removing every other file below the folder's first level and keeping a held PNG whose frame's HTML, assets, and size held still",
   )
     .argument('<folder>', 'the folder holding frames.json')
     .option(
       '--check',
       'write nothing, and exit 14 when the folder differs from what a sync would write',
+    )
+    .option(
+      '--rerender',
+      'write every PNG, keeping none a held frame would, such as after a change to how frames are captured',
     )
 
   act<SyncOptions>(command, context, async ([given = ''], options) => {
@@ -68,12 +72,17 @@ export function registerReferences(
       }
     }
 
-    const result = await syncReferences(target)
+    const result = await syncReferences({
+      ...target,
+      rerender: options.rerender,
+    })
+    const kept =
+      result.kept.length > 0 ? `, kept ${result.kept.length} held PNGs` : ''
     const removed =
       result.removed.length > 0 ? `, removed ${result.removed.length}` : ''
     return {
       data: result,
-      human: `Wrote ${result.written.length} files to ${folder}${removed}.`,
+      human: `Wrote ${result.written.length} files to ${folder}${kept}${removed}.`,
     }
   })
 }
