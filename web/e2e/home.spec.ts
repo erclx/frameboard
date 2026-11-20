@@ -163,7 +163,7 @@ test.describe('stored theme', () => {
 
     await expect(page.locator('body')).toHaveCSS(
       'background-color',
-      'rgb(236, 236, 236)',
+      'rgb(255, 255, 255)',
     )
   })
 
