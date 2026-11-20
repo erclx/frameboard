@@ -26,10 +26,8 @@ const CASES: CaptureCase[] = [
 ]
 
 /**
- * The sections of every case marked `writes`, each once in run order, so a
- * section's two themes run together. They run after every pristine case,
- * since a write leaks a toast, a glow, or lit Undo into whichever case runs
- * next, and `assets` writers run last of all.
+ * Each section marked `writes`, once in run order, so its two themes run
+ * together after every pristine case, since a write leaks into the next case.
  */
 function writingSections(writes: CaptureCase['writes']): string[] {
   return [

@@ -8,10 +8,8 @@ export interface ReferenceFiles {
 type Files = ReadonlyMap<string, string | Uint8Array>
 
 /**
- * The held PNGs a sync leaves in place, sorted: each whose reference's HTML
- * and assets match what the folder holds and whose capture kept its size. A
- * PNG varies with the browser and its fonts, so re-capturing an unchanged
- * frame would rewrite it with no design change.
+ * The held PNGs whose reference's HTML, assets, and size held still, sorted,
+ * since a re-capture of an unchanged frame can differ by browser and fonts.
  */
 export function keptImages(
   references: readonly ReferenceFiles[],

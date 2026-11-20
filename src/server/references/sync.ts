@@ -55,10 +55,9 @@ interface Built {
 }
 
 /**
- * Writes what the board holds into the folder and removes every other file
- * below its first level, leaving each held PNG `keptImages` names unless
- * `rerender` is set. It builds the whole output first, so a refusal leaves the
- * folder as it was.
+ * Writes the board into the folder, keeping each PNG `keptImages` names unless
+ * `rerender` is set, and removes every other file below its first level. A
+ * refusal leaves the folder as it was, since the whole output is built first.
  */
 export async function syncReferences(
   options: SyncOptions,
