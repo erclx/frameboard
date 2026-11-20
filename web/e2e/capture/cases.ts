@@ -12,6 +12,7 @@ const HOME_SECTIONS: CaptureSection[] = [
   { name: 'nav', selector: '[data-bar]' },
   { name: 'hero', selector: '#hero' },
   { name: 'walkthrough', selector: '#walkthrough' },
+  { name: 'themes', selector: '#themes' },
   { name: 'close', selector: '#close' },
 ]
 

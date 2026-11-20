@@ -1,0 +1,168 @@
+---
+import { getImage } from 'astro:assets'
+
+import devices from '../assets/themes/devices.jpg'
+import handEdits from '../assets/themes/hand-edits.jpg'
+import images3d from '../assets/themes/images-3d.jpg'
+import kits from '../assets/themes/kits.jpg'
+import play from '../assets/themes/play.jpg'
+import slides from '../assets/themes/slides.jpg'
+import {
+  DEVICES_DOCS_URL,
+  INSPECTOR_DOCS_URL,
+  MEDIA_DOCS_URL,
+  SLIDES_DOCS_URL,
+} from './links'
+
+const THEMES = [
+  {
+    stem: 'slides',
+    title: 'Slides',
+    body: 'Present a page as slides, with transitions, steps, speaker notes, and a presenter view in a second window.',
+    label:
+      'A page presenting as slides: the slide grid, a step, then the presenter view with notes',
+    poster: slides,
+    docs: { href: SLIDES_DOCS_URL, text: 'How slides work' },
+  },
+  {
+    stem: 'devices',
+    title: 'Devices',
+    body: 'Put a frame in a phone, tablet, or foldable, turn it landscape, and open the project on your own phone.',
+    label:
+      'A phone frame turned landscape, a foldable opened, then the project on a real phone',
+    poster: devices,
+    docs: { href: DEVICES_DOCS_URL, text: 'How devices work' },
+  },
+  {
+    stem: 'play',
+    title: 'Play',
+    body: 'Click through a frame like the real app, tune the sliders your agent drew, and keep the values.',
+    label:
+      'Three sliders on a photo tuned in Play, the values kept, then back in Edit',
+    poster: play,
+  },
+  {
+    stem: 'images-3d',
+    title: 'Images and 3D',
+    body: 'Find openly licensed images and 3D models, or generate them on your machine, each saved with its license.',
+    label:
+      'A potted plant found on Poly Haven, dropped into a frame and turned, then a generated image saved with its license',
+    poster: images3d,
+    docs: { href: MEDIA_DOCS_URL, text: 'How images and models work' },
+  },
+  {
+    stem: 'kits',
+    title: 'Design kits',
+    body: 'Start a project from a kit you can preview, then give any frame a kit of its own.',
+    label:
+      'A kit added in the Theme tab, then one frame alone restyled with it',
+    poster: kits,
+  },
+  {
+    stem: 'hand-edits',
+    title: 'Hand edits',
+    body: 'Wrap several elements in a row, set its gap and fills by hand, and export any of it as a PNG.',
+    label:
+      'Three cards wrapped in a row, the gap scrubbed, a card filled, then exported as PNGs',
+    poster: handEdits,
+    docs: { href: INSPECTOR_DOCS_URL, text: 'How the inspector works' },
+  },
+]
+
+// One poster width serves every column, since a poster has no srcset. The
+// widest cell is about 365 px, so 720 covers it at twice the density.
+const cells = await Promise.all(
+  THEMES.map(async (theme) => ({
+    ...theme,
+    posterSrc: (await getImage({ src: theme.poster, width: 720 })).src,
+  })),
+)
+---
+
+<section class="sec" id="themes">
+  <div class="wrap">
+    <div class="flex flex-wrap items-center justify-between gap-x-6">
+      <div>
+        <h2>More on the board</h2>
+        <p class="lead">Each of these is a short clip of the real board.</p>
+      </div>
+      <button
+        type="button"
+        class="pause cursor-pointer rounded-full border border-line bg-transparent px-4 py-2 font-sans text-[14px] font-semibold text-fg [@media(hover:hover)]:hover:border-muted"
+        hidden
+        aria-pressed="false"
+      >
+        Pause clips
+      </button>
+    </div>
+    <ul class="m-0 mt-10 grid list-none grid-cols-1 gap-8 p-0 text-[18px] sm:grid-cols-2 sm:gap-x-6 lg:grid-cols-3 lg:gap-x-8 lg:gap-y-10">
+      {cells.map((cell) => (
+        <li class="mt-0">
+          <button
+            type="button"
+            class="group relative block w-full cursor-pointer rounded-[10px] border-0 bg-transparent p-0 disabled:cursor-default"
+            disabled
+            aria-pressed="true"
+            aria-label={`Play the ${cell.title} clip`}
+            aria-describedby={`themes-${cell.stem}-label`}
+            data-clip={`the ${cell.title} clip`}
+          >
+            <video
+              class="aspect-[16/10] rounded-[10px] border border-line bg-bg object-cover"
+              src={`/themes/${cell.stem}.mp4`}
+              poster={cell.posterSrc}
+              width="1440"
+              height="900"
+              muted
+              loop
+              playsinline
+              preload="none"
+            />
+            <span
+              class="absolute bottom-3 left-3 flex size-10 items-center justify-center rounded-full bg-accent text-on-accent group-disabled:hidden group-aria-[pressed=false]:opacity-0 group-focus-visible:opacity-100 [@media(hover:hover)]:group-hover:opacity-100"
+              aria-hidden="true"
+            >
+              <svg
+                class="ml-0.5 group-aria-[pressed=false]:hidden"
+                viewBox="0 0 20 24"
+                width="12"
+                height="14"
+                fill="currentColor"
+              >
+                <path d="M0 0l20 12L0 24z" />
+              </svg>
+              <svg
+                class="group-aria-pressed:hidden"
+                viewBox="0 0 20 24"
+                width="12"
+                height="14"
+                fill="currentColor"
+              >
+                <path d="M2 0h5v24H2zM13 0h5v24h-5z" />
+              </svg>
+            </span>
+          </button>
+          <span class="sr-only" id={`themes-${cell.stem}-label`}>
+            {cell.label}
+          </span>
+          <h3 class="mt-4 mb-1.5 text-[18px] font-bold">{cell.title}</h3>
+          <p class="m-0">{cell.body}</p>
+          {cell.docs && (
+            <a
+              class="mt-2 inline-block font-semibold text-accent"
+              href={cell.docs.href}
+            >
+              {cell.docs.text}
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
+  </div>
+</section>
+
+<script>
+  import { wireThemes } from './themes'
+
+  wireThemes()
+</script>
