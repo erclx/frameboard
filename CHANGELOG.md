@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.48.0](https://github.com/erclx/frameboard/compare/v0.47.0...v0.48.0) (2026-11-20)
+
+
+### Features
+
+* **device:** draw the scroll rail beside a turned fixed phone ([#439](https://github.com/erclx/frameboard/issues/439)) ([f68ea89](https://github.com/erclx/frameboard/commit/f68ea89333a7784104a711929ccecdeaba089362))
+* **dev:** split shared append files and keep unchanged reference PNGs ([#442](https://github.com/erclx/frameboard/issues/442)) ([3094826](https://github.com/erclx/frameboard/commit/30948264e9088854d168f49613c30f56c945fd0f))
+
+
+### Bug Fixes
+
+* **home:** leave room for a card ring in an open folder ([#438](https://github.com/erclx/frameboard/issues/438)) ([e94997a](https://github.com/erclx/frameboard/commit/e94997a393d48aa7921fee296b9edb91d84f478e))
+* **inspector:** read a new empty Text as text in Layers ([#437](https://github.com/erclx/frameboard/issues/437)) ([f24a39e](https://github.com/erclx/frameboard/commit/f24a39ecf0098ad8571b6f2de5cf932e81dc6e86))
+
 ## [0.47.0](https://github.com/erclx/frameboard/compare/v0.46.0...v0.47.0) (2026-11-19)
 
 

@@ -13,6 +13,7 @@ A device body frames a screen for a viewer who is not the developer, such as a l
 
 - The board draws the body around the frame, so the frame file holds no bezel, no status bar, and no mock chrome of its own
 - Turning it on or off never changes the frame file or its box, so it is safe to flip at the end
+- When the developer wants a frame on their own phone, run `frameboard preview <page>/<frame> --json` with `serve` up, and hand over the link and code it returns for a read only view on the same network
 
 ## Let the width pick the device
 

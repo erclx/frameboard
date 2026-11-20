@@ -1,6 +1,6 @@
 ---
 name: draw
-description: Draws screens on a Frameboard board as plain HTML frames and keeps each one passing the board's content checks. Use when asked to design, mock up, or sketch a screen, to put a frame on the board, or to change a frame the developer is reviewing. Also use when asked to draw slides or a deck, add a slide transition or step, make a link preview card, lay out a video scene, draw sliders that tune an element, show a 3D model, or draw in a design kit such as a sketch or a wireframe.
+description: Draws screens on a Frameboard board as plain HTML frames and keeps each one passing the board's content checks. Use when asked to design, mock up, or sketch a screen, to put a frame on the board, or to change a frame the developer is reviewing. Also use when asked to draw slides or a deck, add a slide transition or step, make a link preview card, lay out a video scene, draw sliders that tune an element, show a 3D model, or draw in a design kit such as a sketch or a wireframe. It also covers putting a screen in a phone or another device, finding or generating a picture for a frame, copying a live page onto the board, and tilting an element in 3D.
 ---
 
 # Frameboard
@@ -91,6 +91,8 @@ Run `frameboard editing <page>/<frame> --json` before you change an existing fra
 - A claim lapses five minutes after you last ran it, so run it again while you are still at work
 - Drop it with `frameboard editing <page>/<frame> --release --json` as soon as you are done rather than letting it lapse, since the developer's hand edits on it wait for your claim to end
 - A refusal with `frame-claimed` means another session holds the frame. Leave it alone, or ask the developer, rather than writing it anyway, since nothing else stops you.
+- Treat a frame the developer locked as one to keep as they left it. Rewrite its file only when they name it, since the lock never stops a write, and never clear the lock yourself.
+- Leave a hidden frame out of `show`, and tell the developer when you change one
 
 ## Read what the developer picked
 
@@ -106,6 +108,7 @@ When the developer says "this", "the selected one", or points at something on th
 - Change one property of one element through `frameboard edit`, which takes the element's `--index` and the frame file's SHA-256 as `--hash`
   1. Run `frameboard inspect <page>/<frame> --json` to find the element's index, or take it from the selection
   2. Edit by that index and hash
+- Take one element out with `frameboard remove`, by the same index and hash, rather than rewriting the file around the gap
 - Treat `editable: false` in the inspect result as a frame `edit` refuses at every index, then rewrite the file instead of trying other indices
 - Inspect again after any rewrite, since indices follow document order and an old one can point at a different element
 - Read the `edit` entry of `frameboard docs` for its refusals, `stale-address` among them, then inspect again and redo the edit

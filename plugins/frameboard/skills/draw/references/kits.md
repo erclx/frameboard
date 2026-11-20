@@ -48,6 +48,8 @@ A note asking for a new kit wants a folder, written like any other board content
 
 Add sample frames under `kit/` beside a `layout.json` when the kit has more parts than one frame shows.
 
+When the developer wants a project's look kept for other projects, run `frameboard kit save <project> <kit> --json`, which saves the project's tokens, kit files, and kit page as a kit the board offers.
+
 ## Draw in a project that took its kit earlier
 
 A project holding `assets/kit/kit.json` took one kit for every frame, before a frame could name its own. Every frame there still loads `assets/kit/kit.css`, so read `assets/kit/kit.md` and the project's `kit` page first. An `assets/kit/` folder holding no `kit.json` loads into no frame.
