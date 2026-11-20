@@ -38,7 +38,7 @@ export function registerReferences(
     )
     .option(
       '--rerender',
-      'write every PNG, keeping none a held frame would, such as after a change to how frames are captured',
+      'write every PNG, keeping none a held frame would, after a token sheet or kit edit or a change to how frames are captured, since the keep rule reads neither',
     )
 
   act<SyncOptions>(command, context, async ([given = ''], options) => {
