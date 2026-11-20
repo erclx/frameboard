@@ -11,4 +11,4 @@ description: 'The landing page in `web/`, a separate project from the board, fro
 
 ## States
 
-- The nav, hero, walkthrough, close, and footer, each at 1440, 834, and 390
+- The nav, hero, walkthrough, themes, close, and footer, each at 1440, 834, and 390
