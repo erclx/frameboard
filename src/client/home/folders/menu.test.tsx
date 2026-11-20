@@ -80,6 +80,16 @@ async function openMenu() {
 const item = (menu: HTMLElement, name: string) =>
   within(menu).getByRole('menuitem', { name })
 
+/** The open folder panel once its zoom in has finished, so its boxes read at rest. */
+async function openPanel() {
+  const panel = await screen.findByRole('dialog', { name: 'Client A' })
+  await Promise.all(panel.getAnimations().map((motion) => motion.finished))
+  return panel
+}
+
+const firstCard = (panel: HTMLElement) =>
+  within(panel).getByRole('link', { name: /^app/ })
+
 afterEach(() => {
   vi.useRealTimers()
   cleanup()
@@ -121,6 +131,38 @@ describe('FolderMenu', () => {
     expect(
       await screen.findByRole('dialog', { name: 'Client A' }),
     ).toBeInTheDocument()
+  })
+
+  it('leaves the open folder grid room past a card ring on every side', async () => {
+    renderHome()
+    await userEvent.click(item(await openMenu(), 'Open'))
+    const panel = await openPanel()
+    const clip = within(panel).getByRole('list').getBoundingClientRect()
+
+    const card = firstCard(panel).getBoundingClientRect()
+
+    const room = Math.min(
+      card.top - clip.top,
+      clip.right - card.right,
+      clip.bottom - card.bottom,
+      card.left - clip.left,
+    )
+    // The 2 px ring plus a pixel, since the centered dialog can land on a half pixel.
+    expect(room).toBeGreaterThanOrEqual(3)
+  })
+
+  it('keeps the open folder cards 2 px inside the panel content edge', async () => {
+    renderHome()
+    await userEvent.click(item(await openMenu(), 'Open'))
+    const panel = await openPanel()
+    const edge =
+      panel.getBoundingClientRect().left +
+      panel.clientLeft +
+      Number.parseFloat(getComputedStyle(panel).paddingLeft)
+
+    const card = firstCard(panel).getBoundingClientRect()
+
+    expect(card.left - edge).toBeCloseTo(2)
   })
 
   it('fades the card ⋯ once a pointer closes its menu off the card', async () => {

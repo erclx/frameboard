@@ -367,6 +367,22 @@ export const HOME_BUNDLE_CASES: CaptureCase[] = (
     ),
   },
   {
+    section: 'home-folder-card-ring',
+    theme,
+    route: '/',
+    evidence: true,
+    excludeViewports: STATE_ONLY,
+    mask: ['[data-edited]'],
+    setup: both(
+      chosenTheme(theme),
+      asWriter,
+      filedBoard(),
+      openClientFolder,
+      focusOnLoad('[role="dialog"] a[href^="/p/"]'),
+      readyWhen('[role="dialog"] a[href^="/p/"]:focus-visible'),
+    ),
+  },
+  {
     section: 'home-folder-rename',
     theme,
     route: '/',
