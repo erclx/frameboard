@@ -8,6 +8,7 @@ import type { PageRecord } from '@/shared/records/list'
 import { frameOf, pageOf } from '@/test/board'
 
 import { request } from './bridge/channel'
+import { shownHashOf } from './bridge/shown'
 import { Canvas } from './canvas'
 import { trees } from './element/tree'
 import { clear, selectionStore } from './selection'
@@ -81,6 +82,9 @@ describe('double-clicking an element in a frame', () => {
       .toBeTruthy()
     const heading = iframe.contentDocument?.querySelector('h1')
     if (!heading) throw new Error('the frame shows no heading')
+    // A pick goes to the bridge only once the board heard it announce these bytes,
+    // which can land after the heading shows, so an earlier click picks no element.
+    await expect.poll(() => shownHashOf(iframe)).toBe(HASH)
     return { drawn: drawn.getBoundingClientRect(), hit, heading }
   }
 
