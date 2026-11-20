@@ -90,8 +90,10 @@ export function readLive(element: Element): LiveElement {
     borderWidth: sides.every((width) => width === sides[0])
       ? hundredths(style.borderTopWidth)
       : null,
-    holdsText: text.trim() !== '',
-    textOnly: element.childElementCount === 0 && text.trim() !== '',
+    holdsText: text.trim() !== '' || emptyParagraph(element, text),
+    textOnly:
+      element.childElementCount === 0 &&
+      (text.trim() !== '' || emptyParagraph(element, text)),
     text,
     keepsBreaks: style.whiteSpace !== 'normal' && style.whiteSpace !== 'nowrap',
     rotation: {
@@ -110,6 +112,18 @@ export function readLive(element: Element): LiveElement {
       start: element.getAttribute(STEP_ATTRIBUTES.start),
     },
   }
+}
+
+/**
+ * Whether `element` is a paragraph holding nothing yet, which a placed Text
+ * opens as, so it reads as text before its first word rather than as a box.
+ */
+function emptyParagraph(element: Element, text: string): boolean {
+  return (
+    element.localName === 'p' &&
+    element.childElementCount === 0 &&
+    text.trim() === ''
+  )
 }
 
 function placementOf(element: Element, style: CSSStyleDeclaration): Placement {

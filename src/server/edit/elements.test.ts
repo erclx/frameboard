@@ -65,6 +65,27 @@ describe('elementTree', () => {
     expect(parseFrame(source).elements[5]?.tagName).toBe('h1')
   })
 
+  it('reads an empty paragraph as text, as a placed Text opens', () => {
+    const tree = elementTree('<body><p data-name="Text"> </p></body>')
+
+    expect(
+      Array.isArray(tree) && tree.map((row) => [row.tag, row.textOnly]),
+    ).toEqual([['p', true]])
+  })
+
+  it('reads an empty div or span, or a paragraph holding an element, as no text', () => {
+    const tree = elementTree('<body><div></div><span></span><p><br></p></body>')
+
+    expect(
+      Array.isArray(tree) && tree.map((row) => [row.tag, row.textOnly]),
+    ).toEqual([
+      ['div', false],
+      ['span', false],
+      ['p', false],
+      ['br', false],
+    ])
+  })
+
   it("skips a template's contents, as the edit index does", () => {
     const tree = elementTree(
       '<body><template><li>a</li></template><p>b</p></body>',
