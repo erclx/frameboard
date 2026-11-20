@@ -20,8 +20,18 @@ function nameHashingTo(offset: number): string {
   }
 }
 
+/**
+ * The environment with no `GIT_*` variable, since a git hook running this
+ * suite exports `GIT_DIR` and would point every command at the real checkout.
+ */
+const ENV = Object.fromEntries(
+  Object.entries(process.env).filter(
+    ([key]) => !key.startsWith('GIT_') && key !== 'WORKTREE_PORT_OFFSET',
+  ),
+)
+
 function git(cwd: string, ...args: string[]): void {
-  execFileSync('git', args, { cwd, stdio: 'ignore' })
+  execFileSync('git', args, { cwd, stdio: 'ignore', env: ENV })
 }
 
 let root: string
@@ -42,11 +52,10 @@ afterEach(() => {
 function portIn(name: string, args: string[], env: NodeJS.ProcessEnv = {}) {
   const tree = join(root, 'trees', name)
   git(root, 'worktree', 'add', '-q', tree)
-  const { WORKTREE_PORT_OFFSET: _, ...inherited } = process.env
   const run = spawnSync('bash', [script, ...args], {
     cwd: tree,
     encoding: 'utf8',
-    env: { ...inherited, ...env },
+    env: { ...ENV, ...env },
   })
   return { status: run.status, port: run.stdout.trim() }
 }
