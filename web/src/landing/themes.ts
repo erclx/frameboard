@@ -30,20 +30,26 @@ export function wireThemes(root: ParentNode = document): void {
   if (!section || clips.length === 0) return
   let held = prefersReducedMotion()
 
+  const label = (clip: Clip, playing: boolean): void => {
+    clip.button.setAttribute('aria-pressed', String(!playing))
+    clip.button.setAttribute(
+      'aria-label',
+      `${playing ? 'Pause' : 'Play'} ${clip.button.dataset.clip ?? 'the clip'}`,
+    )
+  }
+
   const render = (clip: Clip): void => {
     const wanted =
       clip.inView && (clip.choice === 'on' || (clip.choice === 'auto' && !held))
     if (wanted && clip.video.paused) {
-      clip.video.play().catch(() => undefined)
+      // iOS Low Power Mode refuses play and leaves the poster, so offer play.
+      clip.video.play().catch(() => {
+        if (clip.video.paused) label(clip, false)
+      })
     } else if (!wanted && !clip.video.paused) {
       clip.video.pause()
     }
-    const verb = wanted ? 'Pause' : 'Play'
-    clip.button.setAttribute('aria-pressed', String(!wanted))
-    clip.button.setAttribute(
-      'aria-label',
-      `${verb} ${clip.button.dataset.clip ?? 'the clip'}`,
-    )
+    label(clip, wanted)
   }
 
   const renderSection = (): void => {

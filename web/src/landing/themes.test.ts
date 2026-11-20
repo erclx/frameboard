@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -240,6 +240,20 @@ describe('a clip button', () => {
     await Promise.resolve()
 
     expect(playing()).toEqual([])
+  })
+
+  it('offers play on a clip whose play the browser refused', async () => {
+    vi.mocked(HTMLMediaElement.prototype.play).mockRejectedValue(
+      new DOMException('refused', 'NotAllowedError'),
+    )
+    wireThemes(renderThemes())
+
+    observer().show('slides', 1)
+
+    await waitFor(() =>
+      expect(clipButton('slides')).toHaveAccessibleName('Play the slides clip'),
+    )
+    expect(clipButton('slides')).toHaveAttribute('aria-pressed', 'true')
   })
 })
 
