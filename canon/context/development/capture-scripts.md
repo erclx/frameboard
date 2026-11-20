@@ -7,7 +7,7 @@ description: The scripts that capture and measure what the board renders, and th
 
 ## Overview
 
-Owns the commands that capture screenshots, drift, and design references the one that measures the canvas, and the preview a drive reads from its copy. The scripts that gate a change and serve the board are in `canon/context/development/local.md`, and the capture harness is in `canon/context/development/testing.md`.
+Owns the commands that capture screenshots, drift, and design references, the one that measures the canvas, and the preview a drive reads from its copy. The scripts that gate a change and serve the board are in `canon/context/development/local.md`, and the capture harness is in `canon/context/development/testing.md`.
 
 ## Layout
 
