@@ -20,6 +20,7 @@ documentation = [
   "docs/",
   "canon/REQUIREMENTS.md",
   "canon/context/",
+  "canon/drive/",
   ".github/ISSUE_TEMPLATE/",
   ".github/pull_request_template.md",
   ".github/social-card.png",

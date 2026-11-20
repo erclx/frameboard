@@ -7,7 +7,9 @@ description: Folder watcher, socket hub, claims record, write access, and the HT
 
 ## Overview
 
-Owns the server half of the board, being the folder watcher and socket hub, the claims record, who may write, and the HTTP routes. The browser app is in `canon/context/board/shell.md`, undo's history in `canon/context/board/commands.md`, and the live findings in `canon/context/agent/checks.md`.
+Owns the server half of the board, being the folder watcher and socket hub, the claims record, who may write, and the HTTP routes.
+
+The browser app is in `canon/context/board/shell.md`, undo's history in `canon/context/board/commands.md`, the live findings in `canon/context/agent/checks.md`, and the phone link and the clipboard copy in `canon/context/board/phone-clipboard.md`.
 
 ## Layout
 
@@ -52,24 +54,6 @@ Owns the HTTP route modules `app.ts` mounts, one per surface, being the frame an
 - A file's `frames` count comes from the cache in `src/server/board/asset-usage.ts` over the link check's `frameLoads`, which a watcher batch under the project drops
 - A kit remove records the folder's take-out and every cleared `kit` key as one step, so one undo brings back the kit and the frames naming it
 - Kit files sit under `/frameboard/`, since `/kits` shadows Vite's module folder, each page and SVG under the preview policy, and `GET /api/access/open` answers only under `--open-route`
-
-### `src/server/preview/`
-
-Owns the phone link, a second read-only listener for one project, apart from `access/`, which guards the board's own port. `routes/preview.ts` answers `POST /api/preview` with `{ ref, port? }` and `DELETE /api/preview` with `{ token? }`, both behind `requireWriter`.
-
-- `listener.ts` binds the private address `address.ts` picked, alone, at port 4400 or the one given, and a free port when that is taken, while the board's own listener stays on loopback
-- It answers GET and HEAD under `/v/<token>/` alone, mapping onto the board's own frame and look routes so their refusals hold, and any other token, project, path, or method answers 404
-- A served frame imports its sheets under the link through the frame route's `base`, takes the drawn controls' hiding style, and never sees a `?at=` query
-- The board holds one listener at a time, a start ending the last and minting a new 96-bit token, and the board ends it as it closes
-- `address.ts` prefers 192.168, then 10, then 172.16 to 172.31, where container bridges sit, and a machine with none refuses `no-network-address`
-
-### `src/server/clipboard/`
-
-Owns putting copied frames on the OS clipboard as one file list. `routes/clipboard.ts` answers `POST /api/frames/clipboard` with `{ refs, theme }` and an optional `themes` map of ref to theme behind `requireWriter`, rendering each frame at 2x in turn in `themes[ref]` or else `theme`, on the renderer `png.ts` uses.
-
-- `files.ts` picks the backend at start, and only WSL with `powershell.exe` on its `PATH` has one
-- `wsl.ts` writes the images into Windows' temp folder and runs `Set-Clipboard -Path`, one copy at a time, since each copy clears the shared folder and would delete the files an overlapping copy names
-- With no backend the route refuses `clipboard-unsupported` and `/api/health` reports `clipboard: null`, so the board stitches several frames into one image
 
 ### `src/server/models/`
 

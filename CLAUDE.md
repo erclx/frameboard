@@ -30,4 +30,5 @@ The source layers and the end-to-end suite that drives them.
 The design records the board UI is built against.
 
 - `canon/DESIGN.md`: visual intent, pointing at the stylesheet that holds the values
+- `canon/drive/`: the drive basics script every app drive runs first, indexed in `canon/drive/index.md`
 - `canon/design/`: each surface's accepted design as light and dark PNGs beside its frame HTML, grouped by app part plus `foundations/`, captured by `bun run design:sync` from `.canon/board`
