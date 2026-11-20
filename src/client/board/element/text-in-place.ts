@@ -214,8 +214,7 @@ export const newTextStore = createStore<{ key: ElementKey | null }>()(() => ({
 /**
  * Opens a placed Text, empty, once its frame shows the key's bytes. It ends
  * written, or blank and handed to `remove` once, by an end with no text, a
- * cancel, a selection moving on before it opens, or the board page leaving,
- * which `leaving` marks since no wait can outlast that page.
+ * cancel, a selection moving on, or the page leaving, marked as `leaving`.
  */
 export function editTextWhenShown(
   container: HTMLElement,
