@@ -1,6 +1,6 @@
 ---
 title: Frames
-description: Moving, resizing, and adding frames, sections, widths, height, devices, the layers panel, and right-click menus
+description: Moving, resizing, and adding frames, sections, widths, height, devices, the layers panel, right-click menus, and Play
 ---
 
 # Frames
@@ -44,3 +44,13 @@ These reach a frame or an element from outside the canvas.
 - Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Fit height, or Flip to light, which shows that frame alone in the other theme until reload
 - Right-click the empty space below the pages for New page, or below the layers for New frame and Paste
 - Copy as PNG with several frames selected puts each on the clipboard as its own file under WSL, so one paste lands them all, and elsewhere copies one image laid out as on the canvas
+
+## Play
+
+Play lets you use a frame the way someone would use the real app. Press P, or Play on the toolbar, to switch to it, and P again or Edit to switch back.
+
+- Click a frame to enter it, and it takes your clicks, scrolling, and keys while every other frame stays put under the board
+- Esc leaves the entered frame, and a second Esc returns to Edit
+- A row in the layers panel brings its frame into view and enters it, and nothing is selected while you play
+- The banner says when nothing on the page takes a click, and offers Rotate while you are in a phone, tablet, or foldable
+- Sliders an agent drew tune their targets live, and Keep values writes what you set, as [Drawn controls](elements.md#drawn-controls) describes
