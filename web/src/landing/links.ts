@@ -7,11 +7,13 @@ export const ISSUES_URL = `${REPO_URL}/issues`
 
 const DOCS_ROOT_URL = `${REPO_URL}/blob/main/docs`
 export const HOW_IT_WORKS_DOCS_URL = `${DOCS_ROOT_URL}/how-it-works.md`
+export const KITS_DOCS_URL = `${HOW_IT_WORKS_DOCS_URL}#design-kits`
 
 const BOARD_DOCS_URL = `${DOCS_ROOT_URL}/board`
 export const BOARD_DOCS_INDEX_URL = `${BOARD_DOCS_URL}/index.md`
 export const SLIDES_DOCS_URL = `${BOARD_DOCS_URL}/slides-and-export.md#slides`
 export const DEVICES_DOCS_URL = `${BOARD_DOCS_URL}/frames.md#device`
+export const PLAY_DOCS_URL = `${BOARD_DOCS_URL}/frames.md#play`
 export const MEDIA_DOCS_URL = `${BOARD_DOCS_URL}/elements.md#images-video-and-audio`
 export const INSPECTOR_DOCS_URL = `${BOARD_DOCS_URL}/inspector.md`
 
