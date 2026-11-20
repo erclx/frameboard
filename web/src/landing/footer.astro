@@ -1,24 +1,107 @@
 ---
-import { CHANGELOG_URL, DOCS_URL, LICENSE_URL, REPO_URL } from './links'
+import Moon from '../assets/icons/moon.svg'
+import Sun from '../assets/icons/sun.svg'
+import {
+  AGENT_DOCS_INDEX_URL,
+  BOARD_DOCS_INDEX_URL,
+  CHANGELOG_URL,
+  COMMANDS_DOCS_URL,
+  HOW_IT_WORKS_DOCS_URL,
+  ISSUES_URL,
+  LICENSE_URL,
+  PLUGIN_DOCS_URL,
+  RELEASES_URL,
+  REPO_URL,
+} from './links'
+
+// In-page links are bare anchors, since the footer sits on the page they target.
+const groups = [
+  {
+    heading: 'Product',
+    links: [
+      { label: 'Install', href: '#close' },
+      { label: 'Walkthrough', href: '#walkthrough' },
+      { label: 'Themes', href: '#themes' },
+      { label: 'Watch the film', href: '#hero' },
+    ],
+  },
+  {
+    heading: 'Docs',
+    links: [
+      { label: 'How it works', href: HOW_IT_WORKS_DOCS_URL },
+      { label: 'The board', href: BOARD_DOCS_INDEX_URL },
+      { label: 'Agents', href: AGENT_DOCS_INDEX_URL },
+      { label: 'Commands', href: COMMANDS_DOCS_URL },
+      { label: 'Claude Code plugin', href: PLUGIN_DOCS_URL },
+    ],
+  },
+  {
+    heading: 'Project',
+    links: [
+      { label: 'GitHub', href: REPO_URL },
+      { label: 'Releases', href: RELEASES_URL },
+      { label: 'Changelog', href: CHANGELOG_URL },
+      { label: 'Issues', href: ISSUES_URL },
+      { label: 'MIT license', href: LICENSE_URL },
+    ],
+  },
+]
 ---
 
-<footer class="wrap">
-  <div class="flex flex-wrap justify-between gap-x-10 gap-y-3 border-t border-line pt-8 pb-12 text-[14px] sm:pt-10 sm:pb-16 text-muted">
-    <a class="flex items-center gap-2 text-fg hover:no-underline" href="/">
-      <img
-        class="size-5 -translate-y-px"
-        src="/icon.svg"
-        alt=""
-        width="20"
-        height="20"
-      />
-      Frameboard
-    </a>
-    <span class="flex flex-wrap gap-x-4 gap-y-2 text-fg min-[361px]:gap-6">
-      <a href={DOCS_URL}>Docs</a>
-      <a href={REPO_URL}>GitHub</a>
-      <a href={CHANGELOG_URL}>Changelog</a>
-      <a href={LICENSE_URL}>MIT license</a>
-    </span>
+<footer class="wrap text-[14px] leading-normal text-muted">
+  <div class="border-t border-line pt-8 pb-10 sm:pt-10 sm:pb-12">
+    <div class="grid gap-y-9 sm:gap-y-10 lg:grid-cols-[1.6fr_3fr] lg:gap-x-8">
+      <div>
+        <a
+          class="flex w-fit items-center gap-2 text-[15px] font-semibold text-fg hover:no-underline"
+          href="/"
+        >
+          <img
+            class="size-5 -translate-y-px"
+            src="/icon.svg"
+            alt=""
+            width="20"
+            height="20"
+          />
+          Frameboard
+        </a>
+        <p class="mt-3.5 mb-0 max-w-[34ch] text-[15px] text-fg">
+          The design board your agent draws on.
+        </p>
+      </div>
+      <nav
+        class="grid grid-cols-2 gap-x-5 gap-y-7 sm:grid-cols-3 sm:gap-8"
+        aria-label="Footer"
+      >
+        {groups.map((group) => (
+          <div>
+            <h2 class="m-0 mb-2.5 text-[13px] font-medium tracking-normal text-muted">
+              {group.heading}
+            </h2>
+            <ul class="m-0 list-none p-0">
+              {group.links.map((link) => (
+                <li>
+                  <a class="block py-2 text-fg sm:py-1" href={link.href}>
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </nav>
+    </div>
+    <div class="mt-9 flex flex-wrap items-center justify-between gap-4 border-t border-line pt-5 sm:mt-12">
+      <span class="text-[13px]">MIT license</span>
+      <button
+        class="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg border-0 bg-transparent p-0 text-muted hover:bg-fg/8 hover:text-fg focus-visible:outline-offset-2 min-[361px]:size-9"
+        type="button"
+        aria-label="Switch theme"
+        data-theme-button
+      >
+        <Sun class="hidden dark:block" aria-hidden="true" />
+        <Moon class="block dark:hidden" aria-hidden="true" />
+      </button>
+    </div>
   </div>
 </footer>

@@ -14,6 +14,7 @@ const HOME_SECTIONS: CaptureSection[] = [
   { name: 'walkthrough', selector: '#walkthrough' },
   { name: 'themes', selector: '#themes' },
   { name: 'close', selector: '#close' },
+  { name: 'footer', selector: 'footer' },
 ]
 
 export const CASES: CaptureCase[] = [

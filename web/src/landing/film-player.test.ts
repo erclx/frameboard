@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { wireFilmPlayer } from './film-player'
-import { wireThemeButton } from './nav'
+import { wireThemeButtons } from './nav'
 
 function renderFilm(): HTMLElement {
   // canon-allow-embedded: the hero markup the film wiring runs against, kept beside the test
@@ -239,7 +239,7 @@ describe('wireFilmPlayer', () => {
     )
     if (!themeButton) throw new Error('theme button did not render')
     const user = userEvent.setup()
-    wireThemeButton(themeButton)
+    wireThemeButtons([themeButton])
     wireFilmPlayer(root)
     await user.click(screen.getByRole('link', { name: 'Play the film' }))
 

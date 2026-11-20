@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { wireBarLine, wireThemeButton } from './nav'
+import { wireBarLine, wireThemeButtons } from './nav'
 
 function stubSystemTheme(scheme: 'light' | 'dark'): void {
   vi.stubGlobal(
@@ -19,6 +19,13 @@ function renderButton(): HTMLButtonElement {
   const button = document.querySelector('button')
   if (!button) throw new Error('button did not render')
   return button
+}
+
+function renderTwoButtons(): HTMLButtonElement[] {
+  document.body.innerHTML = `
+    <header><button type="button" aria-label="Switch theme"></button></header>
+    <footer><button type="button" aria-label="Switch theme"></button></footer>`
+  return [...document.querySelectorAll('button')]
 }
 
 function renderHeroSources(): void {
@@ -41,17 +48,18 @@ function setScrollY(y: number): void {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
   localStorage.clear()
   document.documentElement.removeAttribute('data-theme')
   document.body.innerHTML = ''
   setScrollY(0)
 })
 
-describe('wireThemeButton', () => {
+describe('wireThemeButtons', () => {
   it('offers the dark theme to a light system reader', () => {
     stubSystemTheme('light')
 
-    wireThemeButton(renderButton())
+    wireThemeButtons([renderButton()])
 
     expect(
       screen.getByRole('button', { name: 'Switch to dark theme' }),
@@ -61,7 +69,7 @@ describe('wireThemeButton', () => {
   it('offers the light theme to a dark system reader', () => {
     stubSystemTheme('dark')
 
-    wireThemeButton(renderButton())
+    wireThemeButtons([renderButton()])
 
     expect(
       screen.getByRole('button', { name: 'Switch to light theme' }),
@@ -72,7 +80,7 @@ describe('wireThemeButton', () => {
     stubSystemTheme('dark')
     document.documentElement.setAttribute('data-theme', 'light')
 
-    wireThemeButton(renderButton())
+    wireThemeButtons([renderButton()])
 
     expect(
       screen.getByRole('button', { name: 'Switch to dark theme' }),
@@ -82,7 +90,7 @@ describe('wireThemeButton', () => {
   it('flips a dark system reader to light and stores the choice', async () => {
     stubSystemTheme('dark')
     const user = userEvent.setup()
-    wireThemeButton(renderButton())
+    wireThemeButtons([renderButton()])
 
     await user.click(screen.getByRole('button'))
 
@@ -97,7 +105,7 @@ describe('wireThemeButton', () => {
     stubSystemTheme('light')
     document.documentElement.setAttribute('data-theme', 'dark')
     const user = userEvent.setup()
-    wireThemeButton(renderButton())
+    wireThemeButtons([renderButton()])
 
     await user.click(screen.getByRole('button'))
 
@@ -111,11 +119,49 @@ describe('wireThemeButton', () => {
       throw new Error('quota')
     })
     const user = userEvent.setup()
-    wireThemeButton(renderButton())
+    wireThemeButtons([renderButton()])
 
     await user.click(screen.getByRole('button'))
 
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+  })
+})
+
+describe('two theme buttons', () => {
+  it('names the same theme on both buttons', () => {
+    stubSystemTheme('light')
+
+    wireThemeButtons(renderTwoButtons())
+
+    expect(
+      screen.getAllByRole('button', { name: 'Switch to dark theme' }),
+    ).toHaveLength(2)
+  })
+
+  it('relabels the header button after a click on the footer button', async () => {
+    stubSystemTheme('light')
+    const user = userEvent.setup()
+    const [header, footer] = renderTwoButtons()
+    wireThemeButtons([header, footer])
+
+    await user.click(footer)
+
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    expect(header).toHaveAccessibleName('Switch to light theme')
+  })
+
+  it('switches back from the other button', async () => {
+    stubSystemTheme('light')
+    const user = userEvent.setup()
+    const [header, footer] = renderTwoButtons()
+    wireThemeButtons([header, footer])
+
+    await user.click(footer)
+    await user.click(header)
+
+    expect(document.documentElement).toHaveAttribute('data-theme', 'light')
+    expect(localStorage.getItem('theme')).toBe('light')
+    expect(footer).toHaveAccessibleName('Switch to dark theme')
   })
 })
 
@@ -125,7 +171,7 @@ describe('themed picture sources', () => {
     const button = renderButton()
     renderHeroSources()
 
-    wireThemeButton(button)
+    wireThemeButtons([button])
 
     expect(media('loop')).toBe('(prefers-color-scheme: dark)')
     expect(media('still')).toBe(
@@ -139,7 +185,7 @@ describe('themed picture sources', () => {
     const button = renderButton()
     renderHeroSources()
 
-    wireThemeButton(button)
+    wireThemeButtons([button])
 
     expect(media('loop')).toBe('all')
     expect(media('still')).toBe('(prefers-reduced-motion: reduce)')
@@ -150,7 +196,7 @@ describe('themed picture sources', () => {
     const button = renderButton()
     renderHeroSources()
     const user = userEvent.setup()
-    wireThemeButton(button)
+    wireThemeButtons([button])
 
     await user.click(screen.getByRole('button'))
 

@@ -3,21 +3,21 @@ type Theme = 'light' | 'dark'
 const STORAGE_KEY = 'theme'
 
 /**
- * Wires the bar's theme button. A stored choice arrives as `data-theme` on
- * the root, set before first paint by `public/theme-init.js`, and with none
- * the page follows the system. A click sets the other theme and stores it.
+ * Wires every theme button on the page. `public/theme-init.js` sets a stored
+ * choice as `data-theme` before first paint, else the system theme applies.
+ * A click on any button switches and stores the theme and relabels them all.
  */
-export function wireThemeButton(
-  button: HTMLButtonElement,
+export function wireThemeButtons(
+  buttons: readonly HTMLButtonElement[],
   root: HTMLElement = document.documentElement,
 ): void {
   const label = (): void => {
     const next = currentTheme(root) === 'dark' ? 'light' : 'dark'
-    button.setAttribute('aria-label', `Switch to ${next} theme`)
+    for (const button of buttons) {
+      button.setAttribute('aria-label', `Switch to ${next} theme`)
+    }
   }
-  syncThemedSources(root)
-  label()
-  button.addEventListener('click', () => {
+  const toggle = (): void => {
     const next: Theme = currentTheme(root) === 'dark' ? 'light' : 'dark'
     root.setAttribute('data-theme', next)
     try {
@@ -27,7 +27,10 @@ export function wireThemeButton(
     }
     syncThemedSources(root)
     label()
-  })
+  }
+  syncThemedSources(root)
+  label()
+  for (const button of buttons) button.addEventListener('click', toggle)
 }
 
 /** Draws the bar's bottom line once the page has scrolled at all. */
