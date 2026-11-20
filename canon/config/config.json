@@ -129,6 +129,10 @@
           "disposition": "customized",
           "base": "sha256:a9f07d70d30ee848c66c3a46453a52ce11dd6eb2067d020162b67c6d853567b7"
         },
+        "scripts/worktree-port.sh": {
+          "disposition": "customized",
+          "base": "sha256:77672f787a296ba315377c36d3a88a861fd829bfebe17e97087839dfd2bb8a65"
+        },
         "src/site.ts": {
           "disposition": "declined",
           "reason": "The root is a board app with no landing head, which lives in web/"
