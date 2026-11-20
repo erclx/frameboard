@@ -33,6 +33,7 @@ The inspector's Show device switch draws a body around the frame and leaves its 
 - The device name beside it offers a phone's Compact or Wide island and Foldable, whose buttons under the body fold it to each screen's size, and Include device adds the body to an export
 - Rotate under a selected phone, tablet, or foldable turns it left, then right, then upright, laying its page out landscape, and Play's banner offers it while one is entered
 - A turned phone's or foldable's page stands in from both side edges, so its island covers none of it
+- A turned phone at a fixed height shows one landscape screen, and in Edit it draws a rail past its body as a scroll frame does while its page runs past that screen
 
 ## Layers, find, and menus
 

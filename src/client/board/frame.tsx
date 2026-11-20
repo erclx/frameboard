@@ -29,6 +29,7 @@ import {
   insetsPage,
   pageCorners,
   screenCorners,
+  scrollsInBox,
   shownBox,
   sideInset,
   topInset,
@@ -238,7 +239,9 @@ export const Frame = memo(function Frame({
   )
   const waiting = useWaitingOnFirstLoad(iframe, live)
   const shownShort = drawnHeight < height
-  useHiddenScrollbar(iframe, live, frame.scroll || shownShort)
+  // A turned fixed phone holds one landscape screen, so its page scrolls there as a scroll frame's does.
+  const scrolls = scrollsInBox(frame)
+  useHiddenScrollbar(iframe, live, scrolls || shownShort)
   useMotionDriver(iframe, frame.ref, live, playing)
 
   // Leaving the one-screen view forgets where the page was scrolled to.
@@ -420,7 +423,7 @@ export const Frame = memo(function Frame({
           off={turnRefusal(frame)}
         />
       ) : null}
-      {frame.scroll && live && !playing ? (
+      {scrolls && live && !playing ? (
         <ScrollRail
           iframe={iframe}
           live={live}
