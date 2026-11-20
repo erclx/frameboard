@@ -49,6 +49,48 @@ describe('live-element', () => {
     })
   })
 
+  it('reads an empty paragraph as text, as a placed Text opens', async () => {
+    const frame = await frameOf('<p data-name="Text"> </p>')
+
+    const asked = await ask(frame, 'live-element', {
+      hash: HASH,
+      indexes: [3],
+    })
+
+    expect(asked.reply).toMatchObject({
+      value: [{ holdsText: true, textOnly: true }],
+    })
+  })
+
+  it('reads an empty div or span as a box', async () => {
+    const frame = await frameOf('<div></div><span></span>')
+
+    const asked = await ask(frame, 'live-element', {
+      hash: HASH,
+      indexes: [3, 4],
+    })
+
+    expect(asked.reply).toMatchObject({
+      value: [
+        { holdsText: false, textOnly: false },
+        { holdsText: false, textOnly: false },
+      ],
+    })
+  })
+
+  it('reads a paragraph holding only an element as no text-only', async () => {
+    const frame = await frameOf('<p><br></p>')
+
+    const asked = await ask(frame, 'live-element', {
+      hash: HASH,
+      indexes: [3],
+    })
+
+    expect(asked.reply).toMatchObject({
+      value: [{ holdsText: false, textOnly: false }],
+    })
+  })
+
   it('answers null for bytes the page no longer shows', async () => {
     const frame = await frameOf('<h1>Title</h1>')
 
