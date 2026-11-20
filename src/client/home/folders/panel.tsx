@@ -76,9 +76,10 @@ export function FolderPanel({ folder, now, calls, captures }: PanelProps) {
           <FolderMore folder={folder} open={false} />
         </span>
       </div>
+      {/* Padding twice the card's 2 px ring, since the centered dialog can sit on a half pixel and clip an exact fit, with the margin keeping the cards in place. */}
       <ul
         onKeyDown={(event) => roveFocus(event, 'grid')}
-        className="grid max-h-[70vh] grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 overflow-y-auto p-0.5"
+        className="-m-0.5 grid max-h-[70vh] grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3 overflow-y-auto p-1"
       >
         {folder.projects.map((project) => (
           <li key={project.name}>
