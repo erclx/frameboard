@@ -104,6 +104,8 @@ To keep it around, install it with `npm install -g frameboard` or `bun add -g fr
 - Commands print JSON and never prompt, so an agent can run them unattended
 - `frameboard check` flags what breaks a frame, such as clipped text or a color set for one theme only
 - The Claude Code plugin checks each frame the agent writes and hands it your notes as they arrive
+- A claim reserves the frame an agent is about to write, so you see where it is drawing before the file lands
+- `frameboard image` and `frameboard model` find or generate assets from the command line, each saved with its license
 
 [The command and check reference](docs/agents/index.md)
 
