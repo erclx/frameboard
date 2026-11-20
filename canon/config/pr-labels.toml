@@ -25,6 +25,7 @@ documentation = [
   ".github/pull_request_template.md",
   ".github/social-card.png",
   ".github/readme-hero-",
+  ".github/readme-themes/",
 ]
 tests = [
   "e2e/",

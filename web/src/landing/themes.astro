@@ -10,7 +10,9 @@ import slides from '../assets/themes/slides.jpg'
 import {
   DEVICES_DOCS_URL,
   INSPECTOR_DOCS_URL,
+  KITS_DOCS_URL,
   MEDIA_DOCS_URL,
+  PLAY_DOCS_URL,
   SLIDES_DOCS_URL,
 } from './links'
 
@@ -40,6 +42,7 @@ const THEMES = [
     label:
       'Three sliders on a photo tuned in Play, the values kept, then back in Edit',
     poster: play,
+    docs: { href: PLAY_DOCS_URL, text: 'How Play works' },
   },
   {
     stem: 'images-3d',
@@ -57,6 +60,7 @@ const THEMES = [
     label:
       'A kit added in the Theme tab, then one frame alone restyled with it',
     poster: kits,
+    docs: { href: KITS_DOCS_URL, text: 'How kits work' },
   },
   {
     stem: 'hand-edits',
