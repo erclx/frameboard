@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.49.0](https://github.com/erclx/frameboard/compare/v0.48.0...v0.49.0) (2026-11-20)
+
+
+### Features
+
+* **skill:** name devices, remove, preview, kit save, and locked frames ([#443](https://github.com/erclx/frameboard/issues/443)) ([2158625](https://github.com/erclx/frameboard/commit/21586254a9f48e2a1e390401b510adfc0efc0992))
+* **web:** add the README clip grid and move the landing media to arc B ([#444](https://github.com/erclx/frameboard/issues/444)) ([ce4646d](https://github.com/erclx/frameboard/commit/ce4646d98254b6fbfd3fcc89a244ee2c93177349))
+* **web:** link the Play and Design kits themes cells to their docs ([#450](https://github.com/erclx/frameboard/issues/450)) ([147030b](https://github.com/erclx/frameboard/commit/147030bbcaaded950bb81417f60972f980ec9c9b))
+
+
+### Bug Fixes
+
+* **place:** remove a new empty Text left open through a board reload ([#449](https://github.com/erclx/frameboard/issues/449)) ([7f2bde7](https://github.com/erclx/frameboard/commit/7f2bde78a30f68f312caefe728fa79e16329de3a))
+
 ## [0.48.0](https://github.com/erclx/frameboard/compare/v0.47.0...v0.48.0) (2026-11-20)
 
 
