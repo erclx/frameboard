@@ -26,58 +26,18 @@ const CASES: CaptureCase[] = [
 ]
 
 /**
- * Cases that write the served board, run last in this order, since a write
- * leaks a toast, a glow, or lit Undo into whichever case runs next.
+ * Each section marked `writes`, once in run order, so its two themes run
+ * together after every pristine case, since a write leaks into the next case.
  */
-const WRITING_SECTIONS = [
-  'rectangle-drawn-free',
-  'text-hugs',
-  'linked-widths',
-  'colors-no-tokens',
-  'use-token',
-  'stroke-no-tokens',
-  'replace-colors',
-  'replace-colors-done',
-  'select-color',
-  'select-color-done',
-  'scroll-rail',
-  'scroll-no-ghost',
-  'device-bezel',
-  'device-island-wide',
-  'device-turned',
-  'device-upright-overflow',
-  'device-laptop-overflow',
-  'device-turned-overflow',
-  'device-foldable-closed',
-  'device-foldable-half',
-  'device-foldable-open',
-  'device-foldable-turned',
-  'present-device',
-  'present-phone-tall',
-  'play-entered-phone-tall',
-  'present-turned',
-  'present-foldable-turned',
-  'play-entered-turned',
-  'inspector-widths',
-  'inspector-widths-menu',
-  'inspector-widths-hug',
-  'element-tilt',
-  'element-padding',
-  'motion-held',
-  'motion-ended',
-  'export-filmstrip',
-  'page-transition',
-  'page-transition-own',
-  'present-steps',
-  'step-effect',
-  'presenter-view',
-  'controls-edit',
-  'controls-play',
-  'controls-play-left',
-  // Last, since their model and its viewer stay in the served project's assets.
-  'model-section',
-  'model-turning',
-]
+function writingSections(writes: CaptureCase['writes']): string[] {
+  return [
+    ...new Set(
+      CASES.filter((captureCase) => captureCase.writes === writes).map(
+        ({ section }) => section,
+      ),
+    ),
+  ]
+}
 
 const CHANGE_LOG = join(SERVED_BOARD, '.run/changes/log.json')
 
@@ -98,7 +58,7 @@ function onPristineServer({
     setup: async (page) => {
       if (existsSync(CHANGE_LOG)) {
         throw new Error(
-          `${section} found a change log on the served board, so a case at or before ${previousSection} wrote it. Add that case to WRITING_SECTIONS in e2e/capture/board/cases.ts.`,
+          `${section} found a change log on the served board, so a case at or before ${previousSection} wrote it. Mark that case with writes: 'board'.`,
         )
       }
       previousSection = section
@@ -145,10 +105,8 @@ function onWatchSettled(captureCase: CaptureCase): CaptureCase {
 }
 
 export const BOARD_CASES: CaptureCase[] = [
-  ...CASES.filter(({ section }) => !WRITING_SECTIONS.includes(section)).map(
-    onPristineServer,
-  ),
-  ...WRITING_SECTIONS.flatMap((writing) =>
-    CASES.filter(({ section }) => section === writing),
+  ...CASES.filter(({ writes }) => writes === undefined).map(onPristineServer),
+  ...[...writingSections('board'), ...writingSections('assets')].flatMap(
+    (writing) => CASES.filter(({ section }) => section === writing),
   ),
 ].map(onWatchSettled)

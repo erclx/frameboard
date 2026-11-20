@@ -75,7 +75,7 @@ Owns `references sync <folder>`, which fills any folder holding a `frames.json` 
 
 - A sync owns every file below the folder's first level and prunes what it would not write, while a top-level file stays the consumer's and never reads as stray
 - Each project's loaded assets land in `assets/<project>/`, and a frame's links move there at the spans `frameLoads` locates, so a `<code>` sample naming `../assets/` keeps its bytes
-- `--check` writes nothing, exits 14 with `references-stale` on a changed, missing, or stray file, and only warns on a PNG, which varies with the browser build
+- `--check` exits 14 on a changed, missing, or stray file and only warns on a PNG. A sync keeps an unchanged frame's PNG under `kept`, blind to token sheets and kits, so those owe `--rerender`
 - The whole output builds before the first write, so a refusal leaves the folder as it was, whether an empty map, a frame the formatter cannot parse, or a frame loading a page-folder file
 - oxfmt is an optional peer resolved beside the bundle, then from the folder, so an `npx` run finds a project's install, and its version is pinned because a bump changes every reference's bytes
 

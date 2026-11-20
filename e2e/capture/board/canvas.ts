@@ -684,6 +684,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'scroll-rail',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -700,6 +701,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'scroll-no-ghost',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -717,6 +719,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'device-bezel',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -735,6 +738,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'device-island-wide',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -752,6 +756,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // A selected phone turned left with Rotate under it, beside a turned tablet.
       section: 'device-turned',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -772,6 +777,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     // A selected phone, upright or turned, keeps its page's rows inside its box, with no overflow ghost under it.
     {
       section: 'device-upright-overflow',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -792,6 +798,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'device-laptop-overflow',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -809,6 +816,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'device-turned-overflow',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -828,8 +836,9 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     // A selected foldable in each pose, with its buttons under the body.
-    ...POSES.map((pose) => ({
+    ...POSES.map((pose): CaptureCase => ({
       section: `device-foldable-${pose}`,
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -847,6 +856,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // A selected open foldable turned left, its island in the left strip and its page between the strips.
       section: 'device-foldable-turned',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -865,6 +875,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'inspector-widths',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -885,6 +896,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'inspector-widths-menu',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -922,6 +934,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'inspector-widths-hug',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -972,6 +985,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'present-device',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -989,6 +1003,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // A phone as tall as its page presents one screen tall, its page scrolling inside.
       section: 'present-phone-tall',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -1006,6 +1021,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // The same phone entered in Play shrinks to one screen, its label where it stood.
       section: 'play-entered-phone-tall',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -1024,6 +1040,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // A turned phone presented landscape, Rotate in the bar after the count.
       section: 'present-turned',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -1044,6 +1061,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // An open foldable turned left presented, its page between its strips.
       section: 'present-foldable-turned',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -1063,6 +1081,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // The turned phone entered in Play, Rotate in the banner beside its text.
       section: 'play-entered-turned',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -1111,6 +1130,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'present-steps',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -1127,6 +1147,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'presenter-view',
+      writes: 'board',
       theme,
       route: `/p/webapp/home/presenter?id=${PRESENTER_ID}`,
       evidence: true,
@@ -1148,6 +1169,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'page-transition',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -1168,6 +1190,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // The grid a project's own transition joins, marked on the one the page holds.
       section: 'page-transition-own',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -1188,6 +1211,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // A stepped element's effect tiles and its start buttons.
       section: 'step-effect',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,

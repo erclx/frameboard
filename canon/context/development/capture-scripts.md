@@ -32,7 +32,13 @@ The capture scripts each carry a condition the table leaves out.
 
 `design:sync` carries more conditions than the other capture scripts.
 
-- `design:sync --check` passes the flag to the verb, which writes nothing and exits 14 on a changed, missing, or stray file
+- Only `design:sync` writes `canon/design/` reference files. Each group's file beside its folder is hand-written, and `canon indexes regen canon/design` writes the list.
+- `design:sync --check` passes the flag to the verb, which writes nothing, exits 14 on a changed, missing, or stray file, and only warns on PNG bytes
+- A sync keeps a held PNG whose frame's HTML, assets, and size held still, since a re-render of the same HTML can land on other fonts
+- `design:sync -- --rerender` redraws every PNG, owed after a token sheet or kit edit, which the keep rule never reads, and after a capture change
+
+Where the sync reads from, and what moves every reference, follow.
+
 - It reads the design board at the main root's `.canon/board` from any worktree, through the path the script derives from `git rev-parse`
 - The verb's formatter options live in `src/server/references/format.ts`, and `.oxfmtrc.json` no longer reaches a reference
 - An oxfmt bump changes every reference's bytes, so the commit bumping it runs `design:sync` too

@@ -22,5 +22,11 @@ export interface CaptureCase {
   mask?: readonly string[]
   /** Parts of the route captured as their own frames beside the whole page. */
   sections?: CaptureSection[]
+  /**
+   * Marks a case that writes the served board, so it runs after every case
+   * that does not. `assets` runs after every `board` writer too, for a case
+   * whose files stay in the served project.
+   */
+  writes?: 'board' | 'assets'
   setup?: (page: Page) => Promise<void>
 }

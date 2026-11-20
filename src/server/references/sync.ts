@@ -31,6 +31,7 @@ import {
   missingFrames,
   parseFrameMap,
 } from './frame-map'
+import { keptImages, type ReferenceFiles } from './keep'
 
 export interface ReferencesOptions {
   /** The board folder holding the mapped frames. */
@@ -41,28 +42,43 @@ export interface ReferencesOptions {
   facesDir: string
 }
 
+export interface SyncOptions extends ReferencesOptions {
+  /** Write every PNG, keeping none a held frame would. */
+  rerender?: boolean
+}
+
 type Output = Map<string, string | Uint8Array>
 
+interface Built {
+  output: Output
+  references: ReferenceFiles[]
+}
+
 /**
- * Writes what the board holds into the folder and removes every other file
- * below its first level. It builds the whole output first, so a refusal leaves
- * the folder as it was.
+ * Writes the board into the folder, keeping each PNG `keptImages` names unless
+ * `rerender` is set, and removes every other file below its first level. A
+ * refusal leaves the folder as it was, since the whole output is built first.
  */
 export async function syncReferences(
-  options: ReferencesOptions,
+  options: SyncOptions,
 ): Promise<ReferencesSync> {
-  const { folder } = options
-  const output = await buildOutput(options)
-  const removed = (await heldFiles(folder)).filter((path) => !output.has(path))
+  const { folder, rerender = false } = options
+  const { output, references } = await buildOutput(options)
+  const files = await heldFiles(folder)
+  const kept = rerender
+    ? []
+    : keptImages(references, output, await readHeld(folder, files))
+  const removed = files.filter((path) => !output.has(path))
+  const written = [...output.keys()].filter((path) => !kept.includes(path))
   await Promise.all(
-    [...output].map(async ([path, data]) => {
+    written.map(async (path) => {
       await mkdir(dirname(join(folder, path)), { recursive: true })
-      await writeFile(join(folder, path), data)
+      await writeFile(join(folder, path), output.get(path) ?? '')
     }),
   )
   await Promise.all(removed.map((path) => rm(join(folder, path))))
   await removeEmptyFolders(folder, folder)
-  return { folder, written: [...output.keys()].sort(), removed: removed.sort() }
+  return { folder, written: written.sort(), kept, removed: removed.sort() }
 }
 
 /** Compares the folder against what a sync would write, writing nothing. */
@@ -70,13 +86,8 @@ export async function checkReferences(
   options: ReferencesOptions,
 ): Promise<ReferencesCheck> {
   const { folder } = options
-  const output = await buildOutput(options)
-  const held: Output = new Map()
-  await Promise.all(
-    (await heldFiles(folder)).map(async (path) => {
-      held.set(path, await readFile(join(folder, path)))
-    }),
-  )
+  const { output } = await buildOutput(options)
+  const held = await readHeld(folder, await heldFiles(folder))
   const drift = classifyDrift(output, held)
   return {
     folder,
@@ -91,25 +102,27 @@ async function buildOutput({
   root,
   folder,
   facesDir,
-}: ReferencesOptions): Promise<Output> {
+}: ReferencesOptions): Promise<Built> {
   const map = parseFrameMap(await readFile(join(folder, 'frames.json'), 'utf8'))
   const frames = await mappedFrames(root, map)
 
   const output: Output = new Map()
   // Formatted ahead of the browser, so a refused frame costs no capture.
-  await Promise.all(
-    [...map].map(async ([reference, value]) => {
+  const references = await Promise.all(
+    [...map].map(async ([reference, value]): Promise<ReferenceFiles> => {
       const { project, page, name } = frameOf(frames, mappedTarget(value).ref)
       const source = readFrame({ root, project, page, name })
-      output.set(
-        `${reference}.html`,
-        await toReference(source, reference, folder),
-      )
+      const html = `${reference}.html`
+      output.set(html, await toReference(source, reference, folder))
+      const assets: string[] = []
       for (const asset of frameAssets(source)) {
-        output.set(
-          join('assets', project, asset),
-          await readFile(join(assetsDirOf(source), asset)),
-        )
+        const path = join('assets', project, asset)
+        assets.push(path)
+        output.set(path, await readFile(join(assetsDirOf(source), asset)))
+      }
+      return {
+        sources: [html, ...assets],
+        images: THEMES.map((theme) => `${reference}-${theme}.png`),
       }
     }),
   )
@@ -159,7 +172,17 @@ async function buildOutput({
   } finally {
     await rm(captures, { recursive: true, force: true })
   }
-  return output
+  return { output, references }
+}
+
+async function readHeld(folder: string, paths: string[]): Promise<Output> {
+  const held: Output = new Map()
+  await Promise.all(
+    paths.map(async (path) => {
+      held.set(path, await readFile(join(folder, path)))
+    }),
+  )
+  return held
 }
 
 /** The board frame each mapped ref names, each once, or a refusal listing every one it lacks. */

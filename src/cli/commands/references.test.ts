@@ -157,6 +157,7 @@ describe('references sync', () => {
     expect(referencesSyncSchema.parse(run.json().data)).toEqual({
       folder,
       written: SYNCED,
+      kept: [],
       removed: [],
     })
     expect(readFileSync(join(folder, 'home/grid.html'), 'utf8')).toContain(
@@ -216,6 +217,69 @@ describe('references sync', () => {
       expect(
         readFileSync(join(folder, 'home/grid-tablet-dark.png'), 'utf8'),
       ).toBe('dark@834')
+    })
+  })
+
+  describe('on a frame drawn before', () => {
+    it('keeps a held PNG whose HTML and assets held still', async () => {
+      board = writeBoard(TWO_PROJECTS)
+      hold('frames.json', JSON.stringify(FRAMES))
+      await sync()
+      hold('home/grid-dark.png', 'an earlier browser build')
+
+      const run = await sync()
+
+      expect(referencesSyncSchema.parse(run.json().data)).toEqual({
+        folder,
+        written: SYNCED.filter((path) => !path.endsWith('.png')),
+        kept: [
+          'home/grid-dark.png',
+          'home/grid-light.png',
+          'landing/page-dark.png',
+          'landing/page-light.png',
+        ],
+        removed: [],
+      })
+      expect(readFileSync(join(folder, 'home/grid-dark.png'), 'utf8')).toBe(
+        'an earlier browser build',
+      )
+    })
+
+    it('redraws the PNGs of a frame whose HTML changed', async () => {
+      board = writeBoard(TWO_PROJECTS)
+      hold('frames.json', JSON.stringify(FRAMES))
+      await sync()
+      hold('home/grid-dark.png', 'an earlier browser build')
+      writeFileSync(join(board.root, 'design/home/grid.html'), '<p>new</p>')
+
+      const run = await sync()
+
+      expect(referencesSyncSchema.parse(run.json().data).kept).toEqual([
+        'landing/page-dark.png',
+        'landing/page-light.png',
+      ])
+      expect(readFileSync(join(folder, 'home/grid-dark.png'), 'utf8')).toBe(
+        'dark',
+      )
+    })
+
+    it('redraws every PNG under --rerender', async () => {
+      board = writeBoard(TWO_PROJECTS)
+      hold('frames.json', JSON.stringify(FRAMES))
+      await sync()
+      hold('home/grid-dark.png', 'an earlier browser build')
+
+      const run = await sync('--rerender')
+
+      expect(referencesSyncSchema.parse(run.json().data)).toEqual({
+        folder,
+        written: SYNCED,
+        kept: [],
+        removed: [],
+      })
+      expect(readFileSync(join(folder, 'home/grid-dark.png'), 'utf8')).toBe(
+        'dark',
+      )
     })
   })
 
