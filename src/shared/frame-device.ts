@@ -320,6 +320,22 @@ export function shownBox<B extends { width: number; height: number }>(frame: {
 }
 
 /**
+ * Whether a frame's page scrolls inside its stored box on the canvas, as a
+ * scroll frame's does and a turned fixed phone's does, since `shownBox`
+ * already holds that box at one landscape screen.
+ */
+export function scrollsInBox(frame: {
+  device?: Device | null
+  scroll?: boolean
+  turn?: Turn
+  hugHeight?: boolean
+}): boolean {
+  const { device, scroll, turn, hugHeight } = frame
+  if (scroll) return true
+  return device === 'phone' && isTurned(device, turn) && !hugHeight
+}
+
+/**
  * The page's corners as a CSS `border-radius`, square on top under an upright
  * phone's status bar and square all round between a turned phone's or
  * foldable's strips.

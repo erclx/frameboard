@@ -19,6 +19,7 @@ import {
   POSE_SIZES,
   poseOf,
   screenCorners,
+  scrollsInBox,
   shownBox,
   sideInset,
   STATUS_BAR,
@@ -343,6 +344,25 @@ describe('shownBox', () => {
 
   it('shows a phone-wide frame wearing no device at its stored box', () => {
     expect(shownBox({ box: at(2328), scroll: false })).toEqual(at(2328))
+  })
+})
+
+describe('scrollsInBox', () => {
+  it.each([
+    ['a scroll frame', { scroll: true }, true],
+    ['a plain fixed frame', {}, false],
+    ['an upright fixed phone', { device: 'phone' }, false],
+    ['a fixed phone turned left', { device: 'phone', turn: 'left' }, true],
+    ['a fixed phone turned right', { device: 'phone', turn: 'right' }, true],
+    [
+      'a turned phone hugging its page',
+      { device: 'phone', turn: 'left', hugHeight: true },
+      false,
+    ],
+    ['a turned fixed tablet', { device: 'tablet', turn: 'left' }, false],
+    ['a turned fixed foldable', { device: 'foldable', turn: 'left' }, false],
+  ] as const)('scrolls %s inside its box: %s', (_label, frame, scrolls) => {
+    expect(scrollsInBox(frame)).toBe(scrolls)
   })
 })
 
