@@ -610,6 +610,20 @@ export function deleteElement(
 }
 
 /**
+ * Deletes one element as the board page leaves, sent at once as a request
+ * the browser keeps past the page, since the frame's turn and a claim's
+ * wait would hold it until the page is gone. A refusal goes unread.
+ */
+export function deleteOnLeave(key: ElementKey, send: typeof fetch = fetch) {
+  void send('/api/frames/remove', {
+    method: 'POST',
+    keepalive: true,
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ref: key.frame, index: key.index, hash: key.hash }),
+  }).catch(() => {})
+}
+
+/**
  * Deletes these elements of one frame as `deleteElement` does one, as one
  * write and one undo step, refused whole, then selects their frame.
  */
