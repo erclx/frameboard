@@ -32,7 +32,7 @@ Owns `bezel.tsx`, the body around a `device`, `page-colors.ts`, the fill its bar
 
 ### `src/client/board/scroll/`
 
-Owns `rail.tsx`, the rail a scroll frame draws in Edit 8px past its right edge, or past its device body, at a constant 6px, and `page.ts`, which reads and scrolls the page behind it.
+Owns `rail.tsx`, the rail a frame `scrollsInBox` names draws in Edit, being a scroll frame or a turned fixed phone, 8px past its right edge, or past its device body, at a constant 6px, and `page.ts`, which reads and scrolls the page behind it.
 
 - The rail draws inside the frame's box and each linked box, and only while the page is taller than its box and readable, so a page on another origin draws none
 - A frame's rail shows on hover or selection, and a linked box's while its frame is selected, since the pointer marks the frame alone
