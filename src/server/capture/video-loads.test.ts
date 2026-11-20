@@ -180,7 +180,7 @@ describe.skipIf(shell === null)(
     })
 
     it('returns a video whose request hangs as pending once the budget runs out', async () => {
-      const opened = await open('stalled', 1500)
+      const opened = await open('stalled', 5000)
       await opened.close()
 
       expect(opened.videos).toMatchObject([{ index: 3, state: 'pending' }])

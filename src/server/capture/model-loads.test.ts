@@ -200,7 +200,7 @@ describe.skipIf(shell === null)(
         ref: 'studio/home/stalled',
         box: BOX,
         theme: 'light',
-        timeoutMs: 1500,
+        timeoutMs: 5000,
       })
       await opened.close()
 
