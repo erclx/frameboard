@@ -43,7 +43,9 @@ interface SeedPage {
  * present as a reel edited it, then reserves the settings frames.
  */
 export async function seedDrive(root: string, now: Date): Promise<Seeded> {
-  const files = (await readdir(PAGES)).filter((file) => file.endsWith('.ts'))
+  const files = (await readdir(PAGES)).filter(
+    (file) => file.endsWith('.ts') && !file.endsWith('.test.ts'),
+  )
   const seeds: Record<string, 'laid' | 'kept'> = {}
   // In turn and in name order, since several pages append to one project.json.
   for (const file of files.sort()) {
