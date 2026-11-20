@@ -42,12 +42,12 @@ import NavLink from './nav-link.astro'
 </header>
 
 <script>
-  import { wireBarLine, wireThemeButton } from './nav'
+  import { wireBarLine, wireThemeButtons } from './nav'
 
-  const button = document.querySelector<HTMLButtonElement>(
-    '[data-theme-button]',
-  )
+  const buttons = [
+    ...document.querySelectorAll<HTMLButtonElement>('[data-theme-button]'),
+  ]
   const bar = document.querySelector<HTMLElement>('[data-bar]')
-  if (button) wireThemeButton(button)
+  wireThemeButtons(buttons)
   if (bar) wireBarLine(bar)
 </script>
