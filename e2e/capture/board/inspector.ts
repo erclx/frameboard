@@ -613,6 +613,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'element-tilt',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -634,6 +635,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'element-padding',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -652,6 +654,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'model-section',
+      writes: 'assets',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -670,6 +673,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'model-turning',
+      writes: 'assets',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -689,6 +693,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'text-hugs',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -721,6 +726,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'replace-colors',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -740,6 +746,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'replace-colors-done',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -763,6 +770,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'colors-no-tokens',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -782,6 +790,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'use-token',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -802,6 +811,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'stroke-no-tokens',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -822,6 +832,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'select-color',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -841,6 +852,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'select-color-done',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -862,6 +874,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'motion-held',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -880,6 +893,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'motion-ended',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -934,6 +948,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'export-filmstrip',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,

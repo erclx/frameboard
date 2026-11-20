@@ -719,6 +719,7 @@ export function homeCases(): CaptureCase[] {
       },
       {
         section: 'linked-widths',
+        writes: 'board',
         theme,
         route: '/p/webapp/home',
         evidence: true,

@@ -1013,6 +1013,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
     },
     {
       section: 'rectangle-drawn-free',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -1073,6 +1074,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // The photo tuner selected in the hero's place, so each slider wears its tag and dashed link.
       section: 'controls-edit',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -1089,6 +1091,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // Play entered on the tuner with one slider moved, so Keep values draws in the hero's corner.
       section: 'controls-play',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -1101,6 +1104,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // Esc pressed on the tuner's focused slider, so the hero is left and Play stays on.
       section: 'controls-play-left',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
