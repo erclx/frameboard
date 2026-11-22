@@ -213,7 +213,7 @@ function ruleValues(
             declaration: {
               selector: written,
               property,
-              important: node.important,
+              important: node.important === true,
             },
           })
         }
@@ -264,7 +264,7 @@ function inlineDeclarations(element: Element): InlineDeclaration[] {
     declarations.push({
       property: normalProperty(node.prop),
       value: node.value.trim(),
-      important: node.important,
+      important: node.important === true,
     })
   })
   return declarations

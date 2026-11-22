@@ -101,8 +101,9 @@ jobs:
       - name: Run the Property Run on Node
         run: FRAMEBOARD_EDIT_DIGEST="$RUNNER_TEMP/node.digest" bunx vitest run --project node src/server/edit/property.test.ts
 
+      # Threads, since vitest's forks pool calls child.channel.unref, which Bun lacks.
       - name: Run the Property Run on Bun
-        run: FRAMEBOARD_EDIT_DIGEST="$RUNNER_TEMP/bun.digest" bun --bun vitest run --project node src/server/edit/property.test.ts
+        run: FRAMEBOARD_EDIT_DIGEST="$RUNNER_TEMP/bun.digest" bun --bun vitest run --project node --pool=threads src/server/edit/property.test.ts
 
       - name: Compare the Outputs
         run: cmp "$RUNNER_TEMP/node.digest" "$RUNNER_TEMP/bun.digest"

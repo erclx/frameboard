@@ -49,7 +49,7 @@ These serve the board and run the test layers.
 Two of those need a companion command or variable.
 
 - Point `preview` or `dev` at a drive copy with `CANON_PREVIEW_ROOT=<copyRoot>` from `canon pr drive-copy --json`. Unset, `preview` serves the committed board and `dev` a temporary copy of it.
-- Run the edit writer's tests on Bun with `bun --bun vitest run --project node src/server/edit`, adding `FRAMEBOARD_EDIT_DIGEST=<path>` to write the output digest
+- Run the edit writer's tests on Bun with `bun --bun vitest run --project node --pool=threads src/server/edit`, adding `FRAMEBOARD_EDIT_DIGEST=<path>` to write the output digest
 
 ### `scripts/`
 
