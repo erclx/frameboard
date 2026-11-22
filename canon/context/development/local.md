@@ -27,8 +27,9 @@ These gate a change, and `bun run check` is the one the pre-push hook runs.
 | `bun run format`                   | Auto-fixes oxfmt formatting                                                                            |
 | `bun run build`                    | Builds the client into `dist/client/` with Vite, then `dist/cli.js` and `dist/hook.js` with rolldown   |
 
-Three conditions sit behind those commands.
+Four conditions sit behind those commands.
 
+- `check` ends on the `web/` gate as a nested root, so it fails until `bun install` has run inside `web/`, per `canon/context/development/web.md`
 - The `canon gate` stage fails a document past 300 rendered lines, a code file past 2000 lines, and a comment run past its cap in a file the branch touches, and `canon gate run` prints each finding
 - The CLI run from source writes its faces into `node_modules/.cache/frameboard/faces` on first use, and a `bun install` that moves a face package leaves that cache stale
 - The board needs `bun run build` outside `dev`, since a source `serve` refuses without `dist/client`, and an old build serves the old board
