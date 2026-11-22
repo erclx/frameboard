@@ -2,8 +2,8 @@
   "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
-      "version": "5.103.0",
-      "syncedAt": "2026-11-19T07:09:04.783Z",
+      "version": "5.112.0",
+      "syncedAt": "2026-11-22T16:45:49.158Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:33bcec3a7fa5c14a8b8db2c530d84e67c532e848ba0e3dbbad4b34d1ae171be3",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -14,10 +14,11 @@
         ".claude/rules/canon/canon/worktrees.md": "sha256:05b1de4dd0ac1adeef083f37bd6b798ff436990889abc036a6e5bb614dea6e68",
         ".claude/rules/canon/claude/background.md": "sha256:4cd427cca2bc7ac0726d8822b0b28e7abd107603905e52c679d88cb68bc5dfa9",
         ".claude/rules/canon/claude/output.md": "sha256:9fe3963c8af61f896fc4c6b8a34a490d2e5977941e7e6c0fc5cb29e944ab74ca",
+        ".claude/rules/canon/claude/rule.md": "sha256:2775fff7f778a70355387444d53a4ceca15c8b789d4b1887b12437a795d2699c",
         ".claude/rules/canon/code/routing.md": "sha256:dc34ede1f1b839199fb933c5f8f88b3639f76468c2565dc6223ecea24658379e",
         ".claude/rules/canon/code/testing.md": "sha256:76e9ff5e862a1ef36db10f0cbc549b246fbe1bb403bf869aefefa74bbb7c7d65",
         ".claude/rules/canon/framework/react.md": "sha256:3687c622d09895472d21deb509fa113cb1400307acbd3fbfb9e3d52e5a4ca374",
-        ".claude/rules/canon/framework/shadcn.md": "sha256:2e1423092c2edfa145fc5184dd4591398ecf9e564dee73bc79b0d3c3b263e275",
+        ".claude/rules/canon/framework/shadcn.md": "sha256:7023434a916714b739b187f25549b8a3ca2c40cb2f69af07e10afe6e35def6e2",
         ".claude/rules/canon/framework/tailwind.md": "sha256:dc7663818d2c93946159f1c09a9e11d5dccb5af148a5cda78965dc434b9fb765",
         ".claude/rules/canon/lang/typescript.md": "sha256:5c2729d919f8e25ef30e8ec3e3ec7154837d036bd21b3cf39da0100a7e236835",
         ".claude/rules/canon/lib/e2e-reliability.md": "sha256:9b3331311e528184673305a149f0ac1b6b737cfe05d44fdaef775ac7fb06e05d",
@@ -36,8 +37,8 @@
       "chain": ["node"]
     },
     "tooling": {
-      "version": "5.103.0",
-      "syncedAt": "2026-11-19T07:09:16.404Z",
+      "version": "5.112.0",
+      "syncedAt": "2026-11-22T16:45:30.624Z",
       "files": {
         ".github/workflows/deploy.yml": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2",
         ".github/workflows/phase-label-gate.yml": "sha256:40abb5f8b078badce41d6e2697ce569f00bb2dcda963b5ea476f84ec02d315fd",
@@ -51,11 +52,11 @@
         ".oxfmtrc.json": "sha256:3a1ed5ccecff4b639cda0dc20231f9e92a1511c463b0b5800aa0dea45b9c4dfe",
         "scripts/delete-previews.sh": "sha256:bffa40f5391deff970c5c813c7e1ed7c9b3db15925cc6400acfc187b4e50b283",
         "scripts/install-playwright-deps.sh": "sha256:35631184c220c42f510a7c17d6e2a507a4c39468fab8aaf608b9b7a40e0bb86c",
-        "scripts/lib/preview-server.sh": "sha256:35e59251279626f80ee731f71bc20a4527dbf965738b1cdd2f182230e470a870",
-        "scripts/readme-screenshot.sh": "sha256:48aeea65c89cc68083bc11ca7be123426cf80869c1206e969935bd6eaa5947c0",
+        "scripts/lib/preview-server.sh": "sha256:c138516e8246f87275a8ba0fbd252567d80ed6091c6228fdf0b19c7767fc5a15",
+        "scripts/readme-screenshot.sh": "sha256:8f8b87b2b2d257c77ad0e9775e600d056de0af9bb7e9b2b9bf7919ec8885a539",
         "scripts/screenshot.sh": "sha256:dc7a583c96c57cc7124842c51ead536c5b29987e52eda8e50eed51f28fbd4d96",
         "scripts/verify.json": "sha256:5e9e1e78b1f5dafcc39baeba83d140975fbf0df5336c8afdd0267cd4749f1f85",
-        "scripts/verify.ts": "sha256:60c1e951c29a438ec60bacf5c4e23f41448e7f791739fe3640e3f10925d9d0ba",
+        "scripts/verify.ts": "sha256:29d74763f72fa0214aec0d2289aa747d2b2400b756538fa1cf5db22a1192bea2",
         "scripts/worktree-port.sh": "sha256:77672f787a296ba315377c36d3a88a861fd829bfebe17e97087839dfd2bb8a65",
         "src/test/setup.ts": "sha256:81c5f1d7ba79bea949bc636250c52d71d18f2d56bfeff58ac15181786b93211d"
       },
@@ -136,6 +137,10 @@
         "src/site.ts": {
           "disposition": "declined",
           "reason": "The root is a board app with no landing head, which lives in web/"
+        },
+        "src/test/setup.ts": {
+          "disposition": "customized",
+          "base": "sha256:81c5f1d7ba79bea949bc636250c52d71d18f2d56bfeff58ac15181786b93211d"
         }
       }
     }
