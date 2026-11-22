@@ -175,7 +175,7 @@ export function buildCascade(
                     ? node.prop
                     : node.prop.toLowerCase(),
                   value: node.value,
-                  important: node.important,
+                  important: node.important === true,
                   inline: false,
                   specificity,
                   order: order++,
@@ -429,7 +429,7 @@ function inlineDeclarations(
         ? node.prop
         : node.prop.toLowerCase(),
       value: node.value,
-      important: node.important,
+      important: node.important === true,
       inline: true,
       specificity: [0, 0, 0],
       // Ranks the attribute's own declarations, a later longhand beating a shorthand.
