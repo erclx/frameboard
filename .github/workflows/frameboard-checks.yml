@@ -164,6 +164,6 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
-      # The root gate ignores web/, so this job is the only one that builds it.
+      # No root CI job runs the root check, so this job is the only one in CI that builds web/.
       - name: Run the Web Gate
         run: bun run check
