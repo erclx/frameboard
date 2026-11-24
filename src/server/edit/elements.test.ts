@@ -115,6 +115,25 @@ describe('elementTree', () => {
     ])
   })
 
+  it('marks an element the read hides and one its attribute locks', () => {
+    const tree = elementTree(
+      '<body><p>a</p><p>b</p><p data-locked>c</p></body>',
+      [],
+      [],
+      [],
+      [false, false, false, true],
+    )
+
+    expect(
+      Array.isArray(tree) &&
+        tree.map(({ name, hidden, locked }) => [name, hidden, locked]),
+    ).toEqual([
+      ['a', true, undefined],
+      ['b', undefined, undefined],
+      ['c', undefined, true],
+    ])
+  })
+
   it('lists an element a rule hides', () => {
     const tree = elementTree('<body><p style="display: none">a</p></body>')
 

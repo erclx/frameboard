@@ -13,6 +13,7 @@ import {
   elementRounds,
   elementTree,
 } from '@/server/edit/elements'
+import { elementHidden } from '@/server/edit/hide'
 import type { SelectionHolder } from '@/server/live/selection'
 import { frameStyles } from '@/server/look/colors'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
@@ -58,6 +59,7 @@ export function elementsRoutes(
       elementLayouts(source, sheets),
       elementRounds(source, sheets),
       elementPlaceFacts(source, sheets),
+      elementHidden(source, sheets),
     )
     if (!Array.isArray(elements)) {
       throw new FrameboardError(elements.reason, elements.detail, { ref })

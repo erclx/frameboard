@@ -25,6 +25,10 @@ export const treeElementSchema = z.object({
   round: z.boolean(),
   /** True when it is placed out of the flow, as `position: absolute` or `fixed`. */
   placed: z.boolean(),
+  /** True when its `hidden` attribute hides it, false for one that some rule shows anyway. */
+  hidden: z.boolean().optional(),
+  /** True when it carries `data-locked`, which keeps canvas presses off it and what it holds. */
+  locked: z.boolean().optional(),
   /** The unlisted element right after it, such as a script, which a move to the end of its siblings lands ahead of. */
   unlistedNext: z.int().min(0).optional(),
 })

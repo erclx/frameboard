@@ -31,6 +31,7 @@ import {
   removeFrameFileAll,
   wrapFrameFile,
 } from '@/server/edit/frame-file'
+import { mayShow } from '@/server/edit/hide'
 import {
   assetTag,
   elementMarkup,
@@ -93,6 +94,11 @@ const changeSchema = z.union([
   }),
 ])
 
+const hiddenSchema = z.object({
+  kind: z.literal('hidden'),
+  value: z.boolean(),
+})
+
 const editSchema = z.union([
   z.object({
     ref: z.string().min(1).max(1024),
@@ -104,7 +110,12 @@ const editSchema = z.union([
     ref: z.string().min(1).max(1024),
     hash: z.string().regex(/^[0-9a-f]{64}$/),
     edits: z
-      .array(z.object({ index: z.int().min(0), change: changeSchema }))
+      .array(
+        z.object({
+          index: z.int().min(0),
+          change: z.union([changeSchema, hiddenSchema]),
+        }),
+      )
       .min(1)
       .max(BATCH),
   }),
@@ -280,6 +291,8 @@ export function editRoutes(
         body.hash,
         body.edits,
         (hash) => (hash === body.hash ? was : null),
+        (html, index) =>
+          mayShow(frameFrom(frame, html), tokenSheets(frame), index),
       )
       if (!result.ok) {
         return c.json(

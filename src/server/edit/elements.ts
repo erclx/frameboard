@@ -2,7 +2,7 @@ import type { DefaultTreeAdapterTypes } from 'parse5'
 
 import { buildCascade, type Cascade } from '@/server/checks/cascade'
 import type { FrameSource, Sheet } from '@/server/checks/frame-source'
-import { UNRENDERED_TAGS } from '@/shared/element-marks'
+import { LOCKED_ATTRIBUTE, UNRENDERED_TAGS } from '@/shared/element-marks'
 import type { Layout, TreeElement } from '@/shared/records/elements'
 
 import { type Element, hasTag, parseFrame } from './address'
@@ -38,6 +38,7 @@ export function elementTree(
   layouts: readonly Layout[] = [],
   rounds: readonly boolean[] = [],
   facts: readonly PlaceFacts[] = [],
+  hidden: readonly boolean[] = [],
 ): TreeElement[] | EditRefused {
   const tree = parseFrame(source)
   if (tree.unstated) {
@@ -72,6 +73,10 @@ export function elementTree(
       layout: layouts[at] ?? 'block',
       round: (rounds[at] ?? false) && isEmpty(element),
       placed: isPlaced(facts[at]),
+      ...(hidden[at] ? { hidden: true } : {}),
+      ...(attribute(element, LOCKED_ATTRIBUTE) === undefined
+        ? {}
+        : { locked: true }),
       ...(unlistedNext === undefined ? {} : { unlistedNext }),
     })
   }

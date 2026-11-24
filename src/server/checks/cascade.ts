@@ -117,6 +117,11 @@ export interface Cascade {
    */
   specified: (element: Element, property: string) => Cascaded | null
   /**
+   * Whether any author rule or the `style` attribute sets a property on the
+   * element itself, counting the CSS-wide keyword `specified` reads as none.
+   */
+  declares: (element: Element, property: string) => boolean
+  /**
    * `value` with each `var()` resolved through chains and fallbacks, null when
    * one has nothing behind it, and one naming `keep` left as written.
    */
@@ -337,6 +342,7 @@ export function buildCascade(
         rule: ruleOf(declaration),
       }
     },
+    declares: (element, property) => declaredOn(element).has(property),
     resolve: (value, element, keep) => resolveVars(value, element, keep),
   }
 }
