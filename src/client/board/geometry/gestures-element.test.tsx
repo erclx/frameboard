@@ -444,6 +444,21 @@ describe('attachGestures', () => {
         expect(held()).toEqual([FIRST])
       })
 
+      it('carries the last drawn member on a drag from the bare space while the last picked is hidden', () => {
+        const hidden = { ...SECOND, index: 5 }
+        selectElements(selectionStore, PAGE, [FIRST, SECOND, hidden])
+        const inFlow = FREE.map((member) => ({ ...member, placed: null }))
+        const canvas = setup(undefined, {
+          outlines: OUTLINES,
+          group: { box: GROUP, scales: false, members: inFlow },
+        })
+
+        canvas.pointer.drag([130, 170], [130, 260])
+
+        expect(canvas.moves.map(({ key }) => key)).toEqual([SECOND])
+        expect(held()).toEqual([SECOND])
+      })
+
       it('moves every free member by the drag in one write, keeping the selection', async () => {
         selectElements(selectionStore, PAGE, [FIRST, SECOND])
         const canvas = setup(undefined, {
