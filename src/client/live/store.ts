@@ -3,7 +3,11 @@ import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
-import type { ListResult } from '@/shared/records/list'
+import type {
+  ListResult,
+  PageRecord,
+  ProjectRecord,
+} from '@/shared/records/list'
 import type { BoardNote, Listener } from '@/shared/records/notes'
 import type { Theme } from '@/shared/theme'
 
@@ -185,12 +189,20 @@ function liveAliases(
   aliases: Readonly<Record<string, string>>,
   board: ListResult,
 ): Readonly<Record<string, string>> {
-  const kept = Object.entries(aliases).filter(
-    ([ref, first]) => ref !== first && !holdsRef(board, first),
+  return keepKeys(
+    aliases,
+    (ref, first) => ref !== first && !holdsRef(board, first),
   )
-  return kept.length === Object.keys(aliases).length
-    ? aliases
-    : Object.fromEntries(kept)
+}
+
+/** `byRef` without the keys `keep` refuses, the same object when it refuses none. */
+function keepKeys<T>(
+  byRef: Readonly<Record<string, T>>,
+  keep: (ref: string, value: T) => boolean,
+): Readonly<Record<string, T>> {
+  const entries = Object.entries(byRef)
+  const left = entries.filter(([ref, value]) => keep(ref, value))
+  return left.length === entries.length ? byRef : Object.fromEntries(left)
 }
 
 /**
@@ -315,33 +327,96 @@ function siblingPath(path: string, name: string): string {
 }
 
 /**
- * Replaces the board, dropping the counters, findings, and claims of frames
- * it no longer holds and the notes of pages it no longer holds. A
- * reservation's claim stays, since its frame is listed only once it lands.
+ * Replaces the board, keeping each record equal to the one held and dropping
+ * keys of frames and pages it no longer holds. The board itself is always new,
+ * since its subscribers read a new one as a board having arrived.
  */
 export function receiveBoard(store: LiveStore, board: ListResult): void {
+  const state = store.getState()
   const pages = board.projects.flatMap((project) => project.pages)
   const refs = new Set(
     pages.flatMap((page) => page.frames.map((frame) => frame.ref)),
   )
   const pageRefs = new Set(pages.map((page) => page.ref))
-  const held = <T>(byRef: Readonly<Record<string, T>>, keep: Set<string>) =>
-    Object.fromEntries(Object.entries(byRef).filter(([ref]) => keep.has(ref)))
-  const { reloads, kept, findings, notes, claims, aliases } = store.getState()
+  const onFrame = (ref: string) => refs.has(ref)
   store.setState({
-    board,
-    reloads: held(reloads, refs),
-    kept: held(kept, refs),
-    findings: held(findings, refs),
-    notes: held(notes, pageRefs),
-    // A reservation names a frame the board does not list until it lands.
-    claims: Object.fromEntries(
-      Object.entries(claims).filter(
-        ([ref, claim]) => refs.has(ref) || claim.box !== undefined,
+    board: {
+      ...board,
+      projects: keepList(
+        state.board?.projects ?? [],
+        board.projects,
+        (project) => project.name,
+        keepProject,
       ),
+    },
+    reloads: keepKeys(state.reloads, onFrame),
+    kept: keepKeys(state.kept, onFrame),
+    findings: keepKeys(state.findings, onFrame),
+    notes: keepKeys(state.notes, (ref) => pageRefs.has(ref)),
+    // A reservation names a frame the board does not list until it lands.
+    claims: keepKeys(
+      state.claims,
+      (ref, claim) => refs.has(ref) || claim.box !== undefined,
     ),
-    aliases: liveAliases(aliases, board),
+    aliases: liveAliases(state.aliases, board),
   })
+}
+
+function keepProject(held: ProjectRecord, next: ProjectRecord): ProjectRecord {
+  const pages = keepList(held.pages, next.pages, (page) => page.ref, keepPage)
+  return keepEqual(held, { ...next, pages })
+}
+
+function keepPage(held: PageRecord, next: PageRecord): PageRecord {
+  const frames = keepList(
+    held.frames,
+    next.frames,
+    (frame) => frame.ref,
+    keepEqual,
+  )
+  return keepEqual(held, { ...next, frames })
+}
+
+/**
+ * `next` with `keep` run on each record `held` also names, paired by name so
+ * one added or removed ahead moves no pair. Returns `held` when every record
+ * stayed in place.
+ */
+function keepList<T>(
+  held: T[],
+  next: T[],
+  nameOf: (record: T) => string,
+  keep: (held: T, next: T) => T,
+): T[] {
+  const byName = new Map(held.map((record) => [nameOf(record), record]))
+  const list = next.map((record) => {
+    const match = byName.get(nameOf(record))
+    return match === undefined ? record : keep(match, record)
+  })
+  const unchanged =
+    list.length === held.length &&
+    list.every((record, at) => record === held[at])
+  return unchanged ? held : list
+}
+
+function keepEqual<T>(held: T, next: T): T {
+  return isEqual(held, next) ? held : next
+}
+
+/** Whether two JSON values match on every key, named in their types or not. */
+function isEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (!isObject(a) || !isObject(b)) return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  const keys = Object.keys(a)
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every((key) => Object.hasOwn(b, key) && isEqual(a[key], b[key]))
+  )
+}
+
+function isObject(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === 'object' && value !== null
 }
 
 /** Replaces one page's notes. */

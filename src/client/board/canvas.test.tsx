@@ -7,12 +7,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
 import { registerActions } from '@/client/actions/registry'
-import { liveStore, receiveClaims } from '@/client/live/store'
+import {
+  liveStore,
+  receiveBoard,
+  receiveClaims,
+  useLive,
+} from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import type { Claim } from '@/shared/records/claims'
-import type { FrameRecord, PageRecord } from '@/shared/records/list'
+import type {
+  FrameRecord,
+  PageRecord,
+  ProjectRecord,
+} from '@/shared/records/list'
 
 import { Canvas } from './canvas'
+import { useWaitingOnFirstLoad } from './frame-loading'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
 import { leaveFrame } from './play/entered'
@@ -26,6 +36,8 @@ import {
 } from './structure/actions'
 import { canvasView } from './view'
 import { PAN_EASE_MS } from './wheel'
+
+vi.mock('./frame-loading', { spy: true })
 
 function frame(
   name: string,
@@ -902,6 +914,95 @@ describe('Canvas', () => {
 
     const { x, y } = viewOf(container)
     expect([x, y > 150 && y < 200, commits]).toEqual([270, true, before])
+  })
+
+  describe('on a board message', () => {
+    afterEach(() => liveStore.setState({ board: null }))
+
+    function project(name: string, pages: PageRecord[]): ProjectRecord {
+      return {
+        name,
+        path: `/board/${name}`,
+        modifiedAt: '2026-10-15T00:00:00.000Z',
+        title: null,
+        createdAt: null,
+        group: null,
+        archived: false,
+        projectFileError: null,
+        transitions: [],
+        checksOff: [],
+        kits: [],
+        pages,
+      }
+    }
+
+    /** A message as the socket parses it, so no record is shared between two. */
+    function boardWith(other: string, x = 0) {
+      return structuredClone({
+        root: '/board',
+        projects: [
+          project(other, []),
+          project('studio', [
+            page('studio/home', [
+              frame('a', { x, y: 0, width: 200, height: 200 }),
+            ]),
+          ]),
+        ],
+      })
+    }
+
+    /** Renders the canvas on every message, as the shell above the board screen does. */
+    function OpenPage({ onCommit }: { onCommit: () => void }) {
+      const projects = useLive((state) => state.board?.projects)
+      const open = projects?.find((each) => each.name === 'studio')?.pages[0]
+      const reloads = useLive((state) => state.reloads)
+      const kept = useLive((state) => state.kept)
+      const findings = useLive((state) => state.findings)
+      const claims = useLive((state) => state.claims)
+      if (!open) return null
+      return (
+        <div style={{ width: 800, height: 600 }}>
+          <Profiler id="canvas" onRender={onCommit}>
+            <Canvas
+              page={open}
+              reloads={reloads}
+              kept={kept}
+              findings={findings}
+              claims={claims}
+            />
+          </Profiler>
+        </div>
+      )
+    }
+
+    it('renders no frame again when another project changed', async () => {
+      let commits = 0
+      receiveBoard(liveStore, boardWith('atlas'))
+      render(<OpenPage onCommit={() => (commits += 1)} />)
+      await expect.poll(() => holdsAcrossFrames(() => commits)).toBe(true)
+      const before = commits
+      // A frame calls this hook once a render, and nothing else on a canvas does.
+      vi.mocked(useWaitingOnFirstLoad).mockClear()
+
+      act(() => receiveBoard(liveStore, boardWith('borealis')))
+
+      expect({
+        canvas: commits > before,
+        frames: vi.mocked(useWaitingOnFirstLoad).mock.calls.length,
+      }).toEqual({ canvas: true, frames: 0 })
+    })
+
+    it('draws a frame of the open page at the box the message carries', () => {
+      receiveBoard(liveStore, boardWith('atlas'))
+      const { container } = render(<OpenPage onCommit={() => {}} />)
+
+      act(() => receiveBoard(liveStore, boardWith('atlas', 40)))
+
+      expect(
+        container.querySelector<HTMLElement>('[data-frame="studio/home/a"]')
+          ?.style.left,
+      ).toBe('40px')
+    })
   })
 
   it('pans the layer on a primary drag under the Hand tool', () => {
