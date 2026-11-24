@@ -16,7 +16,7 @@ import { previewStyle } from '../inspector/element/styles'
 import { writeElement, writeElements } from '../inspector/element/write'
 import type { ElementKey } from '../selection'
 import type { GroupMember, MemberEdit } from './group'
-import { heldGhost, heldMeasures } from './measures'
+import { hasBox, heldGhost, heldMeasures } from './measures'
 import { newTextStore } from './text-in-place'
 
 /** What a corner drag's write reads off the element it resizes. */
@@ -259,7 +259,7 @@ export function startPlacedMove(
 }
 
 /**
- * The selected elements `keys` names as a group drag reads them at the press,
+ * The selected elements `keys` names that take any room, as a group drag reads them,
  * each box in its frame's own pixels, off a live frame showing the bytes they
  * were read from, or null while it shows other bytes or misses one.
  */
@@ -270,16 +270,16 @@ export function shownGroup(
   const [first] = keys
   if (!first || !drawsLive(container, first.frame)) return null
   return (
-    heldMeasures(keys)?.map(
-      ({ index, box, placed, nested, read, margin, locked }) => ({
+    heldMeasures(keys)
+      ?.filter(hasBox)
+      .map(({ index, box, placed, nested, read, margin, locked }) => ({
         index,
         box,
         placed: nested ? null : placed,
         read,
         margin,
         locked,
-      }),
-    ) ?? null
+      })) ?? null
   )
 }
 

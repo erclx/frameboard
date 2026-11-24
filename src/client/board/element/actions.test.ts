@@ -763,6 +763,18 @@ describe('nudging elements', () => {
     expect(action('element.nudgeLeft').enabled?.()).toBe(false)
   })
 
+  it('holds the press for a hidden element, so its frame never moves', () => {
+    const { at, action, edits } = setup({ members: [] })
+    at(7)
+
+    expect(action('element.nudgeRight').enabled?.()).toBe(true)
+    action('element.nudgeRight').run()
+    vi.advanceTimersByTime(NUDGE_REST_MS)
+
+    expect(edits[0]?.commits).toEqual([])
+    expect(edits[0]?.cancelled).toBe(true)
+  })
+
   it('stands aside while focus sits on a control', () => {
     const { selection, action } = setup({
       members: FREE,
@@ -835,6 +847,13 @@ describe('arranging elements', () => {
         },
       ],
     ])
+  })
+
+  it('stands disabled with one element left beside a hidden one', () => {
+    const { selection, action } = setup({ members: FREE.slice(0, 1) })
+    both(selection)
+
+    expect(action('element.alignTop').enabled?.()).toBe(false)
   })
 
   it('stands disabled while one element is locked', () => {

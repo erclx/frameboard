@@ -35,6 +35,11 @@ function listen(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
+/** Whether a measured element takes any room, as one with display none does not. */
+export function hasBox({ box }: Pick<MemberMeasure, 'box'>): boolean {
+  return box.width > 0 || box.height > 0
+}
+
 /** The measures held for the named elements, all of one frame at one hash, or null while any is unmeasured. */
 export function heldMeasures(
   keys: readonly ElementKey[],

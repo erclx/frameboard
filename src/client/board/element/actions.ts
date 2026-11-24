@@ -80,7 +80,7 @@ export interface ElementContext {
     key: ElementKey,
     to: (place: number, count: number) => number,
   ) => void
-  /** The selected elements as their live frame shows them, which `shownGroup` reads on the board. */
+  /** The selected elements their live frame draws, fewer than named where one is hidden, which `shownGroup` reads on the board. */
   group: (keys: readonly ElementKey[]) => readonly GroupMember[] | null
   /** Starts a previewed edit of the selected elements, null when their frame is held, which `startGroupEdit` does on the board. */
   editGroup: (page: string, keys: readonly ElementKey[]) => GroupEdit | null
@@ -212,7 +212,7 @@ export function elementActions(context: ElementContext): Action[] {
       },
     }
   }
-  // With no free member, the press falls through to the frame's nudge.
+  // With no free member the press falls through to the frame's nudge, unless one is hidden, whose frame would jump unseen.
   const nudged = () => {
     const state = selection.getState()
     if (!elementSelected() || !context.writable() || !context.boardFocused()) {
@@ -220,7 +220,11 @@ export function elementActions(context: ElementContext): Action[] {
     }
     const keys = selectedElements(state)
     const members = context.group(keys)
-    return state.page && members?.some(({ placed }) => placed !== null)
+    const holds =
+      members &&
+      (members.length < keys.length ||
+        members.some(({ placed }) => placed !== null))
+    return state.page && members && holds
       ? { page: state.page, keys, members }
       : null
   }
@@ -273,7 +277,9 @@ export function elementActions(context: ElementContext): Action[] {
       if (!elementSelected() || !context.writable() || !state.page) return null
       const keys = selectedElements(state)
       const members = keys.length >= least ? context.group(keys) : null
-      return members?.every(({ placed, locked }) => placed !== null && !locked)
+      return members &&
+        members.length >= least &&
+        members.every(({ placed, locked }) => placed !== null && !locked)
         ? { page: state.page, keys, members }
         : null
     }
@@ -306,7 +312,7 @@ export function elementActions(context: ElementContext): Action[] {
       return null
     }
     const members = context.group(keys)
-    return members ? { page: state.page, keys, members } : null
+    return members?.length ? { page: state.page, keys, members } : null
   }
   // Each flag turns off only once every selected element holds it, as the frames' lock does.
   const flagged = (flag: ElementFlag) => {

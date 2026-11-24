@@ -360,6 +360,17 @@ describe('a live element', () => {
       ).toEqual([null, { left: 0, top: 0 }])
     })
 
+    it('leaves out a hidden member, whose box and offsets read as no place it draws', async () => {
+      const shown = await mount(
+        '<div style="position: absolute; left: 50%; top: 20px; display: none"></div><div style="position: absolute; left: 100px; top: 5px; width: 10px; height: 10px"></div>',
+      )
+      await measure(shown, [at(3), at(4)])
+
+      expect(
+        shownGroup(shown, [at(3), at(4)])?.map(({ index }) => index),
+      ).toEqual([4])
+    })
+
     it('answers null for keys read from other bytes', async () => {
       const shown = await mount('<div></div><div></div>')
       const stale = [

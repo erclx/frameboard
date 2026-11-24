@@ -2,7 +2,6 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 
-import type { MeasuredBox } from '@/shared/frame-bridge/live-element'
 import { pageBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -16,7 +15,7 @@ import { useMode } from '../mode'
 import { type ElementKey, useSelection } from '../selection'
 import { groupBounds, type GroupMember, scalesAsGroup } from './group'
 import { heldStore, holdOutline } from './held'
-import { useGhosts, useMeasures } from './measures'
+import { hasBox, useGhosts, useMeasures } from './measures'
 import { useLiveMedia } from './media'
 import { MediaBar } from './media-bar'
 import { newTextStore } from './text-in-place'
@@ -237,11 +236,6 @@ function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
       ))}
     </>
   )
-}
-
-/** Whether a measured element takes any room, as one with display none does not. */
-function hasBox({ box }: { box: MeasuredBox }): boolean {
-  return box.width > 0 || box.height > 0
 }
 
 interface ElementOutlineProps extends ElementOverlayProps {
