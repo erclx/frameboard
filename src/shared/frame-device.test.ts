@@ -57,12 +57,12 @@ describe('bezelBox', () => {
     })
   })
 
-  it('grows a tablet frame by 44 points on every side', () => {
+  it('grows a tablet frame by 32 points on every side', () => {
     expect(bezelBox(frame, 'tablet', 'upright')).toEqual({
-      x: 56,
-      y: -4,
-      width: 478,
-      height: 932,
+      x: 68,
+      y: 8,
+      width: 454,
+      height: 908,
     })
   })
 
@@ -160,10 +160,10 @@ describe('drawnExtent with a device', () => {
   it('holds the bezel around the frame and the linked widths past it', () => {
     const extent = drawnExtent(frame, [{ width: 834, height: 1194 }], 'tablet')
     expect(extent).toEqual({
-      x: 56,
-      y: -4,
-      width: 390 + 80 + 834 + 44,
-      height: 1194 + 44,
+      x: 68,
+      y: 8,
+      width: 390 + 80 + 834 + 32,
+      height: 1194 + 32,
     })
   })
 })
@@ -507,13 +507,13 @@ describe('a turned phone, tablet, or foldable', () => {
     },
   )
 
-  it('grows a turned tablet by 44 points on every side, as upright', () => {
+  it('grows a turned tablet by 32 points on every side, as upright', () => {
     const tablet = { x: 100, y: 40, width: 1194, height: 834 }
     expect(bezelBox(tablet, 'tablet', 'left')).toEqual({
-      x: 56,
-      y: -4,
-      width: 1282,
-      height: 922,
+      x: 68,
+      y: 8,
+      width: 1258,
+      height: 898,
     })
   })
 

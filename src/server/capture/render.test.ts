@@ -358,7 +358,7 @@ describe.skipIf(shell === null)(
         },
         'light',
       )
-      const line = await pixelAt(requireShell(shell), bytes, 300, 44 + 5)
+      const line = await pixelAt(requireShell(shell), bytes, 300, 32 + 5)
 
       expect(line).toEqual([255, 0, 0, 255])
     })

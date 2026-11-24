@@ -83,7 +83,7 @@ describe('drawnExtent', () => {
 describe('xPast', () => {
   it.each([
     ['a laptop, past its base', 1440, 'laptop', 1709],
-    ['a tablet, past its border', 834, 'tablet', 1644],
+    ['a tablet, past its border', 834, 'tablet', 1632],
     ['a phone, past its buttons', 390, 'phone', 1620],
     ['no device, at the frame', 1440, null, 1600],
   ] as const)('places %s 80 clear of the edge', (_, width, device, x) => {

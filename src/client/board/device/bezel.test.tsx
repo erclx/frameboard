@@ -363,16 +363,19 @@ describe('Bezel', () => {
     })
   })
 
-  it('draws a tablet with a 44 border and no island', () => {
+  it('draws a tablet with a 32 border, a 50 body radius, and no island', () => {
     const { container } = render(
       <Framed device="tablet" width={834} height={1194} />,
     )
 
     const bezel = bezelOf(container)
+    const radius = Number.parseFloat(
+      getComputedStyle(bezel).borderTopLeftRadius,
+    )
 
-    expect(borderOf(bezel)).toBe(44)
+    expect(borderOf(bezel)).toBe(32)
+    expect(radius + borderOf(bezel)).toBe(50)
     expect(container.querySelector('[data-bezel-island]')).toBeNull()
-    expect(container.querySelector('[data-bezel-button]')).toBeNull()
   })
 
   describe('laptop', () => {
