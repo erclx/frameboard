@@ -29,11 +29,11 @@ function copyIndex(from: string, to: string): void {
 }
 
 /**
- * Names the content the gate reads, being every file git would track and the
- * merge base its changed set is measured from. It holds across a commit of
- * that content, so a push after the commit matches the run before it.
+ * Names what a pass depends on, being every file git would track, the merge
+ * base its changed set is measured from, and the canon that checked it. It
+ * holds across a commit of that content, so the push after it matches.
  */
-export function gateKey(root: string, base: string): string {
+export function gateKey(root: string, base: string, canon: string): string {
   const scratch = mkdtempSync(join(tmpdir(), 'gate-index-'))
   try {
     const index = join(scratch, 'index')
@@ -41,7 +41,7 @@ export function gateKey(root: string, base: string): string {
     if (existsSync(real)) copyIndex(real, index)
     git(root, ['add', '-A'], { GIT_INDEX_FILE: index })
     const tree = git(root, ['write-tree'], { GIT_INDEX_FILE: index })
-    return `${base} ${tree.trim()}`
+    return `${base} ${tree.trim()} ${canon}`
   } finally {
     rmSync(scratch, { recursive: true, force: true })
   }

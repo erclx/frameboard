@@ -106,6 +106,12 @@ function webChecks(root: string, changed: string[], files: string[]): Check[] {
   ]
 }
 
+/** The canon a pass was checked by, as one word in the key. */
+function canonVersion(): string {
+  const { stdout } = spawnSync('canon', ['--version'], { encoding: 'utf8' })
+  return stdout?.trim() || 'none'
+}
+
 /** `canon gate`, where the binary has the verb, since CI never runs it. */
 function canonChecks(root: string): Check[] {
   const help = spawnSync('canon', ['gate', 'run', '--help'], {
@@ -142,7 +148,7 @@ if (args.some((arg) => arg !== '--force')) fail(USAGE, 2)
 const root = process.cwd()
 const started = Date.now()
 const base = mergeBase(root)
-const key = gateKey(root, base)
+const key = gateKey(root, base, canonVersion())
 if (!args.includes('--force') && hasPassed(root, key)) {
   skip('This tree already passed the gate. --force runs it again')
   process.exit(0)
@@ -166,5 +172,5 @@ const checks = [
 for (const check of checks) runCheck(check)
 
 // An edit made while the gate ran was checked in part, so no pass is kept.
-if (gateKey(root, base) === key) recordPass(root, key)
+if (gateKey(root, base, canonVersion()) === key) recordPass(root, key)
 console.log(`\n✓ Gate passed in ${seconds(started)}`)

@@ -188,6 +188,31 @@ describe('a tree that already passed', () => {
     expect(ran()).toEqual(first)
   })
 
+  it('should run again once a canon is on PATH after a pass without one', () => {
+    run()
+    writeFileSync(
+      join(bin, 'canon'),
+      `#!/bin/sh\necho 'Usage: canon gate run'\necho "canon $*" >> '${join(home, 'log')}'\n`,
+      { mode: 0o755 },
+    )
+
+    run()
+
+    expect(ran()).toContain('canon gate run --nested')
+  })
+
+  it('should run again on a tree that was edited while it ran', () => {
+    const edits = packageJson({ lint: 'echo edit >> src/a.ts' })
+    write('package.json', edits)
+    run()
+    write('src/a.ts', 'one')
+    const first = ran()
+
+    run()
+
+    expect(ran()).toHaveLength(first.length * 2)
+  })
+
   it('should run again under --force', () => {
     run()
     const first = ran()
