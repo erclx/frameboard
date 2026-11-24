@@ -17,6 +17,8 @@ export const treeElementSchema = z.object({
   tag: z.string(),
   /** `data-name`, else a text-only element's text cut to 40 characters, else an `img`'s `alt`, else the tag. */
   name: z.string(),
+  /** Present when `name` is its `data-name`. */
+  named: z.literal(true).optional(),
   /** True when the element holds text and nothing else. */
   textOnly: z.boolean(),
   /** Its layout, which a culled frame's Layers rows draw from without an iframe. */

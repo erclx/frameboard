@@ -59,6 +59,7 @@ export function elementTree(
       parent: parent === body ? null : (index.get(parent) ?? null),
       tag: element.tagName,
       name: elementName(element),
+      ...(statedName(element) ? { named: true as const } : {}),
       // A placed Text opens as an empty paragraph, which reads as text before its first word.
       textOnly:
         ownText(element) !== null ||
@@ -150,12 +151,17 @@ function words(value: string | undefined): string[] {
  * something to the frame's CSS, scripts, and readers.
  */
 export function elementName(element: Element): string {
-  const named = attribute(element, 'data-name')?.trim()
+  const named = statedName(element)
   if (named) return named
   const text = ownText(element)
   if (text !== null) return text.slice(0, NAME_LENGTH)
   const alt = element.tagName === 'img' ? attribute(element, 'alt')?.trim() : ''
   return alt || element.tagName
+}
+
+/** An element's `data-name`, null when it states none or a blank one. */
+export function statedName(element: Element): string | null {
+  return attribute(element, 'data-name')?.trim() || null
 }
 
 /** The whitespace-collapsed text of an element holding text alone, else null. */

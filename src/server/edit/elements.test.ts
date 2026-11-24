@@ -73,6 +73,19 @@ describe('elementTree', () => {
     ).toEqual([['p', true]])
   })
 
+  it('marks a name the file states, so it is told apart from one read off its text', () => {
+    const tree = elementTree(
+      '<body><p data-name="Intro">Hi</p><p>Hi</p></body>',
+    )
+
+    expect(
+      Array.isArray(tree) && tree.map((row) => [row.name, row.named]),
+    ).toEqual([
+      ['Intro', true],
+      ['Hi', undefined],
+    ])
+  })
+
   it('reads an empty div or span, or a paragraph holding an element, as no text', () => {
     const tree = elementTree('<body><div></div><span></span><p><br></p></body>')
 

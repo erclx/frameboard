@@ -15,6 +15,7 @@ import { STARTER_FONTS } from '@/shared/starter-tokens'
 import { type Element, type FrameTree, hasTag, parseFrame } from './address'
 import { type EditRefused, refuse } from './apply'
 import { spanText } from './element-span'
+import { statedName } from './elements'
 
 /** What a placement tool writes, as `POST /api/frames/insert` names it. */
 export type InsertKind =
@@ -689,7 +690,6 @@ export function extractElement(source: string, index: number): Extracted {
       `a <${element?.tagName ?? 'missing element'}> cannot stand alone in a frame, so nothing was written`,
     )
   }
-  const named = element.attrs.find(({ name }) => name === 'data-name')
   return {
     ok: true,
     html: taken.html,
@@ -697,7 +697,7 @@ export function extractElement(source: string, index: number): Extracted {
     frame,
     index: at,
     tagName: element.tagName,
-    name: named?.value.trim() || null,
+    name: statedName(element),
   }
 }
 
