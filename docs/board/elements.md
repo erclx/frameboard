@@ -25,6 +25,7 @@ Past a frame's edge, an Absolute element shows as a dashed ghost a press drags b
 
 - A new element lands where you drew it unless its parent lays out as flex or grid, where it joins the flow, and a divider always joins the flow
 - Position's In flow and Absolute move it either way afterward
+- An element dragged out of its frame and released over bare canvas moves into a frame of its own there, sized to it, and one undo moves it back
 
 ## Images, video, and audio
 
