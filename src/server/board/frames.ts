@@ -22,6 +22,7 @@ import {
   FRAME_SIZES,
   type FrameSizeName,
   frameSizeOf,
+  namedWidth,
   referenceHeight,
 } from '@/shared/frame-sizes'
 import {
@@ -108,6 +109,15 @@ export interface DeviceOptions {
   showDevice?: boolean
 }
 
+export interface NamedWidthOptions {
+  /**
+   * Opts in to the width a trailing `-<px>` in the name states, shown in its
+   * device, where no size option, reserved box, or entry left by a missing
+   * file gives one. Called with that width once the frame lands at it.
+   */
+  onNamedWidth?: (width: number) => void
+}
+
 export interface FoldOptions {
   /** True to name the foldable over the width's device, false to hand the pick back to the width, absent to leave it. */
   foldable?: boolean
@@ -139,10 +149,11 @@ export async function addFrame(
     ScrollOptions &
     WidthsOptions &
     DeviceOptions &
+    NamedWidthOptions &
     BodyOptions &
     JournalOptions,
 ): Promise<FrameRecord> {
-  const { journal } = options
+  const { journal, onNamedWidth } = options
   const frame = await resolveFrameRef(root, ref, {
     ...options,
     allowMissing: true,
@@ -157,12 +168,12 @@ export async function addFrame(
     options.width !== undefined ||
     options.height !== undefined
   // A reserved frame lands in its box, as the server's landing step puts it.
-  const size =
+  const statedSize =
     reserved && !sized
       ? { width: reserved.width, height: reserved.height }
       : sizeOf(options)
   const scroll = options.scroll ?? false
-  const hugs = scroll
+  const statedHugs = scroll
     ? { hugWidth: false, hugHeight: false }
     : reserved && !sized
       ? {
@@ -170,6 +181,7 @@ export async function addFrame(
           hugHeight: reserved.hugHeight ?? false,
         }
       : hugsOf(options)
+  let named: number | undefined
   await withLayouts(
     [page],
     async (layouts) => {
@@ -189,13 +201,20 @@ export async function addFrame(
           { ref: refOf(frame) },
         )
       }
+      // An entry left by a missing file outranks the name, so a hidden device stays hidden.
+      if (onNamedWidth && !reserved && !sized && !layout.hasEntry(frame.name)) {
+        named = namedWidth(frame.name)
+      }
+      const size = named === undefined ? statedSize : { width: named }
+      const hugs =
+        named === undefined ? statedHugs : { ...statedHugs, hugWidth: false }
+      const showDevice = options.showDevice || named !== undefined
       const names = exists ? layout.names : [...layout.names, frame.name].sort()
       // Lands past the placed frames alone, ignoring other unplaced files.
       const placed = placeFrames(
         layout.file.frames,
         names.filter((name) => layout.hasEntry(name)),
       )
-      // An entry left by a missing file keeps its box.
       const stale = placed.get(frame.name)
       const width =
         size.width ?? stale?.box.width ?? FRAME_SIZES[DEFAULT_FRAME_SIZE].width
@@ -203,7 +222,7 @@ export async function addFrame(
         stale ??
         placeNext([...placed.values()], {
           width,
-          device: options.showDevice ? deviceForWidth(width) : null,
+          device: showDevice ? deviceForWidth(width) : null,
         })
       // Refused ahead of the skeleton, so a refusal leaves no file behind.
       const widths = linkedWidths(refOf(frame), options.widths, {
@@ -236,12 +255,13 @@ export async function addFrame(
         ...hugs,
         scroll,
         widths,
-        ...(options.showDevice ? { showDevice: true as const } : {}),
+        ...(showDevice ? { showDevice: true as const } : {}),
       })
       layout.renumber()
     },
     journal,
   )
+  if (named !== undefined) onNamedWidth?.(named)
   return frameRecord(root, frame.project, frame.page, frame.name)
 }
 
