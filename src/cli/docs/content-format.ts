@@ -37,6 +37,11 @@ import { DOWNLOAD_LIMIT } from '@/server/sourcing/save'
 import { FOREIGN_MODELS } from '@/shared/asset-kinds'
 import { BINDS_ATTRIBUTE, UNIT_ATTRIBUTE } from '@/shared/bindings'
 import { ADDRESS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
+import {
+  LOCKED_ATTRIBUTE,
+  SHOWN_DISPLAY_ATTRIBUTE,
+  UNRENDERED_TAGS,
+} from '@/shared/element-marks'
 import { FACES } from '@/shared/faces'
 import {
   FONT_CATEGORIES,
@@ -181,6 +186,7 @@ export function contentFormat() {
       "The board sets data-theme and color-scheme to light or dark on each frame's root, with the class dark or light, so define both themes through [data-theme], .dark, prefers-color-scheme, or light-dark(), or take every color from token variables. Never paste a token sheet into a frame.",
       `A change to a token sheet reloads every frame it reaches.`,
       "A style attribute outranks every rule, and may hold a value the developer set by hand, so read it before changing a rule the element matches. While a server runs, check warns as outranked when an agent's write changed a rule in the frame's own <style> that an unchanged style attribute also sets.",
+      `The developer hides and locks an element from its Layers row, and each is written on that element. A hidden one carries hidden, and where the page would still draw it, an inline display: none too, with ${SHOWN_DISPLAY_ATTRIBUTE} holding any inline display that replaced, which a show puts back. A locked one carries ${LOCKED_ATTRIBUTE} with any value, which keeps the developer's canvas presses and drags off it and what it holds and refuses no edit. Keep these on an element you rewrite. Layers lists no ${[...UNRENDERED_TAGS].join(', ')} element, and each still counts in an index.`,
     ],
   }
 }

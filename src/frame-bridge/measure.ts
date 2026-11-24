@@ -1,6 +1,7 @@
 import {
   elementAt,
   frameElements,
+  isLocked,
   renderedHash,
 } from '@/shared/frame-bridge/elements'
 import {
@@ -202,6 +203,8 @@ function measured(
       (other) => other !== element && other.contains(element),
     ),
     margin: marginsOf(element),
+    ...(isLocked(element) ? { locked: true } : {}),
+    ...(element.getClientRects().length === 0 ? { unboxed: true } : {}),
   }))
 }
 
@@ -235,7 +238,12 @@ export function overflowing(): Overflowing[] {
       rect.bottom > height + SLACK_PX
     if (!past || isCropped(element, body)) return
     reported.push(element)
-    found.push({ index, box: rounded(element), placed: placedIn(element, []) })
+    found.push({
+      index,
+      box: rounded(element),
+      placed: placedIn(element, []),
+      ...(isLocked(element) ? { locked: true } : {}),
+    })
   })
   return found
 }

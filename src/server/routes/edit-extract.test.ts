@@ -104,6 +104,22 @@ describe('POST /api/frames/extract', () => {
     })
   })
 
+  it('carries what it holds hidden and locked, with each mark', async () => {
+    const held =
+      '<h2 hidden="">off</h2><div style="display: none" hidden="" data-shown-display="flex">row</div><p data-locked="">kept</p>'
+    writeFileSync(
+      path(),
+      `<!doctype html><html><head></head><body><section data-name="Card">${held}</section></body></html>`,
+    )
+
+    await extract({ ref: HERO, hash: hash(), index: 3, box: BOX })
+
+    expect(readPage('card.html')).toContain(
+      `<section data-name="Card">${held}</section>`,
+    )
+    expect(layout().card).toMatchObject({ hidden: false, locked: false })
+  })
+
   it('keeps the kit the source frame draws with', async () => {
     const held = JSON.parse(readPage('layout.json'))
     held.frames.hero.kit = 'paper'

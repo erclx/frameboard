@@ -2,9 +2,10 @@ import '../../styles.css'
 
 import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TooltipProvider } from '@/client/components/ui/tooltip'
+import { liveStore } from '@/client/live/store'
 import type { TreeElement } from '@/shared/records/elements'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
@@ -131,6 +132,153 @@ describe("a frame's element rows across a re-read", () => {
     )
 
     expect(screen.getByText('Reading elements')).toBeVisible()
+  })
+})
+
+describe("an element row's eye and lock", () => {
+  /** The body of each edit the rows sent, each answered as written. */
+  let sent: unknown[]
+  const hash = 'a'.repeat(64)
+
+  beforeEach(() => {
+    sent = []
+    act(() => liveStore.setState({ canWrite: true }))
+    vi.spyOn(window, 'fetch').mockImplementation(async (url, init) => {
+      if (url === '/api/frames/edit') {
+        sent.push(JSON.parse(String(init?.body)))
+      }
+      return Response.json({
+        ok: true,
+        data: { ref: HERO.ref, index: 6, indexes: [6], hash, elements: [] },
+      })
+    })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    act(() => liveStore.setState({ canWrite: false }))
+    act(() => trees.store.setState({ byRef: {} }))
+  })
+
+  /** Opens hero's rows, hero holding these elements. */
+  async function open(elements: TreeElement[]) {
+    holdTree(elements)
+    renderList()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Show the elements of hero' }),
+    )
+  }
+
+  it('hides the element it is pressed on', async () => {
+    await open([elementOf(6, 'Headline')])
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hide Headline' }))
+
+    await vi.waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({
+      ref: HERO.ref,
+      hash: 'a'.repeat(64),
+      edits: [{ index: 6, change: { kind: 'hidden', value: true } }],
+    })
+  })
+
+  it('shows a hidden element again', async () => {
+    await open([{ ...elementOf(6, 'Headline'), hidden: true }])
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show Headline' }))
+
+    await vi.waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({
+      edits: [{ index: 6, change: { kind: 'hidden', value: false } }],
+    })
+  })
+
+  it('locks the element in its file', async () => {
+    await open([elementOf(6, 'Headline')])
+
+    await userEvent.click(screen.getByRole('button', { name: 'Lock Headline' }))
+
+    await vi.waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({
+      edits: [
+        {
+          index: 6,
+          change: { kind: 'attribute', name: 'data-locked', value: '' },
+        },
+      ],
+    })
+  })
+
+  it('unlocks a locked element', async () => {
+    await open([{ ...elementOf(6, 'Headline'), locked: true }])
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Unlock Headline' }),
+    )
+
+    await vi.waitFor(() => expect(sent).toHaveLength(1))
+    expect(sent[0]).toMatchObject({
+      edits: [
+        {
+          index: 6,
+          change: { kind: 'attribute', name: 'data-locked', remove: true },
+        },
+      ],
+    })
+  })
+
+  it('shows its state and takes no press in a tab that may not write', async () => {
+    act(() => liveStore.setState({ canWrite: false }))
+    await open([{ ...elementOf(6, 'Headline'), hidden: true, locked: true }])
+
+    const eye = screen.getByRole('button', { name: 'Show Headline' })
+    const lock = screen.getByRole('button', { name: 'Unlock Headline' })
+
+    expect(
+      [eye, lock].map((button) => getComputedStyle(button).opacity),
+    ).toEqual(['1', '1'])
+    expect(eye).toBeDisabled()
+    expect(lock).toBeDisabled()
+  })
+
+  it('draws only on the row hover or focus while both are off', async () => {
+    await open([elementOf(6, 'Headline')])
+    const eye = screen.getByRole('button', { name: 'Hide Headline' })
+    act(() => (document.activeElement as HTMLElement | null)?.blur())
+    await userEvent.unhover(eye)
+    expect(getComputedStyle(eye).opacity).toBe('0')
+
+    act(() => eye.focus())
+
+    expect(getComputedStyle(eye).opacity).toBe('1')
+  })
+
+  it('dims a hidden parent and what it holds, and not its sibling', async () => {
+    await open([
+      { ...elementOf(6, 'Card'), textOnly: false, hidden: true },
+      { ...elementOf(7, 'Title'), parent: 6 },
+      elementOf(8, 'Footer'),
+    ])
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Show what Card holds' }),
+    )
+
+    const rows = within(
+      screen.getByRole('list', { name: 'Elements of hero' }),
+    ).getAllByRole('listitem')
+
+    expect(rows.map((row) => row.getAttribute('aria-label'))).toEqual([
+      'Card, hidden',
+      'Title, hidden',
+      null,
+    ])
+    const [card, title, footer] = rows.map((row) => getComputedStyle(row).color)
+    expect(title).toBe(card)
+    expect(footer).not.toBe(card)
+    expect(screen.getByRole('button', { name: 'Hide Title' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    )
   })
 })
 

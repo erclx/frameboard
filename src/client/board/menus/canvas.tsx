@@ -222,6 +222,8 @@ const ELEMENT_IDS = [
   'element.backward',
   'element.moveUp',
   'element.toBack',
+  'element.hide',
+  'element.lock',
   'frame.copyPng',
   'element.delete',
 ] as const
@@ -243,6 +245,8 @@ export function ElementItems({ noteable }: { noteable: boolean }) {
     backward,
     backwardKey,
     toBack,
+    hide,
+    lock,
     copyPng,
     remove,
   ] = useActions(ELEMENT_IDS)
@@ -277,6 +281,9 @@ export function ElementItems({ noteable }: { noteable: boolean }) {
           Send backward
         </MenuRow>
         <MenuRow action={toBack}>Send to back</MenuRow>
+        <ContextMenuSeparator />
+        <MenuRow action={hide}>{hide?.checked?.() ? 'Show' : 'Hide'}</MenuRow>
+        <MenuRow action={lock}>{lock?.checked?.() ? 'Unlock' : 'Lock'}</MenuRow>
         <ContextMenuSeparator />
         <MenuRow action={copyPng}>Copy frame as PNG</MenuRow>
       </ContextMenuGroup>

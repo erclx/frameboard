@@ -424,6 +424,45 @@ describe('editRoutes', () => {
       expect(read()).toBe(original)
     })
 
+    it('hides two elements as one step, each by what its own styles ask for', async () => {
+      writeFileSync(
+        path(),
+        '<!doctype html><html><head></head><body><p>a</p><div style="display: flex">b</div></body></html>',
+      )
+      const original = read()
+
+      await post({
+        ref: HERO,
+        hash: hash(),
+        edits: [
+          { index: 3, change: { kind: 'hidden', value: true } },
+          { index: 4, change: { kind: 'hidden', value: true } },
+        ],
+      })
+
+      expect(read()).toContain(
+        '<p hidden="">a</p><div style="display: none" hidden="" data-shown-display="flex">b</div>',
+      )
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+      expect(read()).toBe(original)
+    })
+
+    it('lands a hide made before an agent wrote another element', async () => {
+      const body = {
+        ref: HERO,
+        hash: hash(),
+        edits: [{ index: CAPTION, change: { kind: 'hidden', value: true } }],
+      }
+      agentWrites(read().replace('data-name="Headline"', 'data-name="Title"'))
+
+      const response = await post(body)
+
+      expect(response.status).toBe(200)
+      expect(read()).toContain('<h1 data-name="Title"')
+      expect(read()).toContain('<p data-name="Caption" hidden="">')
+    })
+
     it('refuses whole on one bad index, writing and recording nothing', async () => {
       const original = read()
       const body = fades()

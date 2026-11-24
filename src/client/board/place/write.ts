@@ -531,7 +531,7 @@ export async function moveElementTo(
       })
       return null
     }
-    const gap = siblingGap(held.elements, index, to)
+    const gap = siblingGap(held.elements, index, to, held.body)
     // Nothing written keeps every index, so a write behind goes as it would have.
     if (!gap) {
       return before ?? { from: [from], to: from, at: new Map(), shifted: false }

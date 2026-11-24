@@ -108,7 +108,7 @@ test.describe('selecting an element inside a frame', () => {
 
     await expect(outline).toBeVisible()
     await expect(
-      page.getByRole('button', { name: 'Headline' }),
+      page.getByRole('button', { name: 'Headline', exact: true }),
     ).toHaveAttribute('aria-current', 'true')
     await expect
       .poll(async () => (await selection()).element?.name)
@@ -215,6 +215,66 @@ test.describe('selecting an element inside a frame', () => {
     await undo(page)
 
     await expect.poll(order).toEqual(['Headline', 'Caption'])
+  })
+
+  test('a hidden container and a locked heading keep across a reload, and the lock sends a press past the heading', async ({
+    page,
+  }) => {
+    const path = join(board.root, `${HERO}.html`)
+    const read = () => readFileSync(path, 'utf8')
+    writeFileSync(
+      path,
+      '<!doctype html><html><head><meta charset="utf-8"><title>hero</title></head><body style="margin: 0; padding: 40px"><script>1</script><section data-name="Card" style="padding: 20px"><h1 data-name="Headline">hero</h1></section><div data-name="Row" style="display: flex; gap: 8px"><b>one</b><b>two</b></div></body></html>',
+    )
+    const original = read()
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const frame = page.frameLocator(`[data-frame="${HERO}"] iframe`)
+    const rows = page.getByRole('list', { name: 'Elements of hero' })
+    const open = async () => {
+      await page
+        .getByRole('button', { name: 'Show the elements of hero' })
+        .click()
+      await page.getByRole('button', { name: 'Show what Card holds' }).click()
+    }
+    await open()
+    await expect(rows.getByRole('listitem')).toHaveText([
+      'Card',
+      'Headline',
+      'Row',
+    ])
+
+    await rows.getByRole('button', { name: 'Hide Row' }).click()
+
+    await expect(frame.locator('div')).toBeHidden()
+    await expect(rows.getByRole('button', { name: 'Show Row' })).toBeVisible()
+    await rows.getByRole('button', { name: 'Lock Headline' }).click()
+    await expect.poll(read).toContain('data-locked=""')
+
+    await page.reload()
+    await open()
+
+    await expect(
+      rows.getByRole('button', { name: 'Show Row' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await expect(
+      rows.getByRole('button', { name: 'Unlock Headline' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await expect(frame.locator('div')).toBeHidden()
+
+    await cmdClick(page, 'h1')
+    await expect
+      .poll(async () => (await selection()).element?.name)
+      .toBe('Card')
+    await rows.getByRole('button', { name: 'Headline', exact: true }).click()
+    await expect
+      .poll(async () => (await selection()).element?.name)
+      .toBe('Headline')
+
+    await rows.getByRole('button', { name: 'Unlock Headline' }).click()
+    await rows.getByRole('button', { name: 'Show Row' }).click()
+    await expect(frame.locator('div')).toBeVisible()
+    await expect.poll(read).toBe(original)
   })
 
   test('Alt+Shift+ArrowDown moves the selected element below its sibling, and undo puts it back', async ({

@@ -47,7 +47,7 @@ The inspector's Show device switch draws a body around the frame and leaves its 
 
 These reach a frame or an element from outside the canvas.
 
-- The layers panel selects, renames, restacks, hides, and locks frames, renames and reorders elements, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
+- The layers panel selects, renames, restacks, hides, and locks frames, does the same to elements, and Cmd+D, Cmd+C, Cmd+X, and Cmd+V duplicate, copy, cut, and paste them across pages and projects
 - Cmd+F finds a frame, an element, or a line of copy on any page of the project and jumps to it
 - Right-click a frame, element, empty canvas, page, or layers row for its actions, such as Copy as PNG, Fit height, or Flip to light, which shows that frame alone in the other theme until reload
 - Right-click the empty space below the pages for New page, or below the layers for New frame and Paste

@@ -7,10 +7,12 @@ import {
   type EditChange,
   type EditRefused,
   type ElementAddress,
+  type HiddenChange,
   refuse,
   scopeOf,
 } from './apply'
 import { type ElementSpan, relocate, spanText } from './element-span'
+import { hideElement, type MayShow } from './hide'
 import {
   ensureViewerScript,
   type ExtractedElement,
@@ -132,7 +134,7 @@ export function editFrameFile(
 /** One element's change in a batch, by its index in the bytes the batch was made from. */
 export interface ElementEdit {
   readonly index: number
-  readonly change: EditChange
+  readonly change: EditChange | HiddenChange
 }
 
 export type FrameFileEdits =
@@ -153,15 +155,16 @@ export type FrameFileEdits =
   | Collided
 
 /**
- * Edits several elements as one write, all or none. One element named twice is
- * refused, since one undo could not put both spans back, except a text beside
- * a style or several attributes, which answer one span over the element.
+ * Edits several elements as one write, all or none. One named twice is refused,
+ * since one undo could not put both spans back, except a text beside a style
+ * or several attributes. A hide with no `mayShow` states the attribute alone.
  */
 export function editFrameFileAll(
   path: string,
   hash: string,
   edits: readonly ElementEdit[],
   sourceAt?: SourceAt,
+  mayShow: MayShow = () => false,
 ): FrameFileEdits {
   const read = readSource(path)
   if (!read.ok) return read
@@ -184,7 +187,11 @@ export function editFrameFileAll(
   let html = source
   const spans: ElementSpan[] = []
   for (const [at, { change }] of edits.entries()) {
-    const applied = applyEdit(html, { index: indexes[at] ?? -1 }, change)
+    const index = indexes[at] ?? -1
+    const applied =
+      change.kind === 'hidden'
+        ? hideElement(html, index, change.value, mayShow)
+        : applyEdit(html, { index }, change)
     if (!applied.ok) return applied
     html = applied.html
     spans.push(applied.span)
@@ -243,7 +250,7 @@ function namedOnceEach(
   indexes: readonly number[],
   edits: readonly ElementEdit[],
 ): boolean {
-  const changes = new Map<number, EditChange[]>()
+  const changes = new Map<number, ElementEdit['change'][]>()
   for (const [at, index] of indexes.entries()) {
     const change = edits[at]?.change
     if (change) changes.set(index, [...(changes.get(index) ?? []), change])
@@ -254,7 +261,7 @@ function namedOnceEach(
   )
 }
 
-function textAndStyle(named: readonly EditChange[]): boolean {
+function textAndStyle(named: readonly ElementEdit['change'][]): boolean {
   return (
     named.length === 2 &&
     named.filter(({ kind }) => kind === 'text').length === 1 &&
@@ -262,7 +269,7 @@ function textAndStyle(named: readonly EditChange[]): boolean {
   )
 }
 
-function separateAttributes(named: readonly EditChange[]): boolean {
+function separateAttributes(named: readonly ElementEdit['change'][]): boolean {
   const names = named.flatMap((change) =>
     change.kind === 'attribute' ? [change.name.toLowerCase()] : [],
   )

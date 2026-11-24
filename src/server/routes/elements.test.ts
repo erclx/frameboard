@@ -70,6 +70,7 @@ describe('elementsRoutes', () => {
         data: {
           ref: HERO,
           hash: heroHash(),
+          body: 5,
           elements: [
             {
               index: 6,

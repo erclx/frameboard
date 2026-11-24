@@ -66,6 +66,7 @@ Owns the first-run guide, the card a new board's empty page shows, asking for a 
 
 ## Gotchas
 
+- An element row's eye and lock write onto the element through `src/client/board/element/flags.ts`, where a frame row's, drawn by the same `row-flags.tsx`, write `layout.json`
 - Each asset write from the tile menu is one undo step. Rename and delete carry the license file, and replace takes it out, since the license named the bytes it replaced.
 - A rename rewrites the loads in each linking frame's own file through `src/server/board/asset-links.ts`, and refuses `asset-held` while a session holds one of those frames.
 - An element whose load a rename moved takes the new file name as its `data-name` only while that name is still the old file's, so a name set by hand stays.

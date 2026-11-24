@@ -255,6 +255,41 @@ describe('measure', () => {
     })
   })
 
+  it('marks a locked member and one a locked element holds', async () => {
+    const frame = await frameOf(
+      '<div data-locked=""><p>Held</p></div><p>Free</p>',
+    )
+
+    const asked = await ask(frame, 'measure', {
+      hash: HASH,
+      indexes: [3, 4, 5],
+    })
+    asked.close()
+
+    expect(
+      'value' in asked.reply && asked.reply.value?.map(({ locked }) => locked),
+    ).toEqual([true, true, undefined])
+  })
+
+  it('marks a hidden member and not a wrapper whose box is 0 by 0', async () => {
+    const frame = await frameOf(
+      `<p style="display:none">Hidden</p><div style="position:absolute;left:50px;top:10px">${at(0, 0)}</div>`,
+    )
+
+    const asked = await ask(frame, 'measure', { hash: HASH, indexes: [3, 4] })
+    asked.close()
+
+    expect(asked.reply).toMatchObject({
+      value: [
+        { unboxed: true },
+        { box: { width: 0, height: 0 }, placed: { left: 50, top: 10 } },
+      ],
+    })
+    expect(
+      'value' in asked.reply && asked.reply.value?.[1]?.unboxed,
+    ).toBeUndefined()
+  })
+
   it('pushes again once a member changes size', async () => {
     const frame = await frameOf(at(10, 20))
     const asked = await ask(frame, 'measure', { hash: HASH, indexes: [3] })
@@ -336,6 +371,12 @@ describe('overflow', () => {
         '<div style="position:fixed;left:350px;top:20px;width:100px;height:50px"></div>',
       ),
     ).toEqual([])
+  })
+
+  it('marks one a lock holds, whose picture still paints', async () => {
+    expect(
+      await ghosts(`<div data-locked="">${at(350, 20)}</div>`),
+    ).toMatchObject([{ index: 4, locked: true }])
   })
 
   it('lists nothing an ancestor crops inside the frame', async () => {

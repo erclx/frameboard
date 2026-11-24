@@ -88,6 +88,9 @@ export function badgeAt(
   )
 }
 
+/** The outlines a press takes, leaving out a locked element's and a group's holding one. */
+const PRESSED = ':not([data-element-locked])'
+
 function drawnBox({ style }: HTMLElement): Box {
   return {
     x: parseFloat(style.left),
@@ -105,7 +108,9 @@ function drawnBox({ style }: HTMLElement): Box {
 export function selectedGroupBox(
   layer: ParentNode,
 ): { box: Box; scales: boolean } | null {
-  const drawn = layer.querySelector<HTMLElement>('[data-element-group]')
+  const drawn = layer.querySelector<HTMLElement>(
+    `[data-element-group]${PRESSED}`,
+  )
   return drawn
     ? {
         box: drawnBox(drawn),
@@ -121,7 +126,9 @@ export function selectedGroupBox(
  */
 export function selectedElementBox(layer: ParentNode): Box | null {
   const drawn = [
-    ...layer.querySelectorAll<HTMLElement>('[data-element-selection]'),
+    ...layer.querySelectorAll<HTMLElement>(
+      `[data-element-selection]${PRESSED}`,
+    ),
   ].at(-1)
   return drawn ? drawnBox(drawn) : null
 }
@@ -146,7 +153,9 @@ export function selectedElementBoxes(
   layer: ParentNode,
 ): { index: number; box: Box }[] {
   return [
-    ...layer.querySelectorAll<HTMLElement>('[data-element-selection]'),
+    ...layer.querySelectorAll<HTMLElement>(
+      `[data-element-selection]${PRESSED}`,
+    ),
   ].flatMap((drawn) => {
     const index = Number(drawn.dataset.elementIndex)
     return Number.isInteger(index) ? [{ index, box: drawnBox(drawn) }] : []

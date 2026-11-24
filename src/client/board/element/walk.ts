@@ -50,24 +50,24 @@ export function siblingPlace(
 
 /**
  * The gap `/api/frames/move` takes to move `at` among its siblings, counted
- * with it lifted out. `body` is named by the index just before its first
- * child's, since the file lists an element right ahead of what it holds.
+ * with it lifted out. A move to the end stays ahead of a script closing the
+ * parent, which may read the element as it runs.
  */
 export function siblingGap(
   tree: readonly TreeElement[],
   at: number,
   to: (place: number, count: number) => number,
+  body = (tree[0]?.index ?? 0) - 1,
 ): { parent: number; before: number | null } | undefined {
   const parent = up(tree, at)
-  const first = tree[0]
-  if (parent === undefined || !first) return undefined
+  if (parent === undefined) return undefined
   const siblings = tree.filter((element) => element.parent === parent)
   const from = siblings.findIndex((element) => element.index === at)
   const place = to(from, siblings.length)
   if (place === from || place < 0 || place >= siblings.length) return undefined
   const rest = siblings.filter((element) => element.index !== at)
   return {
-    parent: parent ?? first.index - 1,
-    before: rest[place]?.index ?? null,
+    parent: parent ?? body,
+    before: rest[place]?.index ?? rest.at(-1)?.unlistedNext ?? null,
   }
 }
