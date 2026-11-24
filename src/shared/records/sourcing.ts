@@ -154,8 +154,8 @@ export const fontsourceLicenseSchema = z.object({
   id: z.string(),
   /** The search that found it, null when it was saved by id. */
   query: z.string().nullable(),
-  /** The name a frame's `font-family` calls it by. */
-  family: z.string().min(1),
+  /** The name a frame's `font-family` calls it by, held to characters that cannot close a CSS string. */
+  family: z.string().regex(/^[^"'\\{}\p{Cc}]+$/u),
   category: z.string(),
   license: fontLicenseSchema,
   licenseUrl: z.string(),

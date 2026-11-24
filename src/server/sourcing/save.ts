@@ -1,16 +1,23 @@
 import { randomBytes } from 'node:crypto'
-import { rename, rm, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { mkdir, rename, rm, rmdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { addAssets } from '@/server/board/assets'
-import { TEMP_SUFFIX } from '@/server/board/json-record'
+import type { JournalOptions } from '@/server/board/journal'
+import { isCode, TEMP_SUFFIX } from '@/server/board/json-record'
+import { matchName } from '@/server/board/refs'
+import { FONT_RECORD, fontFolders, fontsDir } from '@/server/fonts/installed'
 import { assetKind } from '@/shared/asset-kinds'
 import { ASSETS_FOLDER } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
+import { FONT_LICENSE_TEXT, FONTS_FOLDER } from '@/shared/fonts'
 import { folderName, isValidName, NAME_PATTERN } from '@/shared/names'
 import {
+  type FontLicenseFile,
   LICENSE_FILE_SUFFIX,
   type LicenseFile,
+  type SavedFont,
   type SavedImage,
   type SavedModel,
 } from '@/shared/records/sourcing'
@@ -214,6 +221,65 @@ export function saveModel(
   license: LicenseFile,
 ): Promise<SavedModel> {
   return saveWithLicense(project, `${stem}.glb`, glb, license)
+}
+
+/**
+ * Writes a family's files as served, its license text, and its record into
+ * `assets/fonts/<id>/`, in one rename so a project holds all of it or none.
+ * Refuses `name-taken` for a folder already there, whatever holds it.
+ */
+export async function saveFont(
+  project: { name: string; path: string },
+  font: { files: ReadonlyMap<string, Uint8Array>; licenseText: Uint8Array },
+  license: FontLicenseFile,
+  { journal }: JournalOptions = {},
+): Promise<SavedFont> {
+  const { id } = license
+  const held = matchName(await fontFolders(project.path), id)
+  if (held !== undefined) throw fontTaken(project.name, held)
+  const fonts = fontsDir(project.path)
+  const fresh = !existsSync(fonts)
+  await mkdir(fonts, { recursive: true })
+  const staging = join(
+    fonts,
+    `.${randomBytes(6).toString('hex')}${TEMP_SUFFIX}`,
+  )
+  const target = join(fonts, id)
+  try {
+    await mkdir(staging)
+    await Promise.all(
+      [
+        ...font.files,
+        [FONT_LICENSE_TEXT, font.licenseText] as const,
+        [FONT_RECORD, `${JSON.stringify(license, null, 2)}\n`] as const,
+      ].map(([name, contents]) => writeFile(join(staging, name), contents)),
+    )
+    await rename(staging, target)
+  } catch (error) {
+    await rm(staging, { recursive: true, force: true })
+    if (fresh) await rmdir(fonts).catch(() => {})
+    if (isCode(error, 'ENOTEMPTY') || isCode(error, 'EEXIST')) {
+      throw fontTaken(project.name, id)
+    }
+    throw error
+  }
+  await journal?.created(target)
+  const path = `${FONTS_FOLDER}/${id}`
+  return {
+    version: 1,
+    project: project.name,
+    path,
+    licensePath: `${path}/${FONT_RECORD}`,
+    license,
+  }
+}
+
+function fontTaken(project: string, id: string): FrameboardError {
+  return new FrameboardError(
+    'name-taken',
+    `${project} already holds assets/${FONTS_FOLDER}/${id}/, so nothing was installed. Take it out with \`frameboard font remove ${id} --project ${project}\` to install it again.`,
+    { project, id },
+  )
 }
 
 async function saveWithLicense(

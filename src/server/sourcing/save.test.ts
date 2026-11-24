@@ -5,12 +5,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import type { LicenseFile } from '@/shared/records/sourcing'
 
+import { installedLicense } from '../../../test/support/installed-font'
+import { recordingJournal } from '../../../test/support/recording-journal'
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import {
   DOWNLOAD_LIMIT,
   downloadImage,
   imageExtension,
   savedStem,
+  saveFont,
   saveImage,
   saveModel,
 } from './save'
@@ -163,6 +166,114 @@ describe('save', () => {
       )
 
       expect(saved.licensePath).toBe('stool-2.glb.license.json')
+    })
+  })
+
+  describe('saveFont', () => {
+    const font = {
+      files: new Map([
+        ['lora-latin-wght-normal.woff2', new Uint8Array([1, 2, 3])],
+      ]),
+      licenseText: new TextEncoder().encode('Copyright 2011 The Lora Authors'),
+    }
+
+    function folder(): string[] {
+      const fonts = join(assets, 'fonts')
+      return existsSync(fonts) ? readdirSync(fonts) : []
+    }
+
+    it('makes assets/ and lands the files, the license text, and the record in one folder', async () => {
+      const saved = await saveFont(
+        project,
+        font,
+        installedLicense('lora', 'Lora'),
+      )
+
+      expect(saved).toEqual({
+        version: 1,
+        project: 'acme',
+        path: 'fonts/lora',
+        licensePath: 'fonts/lora/font.license.json',
+        license: installedLicense('lora', 'Lora'),
+      })
+      const lora = join(assets, 'fonts/lora')
+      expect(readdirSync(lora).sort()).toEqual([
+        'LICENSE.txt',
+        'font.license.json',
+        'lora-latin-wght-normal.woff2',
+      ])
+      expect([
+        ...readFileSync(join(lora, 'lora-latin-wght-normal.woff2')),
+      ]).toEqual([1, 2, 3])
+      expect(readFileSync(join(lora, 'LICENSE.txt'), 'utf8')).toBe(
+        'Copyright 2011 The Lora Authors',
+      )
+      expect(
+        JSON.parse(readFileSync(join(lora, 'font.license.json'), 'utf8')),
+      ).toEqual(installedLicense('lora', 'Lora'))
+    })
+
+    it.each([
+      ['the family is installed', 'lora'],
+      ['a folder holds its name in another case', 'Lora'],
+    ])(
+      'refuses name-taken and keeps what is there when %s',
+      async (_case, name) => {
+        mkdirSync(join(assets, 'fonts', name), { recursive: true })
+
+        const saving = saveFont(project, font, installedLicense('lora', 'Lora'))
+
+        await expect(saving).rejects.toMatchObject({
+          code: 'name-taken',
+          details: { id: name },
+        })
+        expect(folder()).toEqual([name])
+        expect(readdirSync(join(assets, 'fonts', name))).toEqual([])
+      },
+    )
+
+    it('leaves one whole family when two installs of it race', async () => {
+      const license = installedLicense('lora', 'Lora')
+
+      const landed = await Promise.allSettled([
+        saveFont(project, font, license),
+        saveFont(project, font, license),
+      ])
+
+      expect(landed.map((each) => each.status).sort()).toEqual([
+        'fulfilled',
+        'rejected',
+      ])
+      expect(folder()).toEqual(['lora'])
+      expect(readdirSync(join(assets, 'fonts/lora'))).toHaveLength(3)
+    })
+
+    it('leaves nothing in assets/ when a file cannot be written', async () => {
+      const files = new Map([
+        ...font.files,
+        ['missing/lora.woff2', new Uint8Array([4])] as const,
+      ])
+
+      const saving = saveFont(
+        project,
+        { ...font, files },
+        installedLicense('lora', 'Lora'),
+      )
+
+      await expect(saving).rejects.toMatchObject({ code: 'ENOENT' })
+      expect(existsSync(join(assets, 'fonts'))).toBe(false)
+    })
+
+    it('records the folder it made in a journal', async () => {
+      const { journal, calls } = recordingJournal(board.root)
+
+      await saveFont(project, font, installedLicense('lora', 'Lora'), {
+        journal,
+      })
+
+      expect(calls).toEqual([
+        { kind: 'created', path: 'acme/assets/fonts/lora' },
+      ])
     })
   })
 
