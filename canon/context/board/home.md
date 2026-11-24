@@ -37,6 +37,7 @@ Owns the `project.*` actions, shared by the home view, where they act on the foc
 
 - `nav.home` goes home on Alt+ArrowUp, Windows Explorer's up a level, since Cmd+ArrowUp resizes a frame
 - `project.pin` toggles the pin through `src/client/home/pins.ts`, and the card menu reads Unpin on a pinned project
+- A title's folder name comes from `folderName` in `src/shared/names.ts`, which folds marked letters and `đ` to their base letters, so `Lịch trình` lands in `lich-trinh`
 - A rename carries a pin to the folder the title moved it to, through `renameProject` or the new board guide's own `movePin` call, a delete drops it, and a duplicate starts unpinned
 - A delete acts at once and raises a toast naming the project and what it held, whose Undo runs `edit.undo` and puts back the pin the delete dropped
 - That toast closes on the next history message after the delete's own, since the capped journal's counts cannot tell a later step apart and Undo would take that step back instead

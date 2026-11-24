@@ -82,6 +82,23 @@ describe('folderName', () => {
   })
 
   it.each([
+    ['Lịch trình · Look and feel', 'lich-trinh-look-and-feel'],
+    ['Li\u0323ch tri\u0300nh', 'lich-trinh'],
+    ['café crème', 'cafe-creme'],
+    ['đường', 'duong'],
+    ['Đà Nẵng', 'da-nang'],
+  ])('folds the marked letters of %j to %j', (title, folder) => {
+    expect(folderName(title)).toBe(folder)
+  })
+
+  it.each(['\u0301\u0323', '東京'])(
+    'is empty for %j, which holds no base letter',
+    (title) => {
+      expect(folderName(title)).toBe('')
+    },
+  )
+
+  it.each([
     'Manual drive',
     'Drive 38 basics!',
     '.hidden plans',
@@ -102,6 +119,12 @@ describe('titledFolder', () => {
   it('takes the next free name when another project holds it', () => {
     expect(titledFolder('untitled', 'Studio', ['untitled', 'studio'])).toBe(
       'studio-2',
+    )
+  })
+
+  it('takes the next free name when another title folds to the same one', () => {
+    expect(titledFolder('untitled', 'Lịch', ['untitled', 'lich'])).toBe(
+      'lich-2',
     )
   })
 

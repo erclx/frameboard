@@ -80,6 +80,20 @@ describe('project', () => {
     ).toBe('Web app')
   })
 
+  it('title folds marked letters in the folder name and keeps them in the title', async () => {
+    const result = await run(
+      'project',
+      'title',
+      'webapp',
+      'Lịch trình · Look and feel',
+    )
+
+    expect(result.json().data).toMatchObject({
+      name: 'lich-trinh-look-and-feel',
+      title: 'Lịch trình · Look and feel',
+    })
+  })
+
   it('delete returns what it deleted', async () => {
     const result = await run('project', 'delete', 'marketing')
 
