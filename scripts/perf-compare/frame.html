@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>%TITLE%</title>
+    <link rel="stylesheet" href="../assets/site.css" />
+    <style>
+      .lead {
+        max-width: 60ch;
+        color: var(--muted);
+      }
+      .actions {
+        display: flex;
+        gap: var(--space);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="bar">
+      <strong class="brand">Sample</strong>
+      <nav class="links">
+        <a href="#work">Work</a>
+        <a href="#notes">Notes</a>
+        <a href="#about">About</a>
+      </nav>
+    </header>
+    <main class="page">
+      <h1 class="title">%TITLE%</h1>
+      <p class="lead">
+        Body copy long enough to wrap over a few lines, so a frame's height
+        follows its width and a hugging frame has something to measure.
+      </p>
+      <div class="actions">
+        <a class="button" href="#start">Start</a>
+        <a class="button quiet" href="#more">Read more</a>
+      </div>
+      <section class="cards">%CARDS%</section>
+    </main>
+  </body>
+</html>
