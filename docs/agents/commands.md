@@ -21,9 +21,9 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 
 ## Capturing
 
-`capture` writes images of what the board renders.
+`capture` writes images of what the board renders. `--all-pages` shoots a whole project in one call, and `--prune` beside it removes every other image a capture could have written under that project's folder in `--out`, the theme you left out included. Notes, HTML, and other projects stay, and a refused frame leaves the folder as it was.
 
-- `capture` writes PNGs of a frame or page in either theme at 1x to 3x with `--scale`, naming a scaled file `<frame>.<theme>@<n>x.png`, and `--scroll <px>` shoots a scroll frame that far down
+- `capture` writes PNGs of a frame, page, or project in either theme at 1x to 3x with `--scale`, naming a scaled file `<frame>.<theme>@<n>x.png`, and `--scroll <px>` shoots a scroll frame that far down
 - `capture` holds each video on its poster, or on its first frame without one, so two captures match
 - `capture` waits for each 3D model to draw, holds its clip at the start, and seeks it with `--at`
 - A video or a model with no picture is listed under its image's `videos` or `models` as `error` or `pending` and never refuses the capture
@@ -108,6 +108,6 @@ Generating makes an image nobody licensed, on the developer's own server or key.
 
 ## Design references
 
-`references sync <folder>` fills a folder of design references from the frames its `frames.json` maps, and `--check` exits 14 when the folder has drifted. It needs `oxfmt` installed in that project or beside Frameboard, an optional peer, and prints the install command without it.
+`references sync <folder>` fills a folder of design references from the frames its `frames.json` maps, and `--check` exits 14 when the folder has drifted. It needs `oxfmt` installed in that project or beside Frameboard, an optional peer, and prints the install command without it. For images alone with no map, use `capture --all-pages`.
 
 A sync leaves a held PNG alone while its frame's HTML, assets, and size stay the same, since a fresh render of the same HTML can differ in its fonts. It reads no token sheet or kit, so pass `--rerender` after editing one to redraw every PNG.
