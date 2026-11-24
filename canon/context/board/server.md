@@ -53,7 +53,7 @@ Owns the routes that hand a tab the key. View-only guards against web pages and 
 - The flag mounts `POST /api/access/edit`, which sets the key cookie for the board's own page, and `editButton` on the socket's `access` message draws the button in a reading tab
 - The grant takes JSON alone, since a kit page's form or ping carries the board's `Origin` and neither can send JSON
 - The grant's `Origin` has to equal the address asked, since a page on `[::1]` at the board's port sends one reading `localhost`
-- The client's HTML answers `frame-ancestors 'none'` and a kit page `form-action 'none'`, so no page lures the press that grants
+- The client's HTML answers `frame-ancestors 'none'` under the flag alone, so no page lures the press that grants, and a kit page always answers `form-action 'none'`
 
 ### `src/server/routes/`
 

@@ -78,7 +78,7 @@ export interface AppOptions {
   tickets: Tickets
   /** Mounts `GET /api/access/open`, which hands any local browser a writing tab. */
   openRoute?: boolean
-  /** Mounts `POST /api/access/edit`, which the Edit button posts and any local program can. */
+  /** Mounts `POST /api/access/edit`, which the Edit button posts and any local program can, and keeps pages from framing the client. */
   editButton?: boolean
   /** Renders a frame for `GET /api/frames/png`. */
   renderFrame: RenderFrame
@@ -205,14 +205,16 @@ export function createApp({
     return c.redirect(url.href, 307)
   })
   app.all('/frames/*', (c) => c.notFound())
-  // Framed, a lure over it could take the press that hands out the key.
-  app.use('*', async (c, next) => {
-    await next()
-    const type = c.res.headers.get('Content-Type') ?? ''
-    if (type.startsWith('text/html')) {
-      c.header('Content-Security-Policy', "frame-ancestors 'none'")
-    }
-  })
+  if (editButton) {
+    // Framed, a lure over it could take the press that hands out the key.
+    app.use('*', async (c, next) => {
+      await next()
+      const type = c.res.headers.get('Content-Type') ?? ''
+      if (type.startsWith('text/html')) {
+        c.header('Content-Security-Policy', "frame-ancestors 'none'")
+      }
+    })
+  }
   app.use('*', serveStatic({ root: clientDir }))
   // A board route reloaded in the browser gets the client, which routes it.
   app.get(

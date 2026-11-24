@@ -17,8 +17,13 @@ const FRAME_PORT = 47123
 const KEY = 'b'.repeat(64)
 const COOKIE = 'frameboard-key-111111111111'
 
-function buildApp(clientDir: string, clipboard: ClipboardFiles | null = null) {
+function buildApp(
+  clientDir: string,
+  clipboard: ClipboardFiles | null = null,
+  editButton?: boolean,
+) {
   return createApp({
+    editButton,
     clientDir,
     facesDir: clientDir,
     root: '/board',
@@ -108,15 +113,27 @@ describe('createApp', () => {
   })
 
   it.each([['/'], ['/index.html'], ['/p/studio/home']])(
-    'lets no page frame the client at %s',
+    'lets no page frame the client at %s under the Edit button',
     async (path) => {
-      const response = await buildApp(clientDir).request(
+      const response = await buildApp(clientDir, null, true).request(
         `http://127.0.0.1:${PORT}${path}`,
       )
 
       expect(response.headers.get('content-security-policy')).toBe(
         "frame-ancestors 'none'",
       )
+    },
+  )
+
+  it.each([['/'], ['/index.html'], ['/p/studio/home']])(
+    'leaves the client at %s open to framing without it',
+    async (path) => {
+      const response = await buildApp(clientDir).request(
+        `http://127.0.0.1:${PORT}${path}`,
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('content-security-policy')).toBeNull()
     },
   )
 
