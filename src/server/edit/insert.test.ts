@@ -525,44 +525,28 @@ describe('extractElement', () => {
   const VIEWER =
     '<script type="module" src="../assets/model-viewer.min.js"></script>'
 
+  const KEPT = '<meta charset="utf-8" /><style>.cta { color: red }</style>'
+
   /** A whole frame holding `body`, whose head holds a rule, a script, and `head` after its title. */
   const frame = (body: string, head = '') =>
-    `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      .cta { color: red }
-    </style>
+    `<!doctype html><html lang="en"><head>${KEPT}
     <script>document.querySelector('.cta').focus()</script>
-    <title>hero</title>${head}
-  </head>
-  <body class="page" style="margin: 0">
-    ${body}
-  </body>
-</html>
-`
+    <title>hero</title>${head}</head>
+  <body class="page" style="margin: 0">${body}</body></html>`
 
   // html, head, meta, style, script, title, and body take 0 to 6.
   const BODY_FIRST = 7
 
   it("should stand the element alone under the source's head and body tag", () => {
-    const source = frame('<button class="cta">Buy</button>')
+    const button = '<button class="cta">Buy</button>'
 
-    expect(extractElement(source, BODY_FIRST)).toMatchObject({
+    expect(extractElement(frame(button), BODY_FIRST)).toMatchObject({
       ok: true,
-      frame: `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      .cta { color: red }
-    </style>
-    <title>hero</title>
-  </head>
-  <body class="page" style="margin: 0"><button class="cta">Buy</button></body>
-</html>
-`,
+      frame: [
+        '<!doctype html>\n<html lang="en">',
+        `  <head>${KEPT}\n    <title>hero</title></head>`,
+        `  <body class="page" style="margin: 0">${button}</body>\n</html>\n`,
+      ].join('\n'),
       index: 6,
     })
   })
@@ -636,7 +620,7 @@ describe('extractElement', () => {
 
     const extracted = extractElement(source, BODY_FIRST + 1)
 
-    expect(extracted.ok && extracted.frame).toContain(`${VIEWER}\n  </head>`)
+    expect(extracted.ok && extracted.frame).toContain(`${VIEWER}</head>`)
     expect(extracted.ok && extracted.frame).not.toContain('focus()')
   })
 

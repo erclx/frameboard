@@ -426,10 +426,7 @@ export function attachGestures(
   }
   const boxesOf = (frames: readonly FrameRecord[]) =>
     Object.fromEntries(frames.map((frame) => [frame.ref, frame.box]))
-  /**
-   * The frame a release of a dragged element makes, which is over bare canvas
-   * alone, never over a panel that hides the canvas under it.
-   */
+  // A release makes a frame over bare canvas alone, never over a panel hiding it.
   const frameMadeAt = (
     event: MouseEvent,
     { key, box }: { key: ElementKey; box: Box | null },
