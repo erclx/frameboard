@@ -1,11 +1,18 @@
 import { type Context, Hono } from 'hono'
 import { setCookie } from 'hono/cookie'
+import { z } from 'zod'
 
 import { type Access, isWriter } from '../access/guard'
-import type { Tickets } from '../access/tickets'
+import { MAX_TICKET_MINUTES, type Tickets } from '../access/tickets'
+import { answerRefusal, parseBody } from './envelope'
 
 // Hono caps Max-Age at 400 days, the longest a browser keeps a cookie.
 const COOKIE_MAX_AGE_S = 34_560_000
+
+const ticketSchema = z.object({
+  /** Minutes the ticket lives, the default life when left out. */
+  ttl: z.number().int().min(1).max(MAX_TICKET_MINUTES).optional(),
+})
 
 export interface AccessRouteOptions {
   /** Mounts the open route, which makes any local browser a writer. */
@@ -61,7 +68,7 @@ export function accessRoutes(
   }
 
   // Bearer only: a cookie-holding frame must not mint tickets for itself.
-  app.post('/api/access/ticket', (c) => {
+  app.post('/api/access/ticket', async (c) => {
     if (!isWriter({ authorization: c.req.header('authorization') }, access)) {
       return c.json(
         {
@@ -74,11 +81,19 @@ export function accessRoutes(
         401,
       )
     }
+    // A caller from before `ttl` posts no body.
+    const { ttl } = c.req.header('content-type')
+      ? await parseBody(c.req.raw, ticketSchema)
+      : {}
     const url = new URL('/api/access/redeem', c.req.url)
-    const { ticket, expiresAt } = tickets.mint()
+    const { ticket, expiresAt } = tickets.mint(
+      ttl === undefined ? undefined : ttl * 60_000,
+    )
     url.searchParams.set('ticket', ticket)
     return c.json({ ok: true, data: { url: url.toString(), expiresAt } })
   })
+
+  app.onError(answerRefusal)
 
   return app
 }

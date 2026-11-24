@@ -103,6 +103,43 @@ describe('accessRoutes', () => {
       expect(redeemed.headers.get('set-cookie')).toContain(COOKIE)
     })
 
+    function mint(body: unknown) {
+      return setup().routes.request(`${BASE}/api/access/ticket`, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${TOKEN}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      })
+    }
+
+    it.each([
+      ['two minutes', {}, 2],
+      ['the minutes asked for', { ttl: 10 }, 10],
+      ['the hour at most', { ttl: 60 }, 60],
+    ])('mints a ticket living %s', async (_case, body, minutes) => {
+      const before = Date.now()
+
+      const { data } = await (await mint(body)).json()
+
+      const lifeMs = Date.parse(data.expiresAt) - before
+      expect(lifeMs).toBeGreaterThanOrEqual(minutes * 60_000)
+      expect(lifeMs).toBeLessThan(minutes * 60_000 + 10_000)
+    })
+
+    it.each([[0], [61], [1.5], ['10']])(
+      'refuses a life of %s as usage and mints nothing',
+      async (ttl) => {
+        const response = await mint({ ttl })
+
+        expect(response.status).toBe(400)
+        const answer = await response.json()
+        expect(answer.error.code).toBe('usage')
+        expect(answer.data).toBeUndefined()
+      },
+    )
+
     it('refuses a tab holding only the board cookie', async () => {
       const { routes } = setup()
 
