@@ -1,15 +1,20 @@
 import '../../styles.css'
 
-import { act, render, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { liveStore } from '@/client/live/store'
+import { flipFrame, themeStore } from '@/client/theme/store'
 import { elementIndex } from '@/shared/frame-bridge/elements'
+import type { FrameRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 import { BRIDGE } from '@/test/frame-bridge'
 
 import CLIP from '../../../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
 import { request } from '../bridge/channel'
+import { dropPending, holdBoxes } from '../geometry/write'
 import { modeStore } from '../mode'
+import { endPreview, setPreview } from '../preview/store'
 import {
   clear,
   select,
@@ -712,6 +717,261 @@ describe('ElementOverlay', () => {
       )
 
       expect(ghosts(drawn)).toEqual([])
+    })
+  })
+
+  describe('painting an element past the edge', () => {
+    // A box at 350, 20 in the 400 px wide hero, its right 50 px past the edge.
+    const BOX =
+      '<div style="position:absolute;left:350px;top:20px;width:100px;height:50px"></div>'
+    const PAST = SOURCE.replace('<h1>Hello, world</h1>', BOX)
+    const OPEN = { ...HERO, order: 3, showOverflow: true as const }
+
+    function pictures(container: HTMLElement): HTMLImageElement[] {
+      return [...container.querySelectorAll('img')]
+    }
+
+    /** What the nth picture asks the board for. */
+    function asked(container: HTMLElement, at = 0): URLSearchParams {
+      const src = pictures(container)[at]?.src ?? ''
+      return new URL(src, location.href).searchParams
+    }
+
+    async function draw(frame: FrameRecord = OPEN, source = PAST) {
+      const container = await mountFrame(source)
+      return render(<ElementOverlay frames={[frame]} container={container} />)
+    }
+
+    async function drawPainted(frame: FrameRecord = OPEN, source = PAST) {
+      const drawn = await draw(frame, source)
+      await waitFor(() =>
+        expect(pictures(drawn.container).length).toBeGreaterThan(0),
+      )
+      return drawn
+    }
+
+    afterEach(() => {
+      act(() => {
+        modeStore.setState({ mode: 'edit', tool: 'move' })
+        themeStore.setState({ choice: 'system', system: 'light' })
+        themeStore.setState({ flipped: new Set() })
+        liveStore.setState({ reloads: {}, kept: {} })
+        endPreview([HERO.ref])
+        dropPending([HERO.ref])
+      })
+    })
+
+    it('paints the picture of the element at its place while nothing is selected', async () => {
+      const { container } = await drawPainted()
+
+      const query = asked(container)
+      expect([
+        query.get('ref'),
+        query.get('element'),
+        query.get('hash'),
+        query.get('theme'),
+        query.get('scale'),
+      ]).toEqual([HERO.ref, '3', HASH, 'light', '2'])
+      const at = pictures(container)[0]?.parentElement?.style
+      expect([at?.left, at?.top, at?.width, at?.height]).toEqual([
+        '450px',
+        '70px',
+        '100px',
+        '50px',
+      ])
+    })
+
+    it('shows the picture past the edge alone, stacked with its frame', async () => {
+      const { container } = await drawPainted()
+
+      const at = pictures(container)[0]?.parentElement?.style
+      expect(at?.clipPath).toContain('evenodd')
+      expect(at?.zIndex).toBe('3')
+    })
+
+    it('draws an unselected frame’s picture with no ghost for a press to take', async () => {
+      const { container } = await drawPainted()
+
+      expect(container.querySelector('[data-element-ghost]')).toBeNull()
+      expect(pictures(container)[0]?.parentElement?.style.outline).toBe('')
+    })
+
+    it('paints the picture inside the ghost of a selected frame that clips', async () => {
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+
+      const { container } = await drawPainted(HERO)
+
+      expect(
+        container.querySelector('[data-element-ghost] > img'),
+      ).not.toBeNull()
+    })
+
+    it('tints the ghost only until its picture loads', async () => {
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+      const { container } = await drawPainted(HERO)
+      const [picture] = pictures(container)
+      if (!picture) throw new Error('no picture')
+      const tinted = () =>
+        getComputedStyle(picture.parentElement as Element).backgroundColor
+      expect(tinted()).not.toBe('rgba(0, 0, 0, 0)')
+
+      fireEvent.load(picture)
+
+      expect(tinted()).toBe('rgba(0, 0, 0, 0)')
+    })
+
+    it('keeps the picture mounted as its frame is selected and left', async () => {
+      const { container } = await drawPainted()
+      const [before] = pictures(container)
+
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+      const selected = container.querySelector('[data-element-ghost] > img')
+      act(() => clear(selectionStore))
+
+      expect(selected).toBe(before)
+      expect(pictures(container)[0]).toBe(before)
+    })
+
+    it.each([
+      ['the Note tool', { tool: 'note' }],
+      ['the Frame tool', { tool: 'frame' }],
+    ] as const)('paints under %s', async (_name, state) => {
+      act(() => modeStore.setState(state))
+
+      const { container } = await drawPainted()
+
+      expect(pictures(container)).toHaveLength(1)
+    })
+
+    it('paints nothing in Play, where frames draw as they ship', async () => {
+      const { container } = await drawPainted()
+
+      act(() => modeStore.setState({ mode: 'play' }))
+
+      expect(pictures(container)).toEqual([])
+    })
+
+    it.each([
+      ['scrolls past its height', { scroll: true }],
+      ['shows its device', { device: 'phone' }],
+    ] as const)('paints nothing once the frame %s', async (_name, shown) => {
+      const { container, rerender } = await drawPainted()
+      const layerShown = layer ?? null
+
+      rerender(
+        <ElementOverlay
+          frames={[{ ...OPEN, ...shown }]}
+          container={layerShown}
+        />,
+      )
+
+      expect(pictures(container)).toEqual([])
+    })
+
+    it('paints nothing once the switch is off again', async () => {
+      const { container, rerender } = await drawPainted()
+      const layerShown = layer ?? null
+
+      rerender(<ElementOverlay frames={[HERO]} container={layerShown} />)
+
+      expect(pictures(container)).toEqual([])
+    })
+
+    it('paints nothing at a previewed width, which the picture is not laid out at', async () => {
+      const { container } = await drawPainted()
+
+      act(() => setPreview([HERO.ref], 320))
+
+      expect(pictures(container)).toEqual([])
+    })
+
+    it('asks for the other theme’s picture once the frame is flipped', async () => {
+      const { container } = await drawPainted()
+
+      act(() => flipFrame(HERO.ref))
+
+      expect(asked(container).get('theme')).toBe('dark')
+    })
+
+    it('asks again for a frame reloaded with the same bytes, as a token write does', async () => {
+      const { container } = await drawPainted()
+      const [before] = pictures(container)
+      const first = before?.src
+
+      act(() => liveStore.setState({ reloads: { [HERO.ref]: 1 } }))
+
+      expect(pictures(container)[0]?.src).not.toBe(first)
+      // A fresh image, so the old pixels are gone before the new ones arrive.
+      expect(pictures(container)[0]).not.toBe(before)
+    })
+
+    it('asks once for a reload the frame’s own page was kept through', async () => {
+      const { container } = await drawPainted()
+      const first = pictures(container)[0]?.src
+
+      act(() =>
+        liveStore.setState({
+          reloads: { [HERO.ref]: 1 },
+          kept: { [HERO.ref]: 1 },
+        }),
+      )
+
+      expect(pictures(container)[0]?.src).toBe(first)
+    })
+
+    it('asks by the new bytes once the page is restamped', async () => {
+      const { container } = await drawPainted()
+      const iframe = layer?.querySelector('iframe')
+      if (!iframe) throw new Error('no iframe')
+
+      await act(() => request(iframe, 'restamp', { hash: 'e'.repeat(64) }))
+
+      await expect.poll(() => asked(container).get('hash')).toBe('e'.repeat(64))
+    })
+
+    it('asks again at the frame’s new size, and not while a drag previews one', async () => {
+      const { container, rerender } = await drawPainted()
+      const first = pictures(container)[0]?.src
+      const grown = { ...HERO.box, height: 320 }
+
+      act(() => holdBoxes({ [HERO.ref]: grown }))
+      const dragged = pictures(container)[0]?.src
+      rerender(
+        <ElementOverlay
+          frames={[{ ...OPEN, box: grown }]}
+          container={layer ?? null}
+        />,
+      )
+
+      expect(dragged).toBe(first)
+      expect(pictures(container)[0]?.src).not.toBe(first)
+    })
+
+    it('paints the first twenty in document order and leaves the rest', async () => {
+      const { container } = await drawPainted(
+        OPEN,
+        SOURCE.replace('<h1>Hello, world</h1>', BOX.repeat(21)),
+      )
+
+      await waitFor(() => expect(pictures(container)).toHaveLength(20))
+      expect(asked(container, 0).get('element')).toBe('3')
+      expect(asked(container, 19).get('element')).toBe('22')
+    })
+
+    it('still ghosts the elements past the twentieth of a selected frame', async () => {
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+
+      const { container } = await drawPainted(
+        OPEN,
+        SOURCE.replace('<h1>Hello, world</h1>', BOX.repeat(21)),
+      )
+
+      await waitFor(() =>
+        expect(container.querySelectorAll('[data-element-ghost]')).toHaveLength(
+          21,
+        ),
+      )
+      expect(pictures(container)).toHaveLength(20)
     })
   })
 })
