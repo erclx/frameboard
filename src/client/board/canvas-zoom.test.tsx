@@ -45,11 +45,10 @@ function wheel(container: HTMLElement, init: WheelEventInit) {
     )
 }
 
-/** A pinch of `deltaY` in all, sent as the small ctrlKey wheels a trackpad sends. */
-function pinch(container: HTMLElement, deltaY: number, at: WheelEventInit) {
-  const parts = Math.ceil(Math.abs(deltaY) / 25)
-  for (let sent = 0; sent < parts; sent++) {
-    wheel(container, { ...at, deltaY: deltaY / parts, ctrlKey: true })
+/** `steps` of a trackpad pinch's smallest ctrlKey wheel, each zooming in by 2 ** 0.03. */
+function nudge(container: HTMLElement, steps: number) {
+  for (let sent = 0; sent < steps; sent++) {
+    wheel(container, { deltaY: -3, ctrlKey: true })
   }
 }
 
@@ -73,28 +72,33 @@ describe('the --zoom property the chrome reads', () => {
     vi.useRealTimers()
   })
 
-  it('holds through the steps of a pinch and lands on the settled scale', async () => {
-    const { container } = renderCanvas(squarePage('hold', 200))
+  it('writes a lone zoom step at once', () => {
+    const { container } = renderCanvas(squarePage('lone', 200))
 
-    pinch(container, -200, { clientX: 100, clientY: 100 })
+    wheel(container, { deltaY: -100, ctrlKey: true })
 
-    expect(scaleOf(container)).toBeGreaterThan(1)
-    expect(zoomOf(layerOf(container))).toBe(1)
-    await expect
-      .poll(() => zoomOf(layerOf(container)))
-      .toBeCloseTo(scaleOf(container))
+    expect(zoomOf(layerOf(container))).toBeCloseTo(1.2)
   })
 
-  it('catches up within 100 ms while a zoom runs without a pause', () => {
+  it('holds the steps after the first and catches up within 100 ms', () => {
     const { container } = renderCanvas(squarePage('bound', 200))
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
 
-    wheel(container, { deltaY: -100, ctrlKey: true })
-    vi.advanceTimersByTime(60)
-    wheel(container, { deltaY: -100, ctrlKey: true })
-    vi.advanceTimersByTime(60)
+    nudge(container, 5)
+    const held = zoomOf(layerOf(container))
+    vi.advanceTimersByTime(100)
 
-    expect(zoomOf(layerOf(container))).toBeCloseTo(1.44)
+    expect(held).toBeCloseTo(2 ** 0.03)
+    expect(zoomOf(layerOf(container))).toBeCloseTo(2 ** 0.15)
+  })
+
+  it('writes early once the held steps drift past 15%', () => {
+    const { container } = renderCanvas(squarePage('drift', 200))
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+    nudge(container, 9)
+
+    expect(zoomOf(layerOf(container))).toBeCloseTo(2 ** 0.24)
   })
 
   it('reads the opened view at once on the frames and the notes layer', () => {
