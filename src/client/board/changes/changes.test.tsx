@@ -30,6 +30,7 @@ import { BRIDGE } from '@/test/frame-bridge'
 import { shownHashOf } from '../bridge/shown'
 import { stampRenderedHash } from '../frame-dom'
 import { modeStore } from '../mode'
+import { leavePresenting, presentStore, usePresent } from '../present/store'
 import { endPreview, setPreview } from '../preview/store'
 import { clear, select, selectionStore } from '../selection'
 import { useChangeActions } from './actions'
@@ -69,6 +70,7 @@ afterEach(() => {
     liveStore.setState({ focus: null })
     unseenStore.setState({ unseen: {}, cursor: null })
     glowStore.setState({ glowing: {}, replays: {} })
+    presentStore.setState({ page: null, frame: null })
   })
 })
 
@@ -231,8 +233,9 @@ describe('ChangesToast', () => {
 
   function Harness() {
     useChangeActions(store, (url) => went.push(url))
+    const held = usePresent((state) => state.page !== null)
     return (
-      <Toaster bodies={{ [CHANGE_TOAST]: ChangeToastBody }}>
+      <Toaster held={held} bodies={{ [CHANGE_TOAST]: ChangeToastBody }}>
         <ChangesToast store={store} />
       </Toaster>
     )
@@ -258,6 +261,33 @@ describe('ChangesToast', () => {
 
     expect(await screen.findByText('Claude updated pricing')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Show' })).toBeVisible()
+  })
+
+  it('holds a change landing while presenting until presenting ends', async () => {
+    presentStore.setState({ page: 'studio/home', frame: 'studio/home/hero' })
+    render(<Harness />)
+    act(() => receiveChanges(store, [change('studio/home/pricing')]))
+    const raised = await screen.findByText('Claude updated pricing')
+    expect(raised).not.toBeVisible()
+
+    act(() => leavePresenting())
+
+    expect(raised).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Show' })).toBeVisible()
+  })
+
+  it('counts a change landing over a held toast', async () => {
+    render(<Harness />)
+    act(() => receiveChanges(store, [change('studio/home/pricing')]))
+    await screen.findByText('Claude updated pricing')
+    act(() =>
+      presentStore.setState({ page: 'studio/home', frame: 'studio/home/hero' }),
+    )
+    act(() => receiveChanges(store, [change('studio/home/about')]))
+
+    act(() => leavePresenting())
+
+    expect(await screen.findByText('Claude changed 2 frames')).toBeVisible()
   })
 
   it('shows the change from Show, moving to its page first', async () => {

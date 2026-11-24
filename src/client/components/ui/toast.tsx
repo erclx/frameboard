@@ -104,7 +104,7 @@ function ToastDescription({
 
 function ToastAction({
   className,
-  render = <Button variant="outline" size="sm" />,
+  render = <Button variant="secondary" size="xs" />,
   ...props
 }: ToastPrimitive.Action.Props) {
   return (
@@ -193,16 +193,22 @@ function ToastList({
 }
 
 function DefaultToast({ toastItem }: { toastItem: ToastObject }) {
+  const acts = toastItem.actionProps !== undefined
   return (
     <Toast toast={toastItem}>
-      <ToastContent>
+      <ToastContent className={cn(acts && 'items-center')}>
         <ToastIcon type={toastItem.type} />
-        <div className="flex min-w-0 flex-1 flex-col pr-4">
+        <div
+          className={cn(
+            'flex min-w-0 flex-1 flex-col',
+            acts ? '[overflow-wrap:anywhere]' : 'pr-4',
+          )}
+        >
           <ToastTitle />
           <ToastDescription />
-          {/* Renders nothing for a toast added with no `actionProps`. */}
-          <ToastAction className="mt-2 self-start" />
         </div>
+        {/* Clear of the close button's corner, which a one-line toast shares. */}
+        {acts ? <ToastAction className="mr-5" /> : null}
         <ToastClose />
       </ToastContent>
     </Toast>
@@ -217,17 +223,24 @@ function Toaster({
   children,
   toastManager = toast,
   bodies,
+  held = false,
   ...props
 }: ToastPrimitive.Provider.Props & {
   bodies?: Readonly<Record<string, ToastBody>>
+  /** Hides the stack while its toasts stay open and keep their timers. */
+  held?: boolean
 }) {
   return (
     <ToastProvider toastManager={toastManager} {...props}>
       {children}
       <ToastPortal>
-        <ToastViewport>
-          <ToastList bodies={bodies} />
-        </ToastViewport>
+        {/* Hidden, since an unmounted toast never leaves once closed, and around
+            the viewport, which draws a high priority alert beside itself. */}
+        <div hidden={held}>
+          <ToastViewport>
+            <ToastList bodies={bodies} />
+          </ToastViewport>
+        </div>
       </ToastPortal>
     </ToastProvider>
   )

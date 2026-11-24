@@ -39,7 +39,7 @@ Owns the change toast, the glow over changed elements, compare in `compare.ts` a
 - Mark all seen's Undo lasts 5 seconds and restores the `lastCleared` snapshot in `unseen.ts`, never joining `edit.undo`, since seen state touches no file
 - The hit layer covers the label, so a gesture clicks a `data-label-control` button on release, and a base the server no longer holds drops with a toast
 - An idle board jumps to a shown frame, another project's only while Follow is on, and mid-action a following tab waits while any other offers the jump
-- The busy read names popups by `data-slot`, leaving out the toast viewport, and Follow is read again when a wait ends, since a hand move stops it
+- The busy read names popups by `data-slot`, leaving out the toast viewport, counts a presentation, and Follow is read again when a wait ends, since a hand move stops it
 
 ### `src/client/live/`
 

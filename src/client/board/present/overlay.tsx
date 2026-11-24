@@ -215,7 +215,8 @@ function useLeaveWithFullscreen(): boolean {
 
 /**
  * The presented page, one frame at a time over the window, rendering nothing
- * until a page presents.
+ * until a page presents. Unmounting leaves, as a removed page or a Back to home
+ * does, since a page presenting with no slide drawn would hold every toast.
  */
 export function PresentOverlay({
   loadTransitions = fetchOwnTransitions,
@@ -235,6 +236,7 @@ export function PresentOverlay({
           .flatMap((project) => project.pages)
           .find((candidate) => candidate.ref === pageRef),
   )
+  useEffect(() => leavePresenting, [])
   if (pageRef === null || frameRef === null) return null
   const order = page ? presentOrder(page.frames, frameRef) : []
   const at = order.findIndex((frame) => frame.ref === frameRef)
