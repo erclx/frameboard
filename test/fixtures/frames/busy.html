@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>busy</title>
+  </head>
+  <body>
+    <h1>Busy</h1>
+    <script>
+      const SPIN_MS = 18
+
+      requestAnimationFrame(function spin() {
+        const end = performance.now() + SPIN_MS
+        while (performance.now() < end);
+        requestAnimationFrame(spin)
+      })
+    </script>
+  </body>
+</html>

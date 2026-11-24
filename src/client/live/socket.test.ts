@@ -15,7 +15,7 @@ import { createThemeStore, flipFrame } from '@/client/theme/store'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { connectLive, receiveLiveReload } from './socket'
-import { createLiveStore } from './store'
+import { createLiveStore, type LiveStore } from './store'
 import { createUnseenStore } from './unseen'
 
 /** A socket the test drives by hand, standing in for the server's end. */
@@ -313,6 +313,142 @@ describe('connectLive access', () => {
     })
 
     expect(Object.keys(unseen.getState().unseen)).toEqual(['studio/home/hero'])
+    stop()
+  })
+})
+
+describe('connectLive frames', () => {
+  /** Each ask the reach check made, with the answer the test gives it. */
+  let asks: { url: string; answer: (ok: boolean) => void }[]
+
+  beforeEach(() => {
+    asks = []
+    FakeSocket.instances = []
+    vi.stubGlobal('WebSocket', FakeSocket)
+    vi.stubGlobal(
+      'fetch',
+      (url: string, { signal }: { signal: AbortSignal }) =>
+        new Promise<Response>((resolve, reject) => {
+          signal.addEventListener('abort', () => reject(signal.reason))
+          asks.push({
+            url,
+            answer: (ok) =>
+              resolve(new Response(null, { status: ok ? 200 : 404 })),
+          })
+        }),
+    )
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  function helloFrom(store: LiveStore, port: number) {
+    const stop = connectLive(store)
+    const socket = FakeSocket.instances.at(-1)
+    socket?.dispatchEvent(new Event('open'))
+    socket?.receive({ type: 'frames', port })
+    return { socket, stop }
+  }
+
+  const held = (store: LiveStore) => {
+    const { framePort, frameHost } = store.getState()
+    return { framePort, frameHost }
+  }
+
+  it('loads frames from the other loopback name once it answers', async () => {
+    const store = createLiveStore()
+    const { stop } = helloFrom(store, 47123)
+
+    expect(held(store)).toEqual({ framePort: null, frameHost: null })
+    expect(new URL(asks[0]?.url ?? '').origin).toBe('http://127.0.0.1:47123')
+    asks[0]?.answer(true)
+
+    await vi.waitFor(() =>
+      expect(held(store)).toEqual({ framePort: 47123, frameHost: '127.0.0.1' }),
+    )
+    stop()
+  })
+
+  it("keeps the tab's hostname when something else answers the other name", async () => {
+    const store = createLiveStore()
+    const { stop } = helloFrom(store, 47123)
+
+    asks[0]?.answer(false)
+
+    await vi.waitFor(() =>
+      expect(held(store)).toEqual({ framePort: 47123, frameHost: 'localhost' }),
+    )
+    stop()
+  })
+
+  it("keeps the tab's hostname when the other name refuses the connection", async () => {
+    vi.stubGlobal('fetch', () =>
+      Promise.reject(new TypeError('Failed to fetch')),
+    )
+    const store = createLiveStore()
+    const { stop } = helloFrom(store, 47123)
+
+    await vi.waitFor(() =>
+      expect(held(store)).toEqual({ framePort: 47123, frameHost: 'localhost' }),
+    )
+    stop()
+  })
+
+  it("keeps the tab's hostname when the other name never answers", async () => {
+    const store = createLiveStore()
+    const { stop } = helloFrom(store, 47123)
+
+    await vi.waitFor(
+      () =>
+        expect(held(store)).toEqual({
+          framePort: 47123,
+          frameHost: 'localhost',
+        }),
+      { timeout: 5000 },
+    )
+    stop()
+  })
+
+  it('asks again for the port a restarted server hands over, holding the old one meanwhile', async () => {
+    const store = createLiveStore()
+    const { socket, stop } = helloFrom(store, 47123)
+    asks[0]?.answer(true)
+    await vi.waitFor(() => expect(store.getState().framePort).toBe(47123))
+
+    socket?.receive({ type: 'frames', port: 47124 })
+
+    expect(held(store)).toEqual({ framePort: 47123, frameHost: '127.0.0.1' })
+    asks[1]?.answer(false)
+    await vi.waitFor(() =>
+      expect(held(store)).toEqual({ framePort: 47124, frameHost: 'localhost' }),
+    )
+    stop()
+  })
+
+  it('asks nothing for a port it already settled, as a dropped socket hands over', async () => {
+    const store = createLiveStore()
+    const { socket, stop } = helloFrom(store, 47123)
+    asks[0]?.answer(true)
+    await vi.waitFor(() => expect(store.getState().framePort).toBe(47123))
+
+    socket?.receive({ type: 'frames', port: 47123 })
+
+    expect(asks).toHaveLength(1)
+    stop()
+  })
+
+  it('drops the answer for a port a later hello replaced', async () => {
+    const store = createLiveStore()
+    const { socket, stop } = helloFrom(store, 47123)
+    socket?.receive({ type: 'frames', port: 47124 })
+    asks[1]?.answer(true)
+    await vi.waitFor(() => expect(store.getState().framePort).toBe(47124))
+
+    asks[0]?.answer(true)
+    await new Promise((done) => setTimeout(done))
+
+    expect(store.getState().framePort).toBe(47124)
     stop()
   })
 })

@@ -46,6 +46,10 @@ test.describe("a frame's script against the board", () => {
       if (url.origin !== server.url) return
       answers.push({ path: url.pathname, status: response.status() })
     })
+    // Frames stay on the tab's own name, where a browser sends them the board's cookie.
+    await page.route('http://localhost:*/frameboard/faces/**', (route) =>
+      route.abort(),
+    )
     await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/studio/home`)
     await expect(
@@ -65,11 +69,34 @@ test.describe("a frame's script against the board", () => {
     const own = await page.evaluate(
       async () => (await fetch('/api/redo', { method: 'POST' })).status,
     )
+    const src = await page.locator(HERO).getAttribute('src')
     // At least, since a reload of the frame runs its script again.
     await expect.poll(() => answers.length).toBeGreaterThanOrEqual(FRAME_WRITES)
 
+    expect(new URL(src ?? '').hostname).toBe(new URL(server.url).hostname)
     expect(own).not.toBe(401)
     expect(answers.filter(({ status }) => status !== 401)).toEqual([])
+  })
+
+  test("runs in a process apart from the board's", async ({ playwright }) => {
+    // The default headless shell isolates no site, where a desktop Chromium does.
+    const browser = await playwright.chromium.launch({
+      args: ['--site-per-process'],
+    })
+    const page = await browser.newPage()
+    await page.goto(`${server.url}/p/studio/home`)
+    await expect(
+      page.locator(HERO).contentFrame().locator('body[data-done]'),
+    ).toBeAttached({ timeout: 15_000 })
+    const src = await page.locator(HERO).getAttribute('src')
+    const cdp = await browser.newBrowserCDPSession()
+    const { targetInfos } = await cdp.send('Target.getTargets')
+    await browser.close()
+
+    const apart = targetInfos.filter(({ type }) => type === 'iframe')
+    expect(new URL(server.url).hostname).toBe('127.0.0.1')
+    expect(new URL(src ?? '').hostname).toBe('localhost')
+    expect(apart.map(({ url }) => url)).toContain(src)
   })
 
   test('refuses the frame the live socket', async ({ page }) => {

@@ -4,7 +4,7 @@ import { cn } from '@/client/lib/cn'
 import {
   FRAME_ALLOW,
   framePageUrl,
-  useFramePort,
+  useFrameOrigin,
 } from '@/client/live/frame-url'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 import { linkedBoxes } from '@/shared/frame-widths'
@@ -86,18 +86,18 @@ export function LinkedBox({
   if (loaded.version !== version || loaded.live !== live) {
     setLoaded({ ref: frame.ref, version, live })
   }
-  const framePort = useFramePort()
+  const frameOrigin = useFrameOrigin()
   const src = useMemo(
     () =>
       loaded.live
         ? framePageUrl(
-            framePort,
+            frameOrigin,
             loaded.ref,
             frameTheme(loaded.ref),
             loaded.version,
           )
         : null,
-    [loaded, framePort],
+    [loaded, frameOrigin],
   )
 
   useThemeInFrame(iframe, theme, live)

@@ -8,10 +8,11 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import { type BoardServer, serveBoard } from '../support/board-server'
 import { framesLoaded } from '../support/frames'
+import { nextFrame, startRecording, summarize, takeSample } from './frame-gap'
 
 const FRAME_COUNT = 50
 const COLUMNS = 10
@@ -20,7 +21,6 @@ const GESTURE_MS = 3000
 // The bar the plan set for fifty mounted frames on the operator's machine.
 const P95_MAX_MS = 20
 const SLOW_SHARE_MAX = 0.05
-const SLOW_FRAME_MS = 33
 const LONG_FRAME_MAX_MS = 100
 
 const PHONE = { width: 390, height: 844 }
@@ -98,74 +98,29 @@ function frameHtml(index: number): string {
 `
 }
 
-interface Sample {
-  intervals: number[]
-  longFrames: number[]
-}
-
-async function startRecording(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const sample = { intervals: [] as number[], longFrames: [] as number[] }
-    ;(window as unknown as { __sample: typeof sample }).__sample = sample
-    let last = performance.now()
-    const tick = (time: number) => {
-      sample.intervals.push(time - last)
-      last = time
-      requestAnimationFrame(tick)
-    }
-    requestAnimationFrame(tick)
-    new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        sample.longFrames.push(entry.duration)
-      }
-    }).observe({ type: 'long-animation-frame' })
-  })
-}
-
-async function takeSample(page: Page): Promise<Sample> {
-  return page.evaluate(() => {
-    const { __sample } = window as unknown as { __sample: Sample }
-    const taken = {
-      intervals: [...__sample.intervals],
-      longFrames: [...__sample.longFrames],
-    }
-    __sample.intervals.length = 0
-    __sample.longFrames.length = 0
-    return taken
-  })
-}
-
-function nextFrame(page: Page): Promise<unknown> {
-  return page.evaluate(() => new Promise(requestAnimationFrame))
-}
-
-function summarize(name: string, { intervals, longFrames }: Sample) {
-  // The first interval spans the gap before the gesture began.
-  const sorted = intervals.slice(1).sort((a, b) => a - b)
-  const at = (share: number) =>
-    sorted[Math.min(sorted.length - 1, Math.floor(share * sorted.length))] ?? 0
-  const summary = {
-    gesture: name,
-    frames: sorted.length,
-    p50: Number(at(0.5).toFixed(2)),
-    p95: Number(at(0.95).toFixed(2)),
-    slowShare: Number(
-      (
-        sorted.filter((ms) => ms > SLOW_FRAME_MS).length / sorted.length
-      ).toFixed(4),
-    ),
-    longestLongFrame: Math.max(0, ...longFrames),
-  }
-  console.log(JSON.stringify(summary))
-  return summary
-}
-
 /** Waits for all fifty frames to mount live and finish loading. */
 async function waitForLiveFrames(page: Page): Promise<void> {
   await expect(page.locator('[data-layer] iframe')).toHaveCount(FRAME_COUNT, {
     timeout: 30_000,
   })
   await expect.poll(() => framesLoaded(page), { timeout: 30_000 }).toBe(true)
+}
+
+/** Where an element in a frame draws on screen, since Playwright drops the canvas scale reading one in another process. */
+async function shownBox(iframe: Locator, element: Locator) {
+  const outer = await iframe.boundingBox()
+  if (!outer) throw new Error('the frame draws no box')
+  const inner = await element.evaluate((el) => {
+    const { left, top, width, height } = el.getBoundingClientRect()
+    return { left, top, width, height, page: window.innerWidth }
+  })
+  const k = outer.width / inner.page
+  return {
+    x: outer.x + inner.left * k,
+    y: outer.y + inner.top * k,
+    width: inner.width * k,
+    height: inner.height * k,
+  }
 }
 
 test.describe('fifty live frames', () => {
@@ -243,11 +198,9 @@ test.describe('fifty live frames', () => {
     await page.goto(`${server.url}/p/perf/grid`)
     await waitForLiveFrames(page)
 
-    const element = page
-      .frameLocator('[data-frame="perf/grid/frame-00"] iframe')
-      .locator('[data-name="Box"]')
-    const shown = await element.boundingBox()
-    if (!shown) throw new Error('no box in frame-00')
+    const iframe = page.locator('[data-frame="perf/grid/frame-00"] iframe')
+    const element = iframe.contentFrame().locator('[data-name="Box"]')
+    const shown = await shownBox(iframe, element)
     await page.keyboard.down('Meta')
     await page.mouse.click(
       shown.x + shown.width / 2,

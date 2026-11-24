@@ -13,6 +13,7 @@ import {
   type ThemeStore,
   themeStore,
 } from '@/client/theme/store'
+import { FACES, FACES_URL } from '@/shared/faces'
 import {
   type HelloMessage,
   LIVE_PATH,
@@ -20,6 +21,7 @@ import {
 } from '@/shared/live-messages'
 import type { ListResult } from '@/shared/records/list'
 
+import { otherLoopback } from './frame-url'
 import {
   type LiveStore,
   receiveAccess,
@@ -53,6 +55,12 @@ export const TAB_ID = crypto.randomUUID()
 /** How long a closed socket waits before trying again. */
 const RECONNECT_MS = 500
 
+/** How long the other loopback name has to answer before frames keep the tab's own. */
+const REACH_MS = 1000
+
+/** A small file the frame port always serves, named with no release so a tab older than the server still reads it. */
+const REACH_PATH = `${FACES_URL}/${FACES[0].folder}/index.css`
+
 export interface LiveHandlers {
   /** A `show` message, which the router turns into a navigation. */
   onShow?: (ref: string) => void
@@ -84,6 +92,16 @@ export function connectLive(
   let socket: WebSocket | undefined
   let retry: ReturnType<typeof setTimeout> | undefined
   let stopped = false
+  let hellos = 0
+
+  const settleFrames = async (port: number) => {
+    hellos += 1
+    const hello = hellos
+    // A dropped socket hands back the same port, whose frames a slow answer would reload.
+    if (store.getState().framePort === port) return
+    const host = await frameHostFor(port)
+    if (hello === hellos && !stopped) receiveFrames(store, port, host)
+  }
 
   const open = () => {
     const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
@@ -96,7 +114,7 @@ export function connectLive(
     socket.addEventListener('message', (event) => {
       const message = JSON.parse(String(event.data)) as ServerMessage
       if (message.type === 'frames') {
-        receiveFrames(store, message.port)
+        void settleFrames(message.port)
       } else if (message.type === 'board') {
         receiveBoard(store, message.data)
         pruneUnseen(unseen, message.data)
@@ -144,6 +162,25 @@ export function connectLive(
     stopped = true
     clearTimeout(retry)
     socket?.close()
+  }
+}
+
+/**
+ * The hostname to load frames from on `port`, being the other loopback name
+ * where it answers, and the tab's own where it does not or there is none.
+ */
+async function frameHostFor(port: number): Promise<string> {
+  const own = location.hostname
+  const other = otherLoopback(own)
+  if (other === null) return own
+  try {
+    const response = await fetch(`http://${other}:${port}${REACH_PATH}`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(REACH_MS),
+    })
+    return response.ok ? other : own
+  } catch {
+    return own
   }
 }
 
