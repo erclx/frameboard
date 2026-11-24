@@ -20,3 +20,5 @@ description: "The left panel's Theme and Assets tabs"
 - The Delete confirm naming a frame
 - Find and Generate in each state with credited and Models
 - The Kits section listing two kits with Add kit open
+- The Fonts section under Kits listing the built-in faces and one installed family
+- The Fonts section searching, with results set in their own faces
