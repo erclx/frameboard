@@ -202,11 +202,7 @@ describe('InspectorPanel', () => {
   })
 
   it('shows the open page’s Page section on Slides while nothing is selected', async () => {
-    render(
-      <TooltipProvider>
-        <InspectorPanel open={PAGE} />
-      </TooltipProvider>,
-    )
+    renderPanel(PAGE)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Slides' }))
 
@@ -214,11 +210,7 @@ describe('InspectorPanel', () => {
   })
 
   it('keeps the Page section off Design', () => {
-    render(
-      <TooltipProvider>
-        <InspectorPanel open={PAGE} />
-      </TooltipProvider>,
-    )
+    renderPanel(PAGE)
 
     expect(screen.queryByRole('region', { name: 'Page' })).toBeNull()
   })
@@ -311,14 +303,14 @@ describe('InspectorPanel', () => {
       expect(screen.getByRole('tab', { name: 'Slides' })).toHaveFocus()
     })
 
-    it('says to open a page on Slides with nothing selected and no page open', async () => {
+    it('says only to open a page on Slides with nothing selected and no page open', () => {
+      inspectorTabStore.setState({ tab: 'slides' })
+
       renderPanel()
 
-      await userEvent.click(screen.getByRole('tab', { name: 'Slides' }))
-
-      expect(
-        screen.getByText('Open a page to set how its slides present.'),
-      ).toBeVisible()
+      expect(screen.getByRole('tabpanel')).toHaveTextContent(
+        /^Open a page to set how its slides present\.$/,
+      )
     })
 
     describe('slide hint', () => {
@@ -338,42 +330,24 @@ describe('InspectorPanel', () => {
         ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
       })
 
-      it('leaves once a frame is selected', () => {
+      it.each([
+        ['one frame is', [SWATCHES.ref]],
+        ['several frames are', [SWATCHES.ref, SUNSET.ref]],
+      ])('leaves once %s selected', (_, refs) => {
         renderPanel(PAGE)
         expect(screen.getByText(HINT)).toBeVisible()
 
-        act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+        act(() => select(selectionStore, PAGE, refs))
 
         expect(screen.queryByText(HINT)).toBeNull()
       })
 
-      it('stays off several selected frames', () => {
-        act(() => select(selectionStore, PAGE, [SWATCHES.ref, SUNSET.ref]))
-
-        renderPanel(PAGE)
-
-        expect(screen.queryByText(HINT)).toBeNull()
-      })
-
-      it('stays off with no page open', () => {
-        renderPanel()
-
-        expect(screen.queryByText(HINT)).toBeNull()
-      })
-
-      it('shows in a tab that reads', () => {
-        act(() =>
-          liveStore.setState({
-            connected: true,
-            accessKnown: true,
-            canWrite: false,
-          }),
-        )
+      it('shows while the tab may not write', () => {
+        liveStore.setState({ canWrite: false })
 
         renderPanel(PAGE)
 
         expect(screen.getByText(HINT)).toBeVisible()
-        act(() => liveStore.setState({ connected: false, accessKnown: false }))
       })
     })
 
