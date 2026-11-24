@@ -46,6 +46,10 @@ test.describe("a frame's script against the board", () => {
       if (url.origin !== server.url) return
       answers.push({ path: url.pathname, status: response.status() })
     })
+    // Frames stay on the tab's own name, where a browser sends them the board's cookie.
+    await page.route('http://localhost:*/frameboard/faces/**', (route) =>
+      route.abort(),
+    )
     await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/studio/home`)
     await expect(
@@ -65,9 +69,11 @@ test.describe("a frame's script against the board", () => {
     const own = await page.evaluate(
       async () => (await fetch('/api/redo', { method: 'POST' })).status,
     )
+    const src = await page.locator(HERO).getAttribute('src')
     // At least, since a reload of the frame runs its script again.
     await expect.poll(() => answers.length).toBeGreaterThanOrEqual(FRAME_WRITES)
 
+    expect(new URL(src ?? '').hostname).toBe(new URL(server.url).hostname)
     expect(own).not.toBe(401)
     expect(answers.filter(({ status }) => status !== 401)).toEqual([])
   })
