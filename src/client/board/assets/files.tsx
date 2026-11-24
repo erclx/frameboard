@@ -27,6 +27,7 @@ import type {
   AssetFile,
   AssetList,
 } from '@/shared/records/assets'
+import type { FontList } from '@/shared/records/sourcing'
 
 import { frameLabel } from './describe'
 import { isPlaceable, type PlaceableFile } from './drag'
@@ -37,9 +38,11 @@ import {
   chipCounts,
   fileName,
   groupAssets,
+  withoutFonts,
   withoutKits,
 } from './groups'
 import { fetchAssets } from './list'
+import { fetchInstalledFonts, useInstalledFonts } from './sourcing'
 import { Tile } from './tile'
 import { ASSET_WRITES, type AssetWrites, uploadAssets } from './upload'
 
@@ -49,6 +52,8 @@ interface FilesViewProps {
   project: string
   /** Reads the project's files, the API in the app. */
   load?: (project: string) => Promise<AssetList | null>
+  /** Reads the project's installed fonts, whose folders the Theme tab manages, the API in the app. */
+  loadFonts?: (project: string) => Promise<FontList | null>
   /** Posts a drop, the API in the app. */
   upload?: (project: string, files: File[]) => Promise<AssetAddResult>
   /** Renames, replaces, deletes, and reads the frames linking a file, the API in the app. */
@@ -71,6 +76,7 @@ interface Deleting {
 export function FilesView({
   project,
   load = fetchAssets,
+  loadFonts = fetchInstalledFonts,
   upload = uploadAssets,
   writes = ASSET_WRITES,
   place = placeAtCenter,
@@ -78,6 +84,7 @@ export function FilesView({
   const canWrite = useLive((state) => state.canWrite)
   const [reads, setReads] = useState(0)
   const list = useAssetList(project, load, reads)
+  const installedFonts = useInstalledFonts(project, loadFonts)
   const [over, setOver] = useState(false)
   const [busy, setBusy] = useState(false)
   const [refusals, setRefusals] = useState<{ id: string; text: string }[]>([])
@@ -193,7 +200,11 @@ export function FilesView({
       </p>
     )
   }
-  const { files, kits } = withoutKits(list.files)
+  const { files: unkitted, kits } = withoutKits(list.files)
+  const { files, fonts } = withoutFonts(
+    unkitted,
+    installedFonts?.fonts.map((font) => font.path) ?? [],
+  )
   const count = files.length
   const chips = chipCounts(files)
   // A chip whose last file went away falls back to All rather than hiding every tile.
@@ -352,9 +363,9 @@ export function FilesView({
           )}
         </>
       )}
-      {kits > 0 ? (
+      {kits > 0 || fonts > 0 ? (
         <p className="mx-3 mt-1.5 mb-0.5 text-[10px] leading-[1.4] text-muted-foreground">
-          {kits === 1 ? '1 kit is' : `${kits} kits are`} managed in the{' '}
+          {managed(kits, fonts)} managed in the{' '}
           <button
             type="button"
             onClick={() => leftTabStore.setState({ tab: 'theme' })}
@@ -544,4 +555,13 @@ function useAssetList(
   }, [project, board, load, reads])
 
   return list
+}
+
+/** What the Theme tab manages, as `2 kits and 1 font are`, leaving out a count of none. */
+function managed(kits: number, fonts: number): string {
+  const kitPart = kits === 1 ? '1 kit' : `${kits} kits`
+  const fontPart = fonts === 1 ? '1 font' : `${fonts} fonts`
+  const named = [kits > 0 ? kitPart : null, fonts > 0 ? fontPart : null]
+  const shown = named.filter((part) => part !== null).join(' and ')
+  return `${shown} ${kits + fonts === 1 ? 'is' : 'are'}`
 }
