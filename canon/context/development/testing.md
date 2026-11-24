@@ -39,6 +39,13 @@ Owns the Playwright specs by role in `cli/`, `agent-work/`, `hand-edits/`, and `
 - A capture case writing the served board carries `writes: 'board'` and runs after every pristine case, since a later case paints its change as unseen, or `'assets'` to run last
 - `e2e/support/history.ts` presses undo once the board counts the step, and `e2e/support/canvas.ts` reads the live canvas beside the hidden one a page switch keeps
 
+### `e2e/agent-work/frame-isolation.spec.ts`
+
+Holds the one test that runs a frame in a process of its own, as a desktop browser does, launching with `--site-per-process`.
+
+- Playwright's headless shell isolates no site, so every other spec runs its frames in the board's process
+- With sites isolated, Playwright's `boundingBox` and `click` inside a frame drop the canvas scale, so a spec needing either there reads the iframe's own box and scales by hand
+
 ### `test/`
 
 Owns the fixture boards under `test/fixtures/boards/` and the helpers under `test/support/`, and holds no tests itself, so unit tests, specs, and later rows read one copy.
@@ -55,8 +62,3 @@ Owns the fixture boards under `test/fixtures/boards/` and the helpers under `tes
 - A wrapper from before slots takes `test.lock` alone, so a worktree on an older commit can overlap two newer runs until it rebases
 - A child whose parent exited before the kill's first poll survives it
 - The browser project's 15 second test and 30 second hook timeouts run in the page, so a page that stops running never trips them and only the limit holds
-
-Two more come from Playwright's own browser.
-
-- Playwright's headless shell isolates no site, so specs run every frame in the board's process but the one in `frame-isolation.spec.ts` that launches with `--site-per-process`
-- With sites isolated, Playwright's `boundingBox` and `click` inside a frame drop the canvas scale, so a spec needing either there reads the iframe's own box and scales by hand
