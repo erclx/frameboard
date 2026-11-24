@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 
-import { useViewOnly } from '@/client/access/view-only'
+import { EditAccessButton } from '@/client/access/edit-access'
+import { useEditOffered, useViewOnly } from '@/client/access/view-only'
 import { toast } from '@/client/components/ui/toast'
 import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
@@ -73,6 +74,7 @@ export function InspectorPanel({
     (state) => state.mode === 'edit' && state.tool === 'frame',
   )
   const viewOnly = useViewOnly()
+  const editOffered = useEditOffered()
   const listeners = useLive((state) => state.listeners)
   const claims = useLive((state) => state.claims)
   const page = useSelection((state) => state.page)
@@ -111,8 +113,22 @@ export function InspectorPanel({
         <ZoomControl />
       </div>
       {viewOnly ? (
-        <p className="border-b border-sidebar-border px-3 py-2.5 text-muted-foreground">
-          View only. Run frameboard open to edit
+        <p
+          className={cn(
+            'border-b border-sidebar-border text-muted-foreground',
+            editOffered
+              ? 'flex items-center justify-between gap-2 py-1.5 pr-1.5 pl-3'
+              : 'px-3 py-2.5',
+          )}
+        >
+          {editOffered ? (
+            <>
+              View only
+              <EditAccessButton />
+            </>
+          ) : (
+            'View only. Run frameboard open to edit'
+          )}
         </p>
       ) : null}
       {framing ? (

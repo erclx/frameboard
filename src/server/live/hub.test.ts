@@ -192,6 +192,43 @@ describe('createHub', () => {
       })
     })
 
+    describe('on a server with the Edit button', () => {
+      beforeEach(() => {
+        hub = createHub({
+          tabs,
+          port: () => port,
+          access,
+          snapshot: async () => SNAPSHOT,
+          editButton: true,
+        })
+      })
+
+      it('offers it to a reading tab', async () => {
+        const { access: message } = await helloAsBoard(
+          connect({ origin: own() }),
+        )
+
+        expect(message).toEqual({
+          type: 'access',
+          write: false,
+          dispatch: false,
+          editButton: true,
+        })
+      })
+
+      it('leaves it off a writing tab', async () => {
+        const socket = connect({ origin: own(), cookie: `${COOKIE}=${KEY}` })
+
+        const { access: message } = await helloAsBoard(socket)
+
+        expect(message).toEqual({
+          type: 'access',
+          write: true,
+          dispatch: false,
+        })
+      })
+    })
+
     it('stops counting a writer when its socket closes', async () => {
       const socket = connect({ origin: own(), cookie: `${COOKIE}=${KEY}` })
       await helloAsBoard(socket)

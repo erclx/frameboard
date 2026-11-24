@@ -60,9 +60,10 @@ export type ServerMessage =
   | { type: 'findings'; findings: Record<string, Finding[]> }
   /**
    * Whether this tab may write, and whether a note it sends can start a
-   * session, sent after each hello's board.
+   * session, sent after each hello's board. `editButton` comes only to a tab
+   * that reads, on a server started with the button.
    */
-  | { type: 'access'; write: boolean; dispatch: boolean }
+  | { type: 'access'; write: boolean; dispatch: boolean; editButton?: boolean }
   /**
    * One page's notes by its `<project>/<page>` ref: every page holding notes
    * after hello, and after each batch the pages it touched.

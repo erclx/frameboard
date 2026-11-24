@@ -11,7 +11,7 @@ import { watchExpiredLink } from './expired-link'
 
 describe('watchExpiredLink', () => {
   let store: LiveStore
-  let notify: () => void
+  let notify: (editButton: boolean) => void
   const start = `${location.pathname}${location.search}`
 
   beforeEach(() => {
@@ -38,6 +38,15 @@ describe('watchExpiredLink', () => {
     expect(`${location.pathname}${location.search}${location.hash}`).toBe(
       '/p/studio/home#frame',
     )
+  })
+
+  it('says whether the tab may ask to edit instead', () => {
+    at('/?link=expired')
+    watchExpiredLink(store, notify)
+
+    receiveAccess(store, false, false, true)
+
+    expect(notify).toHaveBeenCalledExactlyOnceWith(true)
   })
 
   it('stays silent in a tab that already writes, and still strips the flag', () => {

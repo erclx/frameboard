@@ -107,6 +107,25 @@ describe('connectLive access', () => {
     stop()
   })
 
+  it('follows whether a reading tab may ask to edit and clears it when the socket drops', () => {
+    const store = createLiveStore()
+    const stop = connectLive(store)
+    const socket = FakeSocket.instances[0]
+    socket?.dispatchEvent(new Event('open'))
+
+    socket?.receive({
+      type: 'access',
+      write: false,
+      dispatch: false,
+      editButton: true,
+    })
+    expect(store.getState().editButton).toBe(true)
+
+    socket?.dispatchEvent(new Event('close'))
+    expect(store.getState().editButton).toBe(false)
+    stop()
+  })
+
   it('follows the history message and zeroes it when the socket drops', () => {
     const store = createLiveStore()
     const stop = connectLive(store)

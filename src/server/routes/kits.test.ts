@@ -229,13 +229,13 @@ describe('kitRoutes', () => {
     expect(served).toContain('@import url("/frameboard/kits/sketch/kit.css");')
   })
 
-  it('lets a sample frame run the injected theme script alone, by its hash', async () => {
+  it('lets a sample frame run the injected theme script alone, by its hash, and send no form', async () => {
     const response = await app.request(
       '/frameboard/kits/sketch/kit/sample.html',
     )
 
     expect(response.headers.get('content-security-policy')).toBe(
-      `script-src 'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'`,
+      `script-src 'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'; form-action 'none'`,
     )
   })
 
@@ -243,7 +243,7 @@ describe('kitRoutes', () => {
     ['another page', 'notes.html'],
     ['an SVG', 'logo.svg'],
   ])(
-    "runs no script from a saved kit's %s, which a frame could embed on the board's origin",
+    "runs no script and sends no form from a saved kit's %s, which a frame could embed on the board's origin",
     async (_case, file) => {
       writeFileSync(join(board.root, 'acme/tokens.css'), ':root { --a: 1 }\n')
       await post('/api/kits/save', { project: 'acme', name: 'mine' })
@@ -256,7 +256,7 @@ describe('kitRoutes', () => {
 
       expect(response.status).toBe(200)
       expect(response.headers.get('content-security-policy')).toBe(
-        `script-src 'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'`,
+        `script-src 'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'; form-action 'none'`,
       )
     },
   )

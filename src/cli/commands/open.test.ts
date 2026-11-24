@@ -98,6 +98,28 @@ describe('open', { timeout: 15_000 }, () => {
     expect(second.headers.get('location')).toBe('/?link=expired')
   })
 
+  it('hands back a link living the minutes --ttl names', async () => {
+    await serve()
+    const before = Date.now()
+
+    const run = await open('--no-open', '--json', '--ttl', '10')
+
+    const data = run.json().data as OpenData
+    const lifeMs = Date.parse(data.expiresAt) - before
+    expect(lifeMs).toBeGreaterThanOrEqual(10 * 60_000)
+    expect(lifeMs).toBeLessThan(11 * 60_000)
+  })
+
+  it.each(['0', '61', '1.5', 'soon'])(
+    'exits 2 with usage on --ttl %s',
+    async (ttl) => {
+      const run = await open('--no-open', '--json', '--ttl', ttl)
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+    },
+  )
+
   it('opens nothing under --no-open and still hands back the redeem URL', async () => {
     await serve()
 

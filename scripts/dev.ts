@@ -1,6 +1,6 @@
 // Backs `bun run dev`, the board server behind Vite's proxy, printing Vite's
 // address alone. Serves a temporary board copy unless CANON_PREVIEW_ROOT names
-// one, and `--open-route` hands any local browser a writing tab.
+// one, and `--open-route` and `--edit-button` each let any local program write.
 import { cpSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -68,6 +68,7 @@ const code = await runCli(
     '--port',
     port,
     '--open-route',
+    '--edit-button',
   ],
   {
     stdout: (text) => {
