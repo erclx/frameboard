@@ -5,8 +5,9 @@ import { join } from 'node:path'
 import { matchName, resolveProject } from '@/server/board/refs'
 import { ASSETS_FOLDER } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
+import { FACES } from '@/shared/faces'
 import { FONTS_FOLDER } from '@/shared/fonts'
-import { isValidName } from '@/shared/names'
+import { isValidName, namesCollide } from '@/shared/names'
 import {
   type FontLicenseFile,
   type FontList,
@@ -43,16 +44,16 @@ export async function fontFolders(projectDir: string): Promise<string[]> {
     .map((entry) => entry.name)
 }
 
-/** Whether a folder under `assets/fonts/` holds an installed font's record, read without parsing it. */
-export function holdsRecord(projectDir: string, id: string): boolean {
-  return existsSync(join(fontsDir(projectDir), id, FONT_RECORD))
-}
-
-/** Whether a project installed any font, cheap enough to ask on every frame load. */
+/** Whether a project installed any font, by its records unparsed, since every frame load asks. */
 export async function holdsFonts(projectDir: string): Promise<boolean> {
   return (await fontFolders(projectDir)).some((id) =>
-    holdsRecord(projectDir, id),
+    existsSync(join(fontsDir(projectDir), id, FONT_RECORD)),
   )
+}
+
+/** Whether the board serves a family itself, so a frame naming it draws with no install. */
+export function isBundled(family: string): boolean {
+  return FACES.some((face) => namesCollide(face.family, family))
 }
 
 /** A project's installed fonts by family name, less any folder whose record does not read. */
@@ -69,7 +70,8 @@ export async function projectFonts(projectDir: string): Promise<ProjectFont[]> {
     .sort((a, b) => a.record.family.localeCompare(b.record.family))
 }
 
-async function readFont(
+/** The record in a font folder, null for one filled by hand or whose record does not read. */
+export async function readFont(
   projectDir: string,
   id: string,
 ): Promise<FontLicenseFile | null> {
@@ -159,6 +161,7 @@ export async function listFonts(
       ),
       path: `${FONTS_FOLDER}/${id}`,
       files: record.faces.length,
+      bundled: isBundled(record.family),
       frames: frames.get(record.family) ?? [],
     })),
   }

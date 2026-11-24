@@ -49,6 +49,19 @@ describe('removeFont', () => {
     })
   })
 
+  it('answers no frame for a family the board still serves', async () => {
+    const bundled = writeBoard({
+      'acme/project.json': '{ "version": 1 }\n',
+      'acme/home/hero.html': '<h1 style="font-family: inter">Hello</h1>\n',
+      ...installedFontFiles('acme', 'inter', 'Inter'),
+    })
+
+    const removed = await removeFont(bundled.root, 'acme', 'inter')
+    bundled.cleanup()
+
+    expect(removed.frames).toEqual([])
+  })
+
   it('takes the folder out through a journal, so an undo brings it back', async () => {
     const { journal, calls } = recordingJournal(board.root)
 

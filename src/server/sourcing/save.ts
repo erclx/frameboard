@@ -7,7 +7,12 @@ import { addAssets } from '@/server/board/assets'
 import type { JournalOptions } from '@/server/board/journal'
 import { isCode, TEMP_SUFFIX } from '@/server/board/json-record'
 import { matchName } from '@/server/board/refs'
-import { FONT_RECORD, fontFolders, fontsDir } from '@/server/fonts/installed'
+import {
+  FONT_RECORD,
+  fontFolders,
+  fontsDir,
+  readFont,
+} from '@/server/fonts/installed'
 import { assetKind } from '@/shared/asset-kinds'
 import { ASSETS_FOLDER } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
@@ -258,7 +263,7 @@ export async function saveFont(
     await rm(staging, { recursive: true, force: true })
     if (fresh) await rmdir(fonts).catch(() => {})
     if (isCode(error, 'ENOTEMPTY') || isCode(error, 'EEXIST')) {
-      throw fontTaken(project.name, id)
+      throw await fontTaken(project, id)
     }
     throw error
   }
@@ -279,14 +284,22 @@ export async function assertFontFree(
   id: string,
 ): Promise<void> {
   const held = matchName(await fontFolders(project.path), id)
-  if (held !== undefined) throw fontTaken(project.name, held)
+  if (held !== undefined) throw await fontTaken(project, held)
 }
 
-function fontTaken(project: string, id: string): FrameboardError {
+/** The refusal naming the way past it, since `font remove` refuses a folder it did not install. */
+async function fontTaken(
+  project: { name: string; path: string },
+  id: string,
+): Promise<FrameboardError> {
+  const installed = (await readFont(project.path, id)) !== null
+  const way = installed
+    ? `Take it out with \`frameboard font remove ${id} --project ${project.name}\` to install it again.`
+    : 'No font verb installed that folder, so move or rename it first.'
   return new FrameboardError(
     'name-taken',
-    `${project} already holds assets/${FONTS_FOLDER}/${id}/, so nothing was installed. Take it out with \`frameboard font remove ${id} --project ${project}\` to install it again.`,
-    { project, id },
+    `${project.name} already holds assets/${FONTS_FOLDER}/${id}/, so nothing was installed. ${way}`,
+    { project: project.name, id, installed },
   )
 }
 

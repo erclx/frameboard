@@ -7,6 +7,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { installedLicense } from '../../../test/support/installed-font'
 import { type AssetUsage, createAssetUsage } from '../board/asset-usage'
 import { claim } from '../claims/store'
 import { History } from '../history/stack'
@@ -292,7 +293,10 @@ describe('assetsRoutes', () => {
     })
 
     it("refuses an installed font's file, which its record names", async () => {
-      writeAsset('fonts/lora/font.license.json', '{}')
+      writeAsset(
+        'fonts/lora/font.license.json',
+        JSON.stringify(installedLicense('lora', 'Lora')),
+      )
       writeAsset('fonts/lora/lora.woff2', 'x')
 
       const response = await write('DELETE', 'fonts/lora/lora.woff2')
@@ -304,6 +308,7 @@ describe('assetsRoutes', () => {
     it.each(['fonts/brand/brand.woff2', 'fonts/brand.woff2'])(
       'deletes %s, a font a project added by hand',
       async (path) => {
+        writeAsset('fonts/brand/font.license.json', '{}')
         writeAsset(path, 'x')
 
         const response = await write('DELETE', path)

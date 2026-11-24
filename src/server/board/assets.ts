@@ -14,7 +14,7 @@ import {
 import { basename, dirname, join, sep } from 'node:path'
 
 import { type FrameTarget, readFrame } from '@/server/checks/frame-source'
-import { holdsRecord } from '@/server/fonts/installed'
+import { readFont } from '@/server/fonts/installed'
 import {
   assetKind,
   extensionOf,
@@ -187,7 +187,7 @@ async function writableAsset(
   const file =
     path.split('/')[0] === PROJECT_KITS ||
     path.endsWith(LICENSE_FILE_SUFFIX) ||
-    isInstalledFontFile(projectDir, path)
+    (await isInstalledFontFile(projectDir, path))
       ? null
       : await confinedAsset(projectDir, path)
   if (file === null) {
@@ -200,13 +200,16 @@ async function writableAsset(
   return file
 }
 
-function isInstalledFontFile(projectDir: string, path: string): boolean {
+async function isInstalledFontFile(
+  projectDir: string,
+  path: string,
+): Promise<boolean> {
   const [folder, id, ...rest] = path.split('/')
   return (
     folder === FONTS_FOLDER &&
     id !== undefined &&
     rest.length > 0 &&
-    holdsRecord(projectDir, id)
+    (await readFont(projectDir, id)) !== null
   )
 }
 

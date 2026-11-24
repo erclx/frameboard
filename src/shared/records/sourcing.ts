@@ -334,6 +334,8 @@ export const installedFontSchema = z.object({
   /** Relative to the project's `assets/`, the folder holding the family. */
   path: z.string(),
   files: z.int(),
+  /** Whether the board serves the family too, so its frames keep drawing once it is removed. */
+  bundled: z.boolean(),
   /** The refs of the frames drawing text in the family, in page then frame order. */
   frames: z.array(z.string()),
 })
@@ -355,7 +357,7 @@ export const fontRemoveSchema = z.object({
   project: z.string(),
   id: z.string(),
   family: z.string(),
-  /** The refs of the frames that drew text in it and now fall back, in page then frame order. */
+  /** The refs of the frames left falling back, in page then frame order, none for a family the board serves too. */
   frames: z.array(z.string()),
 })
 

@@ -119,7 +119,24 @@ describe('installed fonts', () => {
         styles: ['normal'],
         path: 'fonts/lora',
         files: 1,
+        bundled: false,
         frames: [],
+      })
+    })
+
+    it('marks a family the board serves too, which a removal leaves drawing', async () => {
+      const bundled = writeBoard({
+        'acme/project.json': '{ "version": 1 }\n',
+        'acme/home/hero.html': TEXT('font-family: Inter'),
+        ...installedFontFiles('acme', 'inter', 'Inter'),
+      })
+
+      const { fonts } = await listFonts(bundled.root, 'acme')
+      bundled.cleanup()
+
+      expect(fonts[0]).toMatchObject({
+        bundled: true,
+        frames: ['acme/home/hero'],
       })
     })
 

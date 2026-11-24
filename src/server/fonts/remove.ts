@@ -5,7 +5,7 @@ import type { JournalOptions } from '@/server/board/journal'
 import { resolveProject } from '@/server/board/refs'
 import type { FontRemove } from '@/shared/records/sourcing'
 
-import { fontsDir, heldFont } from './installed'
+import { fontsDir, heldFont, isBundled } from './installed'
 import { framesByFamily } from './usage'
 
 /**
@@ -22,7 +22,8 @@ export async function removeFont(
   const project = await resolveProject(root, ref)
   const font = await heldFont(project, id)
   const { family } = font.record
-  const frames = await framesByFamily(root, project.name, [family])
+  const named = isBundled(family) ? [] : [family]
+  const frames = await framesByFamily(root, project.name, named)
   const folder = join(fontsDir(project.path), font.id)
   if (journal) await journal.removed(folder)
   else await rm(folder, { recursive: true })

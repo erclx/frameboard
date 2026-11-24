@@ -214,7 +214,7 @@ describe('save', () => {
     })
 
     it.each([
-      ['the family is installed', 'lora'],
+      ['a folder filled by hand holds its name', 'lora'],
       ['a folder holds its name in another case', 'Lora'],
     ])(
       'refuses name-taken and keeps what is there when %s',
@@ -225,12 +225,34 @@ describe('save', () => {
 
         await expect(saving).rejects.toMatchObject({
           code: 'name-taken',
-          details: { id: name },
+          details: { id: name, installed: false },
         })
         expect(folder()).toEqual([name])
         expect(readdirSync(join(assets, 'fonts', name))).toEqual([])
       },
     )
+
+    it('points at font remove for a family already installed', async () => {
+      const license = installedLicense('lora', 'Lora')
+      await saveFont(project, font, license)
+
+      const again = saveFont(project, font, license)
+
+      await expect(again).rejects.toMatchObject({
+        message: expect.stringContaining('font remove lora'),
+        details: { installed: true },
+      })
+    })
+
+    it('never points at font remove for a folder filled by hand', async () => {
+      mkdirSync(join(assets, 'fonts/lora'), { recursive: true })
+
+      const saving = saveFont(project, font, installedLicense('lora', 'Lora'))
+
+      await expect(saving).rejects.toMatchObject({
+        message: expect.not.stringContaining('font remove'),
+      })
+    })
 
     it('leaves one whole family when two installs of it race', async () => {
       const license = installedLicense('lora', 'Lora')
