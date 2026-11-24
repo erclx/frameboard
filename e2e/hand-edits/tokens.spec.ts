@@ -194,7 +194,14 @@ test.describe('installing a font from the Theme tab', () => {
     await expect
       .poll(
         () =>
-          headline.evaluate(() => document.fonts.check("16px 'Stub Display'")),
+          // `check` answers true for a family no face declares, so read the frame's own faces.
+          headline.evaluate(() =>
+            [...document.fonts].some(
+              (face) =>
+                face.family.replace(/["']/g, '') === 'Stub Display' &&
+                face.status === 'loaded',
+            ),
+          ),
         { timeout: 10_000 },
       )
       .toBe(true)
