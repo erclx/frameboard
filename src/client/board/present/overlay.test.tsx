@@ -271,6 +271,17 @@ describe('presenting a page', () => {
     expect(shownFrame()?.title).toBe('first')
   })
 
+  it('leaves once the board screen it draws on goes, as a removed page takes it', () => {
+    const page = pageOf(framesOf('hero'))
+    liveStore.setState({ board: boardOf(page) })
+    const { unmount } = render(<Board />)
+    act(() => startPresenting(page))
+
+    unmount()
+
+    expect(presentStore.getState().page).toBeNull()
+  })
+
   it('leaves on Esc with the presented frame selected', async () => {
     present(framesOf('first', 'second'))
 
