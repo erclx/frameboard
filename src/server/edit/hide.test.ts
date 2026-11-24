@@ -167,6 +167,16 @@ describe('hideElement', () => {
       '<div style="display: flex !important">x</div>',
       '',
     ],
+    [
+      'an inline none the frame states itself',
+      '<div style="display: none">x</div>',
+      '',
+    ],
+    [
+      'an inline none over a rule',
+      '<div class="g" style="display: none">x</div>',
+      '.g { display: grid !important }',
+    ],
     ['a grid a rule sets', '<div class="g">x</div>', '.g { display: grid }'],
     [
       'an important rule',

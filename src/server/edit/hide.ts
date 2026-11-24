@@ -66,25 +66,24 @@ export function hideElement(
 /** What a hide writes step by step, each step only where the one before left the element drawing. */
 function hides(element: Element): EditChange[][] {
   const stated = attribute(element, 'hidden')?.toLowerCase()
+  // `until-found` leaves the element to show again by itself.
+  const isStated = stated !== undefined && stated !== 'until-found'
   const display = inlineDisplay(element)
   const none = { kind: 'style', property: 'display' } as const
+  const keep: EditChange[] =
+    display === undefined
+      ? []
+      : [{ kind: 'attribute', name: SHOWN_DISPLAY_ATTRIBUTE, value: display }]
+  const isNone = display !== undefined && NONE.test(display)
   return [
-    // `until-found` leaves the element to show again by itself.
-    stated === undefined || stated === 'until-found'
-      ? [{ kind: 'attribute', name: 'hidden', value: '' }]
-      : [],
-    [
-      ...(display === undefined || NONE.test(display)
-        ? []
-        : [
-            {
-              kind: 'attribute',
-              name: SHOWN_DISPLAY_ATTRIBUTE,
-              value: display,
-            } as const,
-          ]),
-      { ...none, value: 'none' },
-    ],
+    isStated
+      ? []
+      : [
+          { kind: 'attribute', name: 'hidden', value: '' },
+          // The frame's own none, which a show would otherwise take for this hide's.
+          ...(isNone ? keep : []),
+        ],
+    [...(isNone ? [] : keep), { ...none, value: 'none' }],
     [{ ...none, value: 'none !important' }],
   ]
 }
