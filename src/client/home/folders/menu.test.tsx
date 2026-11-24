@@ -248,6 +248,19 @@ describe('FolderMenu', () => {
     await pointerOff(more)
   })
 
+  it('clears the card border while the pointer is on its ⋯', async () => {
+    renderHome()
+    const more = screen.getByRole('button', {
+      name: 'Folder actions for Client A',
+    })
+
+    await pointerOver(more)
+    const hovered = getComputedStyle(folder()).borderTopColor
+    await pointerOff(more)
+
+    expect(hovered).toBe('rgba(0, 0, 0, 0)')
+  })
+
   describe('New project', () => {
     const addCalls = (sent: { path: string; body: unknown }[]) =>
       sent.filter((call) => call.path === '/api/project/add')
