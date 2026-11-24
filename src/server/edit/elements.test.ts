@@ -391,6 +391,15 @@ describe('elementPlaceFacts', () => {
     ).toEqual({ position: 'absolute', width: true, height: false })
   })
 
+  it('reads a transform a rule sets and a translate the style attribute sets', () => {
+    expect(
+      factsOf(
+        '<p id="t" style="translate: 4px">x</p>',
+        '#t { transform: translateX(-50%) }',
+      ),
+    ).toMatchObject({ transform: 'translateX(-50%)', translate: '4px' })
+  })
+
   it('reads no position when only an ancestor sets one', () => {
     expect(
       factsOf('<div><p id="t">a</p></div>', 'div { position: relative }'),

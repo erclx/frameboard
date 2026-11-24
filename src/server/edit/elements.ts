@@ -25,6 +25,8 @@ const PLACE_PROPERTIES: ReadonlySet<string> = new Set([
   'position',
   'width',
   'height',
+  'transform',
+  'translate',
 ])
 
 /**
@@ -117,7 +119,19 @@ export function elementPlaceFacts(
     position: own(element, 'position'),
     width: own(element, 'width') !== null,
     height: own(element, 'height') !== null,
+    ...shiftOf(own(element, 'transform'), own(element, 'translate')),
   }))
+}
+
+/** The shifts an author rule sets, each left out where none does. */
+function shiftOf(
+  transform: string | null,
+  translate: string | null,
+): Pick<PlaceFacts, 'transform' | 'translate'> {
+  return {
+    ...(transform === null ? {} : { transform }),
+    ...(translate === null ? {} : { translate }),
+  }
 }
 
 export function isPlaced(facts: PlaceFacts | undefined): boolean {

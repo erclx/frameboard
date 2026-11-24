@@ -234,6 +234,83 @@ describe('standInFlow', () => {
     })
   })
 
+  it.each([
+    ['translate(-50%, -50%)', 'none'],
+    ['translateX(-50%) rotate(5deg)', 'rotate(5deg)'],
+    ['scale(2)translate3d(0, calc(1px + (2px * 3)), 0)', 'scale(2)'],
+  ])(
+    'clears the shift %s centers an element by, keeping %s',
+    (transform, kept) => {
+      const source = '<body><div class="dialog">x</div></body>'
+
+      const stood = standInFlow(
+        source,
+        3,
+        factsFor(source, { 3: { position: 'absolute', transform } }),
+      )
+
+      expect(stood).toMatchObject({
+        ok: true,
+        html: `<body><div class="dialog" style="position: relative; inset: auto; transform: ${kept}">x</div></body>`,
+      })
+    },
+  )
+
+  it("rewrites the shift an element's own style states", () => {
+    const source =
+      '<body><div style="position: absolute; left: 50%; transform: translateX(-50%) rotate(5deg)">x</div></body>'
+
+    const stood = standInFlow(
+      source,
+      3,
+      factsFor(source, {
+        3: {
+          position: 'absolute',
+          transform: 'translateX(-50%) rotate(5deg)',
+        },
+      }),
+    )
+
+    expect(stood).toMatchObject({
+      ok: true,
+      html: '<body><div style="position: relative; transform: rotate(5deg); inset: auto">x</div></body>',
+    })
+  })
+
+  it('clears a shift the translate property makes', () => {
+    const source = '<body><div class="dialog">x</div></body>'
+
+    const stood = standInFlow(
+      source,
+      3,
+      factsFor(source, {
+        3: { position: 'fixed', translate: '-50% -50%' },
+      }),
+    )
+
+    expect(stood).toMatchObject({
+      ok: true,
+      html: '<body><div class="dialog" style="position: relative; inset: auto; translate: none">x</div></body>',
+    })
+  })
+
+  it('writes no transform over one that shifts nothing', () => {
+    const source = '<body><div class="tilted">x</div></body>'
+
+    const stood = standInFlow(
+      source,
+      3,
+      factsFor(source, {
+        3: { position: 'absolute', transform: 'rotate(5deg)' },
+      }),
+    )
+
+    expect(stood).toMatchObject({
+      ok: true,
+      html: '<body><div class="tilted" style="position: relative; inset: auto">x</div></body>',
+    })
+  })
+
   it('leaves an element in the flow as it is', () => {
     const source =
       '<body><div style="position: relative; left: 4px">x</div></body>'

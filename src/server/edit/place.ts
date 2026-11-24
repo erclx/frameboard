@@ -1,3 +1,5 @@
+import { splitTopLevel } from '@/server/checks/cascade'
+
 import { type Element, hasTag, parseFrame } from './address'
 import {
   applyEdit,
@@ -25,6 +27,9 @@ export interface PlaceFacts {
   readonly position: string | null
   readonly width: boolean
   readonly height: boolean
+  /** Its `transform` and `translate` as written, absent when no author rule sets one. */
+  readonly transform?: string
+  readonly translate?: string
 }
 
 /** A size a placement writes where no rule sets one, and back in flow may drop. */
@@ -183,17 +188,29 @@ export function placeElement(
 
 export type Stood = { readonly ok: true; readonly html: string } | EditRefused
 
+/** A transform with the translations taken out, `none` when they were all it held. */
+function withoutShift(transform: string): string {
+  // A space after each function, since two may be written with none between.
+  const kept = splitTopLevel(transform.replace(/\)(?=[a-z])/gi, ') '), ' ')
+    .filter((part) => !/^translate/i.test(part))
+    .join(' ')
+    .trim()
+  return kept === '' ? 'none' : kept
+}
+
 /**
  * Stands a placed element in the flow of a frame it has to itself, where its
- * offsets would leave it outside a hugging box. It stays positioned, so its
- * own placed children keep the box they count from.
+ * offsets, and the shift that centers it on them, would draw it outside a
+ * hugging box. It stays positioned, so its own placed children stay put.
  */
 export function standInFlow(
   source: string,
   index: number,
   facts: readonly PlaceFacts[],
 ): Stood {
-  if (!isPlaced(facts[index])) return { ok: true, html: source }
+  const own = facts[index]
+  if (!isPlaced(own)) return { ok: true, html: source }
+  const transform = own?.transform ?? 'none'
   return applyEdit(
     source,
     { index },
@@ -207,6 +224,12 @@ export function standInFlow(
         })),
         // Beats the offsets a rule may place it at.
         { property: 'inset', value: 'auto' },
+        ...(/translate/i.test(transform)
+          ? [{ property: 'transform', value: withoutShift(transform) }]
+          : []),
+        ...(own?.translate && own.translate !== 'none'
+          ? [{ property: 'translate', value: 'none' }]
+          : []),
       ],
     },
   )

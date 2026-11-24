@@ -242,7 +242,7 @@ describe('POST /api/frames/extract', () => {
       path(),
       read().replace(
         '</title>',
-        '</title><style>h1 { position: absolute; left: 300px }</style>',
+        '</title><style>h1 { position: absolute; left: 50%; transform: translateX(-50%) }</style>',
       ),
     )
 
@@ -250,7 +250,7 @@ describe('POST /api/frames/extract', () => {
     await extract({ ...headline(), index: HEADLINE + 1 })
 
     expect(readPage('headline.html')).toContain(
-      '<h1 data-name="Headline" style="position: relative; inset: auto">hero</h1>',
+      '<h1 data-name="Headline" style="position: relative; inset: auto; transform: none">hero</h1>',
     )
   })
 
