@@ -141,6 +141,17 @@ describe('gap-at', () => {
     })
   })
 
+  it('should land behind a locked container that holds elements', async () => {
+    const frame = await mount(
+      '<section style="height:100px"><div></div></section><main data-locked="" style="position:absolute;inset:0"><div></div></main>',
+    )
+
+    expect(await gapAt(frame, { x: 100, y: 60 })).toMatchObject({
+      parent: 4,
+      before: null,
+    })
+  })
+
   it('should land beside an empty box rather than inside it', async () => {
     const frame = await mount(
       '<main><div style="height:100px"></div><div></div></main>',
@@ -212,6 +223,17 @@ describe('gap-at for a carried element', () => {
 
     expect(asked.reply).toMatchObject({
       value: { hash: HASH, gap: { parent: 3, before: 6 } },
+    })
+  })
+
+  it('moves to the gap behind a locked container, never into it', async () => {
+    const frame = await mount(
+      '<div></div><div></div><main data-locked="" style="position:absolute;inset:0"><div></div></main>',
+    )
+
+    // On the second div's lower half, under the locked container.
+    expect(await gapAt(frame, { x: 100, y: 75 }, 4)).toMatchObject({
+      parent: 3,
     })
   })
 

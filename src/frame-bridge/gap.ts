@@ -13,17 +13,17 @@ import type { Handlers } from './handler'
 /** The page's root and wrapper elements, a point on which picks no element. */
 const FRAME_LEVEL = new Set(['html', 'body'])
 
-/**
- * The element under a frame point and each ancestor below `body`, empty over
- * the root or wrapper. `unlocked` starts at the topmost element no lock holds.
- */
-function chainAt({ x, y }: FramePoint, unlocked: boolean): PickedElement[] {
+/** The topmost element under a frame point, or the topmost no lock holds when `unlocked`. */
+function topAt({ x, y }: FramePoint, unlocked: boolean): Element | null {
+  const drawn = document.elementsFromPoint(x, y)
+  return drawn.find((element) => !(unlocked && isLocked(element))) ?? null
+}
+
+/** The element under a frame point and each ancestor below `body`, empty over the root or wrapper. */
+function chainAt(at: FramePoint, unlocked: boolean): PickedElement[] {
   const chain: PickedElement[] = []
-  const top = document
-    .elementsFromPoint(x, y)
-    .find((element) => !(unlocked && isLocked(element)))
   for (
-    let element: Element | null = top ?? null;
+    let element = topAt(at, unlocked);
     element && !FRAME_LEVEL.has(element.localName);
     element = element.parentElement
   ) {
@@ -162,13 +162,13 @@ function sitsBefore(
 
 /**
  * The container and gap under a point in the page, a point over an element
- * that cannot hold one taking its parent's gap beside it, read along x in a
- * row or grid and along y otherwise.
+ * that cannot hold one taking its parent's gap beside it and a locked one
+ * what sits behind it, read along x in a row or grid and along y otherwise.
  */
 export function gapAt(at: FramePoint): Gap | null {
   const body = document.body
   if (!body) return null
-  let container: Element | null = document.elementFromPoint(at.x, at.y)
+  let container = topAt(at, true)
   if (!container || !body.contains(container)) container = body
   while (container && !holds(container)) {
     container = container.parentElement
