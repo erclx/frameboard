@@ -3,10 +3,17 @@ import { join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { History } from '@/server/history/stack'
+
 import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import {
+  fontsource,
+  rawFamily,
+  staticFamily,
+} from '../../../test/support/fontsource'
 import { polyhaven, rawModel } from '../../../test/support/polyhaven'
 import { sourcingRoutes, type SourcingRoutesOptions } from './sourcing'
 
@@ -395,6 +402,254 @@ describe('sourcingRoutes', () => {
       expect(response.status).toBe(404)
       expect((await response.json()).error.code).toBe('result-not-found')
       expect(assetFiles()).toEqual([])
+    })
+  })
+
+  describe('GET fonts', () => {
+    it('answers families matching the query, naming Fontsource, for a reader too', async () => {
+      const { send } = fontsource([rawFamily(), staticFamily()])
+
+      const response = await routes({ send }).request(
+        '/api/projects/webapp/sourcing/fonts?q=lora',
+      )
+
+      expect(response.status).toBe(200)
+      const { data } = await response.json()
+      expect(data).toMatchObject({
+        query: 'lora',
+        category: null,
+        source: { name: 'Fontsource', url: 'https://fontsource.org' },
+        total: 1,
+        results: [{ number: 1, id: 'lora', license: 'OFL-1.1' }],
+      })
+    })
+
+    it('keeps one category with no query', async () => {
+      const { send } = fontsource([rawFamily(), staticFamily()])
+
+      const response = await routes({ send }).request(
+        '/api/projects/webapp/sourcing/fonts?category=serif',
+      )
+
+      const { data } = await response.json()
+      expect(data).toMatchObject({ query: null, results: [{ id: 'lora' }] })
+    })
+
+    it('asks Fontsource for its list once for every search', async () => {
+      const { send, asked } = fontsource([rawFamily()])
+      const app = routes({ send })
+
+      await app.request('/api/projects/webapp/sourcing/fonts?q=lora')
+      await app.request('/api/projects/webapp/sourcing/fonts?q=lato')
+
+      expect(asked).toHaveLength(1)
+    })
+
+    it('asks again after Fontsource did not answer', async () => {
+      const down = fontsource([], { failing: '/v1/fonts' })
+      const up = fontsource([rawFamily()])
+      let send = down.send
+      const app = routes({ send: (input, init) => send(input, init) })
+
+      const refused = await app.request(
+        '/api/projects/webapp/sourcing/fonts?q=lora',
+      )
+      send = up.send
+      const answered = await app.request(
+        '/api/projects/webapp/sourcing/fonts?q=lora',
+      )
+
+      expect(refused.status).toBe(502)
+      expect((await refused.json()).error).toMatchObject({
+        code: 'source-failed',
+        details: { source: 'fontsource' },
+      })
+      expect(answered.status).toBe(200)
+    })
+
+    it.each([
+      ['neither a query nor a category', '?q=%20'],
+      ['a category Fontsource lacks', '?q=lora&category=blackletter'],
+    ])(
+      'refuses %s as usage without asking Fontsource',
+      async (_case, search) => {
+        const { send, asked } = fontsource([rawFamily()])
+
+        const response = await routes({ send }).request(
+          `/api/projects/webapp/sourcing/fonts${search}`,
+        )
+
+        expect(response.status).toBe(400)
+        expect((await response.json()).error.code).toBe('usage')
+        expect(asked).toEqual([])
+      },
+    )
+  })
+
+  describe('POST fonts/save', () => {
+    const SAVE = '/api/projects/webapp/sourcing/fonts/save'
+
+    it('refuses a reader with 401 and writes nothing', async () => {
+      const { send, asked } = fontsource([rawFamily()])
+
+      const response = await routes({ send }).request(
+        SAVE,
+        post({ id: 'lora', query: 'lora' }, {}),
+      )
+
+      expect(response.status).toBe(401)
+      expect(asked).toEqual([])
+      expect(assetFiles()).toEqual([])
+    })
+
+    it('installs the family with the license Fontsource holds', async () => {
+      const { send } = fontsource([rawFamily()])
+
+      const response = await routes({ send }).request(
+        SAVE,
+        post({ id: 'lora', query: 'lor' }),
+      )
+
+      expect(response.status).toBe(200)
+      const { data } = await response.json()
+      expect(data).toMatchObject({
+        path: 'fonts/lora',
+        license: { source: 'fontsource', query: 'lor', license: 'OFL-1.1' },
+      })
+      expect(readdirSync(join(board.root, 'webapp/assets/fonts'))).toEqual([
+        'lora',
+      ])
+    })
+
+    it('keeps the weights asked for of a static family, saved by id alone', async () => {
+      const { send } = fontsource([
+        staticFamily({ subsets: ['latin'], styles: ['normal'] }),
+      ])
+
+      const response = await routes({ send }).request(
+        SAVE,
+        post({ id: 'lato', weights: [300] }),
+      )
+
+      const { data } = await response.json()
+      expect(data.license.query).toBeNull()
+      expect(data.license.faces).toHaveLength(1)
+      expect(data.license.faces[0].weights).toEqual({ min: 300, max: 300 })
+    })
+
+    it('lands one family for two installs of it sent together', async () => {
+      const { send } = fontsource([rawFamily()])
+      const app = routes({ send })
+
+      const [first, second] = await Promise.all([
+        app.request(SAVE, post({ id: 'lora' })),
+        app.request(SAVE, post({ id: 'lora' })),
+      ])
+
+      expect([first.status, second.status]).toEqual([200, 200])
+    })
+
+    it.each([
+      ['a family already installed', 'lora', 409, 'name-taken'],
+      ['another license', 'aileron', 422, 'license-refused'],
+      ['an id Fontsource lacks', 'nope', 404, 'result-not-found'],
+    ])('refuses %s', async (_case, id, status, code) => {
+      const { send } = fontsource([
+        rawFamily(),
+        staticFamily({ id: 'aileron', license: 'CC0-1.0' }),
+      ])
+      const app = routes({ send })
+      await app.request(SAVE, post({ id: 'lora' }))
+
+      const response = await app.request(SAVE, post({ id }))
+
+      expect(response.status).toBe(status)
+      expect((await response.json()).error.code).toBe(code)
+    })
+  })
+
+  describe('installed fonts', () => {
+    const BASE = '/api/projects/webapp/sourcing/fonts'
+    let history: History
+
+    beforeEach(() => {
+      history = new History(board.root)
+    })
+
+    async function installed() {
+      const { send } = fontsource([rawFamily({ subsets: ['latin'] })])
+      const app = routes({ send, history })
+      await app.request(`${BASE}/save`, post({ id: 'lora' }))
+      return app
+    }
+
+    it('lists them for a reader too', async () => {
+      const app = await installed()
+
+      const response = await app.request(`${BASE}/installed`)
+
+      expect(response.status).toBe(200)
+      const { data } = await response.json()
+      expect(data).toMatchObject({
+        version: 1,
+        project: 'webapp',
+        fonts: [{ id: 'lora', family: 'Lora', license: 'OFL-1.1' }],
+      })
+    })
+
+    it('undoes an install as one step', async () => {
+      await installed()
+
+      await history.undo()
+
+      expect(existsSync(join(board.root, 'webapp/assets/fonts/lora'))).toBe(
+        false,
+      )
+    })
+
+    it('removes one as a step an undo brings back whole', async () => {
+      const app = await installed()
+      const folder = join(board.root, 'webapp/assets/fonts/lora')
+      const before = readdirSync(folder).sort()
+
+      const response = await app.request(`${BASE}/remove`, post({ id: 'lora' }))
+      const gone = !existsSync(folder)
+      await history.undo()
+
+      expect(response.status).toBe(200)
+      expect((await response.json()).data).toMatchObject({
+        project: 'webapp',
+        id: 'lora',
+        frames: [],
+      })
+      expect(gone).toBe(true)
+      expect(readdirSync(folder).sort()).toEqual(before)
+    })
+
+    it('refuses a reader removing one with 401 and keeps it', async () => {
+      const app = await installed()
+
+      const response = await app.request(
+        `${BASE}/remove`,
+        post({ id: 'lora' }, {}),
+      )
+
+      expect(response.status).toBe(401)
+      expect(existsSync(join(board.root, 'webapp/assets/fonts/lora'))).toBe(
+        true,
+      )
+    })
+
+    it('refuses to remove a family the project has not installed', async () => {
+      const app = await installed()
+
+      const response = await app.request(
+        `${BASE}/remove`,
+        post({ id: 'inter' }),
+      )
+
+      expect(response.status).toBe(404)
+      expect((await response.json()).error.code).toBe('font-not-found')
     })
   })
 

@@ -13,9 +13,14 @@ import {
 } from '@/server/board/scan'
 import { MODEL_LOADS } from '@/server/checks/links'
 import { VIEWER_SCRIPT } from '@/server/edit/insert'
+import { FONT_RECORD } from '@/server/fonts/installed'
 import { shippedViewerPath } from '@/server/models/viewer'
 import { NOTES_FOLDER } from '@/server/notes/images'
 import { NOTES_FILE } from '@/server/notes/store'
+import {
+  DEFAULT_WEIGHTS,
+  FONTSOURCE_SOURCE,
+} from '@/server/sourcing/fontsource'
 import { PROVIDERS } from '@/server/sourcing/generate'
 import { COMFYUI_URL_ENV } from '@/server/sourcing/generate-model'
 import {
@@ -33,6 +38,13 @@ import { FOREIGN_MODELS } from '@/shared/asset-kinds'
 import { BINDS_ATTRIBUTE, UNIT_ATTRIBUTE } from '@/shared/bindings'
 import { ADDRESS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
 import { FACES } from '@/shared/faces'
+import {
+  FONT_CATEGORIES,
+  FONT_LICENSE_TEXT,
+  FONT_LICENSES,
+  FONT_SHEET,
+  FONTS_FOLDER,
+} from '@/shared/fonts'
 import {
   BEZELS,
   BUTTON_DEPTH,
@@ -161,8 +173,9 @@ export function contentFormat() {
     assets: `A frame links files in its own page folder or in its project's ${ASSETS_FOLDER}/ folder. frame duplicate and frame move carry the ${FRAME_EXTENSION} file alone, so keep files shared between frames or pages in ${ASSETS_FOLDER}/.`,
     look: [
       `The board's ${TOKEN_FILE} holds the design tokens every project shares, and a project's own ${TOKEN_FILE} overrides it. serve --tokens <path> stands in for the board's sheet, resolved against the working folder and recorded as tokens in ${RUN_FOLDER}/${ADDRESS_FILE} while that server runs.`,
-      `The server puts one <style ${LOOK_MARKER}> first in each frame's head, importing the faces, then the board sheet, then the project sheet, then the sheets of the kit the frame names, so a frame's own sheets win. The file on disk never changes, and a count of a live frame's elements skips elements carrying ${LOOK_MARKER}.`,
-      `Every frame can use the families ${FACES.map((face) => face.family).join(', ')} with no link of its own. A project adds other faces in its ${ASSETS_FOLDER}/ folder.`,
+      `The server puts one <style ${LOOK_MARKER}> first in each frame's head, importing the faces, then the sheet of the project's installed fonts, then the board sheet, then the project sheet, then the sheets of the kit the frame names, so a frame's own sheets win. The file on disk never changes, and a count of a live frame's elements skips elements carrying ${LOOK_MARKER}.`,
+      `Every frame can use the families ${FACES.map((face) => face.family).join(', ')} with no link of its own, and every family its project installed. A family from ${FONTSOURCE_SOURCE.name} is installed by font find --save <number-or-id>, under ${FONT_LICENSES.join(', ')} alone, and lands in ${ASSETS_FOLDER}/${FONTS_FOLDER}/<id>/ as its WOFF2 files as served, the source's ${FONT_LICENSE_TEXT}, and ${FONT_RECORD}, the licenseFile record. The server builds one sheet from those records, served at /frames/<project>/${FONT_SHEET}, so a frame names the family by its own name, as font-family: 'Playfair Display', with no link and no @font-face. A face no font find serves is added by hand: a file anywhere in ${ASSETS_FOLDER}/ and an @font-face in the frame or ${TOKEN_FILE}, which font list never names.`,
+      `font find searches by family name or by one of ${FONT_CATEGORIES.join(', ')}, and --category keeps one. A variable family keeps every subset and weight, and a static one ${DEFAULT_WEIGHTS.join(' and ')} in normal and italic, or the weights --weights names. An install lands whole or not at all, refusing license-refused for another license, name-taken for a family the project holds, so font remove then font find --save updates one, and source-failed when ${FONTSOURCE_SOURCE.name} does not answer. font remove deletes the folder and names the frames still drawing text in the family, which report font-missing on their next capture. Never rename, convert, or subset an installed file, since its license reserves the font's name against a changed one.`,
       "The board sets data-theme and color-scheme to light or dark on each frame's root, with the class dark or light, so define both themes through [data-theme], .dark, prefers-color-scheme, or light-dark(), or take every color from token variables. Never paste a token sheet into a frame.",
       `A change to a token sheet reloads every frame it reaches.`,
       "A style attribute outranks every rule, and may hold a value the developer set by hand, so read it before changing a rule the element matches. While a server runs, check warns as outranked when an agent's write changed a rule in the frame's own <style> that an unchanged style attribute also sets.",
