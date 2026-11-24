@@ -4,7 +4,7 @@ import { parseStat, statFields, statLines } from '../lib/process-table'
 
 // The kernel reports CPU time in ticks of 1/100 s on every Linux runner.
 const MS_PER_TICK = 10
-const POLL_MS = 250
+const POLL_MS = 100
 
 export interface ProcessTree {
   pids: number[]
@@ -59,7 +59,7 @@ export function quietSince(
   return start && last.cpuMs - start.cpuMs <= busyMs ? start : undefined
 }
 
-/** The last reading taken, or the one a quiet window follows. */
+/** When the process went quiet or the limit came, and the CPU time of everything read. */
 export interface Settled extends Reading {
   quiet: boolean
 }
@@ -77,7 +77,8 @@ export async function waitForQuiet(
     const reading = { atMs: performance.now() - startedAt, cpuMs }
     readings.push(reading)
     const quiet = quietSince(readings, rule)
-    if (quiet) return { ...quiet, quiet: true }
+    // Through the window, since a cut at its start leaves out work inside it.
+    if (quiet) return { atMs: quiet.atMs, cpuMs, quiet: true }
     if (reading.atMs >= limitMs) return { ...reading, quiet: false }
     await sleep(POLL_MS)
   }
