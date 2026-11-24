@@ -570,6 +570,19 @@ describe('placeNext', () => {
     expect(placeNext([placed]).box.x).toBe(1990)
   })
 
+  it('sits past the bodies of the linked widths a shown frame draws', () => {
+    const placed = {
+      ...placeNext([]),
+      box: { x: 0, y: 0, width: 390, height: 844 },
+      device: 'phone' as const,
+      showDevice: true as const,
+      widths: [{ width: 834, height: 1194 }],
+    }
+
+    // The tablet's screen starts at 528, so its body ends at 1400.
+    expect(placeNext([placed]).box.x).toBe(1480)
+  })
+
   it('stands two laptop frames placed in turn 80 apart body to body', () => {
     const laptop = { width: 1440, device: 'laptop' } as const
     const first = {
