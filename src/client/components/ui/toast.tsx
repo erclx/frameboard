@@ -199,7 +199,10 @@ function DefaultToast({ toastItem }: { toastItem: ToastObject }) {
       <ToastContent className={cn(acts && 'items-center')}>
         <ToastIcon type={toastItem.type} />
         <div
-          className={cn('flex min-w-0 flex-1 flex-col', acts ? null : 'pr-4')}
+          className={cn(
+            'flex min-w-0 flex-1 flex-col',
+            acts ? '[overflow-wrap:anywhere]' : 'pr-4',
+          )}
         >
           <ToastTitle />
           <ToastDescription />

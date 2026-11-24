@@ -174,6 +174,17 @@ describe('a toast with an action', () => {
     expect(screen.getByLabelText('Close')).toHaveFocus()
   })
 
+  it('breaks a long unbroken name before it runs under the action', async () => {
+    raise({
+      title: `Deleted ${'northwind'.repeat(6)}`,
+      actionProps: { children: 'Undo' },
+    })
+    await screen.findByRole('button', { name: 'Undo' })
+    const title = screen.getByText(/^Deleted northwind/)
+
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
+  })
+
   it('keeps a long description whole beside the action', async () => {
     raise({
       title: 'Nothing written',
