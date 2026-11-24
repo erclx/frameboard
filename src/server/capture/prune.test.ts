@@ -167,6 +167,21 @@ describe('pruneImages', () => {
     expect(dark.filter((path) => !existsSync(path))).toEqual([])
   })
 
+  it('removes composites in the themes named and leaves every one in another', async () => {
+    const kept = write('studio/home.light.png')
+    const [stale] = write('studio/gone.light.png')
+    const dark = write('studio/home.dark.png', 'studio/gone.dark@2x.png')
+
+    const removed = await pruneImages(out, 'studio', {
+      kind: 'composite',
+      themes: ['light'],
+      kept,
+    })
+
+    expect(removed).toEqual([stale])
+    expect(dark.filter((path) => !existsSync(path))).toEqual([])
+  })
+
   it("keeps another project's images in the same folder", async () => {
     const kept = write('studio/home/hero.light.png')
     const [other] = write('shop/cart/empty.light.png')
