@@ -749,6 +749,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       mask: [AVATAR],
       setup: themed(
         both(
+          asWriter,
           devicesShown,
           noAgentChanges,
           onCanvas({ select: ['webapp/home/about'] }),
@@ -769,6 +770,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       mask: [AVATAR],
       setup: themed(
         both(
+          asWriter,
           linkedDevicesShown,
           noAgentChanges,
           onCanvas({ select: ['webapp/home/about'] }),
