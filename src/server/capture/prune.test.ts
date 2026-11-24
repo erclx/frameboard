@@ -43,8 +43,12 @@ describe('pruneImages', () => {
     'home/gone@390.at-500.light@3x.png',
     'home/gone.filmstrip-8.light.png',
     'home/gone.v2.light.png',
+    'home/my hero.light.png',
+    'home/a@b.light.png',
+    'old page/gone.light.png',
     'gone.light.png',
     'gone.dark@2x.png',
+    'old page.light.png',
   ])('removes %s, which a capture could have written', async (path) => {
     const kept = write('studio/home/hero.light.png')
     const [stale] = write(`studio/${path}`)
@@ -64,13 +68,10 @@ describe('pruneImages', () => {
     'home/hero-light.png',
     'home/hero.light.jpg',
     'home/hero.light@4x.png',
-    'home/my hero.light.png',
     'home/.hero.light.png',
     'home/.light.png',
-    'home@390.light.png',
     'home/old/gone.light.png',
     '.archive/gone.light.png',
-    'my page/gone.light.png',
     'assets/logo.dark.png',
     'assets.dark.png',
   ])('keeps %s, which no capture writes', async (path) => {

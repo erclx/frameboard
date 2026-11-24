@@ -1,7 +1,7 @@
 import { lstat, readdir, rm, rmdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
-import { isReservedPageName, isValidName } from '@/shared/names'
+import { isReservedPageName } from '@/shared/names'
 
 import { isCompositeImageName, isFrameImageName } from './images'
 
@@ -47,7 +47,7 @@ export async function pruneImages(
 }
 
 function isPageName(name: string): boolean {
-  return isValidName(name) && !isReservedPageName(name)
+  return !name.startsWith('.') && !isReservedPageName(name)
 }
 
 // The file rather than its path, since a disk that ignores case lists a
