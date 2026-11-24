@@ -149,7 +149,10 @@ describe('FontsSection', () => {
     it('lists the built-in faces then each installed family with its license', async () => {
       render(<FontsSection project="studio" load={listOf(installed('Lora'))} />)
 
-      expect(await screen.findByText('1 installed')).toBeInTheDocument()
+      expect(await screen.findByText('Lora')).toBeInTheDocument()
+      expect(
+        within(screen.getByRole('region', { name: 'Fonts' })).getByText('6'),
+      ).toBeInTheDocument()
       expect(rowNames()).toEqual([
         'GeistBuilt in',
         'Geist MonoBuilt in',
@@ -165,7 +168,7 @@ describe('FontsSection', () => {
 
       expect(await screen.findByText('Caveat')).toBeInTheDocument()
       expect(rowNames()).toHaveLength(5)
-      expect(screen.queryByText(/installed/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/No fonts/)).not.toBeInTheDocument()
     })
 
     it('lists an installed family the board also serves once, as installed', async () => {

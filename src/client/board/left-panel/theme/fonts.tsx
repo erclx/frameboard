@@ -105,8 +105,8 @@ export function FontsSection({
         <h3 id="theme-fonts" className="text-xs font-semibold">
           Fonts
         </h3>
-        <span className="text-label text-muted-foreground">
-          {installed.length > 0 ? `${installed.length} installed` : null}
+        <span className="text-label text-muted-foreground tabular-nums">
+          {rows.length}
         </span>
       </div>
       {list === null ? (
