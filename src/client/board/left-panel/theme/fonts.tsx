@@ -1,0 +1,261 @@
+import { X } from 'lucide-react'
+import { useState } from 'react'
+
+import { Button } from '@/client/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@/client/components/ui/dialog'
+import { useLive } from '@/client/live/store'
+import { FACES, faceSheetUrl, faceStack } from '@/shared/faces'
+import { FONT_SHEET } from '@/shared/fonts'
+import type { ListResult } from '@/shared/records/list'
+import type { FontList, InstalledFont } from '@/shared/records/sourcing'
+
+import { fetchInstalledFonts, useInstalledFonts } from '../../assets/sourcing'
+import { removeFont } from './write'
+
+/** How many frame names the removal confirmation spells out before counting the rest. */
+const NAMED_FRAMES = 5
+
+interface FontsSectionProps {
+  project: string
+  /** Reads the project's installed fonts, the API in the app. */
+  load?: (project: string) => Promise<FontList | null>
+  remove?: typeof removeFont
+}
+
+/** One family a frame may name, built in or installed. */
+interface FamilyRow {
+  family: string
+  /** The stack the row's name is set in. */
+  stack: string
+  /** Where it came from, as `Built in` or a license such as `OFL`. */
+  source: string
+  installed: InstalledFont | null
+}
+
+/**
+ * Every family the project's frames may name, the board's own faces then the
+ * ones it installed, each set in its own face. An installed family the board
+ * also serves lists once, as installed, since that row is the one removal
+ * acts on.
+ */
+export function FontsSection({
+  project,
+  load = fetchInstalledFonts,
+  remove = removeFont,
+}: FontsSectionProps) {
+  const canWrite = useLive((state) => state.canWrite)
+  const board = useLive((state) => state.board)
+  const list = useInstalledFonts(project, load)
+  const installed = list?.fonts ?? []
+  const [confirming, setConfirming] = useState<InstalledFont | null>(null)
+  const [removing, setRemoving] = useState<string | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+
+  const rows = familyRows(installed)
+
+  const run = async (font: InstalledFont) => {
+    setRemoving(font.id)
+    setProblem(null)
+    try {
+      await remove(project, font.id)
+    } catch (error) {
+      setProblem(
+        `Couldn’t remove ${font.family}. ${error instanceof Error ? error.message : String(error)}`,
+      )
+    } finally {
+      setRemoving(null)
+    }
+  }
+
+  return (
+    <section
+      aria-labelledby="theme-fonts"
+      className="border-b border-sidebar-border px-3 pt-1 pb-2.5"
+    >
+      {FACES.map((face) => (
+        <link key={face.folder} rel="stylesheet" href={faceSheetUrl(face)} />
+      ))}
+      {installed.length > 0 ? (
+        <link rel="stylesheet" href={projectSheet(project, installed)} />
+      ) : null}
+      <div className="flex h-6 items-center justify-between gap-2">
+        <h3 id="theme-fonts" className="text-xs font-semibold">
+          Fonts
+        </h3>
+        <span className="text-label text-muted-foreground">
+          {installed.length > 0 ? `${installed.length} installed` : null}
+        </span>
+      </div>
+      {list === null ? (
+        <p className="pb-1 leading-[1.45] text-muted-foreground">
+          The installed fonts did not load. Reload the board to try again.
+        </p>
+      ) : null}
+      <ul
+        aria-label="Fonts frames can use"
+        className="-mx-1 max-h-64 overflow-y-auto px-1"
+      >
+        {rows.map((row) => (
+          <li
+            key={row.family}
+            className="group flex min-h-8 items-center gap-2"
+          >
+            <span
+              className="min-w-0 flex-1 truncate text-[15px] leading-tight group-focus-within:whitespace-normal"
+              style={{ fontFamily: row.stack }}
+            >
+              {row.family}
+            </span>
+            <span className="shrink-0 text-label text-muted-foreground">
+              {row.source}
+            </span>
+            {row.installed && canWrite ? (
+              <RemoveButton
+                font={row.installed}
+                busy={removing === row.installed.id}
+                onRemove={(font) =>
+                  warnsOn(font).length > 0
+                    ? setConfirming(font)
+                    : void run(font)
+                }
+              />
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {problem ? (
+        <p role="alert" className="pt-1 leading-[1.45] text-destructive">
+          {problem}
+        </p>
+      ) : null}
+      {canWrite ? null : (
+        <p className="pt-1 leading-[1.45] text-muted-foreground">
+          View only, so fonts can’t be added or removed here.
+        </p>
+      )}
+      <Dialog
+        open={confirming !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirming(null)
+        }}
+      >
+        <DialogContent showCloseButton={false} className="gap-3 p-4">
+          <DialogTitle className="text-title font-semibold">
+            Remove {confirming?.family}?
+          </DialogTitle>
+          <DialogDescription>
+            {confirming ? fallingBack(warnsOn(confirming), board) : null} Undo
+            brings the font back.
+          </DialogDescription>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirming(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (confirming) void run(confirming)
+                setConfirming(null)
+              }}
+            >
+              Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </section>
+  )
+}
+
+function RemoveButton({
+  font,
+  busy,
+  onRemove,
+}: {
+  font: InstalledFont
+  busy: boolean
+  onRemove: (font: InstalledFont) => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`Remove ${font.family}`}
+      disabled={busy}
+      onClick={() => onRemove(font)}
+      className="grid size-5 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40"
+    >
+      <X aria-hidden className="size-3" />
+    </button>
+  )
+}
+
+function familyRows(installed: readonly InstalledFont[]): FamilyRow[] {
+  const taken = new Set(installed.map((font) => font.family.toLowerCase()))
+  const builtIn = FACES.filter(
+    (face) => !taken.has(face.family.toLowerCase()),
+  ).map((face) => ({
+    family: face.family,
+    stack: faceStack(face),
+    source: 'Built in',
+    installed: null,
+  }))
+  const own = installed.map((font) => ({
+    family: font.family,
+    stack: `'${font.family}', sans-serif`,
+    source: licenseMark(font.license),
+    installed: font,
+  }))
+  return [...builtIn, ...own]
+}
+
+/** A license's short mark, as `OFL-1.1` reads `OFL`. */
+function licenseMark(license: string): string {
+  return license.replace(/-[\d.]+$/, '')
+}
+
+/**
+ * The project's font sheet, addressed by what it holds so the browser reads
+ * it again once a family is installed or removed.
+ */
+function projectSheet(
+  project: string,
+  installed: readonly InstalledFont[],
+): string {
+  const held = installed.map((font) => font.id).join(',')
+  return `/frames/${encodeURIComponent(project)}/${FONT_SHEET}?fonts=${encodeURIComponent(held)}`
+}
+
+/** The frames a removal leaves falling back, none where the board serves the family too. */
+function warnsOn(font: InstalledFont): readonly string[] {
+  return font.bundled ? [] : font.frames
+}
+
+/** The sentence naming the frames a removal leaves falling back, by frame name. */
+function fallingBack(
+  refs: readonly string[],
+  board: ListResult | null,
+): string {
+  const names = refs.map((ref) => frameName(ref, board))
+  const shown = names.slice(0, NAMED_FRAMES).join(', ')
+  const more = names.length - NAMED_FRAMES
+  const list = more > 0 ? `${shown}, and ${more} more` : shown
+  return names.length === 1
+    ? `The frame ${list} uses it and falls back to another face.`
+    : `The ${names.length} frames using it fall back to another face: ${list}.`
+}
+
+function frameName(ref: string, board: ListResult | null): string {
+  for (const project of board?.projects ?? []) {
+    for (const page of project.pages) {
+      const frame = page.frames.find((candidate) => candidate.ref === ref)
+      if (frame) return frame.name
+    }
+  }
+  return ref.slice(ref.lastIndexOf('/') + 1)
+}

@@ -1,7 +1,12 @@
+import { useEffect, useState } from 'react'
 import { createStore } from 'zustand/vanilla'
 
+import { useLive } from '@/client/live/store'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
+import { FONT_CATEGORIES, type FontCategory } from '@/shared/fonts'
 import type {
+  FontFind,
+  FontList,
   ImageFind,
   ImageGenerate,
   ImageOffer,
@@ -68,6 +73,61 @@ export function findModels(
 ): Promise<ModelFind> {
   const params = new URLSearchParams({ q: query })
   return read<ModelFind>(`${base(project)}/models?${params}`, signal)
+}
+
+/**
+ * Fontsource's families matching typed text through the board's server. Text
+ * naming a category, such as `serif`, asks for that category alone, since as
+ * a name it opens a word in dozens of families. Refuses and aborts as
+ * `findImages` does.
+ */
+export function findFonts(
+  project: string,
+  text: string,
+  signal?: AbortSignal,
+): Promise<FontFind> {
+  const typed = text.trim()
+  const params = new URLSearchParams(
+    isCategory(typed.toLowerCase())
+      ? { category: typed.toLowerCase() }
+      : { q: typed },
+  )
+  return read<FontFind>(`${base(project)}/fonts?${params}`, signal)
+}
+
+function isCategory(text: string): text is FontCategory {
+  return (FONT_CATEGORIES as readonly string[]).includes(text)
+}
+
+/** The fonts a project installed, null when the read is refused. */
+export async function fetchInstalledFonts(
+  project: string,
+): Promise<FontList | null> {
+  return read<FontList>(`${base(project)}/fonts/installed`).catch(() => null)
+}
+
+/**
+ * The project's installed fonts, read again whenever the live board changes,
+ * which a font's install or removal does. Undefined while the first read runs.
+ */
+export function useInstalledFonts(
+  project: string,
+  load: (project: string) => Promise<FontList | null> = fetchInstalledFonts,
+): FontList | null | undefined {
+  const board = useLive((state) => state.board)
+  const [list, setList] = useState<FontList | null | undefined>()
+  useEffect(() => {
+    let current = true
+    void load(project)
+      .catch(() => null)
+      .then((next) => {
+        if (current) setList(next)
+      })
+    return () => {
+      current = false
+    }
+  }, [project, board, load])
+  return list
 }
 
 async function read<T>(url: string, signal?: AbortSignal): Promise<T> {

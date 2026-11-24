@@ -9,6 +9,7 @@ import {
 
 import { LabelTip } from '../../inspector/label-tip'
 import { fetchTokenTable, useTokenTable } from '../../tokens'
+import { FontsSection } from './fonts'
 import { KitsSection } from './kits'
 import { ColorRow, ValueRow } from './rows'
 import { type TokenChange, type TokenSheet, writeToken } from './write'
@@ -37,11 +38,12 @@ interface Landed {
   hash: string
 }
 
-/** The Theme tab, the project's kits above its tokens. */
+/** The Theme tab, the project's kits and fonts above its tokens. */
 export function ThemeTab(props: ThemeTabProps) {
   return (
     <>
       <KitsSection project={props.project} />
+      <FontsSection project={props.project} />
       <TokensSection {...props} />
     </>
   )

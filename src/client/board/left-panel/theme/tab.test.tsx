@@ -215,6 +215,7 @@ describe('ThemeTab', () => {
     const headings = screen.getAllByRole('heading', { level: 3 })
     expect(headings.map((heading) => heading.textContent)).toEqual([
       'Kits',
+      'Fonts',
       'Color',
       'Radius',
       'Font',
@@ -240,7 +241,11 @@ describe('ThemeTab', () => {
     )
 
     expect(await screen.findByText('4px')).toBeInTheDocument()
-    expect(screen.getByText('Geist Mono')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', { name: 'Font' })).getByText(
+        'Geist Mono',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('draws the empty card when the project has no token sheet', async () => {

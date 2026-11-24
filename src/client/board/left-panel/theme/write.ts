@@ -1,5 +1,6 @@
 import { toast } from '@/client/components/ui/toast'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
+import type { FontRemove, SavedFont } from '@/shared/records/sourcing'
 import type { TokenEditResult } from '@/shared/records/tokens'
 
 /** One token edit as `POST /api/tokens/edit` takes it, less the project and the hash the tab adds. */
@@ -51,4 +52,37 @@ export async function writeToken(
     })
     return null
   }
+}
+
+function fontsBase(project: string): string {
+  return `/api/projects/${encodeURIComponent(project)}/sourcing/fonts`
+}
+
+/** Installs a Fontsource family into the project as one undo step, keeping the usual weights. */
+export function installFont(
+  project: string,
+  id: string,
+  query: string | null,
+  send: typeof fetch = fetch,
+): Promise<SavedFont> {
+  return writeBoard<SavedFont>(
+    `${fontsBase(project)}/save`,
+    { id, query },
+    'POST',
+    send,
+  )
+}
+
+/** Removes an installed family's folder as one undo step. */
+export function removeFont(
+  project: string,
+  id: string,
+  send: typeof fetch = fetch,
+): Promise<FontRemove> {
+  return writeBoard<FontRemove>(
+    `${fontsBase(project)}/remove`,
+    { id },
+    'POST',
+    send,
+  )
 }
