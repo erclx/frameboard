@@ -70,7 +70,7 @@ export function registerCapture(
     )
     .option(
       '--prune',
-      "with --all-pages, remove every other image a call like this one could have written under the project's folder in --out, such as a deleted frame's, leaving the theme not captured, composites or frame images it did not write, and every other file. Refused where that folder is part of the board",
+      "with --all-pages, remove every other frame image in the captured themes under the project's folder in --out, scrolled, timed, and other-scale shots included, or every other composite with --composite, leaving every other file. Refused where that folder is part of the board",
     )
     .addOption(
       new Option('--theme <theme>', 'the theme to capture')
