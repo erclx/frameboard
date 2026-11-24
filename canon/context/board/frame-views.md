@@ -40,5 +40,5 @@ Owns `rail.tsx`, the rail a frame `scrollsInBox` names draws in Edit, being a sc
 
 ## Gotchas
 
-- A frame with clipping off draws each element past its edge in Edit as a still picture from the PNG route, capped by `PAINTED_MAX`, and a previewed, scroll, device, or linked box draws none
+- A frame with clipping off paints elements past its right or bottom edge in Edit from the PNG route, capped by `PAINTED_MAX`, and one past the left or top, or in a previewed or linked box, takes none
 - A fold, a turn, or naming the foldable that widens a body pushes each frame to its right on its rows by the growth, in one write and undo step, and a shrink or a bare show pushes nothing
