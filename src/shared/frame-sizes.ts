@@ -177,6 +177,18 @@ export function frameSizeOf(name: FrameSizeName): FrameSize {
   return { width, height }
 }
 
+/**
+ * The width a trailing `-<px>` in a frame's name states, as `overview-390`
+ * does. Only a width a size above names counts, so a counter or a year states
+ * none.
+ */
+export function namedWidth(name: string): number | undefined {
+  const suffix = /-(\d+)$/.exec(name)?.[1]
+  return [...Object.values(FRAME_SIZES), ...DEVICE_SIZES].find(
+    ({ width }) => String(width) === suffix,
+  )?.width
+}
+
 /** The preset whose range holds a width, or none below the phone range. */
 export function presetAt(width: number): FrameSizePreset | undefined {
   return Object.keys(PRESET_RANGES)

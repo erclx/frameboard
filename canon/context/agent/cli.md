@@ -45,11 +45,11 @@ Owns handing a tab write access, beside `show.ts`, `selection.ts`, and `preview.
 
 Owns the frame verbs, `page.ts` reshaping pages the same way, both adding, duplicating, renaming, moving, and deleting, with the size, scroll, widths, device, and transition flags `frameboard docs` lists. `move --x --y` and `frame kit` write `layout.json` alone, so neither collides with an agent rewriting the file.
 
+- `frame add` with no size, reserved box, or entry takes a trailing `-<px>` a size names as its width with the device on, through `onNamedWidth`, which the board's route never passes
 - `frame fit` sets height only, reading at the layout width and that width's preset height or 900, never the frame's own, and ignores what a cropping ancestor hides
 - `frame fit` refuses `fit-unbounded` for content sized off the viewport, like `100vh`, a block reset on `resize`, or one set once from `innerHeight`
 - `frame fit` refuses `fit-scroll`, exit 10, on a `scroll` frame before the browser launches, while the board's Height row fits one by clearing `scroll`
-- `frame fit` measures each linked width at its reference height and writes that height beside the frame's
-- `frame fit` reports content wider than the frame rather than widening it
+- `frame fit` measures each linked width at its reference height and writes that height beside the frame's, and reports content wider than the frame rather than widening it
 
 ### `src/cli/commands/project.ts`
 

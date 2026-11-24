@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   FRAME_SIZE_NAMES,
   frameSizeOf,
+  namedWidth,
   presetAt,
   previewWidth,
   referenceHeight,
@@ -67,5 +68,32 @@ describe('video sizes', () => {
   ] as const)('names %s at %i x %i', (name, width, height) => {
     expect(FRAME_SIZE_NAMES).toContain(name)
     expect(frameSizeOf(name)).toEqual({ width, height })
+  })
+})
+
+describe('namedWidth', () => {
+  it.each([
+    ['overview-390', 390],
+    ['overview-834', 834],
+    ['overview-1440', 1440],
+    ['overview-744', 744],
+    ['overview-2-390', 390],
+  ])('reads a known width off %s', (name, width) => {
+    expect(namedWidth(name)).toBe(width)
+  })
+
+  it.each([
+    ['a number no size names', 'overview-1100'],
+    ['a duplicate suffix', 'overview-2'],
+    ['a duplicate of a suffixed name', 'overview-390-2'],
+    ['a year', 'hero-2024'],
+    ['a ratio', 'ratio-16-9'],
+    ['a height', 'overview-844'],
+    ['a padded number', 'overview-0390'],
+    ['digits with no hyphen', 'overview390'],
+    ['a width alone', '390'],
+    ['no suffix', 'overview'],
+  ])('reads nothing off %s', (_label, name) => {
+    expect(namedWidth(name)).toBeUndefined()
   })
 })
