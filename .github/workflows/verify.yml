@@ -127,11 +127,16 @@ jobs:
           path: dist/
           retention-days: 1
 
-  e2e-tests:
-    name: 🎭 E2E Tests
+  e2e-shards:
+    name: 🎭 E2E Shard ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    needs: [static-checks, unit-tests, build-verify]
+    timeout-minutes: 15
+    needs: build-verify
+    strategy:
+      # One red shard leaves the rest running, so a run names every failure.
+      fail-fast: false
+      matrix:
+        shard: [1/4, 2/4, 3/4, 4/4]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -170,12 +175,29 @@ jobs:
       - name: Run E2E Tests
         env:
           DIST_PREBUILT: 'true'
-        run: bun run test:e2e --project=chromium
+          SHARD: ${{ matrix.shard }}
+        run: bun run test:e2e --project=chromium --shard="$SHARD"
 
       - name: Upload E2E Report
         uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ strategy.job-index }}
           path: playwright-report/
           retention-days: 7
+
+  # The ruleset requires this name. GitHub passes a required job that was
+  # skipped, so it runs on every outcome and fails unless each shard passed.
+  e2e-tests:
+    name: 🎭 E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: e2e-shards
+    if: always()
+    steps:
+      - name: Require Every Shard
+        env:
+          RESULT: ${{ needs.e2e-shards.result }}
+        run: |
+          echo "E2E shards: $RESULT"
+          test "$RESULT" = success
