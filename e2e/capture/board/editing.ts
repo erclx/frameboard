@@ -783,6 +783,48 @@ async function twoLayersSelected(page: Page): Promise<void> {
 }
 
 /**
+ * Answers hero's tree with the Headline locked and the Caption hidden, the
+ * tracked fixture holding neither, then opens its rows and focuses the
+ * Headline's, which draws the eye a pointer reveals.
+ */
+async function flaggedRows(page: Page): Promise<void> {
+  const flags: Record<string, object> = {
+    Headline: { locked: true },
+    Caption: { hidden: true },
+  }
+  await page.route('**/api/frames/elements?*', async (route) => {
+    const response = await route.fetch()
+    const answer = await response.json()
+    answer.data.elements = answer.data.elements.map(
+      (row: { name: string }) => ({
+        ...row,
+        ...flags[row.name],
+      }),
+    )
+    await route.fulfill({ response, json: answer })
+  })
+  await page.addInitScript((frames) => {
+    let left = frames
+    const run = () => {
+      const closed = document.querySelector<HTMLButtonElement>(
+        'button[aria-expanded="false"]:is([aria-label="Show the elements of hero"], [aria-label="Show what Caption holds"])',
+      )
+      const rows = document.querySelectorAll<HTMLButtonElement>(
+        'ul[aria-label="Elements of hero"] button:not([aria-label])',
+      )
+      if (rows.length === 3) {
+        rows[0]?.focus()
+        return
+      }
+      closed?.click()
+      if (--left > 0) requestAnimationFrame(run)
+      else console.error("hero's element rows never drew")
+    }
+    document.addEventListener('DOMContentLoaded', run)
+  }, ROW_FRAMES)
+}
+
+/**
  * Focuses hero's Layers row once it draws, after a pointer press when
  * `pointer` is set and with no press otherwise, so the shot shows the ring a
  * keyboard reaches and the ringless row a click leaves.
@@ -1306,6 +1348,23 @@ export function editingCases(theme: 'light' | 'dark'): CaptureCase[] {
           twoLayersSelected,
           readyWhen(
             'ul[aria-label="Elements of hero"] li:has([aria-current="true"]) ~ li:has([aria-current="true"])',
+          ),
+        ),
+      ),
+    },
+    {
+      // Hero's Headline locked and focused, its Caption hidden, and the Caption's child dimmed with it.
+      section: 'layers-flags',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          flaggedRows,
+          readyWhen(
+            'ul[aria-label="Elements of hero"] li[aria-label="Command, hidden"]',
           ),
         ),
       ),
