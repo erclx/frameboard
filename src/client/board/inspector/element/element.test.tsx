@@ -702,6 +702,12 @@ describe('InspectorPanel with an element selected', () => {
         if (url.includes('/tokens')) {
           return Response.json({ ok: true, data: TABLE })
         }
+        if (url.includes('/fonts/installed')) {
+          return Response.json({
+            ok: true,
+            data: { version: 1, project: 'studio', fonts: [] },
+          })
+        }
         return Response.json({
           ok: true,
           data: {
