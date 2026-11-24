@@ -257,9 +257,9 @@ const PAST_EDGE = join(
   '../../../scripts/lib/drive-past-edge.html',
 )
 
-/** Both pictures asked for, whose loading holds the page's own. */
+/** Both pictures asked for, whose loading holds the page's own, beside the check's finding. */
 const PAINTED_BOTH =
-  'div:has(> img[src^="/api/frames/png"]) + div > img[src^="/api/frames/png"]'
+  'body:has([data-findings-badge="webapp/home/hero"]) div:has(> img[src^="/api/frames/png"]) + div > img[src^="/api/frames/png"]'
 
 /**
  * Serves the past-edge page in the hero's place, with its clipping switched

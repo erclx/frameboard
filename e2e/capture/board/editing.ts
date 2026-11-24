@@ -1,3 +1,6 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { type Page } from '@playwright/test'
 
 import type { ServerMessage } from '@/shared/live-messages'
@@ -17,30 +20,30 @@ import {
   elementInFrame,
   focusOnLoad,
   headlineOnHero,
+  noAgentChanges,
   onCanvas,
   PRESS_FRAMES,
   pressOnLoad,
   readyWhen,
   ROW_FRAMES,
+  SERVED_BOARD,
   STATE_ONLY,
   themedFor,
   WRITES_GRANTED,
 } from './setup'
 
 /**
- * Serves the hero with a Free 160 by 120 box at `left` in its 1440 px width,
- * added to the bytes on the way to the tab, so the fixture on disk never
- * holds it and the frame keeps the hash its file stamps.
+ * The hero with a Free 160 by 120 box at `left` in its 1440 px width, in its
+ * file since the picture route renders that, put back when the page closes.
  */
 function freeBoxOnHero(left: number): (page: Page) => Promise<void> {
   return async (page) => {
-    await page.route('**/frames/webapp/home/hero.html*', async (route) => {
-      const response = await route.fetch()
-      const box = `<div data-name="Box" style="position: absolute; left: ${left}px; top: 300px; width: 160px; height: 120px; background: var(--primary)"></div>`
-      await route.fulfill({
-        response,
-        body: (await response.text()).replace('</body>', `${box}</body>`),
-      })
+    const path = join(SERVED_BOARD, 'webapp/home/hero.html')
+    const original = readFileSync(path, 'utf8')
+    const box = `<div data-name="Box" style="position: absolute; left: ${left}px; top: 300px; width: 160px; height: 120px; background: var(--primary)"></div>`
+    writeFileSync(path, original.replace('</body>', `${box}</body>`))
+    page.once('close', () => {
+      writeFileSync(path, original)
     })
   }
 }
@@ -1239,6 +1242,7 @@ export function editingCases(theme: 'light' | 'dark'): CaptureCase[] {
     {
       // A Free box running 60 px past the hero's right edge, ghosted there while the hero is selected.
       section: 'free-drag-ghost',
+      writes: 'board',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -1247,8 +1251,11 @@ export function editingCases(theme: 'light' | 'dark'): CaptureCase[] {
       setup: themed(
         both(
           freeBoxOnHero(1340),
+          noAgentChanges,
           onCanvas({ select: ['webapp/home/hero'] }),
-          readyWhen('[data-element-ghost]'),
+          readyWhen(
+            'body:has([data-findings-badge="webapp/home/hero"]) [data-element-ghost] > img',
+          ),
         ),
       ),
     },
