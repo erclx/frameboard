@@ -110,6 +110,10 @@
           "disposition": "customized",
           "base": "sha256:f5e7b7d244eb0d26a7a7e4c0dc7474961d45097c2461910faae9095f06b9b760"
         },
+        "package.json:readme-screenshot": {
+          "disposition": "declined",
+          "reason": "It runs scripts/readme-screenshot.sh, which is declined"
+        },
         "package.json:screenshot": {
           "disposition": "customized",
           "base": "sha256:bc35258b147950c026e4eb66f60291deb057b27987e13e86577f161fb85b8b9e"
@@ -129,6 +133,10 @@
         "package.json:test:run": {
           "disposition": "customized",
           "base": "sha256:a9f07d70d30ee848c66c3a46453a52ce11dd6eb2067d020162b67c6d853567b7"
+        },
+        "scripts/readme-screenshot.sh": {
+          "disposition": "declined",
+          "reason": "The README shows the .github/readme-hero-loop clips, so no README capture runs"
         },
         "scripts/worktree-port.sh": {
           "disposition": "customized",
