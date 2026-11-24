@@ -909,7 +909,9 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           heroAtTwoWidths,
           noAgentChanges,
           onCanvas({ select: ['webapp/home/hero'] }),
-          pointerPressOnLoad('button[aria-label="Add a width"]'),
+          pointerPressOnLoad(
+            '[aria-labelledby="inspector-widths"] button[aria-haspopup="menu"]',
+          ),
           readyWhen('[role="menu"] [role="menuitem"]'),
         ),
       ),

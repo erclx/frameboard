@@ -7,6 +7,9 @@ paths:
   - '**/*.jsx'
   - '**/*.sh'
   - '**/*.py'
+  - '.github/workflows/**'
+  - '**/action.yml'
+  - '**/action.yaml'
 ---
 
 # Code comment standards
@@ -17,7 +20,6 @@ paths:
 - Do not restate in prose what the line beside it already says.
 - Do not comment a self-contained function whose signature and body already carry its behavior.
 - Hold a file of 50 or more non-blank lines to 15% comment text, counted in text lines so delimiters cost no reason.
-- Give a comment on an internal declaration or a member a reason or a constraint, never a description its name and type already carry.
 
 ## What a comment may claim
 

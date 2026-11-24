@@ -1,32 +1,11 @@
-import type { Page } from '@playwright/test'
+import type { CaptureCase as HarnessCase } from '../capture-types'
 
-/**
- * The case shape e2e/screenshot.ts reads. That file is a golden config a sync
- * replaces, so Frameboard restates the shape here, and assigning these cases to
- * its own CaptureCase type makes tsc report any drift after a sync.
- */
-export interface CaptureSection {
-  name: string
-  selector: string
-}
-
-export interface CaptureCase {
-  section: string
-  theme: string
-  route: string
-  /** Names of viewports this case skips, for a route that reflows rather than breaks at that width. */
-  excludeViewports?: readonly string[]
-  /** Also write the 320 and 1280 frames to the committed baseline under EVIDENCE_ROOT. */
-  evidence?: boolean
-  /** Selectors painted over in every frame, for a value that moves between runs with no code change. */
-  mask?: readonly string[]
-  /** Parts of the route captured as their own frames beside the whole page. */
-  sections?: CaptureSection[]
+/** The harness's case shape, with the ordering a run against the served board needs. */
+export interface CaptureCase extends HarnessCase {
   /**
    * Marks a case that writes the served board, so it runs after every case
    * that does not. `assets` runs after every `board` writer too, for a case
    * whose files stay in the served project.
    */
   writes?: 'board' | 'assets'
-  setup?: (page: Page) => Promise<void>
 }

@@ -586,7 +586,8 @@ async function holdTileOverCanvas(page: Page): Promise<void> {
     }
     const run = () => {
       const tile = document.querySelector(
-        'button[aria-label^="Copy path of clip.webm,"]',
+        // Draggable once the server grants writes, and an earlier start is lost.
+        'button[aria-label^="Copy path of clip.webm,"][draggable="true"]',
       )
       const layer = document.querySelector('[data-hit-layer]')
       const point =
