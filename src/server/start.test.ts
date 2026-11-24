@@ -262,6 +262,11 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
   beforeEach(async () => {
     clientDir = mkdtempSync(join(tmpdir(), 'frameboard-client-'))
     board = copyFixtureBoard('live')
+    // Held past the hello, so no slice lands between two of its messages.
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
     server = await startServer({
       clientDir,
       facesDir: clientDir,
@@ -269,6 +274,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
       port: 0,
       openUrl: () => {},
       launch: noBrowser,
+      pause: () => gate,
     })
     messages = []
     socket = new WebSocket(`ws://127.0.0.1:${server.port}/api/live`)
@@ -279,7 +285,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     await expect
       .poll(() => messages.length, { timeout: 5000 })
       .toBeGreaterThanOrEqual(8)
-    // The start's check can still be sending its slices.
+    release()
     await expect
       .poll(
         () =>
@@ -1446,6 +1452,29 @@ describe('startServer remembered checks', { timeout: 30_000 }, () => {
     },
   )
 
+  it('rechecks a frame loading a sheet of another page, edited while no server ran', async () => {
+    write('studio/pricing/shared.css', 'p { color: red }')
+    write(
+      'studio/home/hero.html',
+      '<link rel="stylesheet" href="../pricing/shared.css"><p>hero</p>',
+    )
+    const first = await start()
+    await check(first, REFS)
+    await first.close()
+
+    const second = await start()
+    await helloFindings(second)
+    await second.close()
+    const unchanged = stored()['studio/home/hero']
+    write('studio/pricing/shared.css', 'p { color: var(--missing) }')
+
+    const third = await start({ pause: heldPause() })
+    const { findings } = await helloFindings(third)
+
+    expect(unchanged?.outside).toEqual(['studio/pricing/shared.css'])
+    expect(Object.keys(findings)).toEqual(['studio/home/mobile'])
+  })
+
   it('checks a frame written mid-sweep against its new bytes, and once', async () => {
     const server = await start({ pause: heldPause() })
     const messages = await connect(server)
@@ -1564,6 +1593,17 @@ describe('startServer remembered checks', { timeout: 30_000 }, () => {
         .toBe(1200)
       await check(second, REFS)
       expect([...loaded]).toEqual(['studio/home/hero'])
+    })
+
+    it('measures a frame sized off the viewport once, opening no page on the next start', async () => {
+      write('studio/home/hero.html', page('<div style="height: 100vh"></div>'))
+      await warm()
+      const { launch, loaded } = recorded()
+
+      const second = await start({ launch })
+      await check(second, REFS)
+
+      expect([...loaded]).toEqual([])
     })
 
     it('checks again only a frame given a linked width while no server ran', async () => {

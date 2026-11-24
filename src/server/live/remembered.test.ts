@@ -163,6 +163,7 @@ describe('createFrameKeys', () => {
     write('site/home/added.html', '<p>added</p>')
     write('site/home/notes.json', '{ "version": 1, "notes": [] }')
     write('site/home/.draft.css', 'p {}')
+    write('site/assets/photo.png.license.json', '{}')
     write('site/blog/post.html', '<p>new</p>')
     write('other/assets/photo.png', 'photo')
     const after = await keysOf(HERO)
@@ -187,6 +188,80 @@ describe('createFrameKeys', () => {
     utimesSync(join(board.root, 'site/home/hero.html'), later, later)
 
     expect((await keysOf(HERO)).checks).toBe(before.checks)
+  })
+
+  it.each([
+    ["a neighbor page's sheet", 'site/blog/shared.css', '../blog/shared.css'],
+    [
+      "another project's script",
+      'other/assets/app.js',
+      '../../other/assets/app.js',
+    ],
+    ['a dot-named sheet beside it', 'site/home/.draft.css', '.draft.css'],
+  ])('moves on %s the frame loads', async (_name, path, url) => {
+    write(path, 'p { color: red }')
+    write(
+      'site/home/hero.html',
+      path.endsWith('.js')
+        ? `<script src="${url}"></script>`
+        : `<link rel="stylesheet" href="${url}">`,
+    )
+    const before = await keysOf(HERO)
+
+    write(path, 'p { color: rebeccapurple }')
+    const after = await keysOf(HERO)
+
+    expect(after.checks).not.toBe(before.checks)
+    expect(after.rendered).not.toBe(before.rendered)
+    expect(before.outside).toEqual([path])
+  })
+
+  it('moves on a sheet a file in the assets imports from another page', async () => {
+    write('site/assets/theme.css', '@import "../blog/shared.css";')
+    write('site/blog/shared.css', 'p { color: red }')
+    write(
+      'site/home/hero.html',
+      '<link rel="stylesheet" href="../assets/theme.css">',
+    )
+    const before = await keysOf(HERO)
+
+    write('site/blog/shared.css', 'p { color: blue }')
+
+    expect((await keysOf(HERO)).checks).not.toBe(before.checks)
+  })
+
+  it('moves on a missing file outside its folders arriving', async () => {
+    write('site/home/hero.html', '<img src="../blog/late.png">')
+    const before = await keysOf(HERO)
+
+    write('site/blog/late.png', 'late')
+
+    expect((await keysOf(HERO)).checks).not.toBe(before.checks)
+  })
+
+  it('gives the same keys for the outside files a start stored', async () => {
+    write('site/blog/shared.css', 'p { color: red }')
+    write(
+      'site/home/hero.html',
+      '<link rel="stylesheet" href="../blog/shared.css">',
+    )
+    const before = await keysOf(HERO)
+
+    const after = await createFrameKeys(board.root).of(
+      await frameOf(HERO),
+      before.outside,
+    )
+
+    expect(after?.checks).toBe(before.checks)
+  })
+
+  it('covers no file outside for a frame loading its own folders alone', async () => {
+    write(
+      'site/home/hero.html',
+      '<link rel="stylesheet" href="styles.css"><img src="../assets/photo.png">',
+    )
+
+    expect((await keysOf(HERO)).outside).toEqual([])
   })
 
   it('moves on the frame naming another kit', async () => {
@@ -330,6 +405,7 @@ describe('createRememberedStore', () => {
       checks: { key: 'a', findings: [] },
       rendered: { key: 'b', findings: [FINDING] },
       measured: 'c',
+      outside: ['site/blog/shared.css'],
     },
   }
 

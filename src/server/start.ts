@@ -245,6 +245,13 @@ async function listen({
   // A log that fails to save costs the next start its marks, never this one its changes.
   const saveLog = () => tracker.save().catch(() => {})
   const keys = createFrameKeys(root, { tokens })
+  // The files each frame's keys cover past its folders, for the next start to key it by.
+  const outside = new Map<string, string[]>()
+  const keysOf = async (frame: FrameRecord) => {
+    const now = await keys.of(frame)
+    if (now) outside.set(frame.ref, now.outside)
+    return now
+  }
   // The key each hugging frame's stored size was measured under.
   const measured = new Map<string, string>()
   const store = createRememberedStore(root, () => {
@@ -252,6 +259,8 @@ async function listen({
     for (const { ref } of scanned.board ? framesOf(scanned.board) : []) {
       const key = measured.get(ref)
       if (key !== undefined) frames[ref] = { ...frames[ref], measured: key }
+      const files = outside.get(ref) ?? []
+      if (files.length > 0) frames[ref] = { ...frames[ref], outside: files }
     }
     return frames
   })
@@ -262,7 +271,7 @@ async function listen({
       framesOf(board)
         .filter(({ ref }) => asked.has(ref))
         .map(async (frame) => {
-          const key = (await keys.of(frame))?.checks
+          const key = (await keysOf(frame))?.checks
           return key === undefined ? [] : [[frame.ref, key] as const]
         }),
     )
@@ -405,7 +414,7 @@ async function listen({
   let rendering: string | undefined
   const rendered = createRenderedFindings({
     check: async (frame) => {
-      rendering = (await keys.of(frame))?.rendered
+      rendering = (await keysOf(frame))?.rendered
       const list = await acrossWidths(frame, async (box) =>
         checkRendered(await browser.get(), {
           baseUrl: baseUrl(),
@@ -454,7 +463,7 @@ async function listen({
     root,
     measure,
     remember: async (frame) => {
-      const at = await keys.of(frame)
+      const at = await keysOf(frame)
       return (size) => {
         if (!at) return
         measured.set(frame.ref, at.measured(size))
@@ -574,8 +583,10 @@ async function listen({
       board,
       refs.filter((ref) => held[ref]?.rendered),
     )
-    for (const [ref, { measured: key }] of Object.entries(held)) {
+    for (const ref of refs) {
+      const key = held[ref]?.measured
       if (key !== undefined) measured.set(ref, key)
+      outside.set(ref, stored[ref]?.outside ?? [])
     }
     const stale = written.filter((ref) => !measured.has(ref))
     // A stale frame's box moves with its measure, so the checks wait on it.
@@ -854,8 +865,8 @@ async function unmoved(
 ): Promise<Record<string, RememberedFrame>> {
   const frames = await Promise.all(
     framesOf(board).map(async (frame) => {
-      const { checks, rendered, measured } = stored[frame.ref] ?? {}
-      const now = await keys.of(frame)
+      const { checks, rendered, measured, outside } = stored[frame.ref] ?? {}
+      const now = await keys.of(frame, outside ?? [])
       const held: RememberedFrame = {
         ...(now && checks?.key === now.checks ? { checks } : {}),
         ...(now && rendered?.key === now.rendered ? { rendered } : {}),

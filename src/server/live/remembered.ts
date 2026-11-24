@@ -11,7 +11,13 @@ import {
   TEMP_SUFFIX,
   writeRecord,
 } from '@/server/board/json-record'
-import { boardPath } from '@/server/checks/frame-source'
+import {
+  boardPath,
+  frameFrom,
+  isInside,
+  localTarget,
+} from '@/server/checks/frame-source'
+import { frameLoads } from '@/server/checks/links'
 import { boardSheetPath } from '@/server/checks/tokens'
 import { contentHash } from '@/server/edit/address'
 import { NOTES_FILE } from '@/server/notes/store'
@@ -25,6 +31,7 @@ import {
 } from '@/shared/board-files'
 import { findingSchema } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
+import { LICENSE_FILE_SUFFIX } from '@/shared/records/sourcing'
 import { version as ownVersion } from '@/shared/version'
 
 const STORE_FILE = 'checks.json'
@@ -44,6 +51,7 @@ const storeSchema = z.looseObject({
       checks: keptSchema.optional(),
       rendered: keptSchema.optional(),
       measured: z.string().optional(),
+      outside: z.array(z.string()).optional(),
     }),
   ),
 })
@@ -51,7 +59,10 @@ const storeSchema = z.looseObject({
 /** Findings under the key of what they were read from. */
 export type Kept = z.infer<typeof keptSchema>
 
-/** One frame's results, `measured` the key its stored size was measured under. */
+/**
+ * One frame's results, `measured` the key its stored size was measured under
+ * and `outside` the files its keys cover past its page folder and `assets/`.
+ */
 export type RememberedFrame = z.infer<typeof storeSchema>['frames'][string]
 
 /** The keys a frame's results are kept under, each moving with what that result depends on. */
@@ -60,23 +71,28 @@ export interface FrameKeys {
   rendered: string
   /** The key of a measure that stores `size`, or of the size the frame holds. */
   measured: (size?: MeasuredSize) => string
+  /** The board paths of the files these keys cover past the page folder and `assets/`. */
+  outside: string[]
 }
 
 export interface KeyMaker {
   /**
-   * The keys of what `frame` is now, null once its file is gone. Read before
-   * the check whose result is kept, since an input written mid-check then
-   * leaves an older key, which costs a recheck and never hides one.
+   * The keys of what `frame` is now, null once its file is gone. Read ahead of
+   * the check they keep, so an input written mid-check costs only a recheck. A
+   * start passes the `outside` it stored, which spares a parse.
    */
-  of: (frame: FrameRecord) => Promise<FrameKeys | null>
+  of: (
+    frame: FrameRecord,
+    outside?: readonly string[],
+  ) => Promise<FrameKeys | null>
   /** Forgets what a batch's paths may have moved. */
   drop: (paths: readonly string[]) => void
 }
 
 /**
  * Keys frames by the bytes of their file, project file, and token sheets, the
- * path, size, and time of what else their page folder and `assets/` hold, and
- * the Frameboard version, which pins the rules, the browser, and the faces.
+ * path, size, and time of what else their folders hold or they load, and the
+ * Frameboard version, which pins the rules, the browser, and the faces.
  */
 export function createFrameKeys(
   root: string,
@@ -105,7 +121,7 @@ export function createFrameKeys(
     )
 
   return {
-    of: async (frame) => {
+    of: async (frame, stored) => {
       let source: string
       try {
         source = await readFile(frame.path, 'utf8')
@@ -120,6 +136,7 @@ export function createFrameKeys(
           readPage(join(root, project, page)),
         ),
       ])
+      const outside = stored ? [...stored] : outsideLoads(root, frame, source)
       const checks = contentHash(
         JSON.stringify([
           version,
@@ -130,10 +147,14 @@ export function createFrameKeys(
           inPage.beside,
           // A neighbor reaches only a frame that embeds it.
           /<(?:iframe|object|embed)\b/i.test(source) ? inPage.frames : null,
+          await Promise.all(
+            outside.map((path) => describeFile(join(root, path))),
+          ),
         ]),
       )
       const drawn = [frame.device ?? null, frame.turn ?? null]
       return {
+        outside,
         checks,
         rendered: contentHash(
           JSON.stringify([
@@ -278,6 +299,34 @@ async function readPage(dir: string): Promise<PageFiles> {
   }
 }
 
+/**
+ * The board paths of every local file a frame loads, through its sheets too,
+ * that no folder's files already cover, missing ones included.
+ */
+function outsideLoads(
+  root: string,
+  { project, page, name }: FrameRecord,
+  source: string,
+): string[] {
+  const frame = frameFrom({ root, project, page, name }, source)
+  const folders = [frame.pageDir, join(frame.projectDir, ASSETS_FOLDER)]
+  const targets = frameLoads(frame).flatMap(
+    ({ url, base }) => localTarget(url, base) ?? [],
+  )
+  return [...new Set(targets)]
+    .filter(
+      (path) =>
+        !folders.some(
+          (folder) =>
+            isInside(folder, path) &&
+            // Dot-named files are the ones a folder's files leave out.
+            !relative(folder, path).split(sep).some(isLeftOut),
+        ),
+    )
+    .map((path) => boardPath(root, path))
+    .sort()
+}
+
 /** Every file under `dir` as its path, size, and time, in path order. */
 async function filesUnder(dir: string): Promise<string[]> {
   return describeAll(dir, await entriesOf(dir))
@@ -290,31 +339,41 @@ async function describeAll(
   const lines = await Promise.all(
     entries.map(async (entry) => {
       const path = join(dir, entry.name)
-      if (entry.isDirectory()) return filesUnder(path)
-      try {
-        const { size, mtimeMs } = await stat(path)
-        // A link adds where it points and is never walked, so a loop of links ends.
-        const target = entry.isSymbolicLink() ? await realpath(path) : ''
-        return [[path, size, mtimeMs, target].join('\n')]
-      } catch {
-        return [path]
-      }
+      return entry.isDirectory() ? filesUnder(path) : [await describeFile(path)]
     }),
   )
   return lines.flat()
 }
 
-/** A folder's entries by name, without what the watcher ignores, none for a missing one. */
+/** A file's path, size, time, and real path, so a link never walked still moves with its target. */
+async function describeFile(path: string): Promise<string> {
+  try {
+    const [{ size, mtimeMs }, real] = await Promise.all([
+      stat(path),
+      realpath(path),
+    ])
+    return [path, size, mtimeMs, real].join('\n')
+  } catch {
+    return path
+  }
+}
+
+/** What the watcher ignores, and the license record beside a sourced file, which no frame renders. */
+function isLeftOut(name: string): boolean {
+  return (
+    name.startsWith('.') ||
+    name.endsWith(LOCK_SUFFIX) ||
+    name.endsWith(TEMP_SUFFIX) ||
+    name.endsWith(LICENSE_FILE_SUFFIX)
+  )
+}
+
+/** A folder's entries by name, none for a missing one. */
 async function entriesOf(dir: string): Promise<Dirent[]> {
   try {
     const entries = await readdir(dir, { withFileTypes: true })
     return entries
-      .filter(
-        ({ name }) =>
-          !name.startsWith('.') &&
-          !name.endsWith(LOCK_SUFFIX) &&
-          !name.endsWith(TEMP_SUFFIX),
-      )
+      .filter(({ name }) => !isLeftOut(name))
       .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
   } catch {
     return []
