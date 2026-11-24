@@ -44,6 +44,21 @@ afterEach(() => {
 })
 
 describe('ThemeTab', () => {
+  it('starts the Fonts section over in another project, closing an open search', async () => {
+    act(() => liveStore.setState({ canWrite: true }))
+    const load = async () => table([])
+    const { rerender } = render(<ThemeTab project="studio" load={load} />)
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Find a font' }),
+    )
+
+    rerender(<ThemeTab project="marketing" load={load} />)
+
+    expect(screen.queryByRole('searchbox')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Find a font' })).toBeVisible()
+    act(() => liveStore.setState({ canWrite: false }))
+  })
+
   it('names the board sheet it read', async () => {
     render(<ThemeTab project="studio" load={async () => table([])} />)
 

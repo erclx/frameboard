@@ -43,7 +43,8 @@ export function ThemeTab(props: ThemeTabProps) {
   return (
     <>
       <KitsSection project={props.project} />
-      <FontsSection project={props.project} />
+      {/* Keyed by project, so an open search and a read list never carry into another project. */}
+      <FontsSection key={props.project} project={props.project} />
       <TokensSection {...props} />
     </>
   )
