@@ -860,6 +860,156 @@ describe('FrameSection', () => {
       await waitFor(() => expect(toggle()).not.toBeChecked())
     })
   })
+
+  describe('Clip content', () => {
+    /** A structure whose flag write answers `answer`, recording each body sent. */
+    function flagCalls(answer: () => Response) {
+      const sent: unknown[] = []
+      const calls = createStructure(async (path, init) => {
+        sent.push({ path, ...JSON.parse(String(init?.body)) })
+        return answer()
+      })
+      return { sent, calls }
+    }
+    const ok = () => Response.json({ ok: true, data: [] })
+    const toggle = () => screen.getByRole('switch', { name: 'Clip content' })
+    const OPEN = { ...SWATCHES, showOverflow: true as const }
+
+    it('reads on for a frame never switched', () => {
+      render(<FrameSection page={PAGE} frames={[SWATCHES]} />)
+
+      expect(toggle()).toBeChecked()
+      expect(toggle()).toBeEnabled()
+    })
+
+    it('reads off for a frame showing its content past the edge', () => {
+      render(<FrameSection page={PAGE} frames={[OPEN]} />)
+
+      expect(toggle()).not.toBeChecked()
+    })
+
+    it('shows every frame past its edge in one write', async () => {
+      const { sent, calls } = flagCalls(ok)
+      render(
+        <FrameSection page={PAGE} frames={[SWATCHES, SUNSET]} calls={calls} />,
+      )
+
+      await userEvent.click(toggle())
+
+      expect(sent).toEqual([
+        {
+          path: '/api/frame/flag',
+          refs: [SWATCHES.ref, SUNSET.ref],
+          flag: 'showOverflow',
+          on: true,
+        },
+      ])
+      expect(toggle()).not.toBeChecked()
+    })
+
+    it('clips a frame again, clearing the flag', async () => {
+      const { sent, calls } = flagCalls(ok)
+      render(<FrameSection page={PAGE} frames={[OPEN]} calls={calls} />)
+
+      await userEvent.click(toggle())
+
+      expect(sent).toMatchObject([{ flag: 'showOverflow', on: false }])
+      expect(toggle()).toBeChecked()
+    })
+
+    it('reads Mixed over frames that differ, and a press clips both', async () => {
+      const { sent, calls } = flagCalls(ok)
+      render(<FrameSection page={PAGE} frames={[OPEN, SUNSET]} calls={calls} />)
+      expect(screen.getByText('Mixed')).toBeInTheDocument()
+      expect(toggle()).not.toBeChecked()
+
+      await userEvent.click(toggle())
+
+      expect(sent).toMatchObject([
+        { refs: [SWATCHES.ref, SUNSET.ref], on: false },
+      ])
+    })
+
+    it('reads the stored flag again once an undo puts it back', async () => {
+      const { calls } = flagCalls(ok)
+      const { rerender } = render(
+        <FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />,
+      )
+      await userEvent.click(toggle())
+      rerender(<FrameSection page={PAGE} frames={[OPEN]} calls={calls} />)
+      expect(toggle()).not.toBeChecked()
+
+      rerender(<FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />)
+
+      expect(toggle()).toBeChecked()
+    })
+
+    it.each([
+      ['scrolls', { ...OPEN, scroll: true }],
+      [
+        'shows its device',
+        { ...OPEN, showDevice: true, device: 'tablet' as const },
+      ],
+    ])('stands on and disabled for a frame that %s', (_name, frame) => {
+      render(<FrameSection page={PAGE} frames={[frame]} />)
+
+      expect(toggle()).toBeDisabled()
+      expect(toggle()).toBeChecked()
+    })
+
+    it('stays live over a scroll frame and one that can show past its edge', () => {
+      render(
+        <FrameSection
+          page={PAGE}
+          frames={[{ ...SWATCHES, scroll: true }, SUNSET]}
+        />,
+      )
+
+      expect(toggle()).toBeEnabled()
+    })
+
+    it('stands disabled on a locked frame', () => {
+      render(
+        <FrameSection page={PAGE} frames={[{ ...SWATCHES, locked: true }]} />,
+      )
+
+      expect(toggle()).toBeDisabled()
+    })
+
+    it('rolls back to on when the write is refused, as an older server refuses the flag', async () => {
+      const { calls } = flagCalls(() =>
+        Response.json(
+          { ok: false, error: { code: 'usage', message: 'Unknown flag.' } },
+          { status: 400 },
+        ),
+      )
+      render(<FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />)
+
+      await userEvent.click(toggle())
+
+      await waitFor(() => expect(toggle()).toBeChecked())
+    })
+
+    it('takes focus after Show device and turns on Space', async () => {
+      const { sent, calls } = flagCalls(ok)
+      render(
+        <TooltipProvider>
+          <FrameSection page={PAGE} frames={[SWATCHES]} calls={calls} />
+        </TooltipProvider>,
+      )
+      act(() => screen.getByRole('switch', { name: 'Show device' }).focus())
+      await userEvent.tab()
+      expect(
+        screen.getByRole('button', { name: 'About Clip content' }),
+      ).toHaveFocus()
+
+      await userEvent.tab()
+      await userEvent.keyboard(' ')
+
+      expect(toggle()).toHaveFocus()
+      expect(sent).toMatchObject([{ flag: 'showOverflow', on: true }])
+    })
+  })
 })
 
 /** Drags a scrub area right by `moves` of base-ui's two pixel steps and releases it. */
