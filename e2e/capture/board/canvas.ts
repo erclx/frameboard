@@ -185,6 +185,28 @@ async function devicesTurned(page: Page): Promise<void> {
 }
 
 /**
+ * Shows the about frame's phone with a tablet and a laptop width linked past
+ * it, the hero hidden, so the row's three bodies fill the view.
+ */
+async function linkedDevicesShown(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.frames.hero.hidden = true
+  Object.assign(layout.frames.about, {
+    showDevice: true,
+    widths: [
+      { width: 834, height: 1194 },
+      { width: 1440, height: 900 },
+    ],
+  })
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+  })
+}
+
+/**
  * Shows the about frame's phone, upright at 390 by 844 or turned left at
  * the box a turn writes, with a page of rows running far past its box.
  */
@@ -732,6 +754,26 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           onCanvas({ select: ['webapp/home/about'] }),
           readyWhen(
             'body:has([data-bezel="phone"]):has([data-bezel="laptop"])',
+          ),
+        ),
+      ),
+    },
+    {
+      // A phone's linked widths, each in the body its width names and clear of the last.
+      section: 'device-linked-widths',
+      writes: 'board',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          linkedDevicesShown,
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          readyWhen(
+            'body:has([data-linked-width="834"] [data-bezel="tablet"]):has([data-linked-width="1440"] [data-bezel="laptop"])',
           ),
         ),
       ),
