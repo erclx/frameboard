@@ -348,10 +348,15 @@ export const measureHandlers: Handlers = {
       subtree: true,
     })
     addEventListener('resize', later)
+    // A face or an image landing late moves what it lays out, with no style written.
+    document.fonts.addEventListener('loadingdone', later)
+    document.addEventListener('load', later, true)
     onClose(() => {
       cancelAnimationFrame(pending)
       styles.disconnect()
       removeEventListener('resize', later)
+      document.fonts.removeEventListener('loadingdone', later)
+      document.removeEventListener('load', later, true)
     })
     return frameOverflow()
   },
