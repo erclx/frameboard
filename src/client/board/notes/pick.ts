@@ -41,8 +41,8 @@ export interface FramePick extends NotePick {
 
 /**
  * The frame under a point and what its live page hit-tests there, the page
- * answering over the bridge. A placeholder frame or a page that never
- * answers takes a frame note, and `unlocked` passes over locked elements.
+ * answering over the bridge, `unlocked` passing over locked elements. A
+ * placeholder frame or a page that never answers takes a frame note.
  */
 export async function readPick(
   container: ParentNode,

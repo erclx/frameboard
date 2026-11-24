@@ -153,10 +153,9 @@ export type FrameFileEdits =
   | Collided
 
 /**
- * Edits several elements as one write, all or none. One element named twice is
- * refused, since one undo could not put both spans back, except a text beside
- * a style or several attributes, which answer one span over the element. A
- * hide states the attribute alone where `mayShow` is not given.
+ * Edits several elements as one write, all or none. One named twice is refused,
+ * since one undo could not put both spans back, except a text beside a style
+ * or several attributes. A hide with no `mayShow` states the attribute alone.
  */
 export function editFrameFileAll(
   path: string,

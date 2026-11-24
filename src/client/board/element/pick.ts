@@ -26,10 +26,9 @@ function statedIn(
 }
 
 /**
- * The deepest element the file states under a point, found as a note pin finds
- * its element, a script's element giving way to its stated ancestor and a
- * locked one to what sits behind it. Null where no held tree vouches for the
- * index.
+ * The deepest element the file states under a point, a script's giving way to
+ * its stated ancestor and a locked one to what sits behind it. Null where no
+ * held tree vouches for the index.
  */
 export async function pickElement(
   container: ParentNode,

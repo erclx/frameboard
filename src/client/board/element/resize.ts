@@ -31,10 +31,9 @@ function drawsLive(container: ParentNode, ref: string): boolean {
 }
 
 /**
- * How the element `key` names takes a corner resize, read from what its
- * frame pushed for the selection at the key's bytes, or null for one that
- * takes none, is locked or not measured, or is a placed Text still open for
- * typing.
+ * How the element `key` names takes a corner resize, read from its frame's push
+ * at the key's bytes, or null for one that takes none, is locked or not
+ * measured, or is a placed Text still open for typing.
  */
 export function shownResize(
   container: ParentNode,
