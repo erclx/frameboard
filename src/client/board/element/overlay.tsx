@@ -22,7 +22,7 @@ import { heldStore, holdOutline } from './held'
 import { useGhosts, useMeasures } from './measures'
 import { useLiveMedia } from './media'
 import { MediaBar } from './media-bar'
-import { drawsOverflow, PAINTED_MAX, pictureUrl } from './overflow'
+import { drawsOverflow, paintedIndexes, pictureUrl } from './overflow'
 import { newTextStore } from './text-in-place'
 import { TurnSurface } from './turn-surface'
 
@@ -108,12 +108,13 @@ function FrameGhosts({ frame, ghosted, container }: FrameGhostsProps) {
   const previewed = usePreview(frame.ref) !== undefined
   if (!overflow) return null
   const page = pageBox(pending ?? frame.box, frame.device, frame.turn)
-  return overflow.ghosts.map(({ index, box }, place) => {
+  const painted = paintedIndexes(overflow.ghosts)
+  return overflow.ghosts.map(({ index, box }) => {
     const key = { frame: frame.ref, index, hash: overflow.hash }
     const picture =
-      previewed || place >= PAINTED_MAX
-        ? null
-        : pictureUrl(key, frame.box, theme, version)
+      painted.has(index) && !previewed
+        ? pictureUrl(key, frame.box, theme, version)
+        : null
     if (!ghosted && !picture) return null
     return (
       <Ghost

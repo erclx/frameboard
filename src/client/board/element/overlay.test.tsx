@@ -947,6 +947,42 @@ describe('ElementOverlay', () => {
       expect(pictures(container)[0]?.src).not.toBe(first)
     })
 
+    it.each([
+      ['left', 'left:-50px;top:20px'],
+      ['top', 'left:20px;top:-25px'],
+    ])(
+      'ghosts an element past the %s edge and paints none, which a page shot trims',
+      async (_edge, place) => {
+        act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+
+        const { container } = await drawPainted(
+          OPEN,
+          SOURCE.replace(
+            '<h1>Hello, world</h1>',
+            `<div style="position:absolute;${place};width:100px;height:50px"></div>${BOX}`,
+          ),
+        )
+
+        const ghosts = [...container.querySelectorAll('[data-element-ghost]')]
+        expect(
+          ghosts.map((ghost) => ghost.querySelectorAll('img').length),
+        ).toEqual([0, 1])
+      },
+    )
+
+    it('paints twenty past the right or bottom edge behind one past the left', async () => {
+      const { container } = await drawPainted(
+        OPEN,
+        SOURCE.replace(
+          '<h1>Hello, world</h1>',
+          `<div style="position:absolute;left:-50px;top:20px;width:100px;height:50px"></div>${BOX.repeat(21)}`,
+        ),
+      )
+
+      await waitFor(() => expect(pictures(container)).toHaveLength(20))
+      expect(asked(container, 0).get('element')).toBe('4')
+    })
+
     it('paints the first twenty in document order and leaves the rest', async () => {
       const { container } = await drawPainted(
         OPEN,
