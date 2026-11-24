@@ -39,10 +39,10 @@ const SUNSET = frameOf('sunset', {
   box: { x: 460, y: 280, width: 640, height: 180 },
 })
 
-function renderPanel() {
+function renderPanel(open?: string) {
   return render(
     <TooltipProvider>
-      <InspectorPanel />
+      <InspectorPanel open={open} />
     </TooltipProvider>,
   )
 }
@@ -202,11 +202,7 @@ describe('InspectorPanel', () => {
   })
 
   it('shows the open page’s Page section on Slides while nothing is selected', async () => {
-    render(
-      <TooltipProvider>
-        <InspectorPanel open={PAGE} />
-      </TooltipProvider>,
-    )
+    renderPanel(PAGE)
 
     await userEvent.click(screen.getByRole('tab', { name: 'Slides' }))
 
@@ -214,11 +210,7 @@ describe('InspectorPanel', () => {
   })
 
   it('keeps the Page section off Design', () => {
-    render(
-      <TooltipProvider>
-        <InspectorPanel open={PAGE} />
-      </TooltipProvider>,
-    )
+    renderPanel(PAGE)
 
     expect(screen.queryByRole('region', { name: 'Page' })).toBeNull()
   })
@@ -311,14 +303,52 @@ describe('InspectorPanel', () => {
       expect(screen.getByRole('tab', { name: 'Slides' })).toHaveFocus()
     })
 
-    it('says to open a page on Slides with nothing selected and no page open', async () => {
+    it('says only to open a page on Slides with nothing selected and no page open', () => {
+      inspectorTabStore.setState({ tab: 'slides' })
+
       renderPanel()
 
-      await userEvent.click(screen.getByRole('tab', { name: 'Slides' }))
+      expect(screen.getByRole('tabpanel')).toHaveTextContent(
+        /^Open a page to set how its slides present\.$/,
+      )
+    })
 
-      expect(
-        screen.getByText('Open a page to set how its slides present.'),
-      ).toBeVisible()
+    describe('slide hint', () => {
+      const HINT = 'Select a slide to set its own transition and steps.'
+
+      beforeEach(() => inspectorTabStore.setState({ tab: 'slides' }))
+
+      it('asks for a slide above the open page’s section while nothing is selected', () => {
+        renderPanel(PAGE)
+
+        expect(
+          screen
+            .getByText(HINT)
+            .compareDocumentPosition(
+              screen.getByRole('region', { name: 'Page' }),
+            ),
+        ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+      })
+
+      it.each([
+        ['one frame is', [SWATCHES.ref]],
+        ['several frames are', [SWATCHES.ref, SUNSET.ref]],
+      ])('leaves once %s selected', (_, refs) => {
+        renderPanel(PAGE)
+        expect(screen.getByText(HINT)).toBeVisible()
+
+        act(() => select(selectionStore, PAGE, refs))
+
+        expect(screen.queryByText(HINT)).toBeNull()
+      })
+
+      it('shows while the tab may not write', () => {
+        liveStore.setState({ canWrite: false })
+
+        renderPanel(PAGE)
+
+        expect(screen.getByText(HINT)).toBeVisible()
+      })
     })
 
     it('tabs from the strip into the tab’s first control, past the panel', async () => {
