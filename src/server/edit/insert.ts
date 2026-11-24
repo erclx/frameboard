@@ -636,22 +636,23 @@ export function removeElement(source: string, index: number): Removed {
   return { ok: true, html: removed, span: back.span }
 }
 
-export type Extracted =
-  | {
-      readonly ok: true
-      /** The source with the element taken out. */
-      readonly html: string
-      /** The element as `restoreInserted` puts it back, its bytes in `markup`. */
-      readonly span: InsertedSpan
-      /** A file holding the element alone. */
-      readonly frame: string
-      /** The element's index in `frame`. */
-      readonly index: number
-      readonly tagName: string
-      /** Its `data-name`, null when it states none. */
-      readonly name: string | null
-    }
-  | EditRefused
+/** An element taken out of its frame, with a file of its own to stand in. */
+export interface ExtractedElement {
+  readonly ok: true
+  /** The source with the element taken out. */
+  readonly html: string
+  /** The element as `restoreInserted` puts it back, its bytes in `markup`. */
+  readonly span: InsertedSpan
+  /** A file holding the element alone. */
+  readonly frame: string
+  /** The element's index in `frame`. */
+  readonly index: number
+  readonly tagName: string
+  /** Its `data-name`, null when it states none. */
+  readonly name: string | null
+}
+
+export type Extracted = ExtractedElement | EditRefused
 
 /**
  * Takes an element out as `removeElement` does, and stands its bytes alone in

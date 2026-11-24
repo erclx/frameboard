@@ -33,6 +33,15 @@ export const removeResultSchema = z.object({
 
 export type RemoveResult = z.infer<typeof removeResultSchema>
 
+/** What `POST /api/frames/extract` returns: the frame the element left, the hash the next write there is made from, and the ref of the frame it stands in. */
+export const extractResultSchema = z.object({
+  ref: z.string(),
+  hash,
+  frame: z.string(),
+})
+
+export type ExtractResult = z.infer<typeof extractResultSchema>
+
 /** What `POST /api/frames/move` returns: the frame it wrote, the moved element's new index, and the hash the next write is made from. */
 export const moveResultSchema = z.object({
   ref: z.string(),
