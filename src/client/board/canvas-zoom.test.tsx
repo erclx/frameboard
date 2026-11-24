@@ -92,13 +92,16 @@ describe('the --zoom property the chrome reads', () => {
     expect(zoomOf(layerOf(container))).toBeCloseTo(2 ** 0.15)
   })
 
-  it('writes early once the held steps drift past 15%', () => {
+  it('writes early once the held steps drift past 50%', () => {
     const { container } = renderCanvas(squarePage('drift', 200))
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
 
-    nudge(container, 9)
+    // Five mouse notches of 1.2: the first writes, and the fourth trails it by 1.728.
+    for (let notch = 0; notch < 5; notch++) {
+      wheel(container, { deltaY: -100, ctrlKey: true })
+    }
 
-    expect(zoomOf(layerOf(container))).toBeCloseTo(2 ** 0.24)
+    expect(zoomOf(layerOf(container))).toBeCloseTo(1.2 ** 4)
   })
 
   it('reads the opened view at once on the frames and the notes layer', () => {

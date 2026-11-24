@@ -130,8 +130,8 @@ const SETTLE_MS = 150
  * after a write scale the chrome with the canvas until this passes.
  */
 const ZOOM_WRITE_MS = 100
-/** The ratio a held `--zoom` may trail the canvas by before it is written early. */
-const ZOOM_DRIFT = 1.15
+/** The ratio a held `--zoom` may trail the canvas by before it is written early, past which a trackpad zoom seldom steps. */
+const ZOOM_DRIFT = 1.5
 /** How long the view takes to travel to a shown frame. */
 const FOCUS_MS = 400
 
