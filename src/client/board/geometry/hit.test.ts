@@ -9,6 +9,9 @@ import {
   framesIn,
   ghostAt,
   onOutline,
+  selectedElementBox,
+  selectedElementBoxes,
+  selectedGroupBox,
 } from './hit'
 
 const BACK = frameOf('back', {
@@ -162,6 +165,36 @@ describe('framesIn', () => {
     expect(
       framesIn([BACK, FRONT], { x: 700, y: 700, width: 50, height: 50 }),
     ).toEqual([])
+  })
+})
+
+describe('a locked selection', () => {
+  const layerOf = (markup: string) => {
+    const layer = document.createElement('div')
+    layer.innerHTML = markup
+    return layer
+  }
+  const outline = (index: number, locked = '') =>
+    `<i data-element-selection data-element-index="${index}" ${locked} style="left:0;top:0;width:10px;height:10px"></i>`
+
+  it('takes no press on its outline', () => {
+    const layer = layerOf(outline(4, 'data-element-locked'))
+
+    expect(selectedElementBox(layer)).toBeNull()
+  })
+
+  it('leaves the outlines of those selected beside it', () => {
+    const layer = layerOf(outline(4, 'data-element-locked') + outline(5))
+
+    expect(selectedElementBoxes(layer).map(({ index }) => index)).toEqual([5])
+  })
+
+  it('takes no press on the box around a group holding one', () => {
+    const layer = layerOf(
+      '<i data-element-group data-element-locked style="left:0;top:0;width:10px;height:10px"></i>',
+    )
+
+    expect(selectedGroupBox(layer)).toBeNull()
   })
 })
 

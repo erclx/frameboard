@@ -2,6 +2,7 @@ import type { DefaultTreeAdapterTypes } from 'parse5'
 
 import { buildCascade, type Cascade } from '@/server/checks/cascade'
 import type { FrameSource, Sheet } from '@/server/checks/frame-source'
+import { LOCKED_ATTRIBUTE, UNRENDERED_TAGS } from '@/shared/element-marks'
 import type { Layout, TreeElement } from '@/shared/records/elements'
 
 import { type Element, hasTag, parseFrame } from './address'
@@ -30,14 +31,16 @@ const PLACE_PROPERTIES: ReadonlySet<string> = new Set([
 ])
 
 /**
- * A frame's elements under `body` by `edit` index, refused where the browser
- * builds an unstated element, since every later index would name another.
+ * A frame's elements under `body` by `edit` index, leaving out what renders
+ * nothing while counting it, refused where the browser builds an unstated
+ * element, since every later index would name another.
  */
 export function elementTree(
   source: string,
   layouts: readonly Layout[] = [],
   rounds: readonly boolean[] = [],
   facts: readonly PlaceFacts[] = [],
+  hidden: readonly boolean[] = [],
 ): TreeElement[] | EditRefused {
   const tree = parseFrame(source)
   if (tree.unstated) {
@@ -55,7 +58,11 @@ export function elementTree(
     const parent = element.parentNode
     if (!body || !parent || !hasTag(parent)) continue
     if (parent !== body && !inBody.has(parent)) continue
+    if (UNRENDERED_TAGS.has(element.tagName)) continue
     inBody.add(element)
+    const next = nextElement(element)
+    const unlistedNext =
+      next && UNRENDERED_TAGS.has(next.tagName) ? index.get(next) : undefined
     listed.push({
       index: at,
       parent: parent === body ? null : (index.get(parent) ?? null),
@@ -69,6 +76,11 @@ export function elementTree(
       layout: layouts[at] ?? 'block',
       round: (rounds[at] ?? false) && isEmpty(element),
       placed: isPlaced(facts[at]),
+      ...(hidden[at] ? { hidden: true } : {}),
+      ...(attribute(element, LOCKED_ATTRIBUTE) === undefined
+        ? {}
+        : { locked: true }),
+      ...(unlistedNext === undefined ? {} : { unlistedNext }),
     })
   }
   return listed
@@ -197,6 +209,11 @@ function isEmpty(element: Element): boolean {
   return element.childNodes.every(
     (node) => isText(node) && node.value.trim() === '',
   )
+}
+
+function nextElement(element: Element): Element | undefined {
+  const siblings = element.parentNode?.childNodes ?? []
+  return siblings.slice(siblings.indexOf(element) + 1).find(hasTag)
 }
 
 function isText(

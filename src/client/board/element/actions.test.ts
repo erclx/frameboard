@@ -90,6 +90,8 @@ function setup({
   const moved: unknown[][] = []
   /** Each wrap asked for, with the keys and the request it carried. */
   const wraps: unknown[][] = []
+  /** Each flag turned on or off, with the keys it names. */
+  const flags: unknown[][] = []
   /** Each group edit a nudge run started, with what it previewed and wrote. */
   const edits: {
     previews: (readonly MemberEdit[])[]
@@ -108,6 +110,7 @@ function setup({
     move: (at, key, to) => void moved.push([at, key, to(1, 3)]),
     group: () => members,
     wrap: (...args) => void wraps.push(args),
+    flag: (...args) => void flags.push(args),
     editGroup: () => {
       if (held) return null
       const edit = {
@@ -145,6 +148,7 @@ function setup({
     moved,
     edits,
     wraps,
+    flags,
   }
 }
 
@@ -604,6 +608,77 @@ describe('element.forward and element.backward', () => {
   })
 })
 
+describe.each([
+  ['element.hide', 'hidden', '$mod+Shift+KeyH'],
+  ['element.lock', 'locked', '$mod+Shift+KeyL'],
+] as const)('%s', (id, flag, key) => {
+  const both = [6, 9].map((index) => ({ frame: HERO, index, hash: HASH }))
+  /** The tree with the flag on at these indexes. */
+  const treeWith = (...indexes: number[]): ElementTree => ({
+    ...TREE,
+    elements: TREE.elements.map((row) =>
+      indexes.includes(row.index) ? { ...row, [flag]: true } : row,
+    ),
+  })
+
+  it("holds the frame row's own key", () => {
+    expect(setup().action(id).keys).toEqual([key])
+  })
+
+  it('turns on for the selected element', () => {
+    const { at, action, flags } = setup()
+    at(7)
+
+    action(id).run()
+
+    expect(flags).toEqual([
+      [PAGE, [{ frame: HERO, index: 7, hash: HASH }], flag, true],
+    ])
+  })
+
+  it('turns off for one it is on for, which it reads as checked', () => {
+    const { at, action, flags } = setup({ tree: treeWith(7) })
+    at(7)
+
+    expect(action(id).checked?.()).toBe(true)
+    action(id).run()
+
+    expect(flags).toMatchObject([[PAGE, [{ index: 7 }], flag, false]])
+  })
+
+  it('turns on for several while one of them is off', () => {
+    const { selection, action, flags } = setup({ tree: treeWith(6) })
+    selectElements(selection, PAGE, both)
+
+    action(id).run()
+
+    expect(flags).toEqual([[PAGE, both, flag, true]])
+  })
+
+  it('stands aside while the tab may not write', () => {
+    const { at, action } = setup({ writable: false })
+    at(7)
+
+    expect(action(id).enabled?.()).toBe(false)
+  })
+
+  it('stands aside for the frame with no element selected', () => {
+    const { selection, action } = setup()
+    select(selection, PAGE, [HERO])
+
+    expect(action(id).enabled?.()).toBe(false)
+  })
+
+  it('waits out a tree read from other bytes', () => {
+    const { at, action } = setup({
+      tree: { ...TREE, hash: 'b'.repeat(64) },
+    })
+    at(7)
+
+    expect(action(id).enabled?.()).toBe(false)
+  })
+})
+
 describe('nudging elements', () => {
   const BOX = { kind: 'box', inset: { width: 0, height: 0 } } as const
   const FREE: GroupMember[] = [
@@ -688,6 +763,18 @@ describe('nudging elements', () => {
     expect(action('element.nudgeLeft').enabled?.()).toBe(false)
   })
 
+  it('holds the press for a hidden element, so its frame never moves', () => {
+    const { at, action, edits } = setup({ members: [] })
+    at(7)
+
+    expect(action('element.nudgeRight').enabled?.()).toBe(true)
+    action('element.nudgeRight').run()
+    vi.advanceTimersByTime(NUDGE_REST_MS)
+
+    expect(edits[0]?.commits).toEqual([])
+    expect(edits[0]?.cancelled).toBe(true)
+  })
+
   it('stands aside while focus sits on a control', () => {
     const { selection, action } = setup({
       members: FREE,
@@ -760,6 +847,22 @@ describe('arranging elements', () => {
         },
       ],
     ])
+  })
+
+  it('stands disabled with one element left beside a hidden one', () => {
+    const { selection, action } = setup({ members: FREE.slice(0, 1) })
+    both(selection)
+
+    expect(action('element.alignTop').enabled?.()).toBe(false)
+  })
+
+  it('stands disabled while one element is locked', () => {
+    const { selection, action } = setup({
+      members: FREE.map((member) => ({ ...member, locked: true })),
+    })
+    both(selection)
+
+    expect(action('element.alignTop').enabled?.()).toBe(false)
   })
 
   it('stands disabled while one element sits in the flow', () => {

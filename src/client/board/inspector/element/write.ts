@@ -39,7 +39,8 @@ export type ElementChange =
 /** One element's change in a batch, all of one frame at one hash. */
 export interface ElementEdit {
   key: ElementKey
-  change: ElementChange
+  /** A hide or a show leaves what it writes to the server, which reads the frame's sheets. */
+  change: ElementChange | { kind: 'hidden'; value: boolean }
 }
 
 /** Sends one change for the selected element and answers whether it was written. */

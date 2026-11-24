@@ -16,7 +16,7 @@ import { previewStyle } from '../inspector/element/styles'
 import { writeElement, writeElements } from '../inspector/element/write'
 import type { ElementKey } from '../selection'
 import type { GroupMember, MemberEdit } from './group'
-import { heldGhost, heldMeasures } from './measures'
+import { hasBox, heldGhost, heldMeasures } from './measures'
 import { newTextStore } from './text-in-place'
 
 /** What a corner drag's write reads off the element it resizes. */
@@ -31,9 +31,9 @@ function drawsLive(container: ParentNode, ref: string): boolean {
 }
 
 /**
- * How the element `key` names takes a corner resize, read from what its
- * frame pushed for the selection at the key's bytes, or null for one that
- * takes none, is not measured, or is a placed Text still open for typing.
+ * How the element `key` names takes a corner resize, read from its frame's push
+ * at the key's bytes, or null for one that takes none, is locked or not
+ * measured, or is a placed Text still open for typing.
  */
 export function shownResize(
   container: ParentNode,
@@ -48,7 +48,8 @@ export function shownResize(
     return null
   }
   if (!drawsLive(container, key.frame)) return null
-  return heldMeasures([key])?.[0]?.read ?? null
+  const member = heldMeasures([key])?.[0]
+  return member && !member.locked ? member.read : null
 }
 
 /**
@@ -191,8 +192,8 @@ export type PlacedOffsets = Offsets
 
 /**
  * The offsets a placed element holds, read from what its frame pushed for
- * the selection or its ghost at the key's bytes, or null for one in the
- * flow, whose drag carries it to another gap instead.
+ * the selection or its ghost at the key's bytes, or null for a locked one or
+ * one in the flow, whose drag carries it to another gap instead.
  */
 export function placedOffsets(
   container: ParentNode,
@@ -200,6 +201,7 @@ export function placedOffsets(
 ): PlacedOffsets | null {
   if (!drawsLive(container, key.frame)) return null
   const member = heldMeasures([key])?.[0]
+  if (member?.locked) return null
   return member ? member.placed : (heldGhost(key)?.placed ?? null)
 }
 
@@ -257,7 +259,7 @@ export function startPlacedMove(
 }
 
 /**
- * The selected elements `keys` names as a group drag reads them at the press,
+ * The selected elements `keys` names the page draws, as a group drag reads them,
  * each box in its frame's own pixels, off a live frame showing the bytes they
  * were read from, or null while it shows other bytes or misses one.
  */
@@ -268,13 +270,16 @@ export function shownGroup(
   const [first] = keys
   if (!first || !drawsLive(container, first.frame)) return null
   return (
-    heldMeasures(keys)?.map(({ index, box, placed, nested, read, margin }) => ({
-      index,
-      box,
-      placed: nested ? null : placed,
-      read,
-      margin,
-    })) ?? null
+    heldMeasures(keys)
+      ?.filter(hasBox)
+      .map(({ index, box, placed, nested, read, margin, locked }) => ({
+        index,
+        box,
+        placed: nested ? null : placed,
+        read,
+        margin,
+        locked,
+      })) ?? null
   )
 }
 

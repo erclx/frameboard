@@ -1,3 +1,4 @@
+import { LOCKED_ATTRIBUTE, UNRENDERED_TAGS } from '@/shared/element-marks'
 import { LOOK_MARKER, RENDERED_HASH } from '@/shared/theme'
 
 /**
@@ -35,4 +36,14 @@ export function renderedHash(document: Document): string | null {
       .querySelector(`style[${LOOK_MARKER}]`)
       ?.getAttribute(RENDERED_HASH) ?? null
   )
+}
+
+/** Whether the element or one holding it is locked against canvas presses. */
+export function isLocked(element: Element): boolean {
+  return element.closest(`[${LOCKED_ATTRIBUTE}]`) !== null
+}
+
+/** Whether the element renders nothing, so nothing on the canvas picks it. */
+export function isUnrendered(element: Element): boolean {
+  return UNRENDERED_TAGS.has(element.localName)
 }

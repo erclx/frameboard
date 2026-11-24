@@ -604,14 +604,19 @@ export function attachGestures(
     }
     // The bare space inside several's box is theirs too, as a design tool's selection is.
     const group = several ? selectedGroupBox(target.layer) : null
-    if (element && group && inBox(group.box, point)) {
+    // The last picked that draws, since a hidden one has no outline to drag.
+    const lastDrawn = group
+      ? selectedElementBoxes(target.layer).at(-1)
+      : undefined
+    const lastKey = members.find(({ index }) => index === lastDrawn?.index)
+    if (lastDrawn && lastKey && group && inBox(group.box, point)) {
       gesture = {
         kind: 'element',
-        key: element,
+        key: lastKey,
         frame: frameAt(drawn, point, zoom()),
         shift: event.shiftKey,
         placed: null,
-        box: selectedElementBox(target.layer),
+        box: lastDrawn.box,
       }
       return
     }

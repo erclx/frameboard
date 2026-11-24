@@ -231,6 +231,32 @@ describe('ElementOverlay', () => {
       expect(chip(drawn)).toHaveTextContent(/^248 × Hug$/)
     })
 
+    it('draws the outline alone on a locked element, marked for the gestures', async () => {
+      const drawn = await selecting('<h1 data-locked>Hello, world</h1>')
+
+      expect(outline(drawn)).toHaveAttribute('data-element-locked')
+      expect(marks(drawn)).toBe(0)
+    })
+
+    it('outlines a free wrapper whose box is 0 by 0', async () => {
+      const drawn = await selecting(
+        '<div style="position:absolute;left:50px;top:10px"><i style="position:absolute;width:20px;height:20px"></i></div>',
+      )
+
+      expect(outline(drawn)?.style.left).toBe('150px')
+    })
+
+    it('draws nothing for a hidden element, which holds no box', async () => {
+      const drawn = await selecting('<h1>Hello, world</h1>')
+      const heading = layer
+        ?.querySelector('iframe')
+        ?.contentDocument?.querySelector('h1')
+
+      act(() => heading?.setAttribute('hidden', ''))
+
+      await waitFor(() => expect(outline(drawn)).toBeNull())
+    })
+
     it('names a height text states on itself in px', async () => {
       const drawn = await selecting(
         '<h1 style="height: 30px">Hello, world</h1>',
@@ -823,6 +849,33 @@ describe('ElementOverlay', () => {
 
       expect(container.querySelector('[data-element-ghost]')).toBeNull()
       expect(pictures(container)[0]?.parentElement?.style.outline).toBe('')
+    })
+
+    it('paints a locked element past the edge with no ghost, while its frame is selected', async () => {
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+
+      const { container } = await drawPainted(
+        OPEN,
+        PAST.replace('<div ', '<div data-locked="" '),
+      )
+
+      expect(pictures(container)).toHaveLength(1)
+      expect(container.querySelector('[data-element-ghost]')).toBeNull()
+    })
+
+    it('draws nothing of a locked element past the edge of a frame that clips', async () => {
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+
+      const { container } = await drawPainted(
+        HERO,
+        PAST.replace(
+          BOX,
+          `${BOX.replace('<div ', '<div data-locked="" ')}${BOX}`,
+        ),
+      )
+
+      expect(pictures(container)).toHaveLength(1)
+      expect(asked(container).get('element')).toBe('4')
     })
 
     it('paints the picture inside the ghost of a selected frame that clips', async () => {

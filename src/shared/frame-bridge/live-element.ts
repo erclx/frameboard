@@ -208,6 +208,10 @@ export interface MemberMeasure {
   nested: boolean
   /** The margins its frame's window computed, 0 where it reads none. */
   margin: { top: number; right: number; bottom: number; left: number }
+  /** True when a lock on it or an element holding it keeps canvas presses off it. */
+  locked?: boolean
+  /** True when the page gives it no box, as `display: none` does, unlike a wrapper whose box is 0 by 0. */
+  unboxed?: boolean
 }
 
 /** An element past its frame's viewport, by file index, with the offsets a press on its ghost drags. */
@@ -216,6 +220,8 @@ export interface Overflowing {
   /** In the frame's own pixels, from the viewport's top left. */
   box: MeasuredBox
   placed: Offsets | null
+  /** True when a lock keeps a press off its ghost, while its picture still paints. */
+  locked?: boolean
 }
 
 /** A frame's elements past its viewport, read at the bytes the frame shows. */
@@ -338,6 +344,8 @@ export const memberMeasuresSchema: z.ZodType<MemberMeasure[] | null> = z
       placed: offsetsSchema.nullable(),
       nested: z.boolean(),
       margin: sidesSchema,
+      locked: z.boolean().optional(),
+      unboxed: z.boolean().optional(),
     }),
   )
   .nullable()
@@ -350,6 +358,7 @@ export const frameOverflowSchema: z.ZodType<FrameOverflow | null> = z
         index,
         box: measuredBoxSchema,
         placed: offsetsSchema.nullable(),
+        locked: z.boolean().optional(),
       }),
     ),
   })

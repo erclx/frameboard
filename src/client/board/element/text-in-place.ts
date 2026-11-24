@@ -13,6 +13,7 @@ import { selectedElementBox } from '../geometry/hit'
 import type { ElementChange } from '../inspector/element/write'
 import type { BoardPoint } from '../notes/pick'
 import type { ElementKey, SelectionStore } from '../selection'
+import { heldMeasures } from './measures'
 
 /**
  * Sends the changes one edit makes to its element as one write and one undo
@@ -147,7 +148,7 @@ export function editTextInPlace(
 /**
  * Whether a board point falls inside the live box of the element `key`
  * names, in the frame the key names showing the key's bytes, so a
- * double-click there edits it.
+ * double-click there edits it. Never over a locked one, whose press lands behind.
  */
 export async function overElement(
   container: ParentNode,
@@ -157,7 +158,7 @@ export async function overElement(
 ): Promise<boolean> {
   const point = framePoint(frames, key.frame, at)
   const iframe = shownFrame(container, key.frame)
-  if (!point || !iframe) return false
+  if (!point || !iframe || heldMeasures([key])?.[0]?.locked) return false
   const box = await request(iframe, 'element-box', {
     index: key.index,
     hash: key.hash,
