@@ -50,7 +50,7 @@ Where the sync reads from, and what moves every reference, follow.
 - It generates a board of 1,000 frames, opens its 40-frame page in a tab, and writes a frame of another project
 - Both sides start once at the same time, uncounted, to fill what a second start reads, and the writes are measured on those servers
 - A start is quiet once its server and browser use under 5% of a core for five seconds, and a second start still busy at two minutes reads `not reached`
-- CPU covers the start until quiet or the two minutes, so it is a floor where quiet reads `not reached`
+- CPU counts through those five quiet seconds, or to the two minutes, so it is a floor where quiet reads `not reached`
 
 What a run says, and what it leans on, follow.
 

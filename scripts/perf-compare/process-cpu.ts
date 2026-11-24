@@ -46,17 +46,31 @@ export interface QuietRule {
   windowMs: number
   /** The most CPU time a window may hold and still count as quiet. */
   busyMs: number
+  /** The share of one core past which a step between two readings is work. */
+  busyShare: number
 }
 
-/** The reading a whole quiet window up to the last one follows, if one does. */
-export function quietSince(
+/**
+ * When a whole quiet window up to the last reading began, past any work it
+ * still holds, with the CPU time through it. Undefined with no such window.
+ */
+export function settledFrom(
   readings: readonly Reading[],
-  { windowMs, busyMs }: QuietRule,
+  { windowMs, busyMs, busyShare }: QuietRule,
 ): Reading | undefined {
   const last = readings.at(-1)
   if (!last) return undefined
-  const start = readings.findLast(({ atMs }) => last.atMs - atMs >= windowMs)
-  return start && last.cpuMs - start.cpuMs <= busyMs ? start : undefined
+  const from = readings.findLastIndex(
+    ({ atMs }) => last.atMs - atMs >= windowMs,
+  )
+  const start = readings[from]
+  if (!start || last.cpuMs - start.cpuMs > busyMs) return undefined
+  const busy = readings.slice(from + 1).findLast((reading, index) => {
+    const before = readings[from + index] ?? start
+    const elapsed = reading.atMs - before.atMs
+    return reading.cpuMs - before.cpuMs > busyShare * elapsed
+  })
+  return { atMs: (busy ?? start).atMs, cpuMs: last.cpuMs }
 }
 
 /** When the process went quiet or the limit came, and the CPU time of everything read. */
@@ -76,9 +90,8 @@ export async function waitForQuiet(
     if (pids.length === 0) throw new Error(`process ${pid} exited`)
     const reading = { atMs: performance.now() - startedAt, cpuMs }
     readings.push(reading)
-    const quiet = quietSince(readings, rule)
-    // Through the window, since a cut at its start leaves out work inside it.
-    if (quiet) return { atMs: quiet.atMs, cpuMs, quiet: true }
+    const settled = settledFrom(readings, rule)
+    if (settled) return { ...settled, quiet: true }
     if (reading.atMs >= limitMs) return { ...reading, quiet: false }
     await sleep(POLL_MS)
   }

@@ -6,8 +6,9 @@ import { setTimeout as sleep } from 'node:timers/promises'
 import { readTree, waitForQuiet } from './process-cpu'
 import type { StartValues } from './report'
 
-// Five seconds at under 5% of one core, wider than any gap between two checks.
-const QUIET = { windowMs: 5000, busyMs: 250 }
+// Five seconds at under 5% of one core, wider than any gap between two checks,
+// and timed past any step at 30%, three times one 10 ms tick a poll.
+const QUIET = { windowMs: 5000, busyMs: 250, busyShare: 0.3 }
 const SETTLE_LIMIT_MS = 120_000
 const ADDRESS_LIMIT_MS = 120_000
 const BOARD_LIMIT_MS = 120_000
@@ -70,7 +71,10 @@ export async function startSide(
       start: {
         addressMs,
         boardMs,
-        quietMs: settled.quiet ? settled.atMs : null,
+        // No start is over before its tab has the board.
+        quietMs: settled.quiet
+          ? Math.max(settled.atMs, boardMs ?? addressMs)
+          : null,
         cpuMs: settled.cpuMs,
       },
       settle: async () => {

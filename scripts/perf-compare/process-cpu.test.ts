@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { quietSince, treeOf } from './process-cpu'
+import { settledFrom, treeOf } from './process-cpu'
 
 /** A `/proc/<pid>/stat` line with the fields a reading takes. */
 function statLine({
@@ -67,11 +67,11 @@ describe('treeOf', () => {
   })
 })
 
-describe('quietSince', () => {
-  const rule = { windowMs: 1000, busyMs: 50 }
+describe('settledFrom', () => {
+  const rule = { windowMs: 1000, busyMs: 60, busyShare: 0.3 }
 
-  it('names the reading a whole quiet window follows', () => {
-    const quiet = quietSince(
+  it('counts the CPU through the quiet window and the time from its start', () => {
+    const settled = settledFrom(
       [
         { atMs: 0, cpuMs: 0 },
         { atMs: 500, cpuMs: 400 },
@@ -81,24 +81,38 @@ describe('quietSince', () => {
       rule,
     )
 
-    expect(quiet).toEqual({ atMs: 500, cpuMs: 400 })
+    expect(settled).toEqual({ atMs: 500, cpuMs: 420 })
   })
 
-  it('names none while the window holds more work than the rule allows', () => {
-    const quiet = quietSince(
+  it('ends on the last busy step the window still holds', () => {
+    const settled = settledFrom(
       [
-        { atMs: 0, cpuMs: 0 },
-        { atMs: 500, cpuMs: 30 },
-        { atMs: 1000, cpuMs: 51 },
+        { atMs: 400, cpuMs: 300 },
+        { atMs: 500, cpuMs: 340 },
+        { atMs: 600, cpuMs: 350 },
+        { atMs: 1400, cpuMs: 360 },
       ],
       rule,
     )
 
-    expect(quiet).toBeUndefined()
+    expect(settled).toEqual({ atMs: 500, cpuMs: 360 })
+  })
+
+  it('names none while the window holds more work than the rule allows', () => {
+    const settled = settledFrom(
+      [
+        { atMs: 0, cpuMs: 0 },
+        { atMs: 500, cpuMs: 30 },
+        { atMs: 1000, cpuMs: 61 },
+      ],
+      rule,
+    )
+
+    expect(settled).toBeUndefined()
   })
 
   it('names none before a whole window has passed', () => {
-    const quiet = quietSince(
+    const settled = settledFrom(
       [
         { atMs: 0, cpuMs: 0 },
         { atMs: 999, cpuMs: 0 },
@@ -106,6 +120,6 @@ describe('quietSince', () => {
       rule,
     )
 
-    expect(quiet).toBeUndefined()
+    expect(settled).toBeUndefined()
   })
 })

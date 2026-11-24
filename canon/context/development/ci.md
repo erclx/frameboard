@@ -27,7 +27,7 @@ Owns the merge checks, the release, and the landing page deploy. `verify.yml` ho
 | macOS Unit and CLI Smoke    | `frameboard-checks.yml` | `bunx vitest run --project node`, then `bash scripts/smoke-cli.sh dist`     | the `node` project passes on Apple Silicon, and `serve`, the structure verbs, and `check` run from an outside bundle |
 | Landing Page Gate           | `frameboard-checks.yml` | `bun run check` in `web/`                                                   | the landing page typechecks, lints, formats, passes its unit tests, builds to valid HTML, and embeds no long code    |
 
-The workflows the table leaves out own releases, labels, and the landing page.
+The workflows the table leaves out own releases, labels, the landing page, and the performance comparison.
 
 - `release-please.yml` owns the release pull request and the npm publish, checking `NPM_TOKEN` before it cuts a tag and refusing a tag whose `dist/cli.js --version` differs
 - `deploy.yml` publishes `web/dist` to the `frameboard` Pages project under the branch's name, skips with a notice until the Cloudflare secrets exist, and deletes a closed pull request's previews
@@ -48,7 +48,7 @@ CI alone runs the full suites, since a push runs only the tests beside its chang
 Compares two commits' performance when someone starts it, and neither a push nor a pull request does. It gates nothing, and a run fails only when a side does not build or cannot be measured.
 
 - `base` and `head` take any branch, tag, or commit, older ones included, since each builds in its own worktree and is driven from outside through its CLI, live socket, and page
-- A run takes most of its time on the first start of each side, which checks the whole board, and `rounds` adds about two minutes each
+- A run opens on about 10 to 15 minutes of first starts, then adds about 1.4 minutes a round when both sides remember their checks and about 5 when neither does
 - What it measures and how to read it are in `canon/context/development/capture-scripts.md`
 
 ### `canon/config/`

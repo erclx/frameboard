@@ -5,7 +5,7 @@ export interface StartValues {
   addressMs: number
   boardMs: number | null
   quietMs: number | null
-  /** CPU time of the server and its browser until quiet, or until the limit. */
+  /** CPU time of the server and its browser through the quiet window, or until the limit. */
   cpuMs: number
 }
 
@@ -47,7 +47,7 @@ const MEASURES: Measure[] = [
   startMeasure('address printed (ms)', 'addressMs'),
   startMeasure('first board message (ms)', 'boardMs'),
   startMeasure('quiet (ms)', 'quietMs'),
-  startMeasure('CPU until quiet or the limit (ms)', 'cpuMs'),
+  startMeasure('CPU through the quiet window or to the limit (ms)', 'cpuMs'),
   writeMeasure('main thread (ms)', 'taskMs'),
   writeMeasure('script (ms)', 'scriptMs'),
   writeMeasure('messages', 'messages'),
@@ -102,7 +102,7 @@ export function summarize(
     '',
     '### First start, uncounted, both sides at once',
     '',
-    '| Side | Quiet (ms) | CPU until quiet or the limit (ms) |',
+    '| Side | Quiet (ms) | CPU through the quiet window or to the limit (ms) |',
     '| --- | ---: | ---: |',
     ...SIDES.map((side) => {
       const { quietMs, cpuMs } = measured[side].first
