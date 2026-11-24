@@ -17,15 +17,20 @@ export function processTable(
   return platform === 'linux' ? fromProc() : fromPs()
 }
 
-/** One `/proc/<pid>/stat` line, read past the command name, which can hold spaces and parentheses. */
+/** The fields of one `/proc/<pid>/stat` line from the state on, past the command name, which can hold spaces and parentheses. */
+export function statFields(line: string): string[] | undefined {
+  const close = line.lastIndexOf(')')
+  return close === -1 ? undefined : line.slice(close + 2).split(' ')
+}
+
+/** One `/proc/<pid>/stat` line. */
 export function parseStat(
   line: string,
 ): { pid: number; ppid: number; started: string } | undefined {
-  const close = line.lastIndexOf(')')
-  if (close === -1) return undefined
+  const fields = statFields(line)
+  if (!fields) return undefined
   const pid = Number.parseInt(line, 10)
   // After the name come state, ppid, and on, so starttime, field 22, is 19th.
-  const fields = line.slice(close + 2).split(' ')
   const ppid = Number(fields[1])
   const started = fields[19]
   if (!Number.isInteger(pid) || !Number.isInteger(ppid) || !started) {
@@ -34,23 +39,28 @@ export function parseStat(
   return { pid, ppid, started }
 }
 
-function fromProc(): Map<number, ProcessRow> {
-  const table = new Map<number, ProcessRow>()
+/** Every `/proc/<pid>/stat` line, none off Linux. */
+export function statLines(): string[] {
   let entries: string[]
   try {
     entries = readdirSync('/proc')
   } catch {
-    return table
+    return []
   }
-  for (const entry of entries) {
-    if (!/^\d+$/.test(entry)) continue
-    let line: string
+  return entries.flatMap((entry) => {
+    if (!/^\d+$/.test(entry)) return []
     try {
-      line = readFileSync(`/proc/${entry}/stat`, 'utf8')
+      return [readFileSync(`/proc/${entry}/stat`, 'utf8')]
     } catch {
       // Exited between the listing and the read.
-      continue
+      return []
     }
+  })
+}
+
+function fromProc(): Map<number, ProcessRow> {
+  const table = new Map<number, ProcessRow>()
+  for (const line of statLines()) {
     const row = parseStat(line)
     if (row) table.set(row.pid, { ppid: row.ppid, started: row.started })
   }
