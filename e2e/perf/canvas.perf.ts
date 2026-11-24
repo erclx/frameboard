@@ -12,6 +12,7 @@ import { expect, type Page, test } from '@playwright/test'
 
 import { type BoardServer, serveBoard } from '../support/board-server'
 import { framesLoaded } from '../support/frames'
+import { nextFrame, startRecording, summarize, takeSample } from './frame-gap'
 
 const FRAME_COUNT = 50
 const COLUMNS = 10
@@ -20,7 +21,6 @@ const GESTURE_MS = 3000
 // The bar the plan set for fifty mounted frames on the operator's machine.
 const P95_MAX_MS = 20
 const SLOW_SHARE_MAX = 0.05
-const SLOW_FRAME_MS = 33
 const LONG_FRAME_MAX_MS = 100
 
 const PHONE = { width: 390, height: 844 }
@@ -96,68 +96,6 @@ function frameHtml(index: number): string {
   </body>
 </html>
 `
-}
-
-interface Sample {
-  intervals: number[]
-  longFrames: number[]
-}
-
-async function startRecording(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const sample = { intervals: [] as number[], longFrames: [] as number[] }
-    ;(window as unknown as { __sample: typeof sample }).__sample = sample
-    let last = performance.now()
-    const tick = (time: number) => {
-      sample.intervals.push(time - last)
-      last = time
-      requestAnimationFrame(tick)
-    }
-    requestAnimationFrame(tick)
-    new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        sample.longFrames.push(entry.duration)
-      }
-    }).observe({ type: 'long-animation-frame' })
-  })
-}
-
-async function takeSample(page: Page): Promise<Sample> {
-  return page.evaluate(() => {
-    const { __sample } = window as unknown as { __sample: Sample }
-    const taken = {
-      intervals: [...__sample.intervals],
-      longFrames: [...__sample.longFrames],
-    }
-    __sample.intervals.length = 0
-    __sample.longFrames.length = 0
-    return taken
-  })
-}
-
-function nextFrame(page: Page): Promise<unknown> {
-  return page.evaluate(() => new Promise(requestAnimationFrame))
-}
-
-function summarize(name: string, { intervals, longFrames }: Sample) {
-  // The first interval spans the gap before the gesture began.
-  const sorted = intervals.slice(1).sort((a, b) => a - b)
-  const at = (share: number) =>
-    sorted[Math.min(sorted.length - 1, Math.floor(share * sorted.length))] ?? 0
-  const summary = {
-    gesture: name,
-    frames: sorted.length,
-    p50: Number(at(0.5).toFixed(2)),
-    p95: Number(at(0.95).toFixed(2)),
-    slowShare: Number(
-      (
-        sorted.filter((ms) => ms > SLOW_FRAME_MS).length / sorted.length
-      ).toFixed(4),
-    ),
-    longestLongFrame: Math.max(0, ...longFrames),
-  }
-  console.log(JSON.stringify(summary))
-  return summary
 }
 
 /** Waits for all fifty frames to mount live and finish loading. */
