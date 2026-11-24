@@ -7,7 +7,20 @@ description: The board folder, tokens, and themes, and what serve creates in a f
 
 How a board folder, its tokens, and its themes fit together, for anyone setting up a board for an agent.
 
-In a folder with no board above it, `serve` creates `.frameboard/` there with one empty project and opens it at `http://127.0.0.1:4173` in a tab that can edit, where a first page asks for a project name, a screen size, and a look. A tab you open on that address yourself only reads, so run `frameboard open` for another that edits.
+In a folder with no board above it, `serve` creates `.frameboard/` there with one empty project and opens it at `http://127.0.0.1:4173` in a tab that can edit, where a first page asks for a project name, a screen size, and a look.
+
+## Edit access
+
+A tab you open on the board's address yourself only reads, so run `frameboard open` for another that edits. Its link works once, for two minutes or the `--ttl <minutes>` you give it, up to 60.
+
+Start with `serve --edit-button` to give a tab that only reads an Edit button, which asks once and then edits with no terminal. It is off by default, since any program on your machine can then do what a tab that edits does:
+
+- Write to the board
+- Send notes to a listening session, and start one under `FRAMEBOARD_DISPATCH`
+- Generate images on the provider keys in `serve`'s environment, which can cost money
+- Open the phone link, which puts a project's frames on the local network
+
+What a program was granted outlives the flag. Delete `.run/board-key.json` in the board folder and restart `serve` to take it back, and every tab that edits reads until its next link.
 
 ## Board folder
 

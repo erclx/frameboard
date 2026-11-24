@@ -1,4 +1,3 @@
-import { Folder } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
 import { useStore } from 'zustand'
 
@@ -29,10 +28,10 @@ interface FolderCardProps extends PanelProps {
   captures: Captures
 }
 
-/** The card's frame with its top left corner squared, where the tab meets it. */
+/** The card's frame with its top left corner squared, where the tab meets it, ringing with the tab, its ⋯ and rename field included. */
 const FOLDER_CARD = cn(
   CARD,
-  'rounded-tl-none group-hover/folder:ring-2 group-hover/folder:ring-primary',
+  'rounded-tl-none group-hover/folder:border-transparent group-hover/folder:ring-2 group-hover/folder:ring-primary group-has-focus-visible/folder:border-transparent group-has-focus-visible/folder:ring-2 group-has-focus-visible/folder:ring-primary group-has-data-popup-open/folder:border-transparent group-has-data-popup-open/folder:ring-2 group-has-data-popup-open/folder:ring-primary',
 )
 
 /**
@@ -40,7 +39,7 @@ const FOLDER_CARD = cn(
  * so the ring stays covered at a fractional display scale. At rest the fill stops short of the right line to keep the foot's corner.
  */
 const FOLDER_TAB =
-  'pointer-events-none absolute -top-[9px] left-0 z-10 h-2.5 w-[74px] rounded-tl-[7px] rounded-tr-[9px] bg-card after:absolute after:top-[9px] after:right-px after:left-px after:h-[5px] after:bg-card group-hover/folder:after:right-0 group-has-focus-visible/folder:after:right-0 group-has-data-popup-open/folder:after:right-0 in-data-drop-over:after:right-0 shadow-[inset_0_1px_0_0_var(--color-border),inset_1px_0_0_0_var(--color-border),inset_-1px_0_0_0_var(--color-border)] group-hover/folder:shadow-[0_-2px_0_0_var(--color-primary),-2px_0_0_0_var(--color-primary),2px_0_0_0_var(--color-primary)] group-has-focus-visible/folder:shadow-[0_-2px_0_0_var(--color-primary),-2px_0_0_0_var(--color-primary),2px_0_0_0_var(--color-primary)] group-has-data-popup-open/folder:shadow-[0_-2px_0_0_var(--color-primary),-2px_0_0_0_var(--color-primary),2px_0_0_0_var(--color-primary)] in-data-drop-over:shadow-[0_-2px_0_0_var(--color-primary),-2px_0_0_0_var(--color-primary),2px_0_0_0_var(--color-primary)]'
+  'pointer-events-none absolute -top-[9px] left-0 z-10 h-2.5 w-[74px] rounded-tl-[7px] rounded-tr-[9px] bg-card after:absolute after:top-[9px] after:right-px after:left-px after:h-[5px] after:bg-card group-hover/folder:after:inset-x-0 group-has-focus-visible/folder:after:inset-x-0 group-has-data-popup-open/folder:after:inset-x-0 in-data-drop-over:after:inset-x-0 shadow-[inset_0_1px_0_0_var(--color-border),inset_1px_0_0_0_var(--color-border),inset_-1px_0_0_0_var(--color-border)] group-hover/folder:shadow-[0_-2px_0_0_var(--color-primary),-2px_0_0_0_var(--color-primary),2px_0_0_0_var(--color-primary)] group-has-focus-visible/folder:shadow-[0_-2px_0_0_var(--color-primary),-2px_0_0_0_var(--color-primary),2px_0_0_0_var(--color-primary)] group-has-data-popup-open/folder:shadow-[0_-2px_0_0_var(--color-primary),-2px_0_0_0_var(--color-primary),2px_0_0_0_var(--color-primary)] in-data-drop-over:shadow-[0_-2px_0_0_var(--color-primary),-2px_0_0_0_var(--color-primary),2px_0_0_0_var(--color-primary)]'
 
 /**
  * A folder's card per `22-fix.png`, its open state held in the project store,
@@ -85,22 +84,14 @@ export function FolderCard({
         ))}
       </span>
       <span className="flex flex-col px-3 pt-1.5 pb-3">
-        <span className="flex min-w-0 items-center gap-[5px]">
-          <Folder
-            aria-hidden
-            data-folder-glyph
-            className="size-[13px] shrink-0 text-muted-foreground"
-          />
-          <FolderName
-            folder={folder}
-            calls={panel.calls}
-            type="text-panel"
-            unseen={unseen}
-            pinned={pinned}
-            editing={!open}
-            className="flex-1"
-          />
-        </span>
+        <FolderName
+          folder={folder}
+          calls={panel.calls}
+          type="text-panel"
+          unseen={unseen}
+          pinned={pinned}
+          editing={!open}
+        />
         <span className="truncate text-body text-muted-foreground">
           {countOf(folder)}
         </span>

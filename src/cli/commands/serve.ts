@@ -33,6 +33,7 @@ interface ServeOptions extends CommonOptions {
   open: boolean
   tokens?: string
   openRoute: boolean
+  editButton: boolean
 }
 
 export function registerServe(
@@ -55,6 +56,11 @@ export function registerServe(
     .option(
       '--tokens <path>',
       "a token sheet another tool manages, standing in for the board's tokens.css",
+    )
+    .option(
+      '--edit-button',
+      `offer a view-only tab an Edit button. Any program on this machine can then write to the board, send notes to a listening session, start one under ${DISPATCH_ENV}, generate images on the provider keys in the environment, and open the phone link. What it was granted outlives the flag, until .run/board-key.json is deleted and the server restarts. A server already running keeps what it started with`,
+      false,
     )
     // Hidden, since it makes any local browser a writer.
     .addOption(
@@ -125,6 +131,7 @@ export function registerServe(
       openUrl: io.openUrl,
       dispatch: dispatchCommand(io.cwd),
       openRoute: options.openRoute,
+      editButton: options.editButton,
     })
     const address = newAddress({
       root,

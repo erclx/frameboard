@@ -18,6 +18,7 @@ import {
   phoneIsland,
   POSE_SIZES,
   poseOf,
+  railInset,
   screenCorners,
   scrollsInBox,
   shownBox,
@@ -57,12 +58,12 @@ describe('bezelBox', () => {
     })
   })
 
-  it('grows a tablet frame by 44 points on every side', () => {
+  it('grows a tablet frame by its border and its buttons on every side', () => {
     expect(bezelBox(frame, 'tablet', 'upright')).toEqual({
-      x: 56,
-      y: -4,
-      width: 478,
-      height: 932,
+      x: 62,
+      y: 2,
+      width: 466,
+      height: 920,
     })
   })
 
@@ -135,6 +136,17 @@ describe('bezelReach', () => {
   })
 })
 
+describe('railInset', () => {
+  it.each([
+    ['a phone, its border', 'phone', 16],
+    ['a tablet, its border and buttons', 'tablet', 38],
+    ['a laptop, its lid', 'laptop', 20],
+    ['no device, the frame', undefined, 0],
+  ] as const)('stands a rail past %s', (_label, device, inset) => {
+    expect(railInset(device)).toBe(inset)
+  })
+})
+
 describe('laptopParts', () => {
   it('sets the chin under the screen as wide as the lid and the base past it on both sides', () => {
     expect(laptopParts({ width: 1440, height: 900 })).toEqual({
@@ -146,24 +158,27 @@ describe('laptopParts', () => {
 
 describe('drawnExtent with a device', () => {
   it('holds the bezel, so a frame placed past it lands clear', () => {
-    const extent = drawnExtent(frame, [], 'phone')
+    const extent = drawnExtent(frame, [], { device: 'phone' })
     expect(extent).toEqual(bezelBox(frame, 'phone', 'upright'))
   })
 
   it('holds the laptop base reaching past the lid', () => {
     const desktop = { x: 0, y: 0, width: 1440, height: 900 }
-    expect(drawnExtent(desktop, [], 'laptop')).toEqual(
+    expect(drawnExtent(desktop, [], { device: 'laptop' })).toEqual(
       bezelBox(desktop, 'laptop', 'upright'),
     )
   })
 
   it('holds the bezel around the frame and the linked widths past it', () => {
-    const extent = drawnExtent(frame, [{ width: 834, height: 1194 }], 'tablet')
+    const extent = drawnExtent(frame, [{ width: 834, height: 1194 }], {
+      device: 'tablet',
+      showDevice: true,
+    })
     expect(extent).toEqual({
-      x: 56,
-      y: -4,
-      width: 390 + 80 + 834 + 44,
-      height: 1194 + 44,
+      x: 62,
+      y: 2,
+      width: 38 + 390 + 38 + 80 + 38 + 834 + 38,
+      height: 38 + 1194 + 38,
     })
   })
 })
@@ -507,13 +522,13 @@ describe('a turned phone, tablet, or foldable', () => {
     },
   )
 
-  it('grows a turned tablet by 44 points on every side, as upright', () => {
+  it('grows a turned tablet by its border and its buttons on every side, as upright', () => {
     const tablet = { x: 100, y: 40, width: 1194, height: 834 }
     expect(bezelBox(tablet, 'tablet', 'left')).toEqual({
-      x: 56,
-      y: -4,
-      width: 1282,
-      height: 922,
+      x: 62,
+      y: 2,
+      width: 1270,
+      height: 910,
     })
   })
 

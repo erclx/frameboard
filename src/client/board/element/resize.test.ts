@@ -467,11 +467,9 @@ describe('a live element', () => {
       const shown = await mount(
         '<div style="position: absolute; left: 900px; top: 34px; width: 10px; height: 10px"></div>',
       )
-      const { result, unmount } = renderHook(() =>
-        useGhosts(shown, [KEY.frame]),
-      )
+      const { result, unmount } = renderHook(() => useGhosts(shown, KEY.frame))
       stop = unmount
-      await expect.poll(() => result.current.size).toBe(1)
+      await expect.poll(() => result.current).not.toBeNull()
 
       expect(placedOffsets(shown, KEY)).toEqual({ left: 900, top: 34 })
     })

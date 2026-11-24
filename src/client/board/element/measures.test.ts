@@ -105,15 +105,15 @@ describe('useMeasures', () => {
 })
 
 describe('useGhosts', () => {
-  it("holds each frame's elements past its edge with their offsets", async () => {
+  it("holds a frame's elements past its edge with their offsets", async () => {
     const { layer } = await mount(
       '<div style="position:absolute;left:350px;top:20px;width:100px;height:50px"></div>',
     )
 
-    const { result } = renderHook(() => useGhosts(layer, [FRAME]))
+    const { result } = renderHook(() => useGhosts(layer, FRAME))
 
     await expect
-      .poll(() => result.current.get(FRAME)?.ghosts.map(({ index }) => index))
+      .poll(() => result.current?.ghosts.map(({ index }) => index))
       .toEqual([3])
     expect(heldGhost({ frame: FRAME, index: 3, hash: HASH })?.placed).toEqual({
       left: 350,
@@ -125,8 +125,8 @@ describe('useGhosts', () => {
     const { layer } = await mount(
       '<div style="position:absolute;left:350px;top:20px;width:100px;height:50px"></div>',
     )
-    const { result, unmount } = renderHook(() => useGhosts(layer, [FRAME]))
-    await expect.poll(() => result.current.size).toBe(1)
+    const { result, unmount } = renderHook(() => useGhosts(layer, FRAME))
+    await expect.poll(() => result.current).not.toBeNull()
 
     unmount()
 

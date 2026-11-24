@@ -21,6 +21,7 @@ description: The right panel for a frame or an element
 - The Height row on Scroll
 - The Show device switch on, naming Phone, beside its framed phone
 - The same switch naming Foldable with its pose and turn set on the canvas
+- The Clip content switch on under the Show device switch off
 - The More widths row listing two linked widths with its Add a width button
 - The Page section and the This slide row as transition tiles with a project's own and Push picked
 - A stepped element's effect tiles and its three start buttons

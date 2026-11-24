@@ -1,5 +1,6 @@
-import type { Command } from 'commander'
+import { type Command, InvalidArgumentError } from 'commander'
 
+import { MAX_TICKET_MINUTES } from '@/server/access/tickets'
 import { findLiveServer } from '@/server/address'
 import { FrameboardError } from '@/shared/errors'
 
@@ -9,11 +10,13 @@ import {
   addVerb,
   boardOf,
   type CommonOptions,
+  parseInteger,
   type ProgramContext,
 } from '../program'
 
 interface OpenOptions extends CommonOptions {
   open: boolean
+  ttl?: number
 }
 
 export function registerOpen(program: Command, context: ProgramContext): void {
@@ -22,7 +25,13 @@ export function registerOpen(program: Command, context: ProgramContext): void {
     program,
     'open',
     'Open a board tab that can edit, through a single-use link to the running server',
-  ).option('--no-open', 'leave the browser alone and print the link')
+  )
+    .option('--no-open', 'leave the browser alone and print the link')
+    .option(
+      '--ttl <minutes>',
+      `how long the link works, from 1 to ${MAX_TICKET_MINUTES} minutes, two when left out`,
+      parseTtl,
+    )
 
   act<OpenOptions>(command, context, async (_args, options) => {
     const root = await boardOf(options, io)
@@ -38,7 +47,7 @@ export function registerOpen(program: Command, context: ProgramContext): void {
     const { url: writeUrl, expiresAt } = (await postToBoard(
       live,
       '/api/access/ticket',
-      {},
+      { ttl: options.ttl },
     )) as { url: string; expiresAt: string }
 
     if (options.open) io.openUrl(writeUrl)
@@ -50,4 +59,14 @@ export function registerOpen(program: Command, context: ProgramContext): void {
         : `Open ${writeUrl} before ${expiresAt} to edit the board. The link works once.`,
     }
   })
+}
+
+function parseTtl(value: string): number {
+  const minutes = parseInteger(1)(value)
+  if (minutes > MAX_TICKET_MINUTES) {
+    throw new InvalidArgumentError(
+      `Expected at most ${MAX_TICKET_MINUTES} minutes.`,
+    )
+  }
+  return minutes
 }

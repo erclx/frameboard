@@ -124,7 +124,12 @@ export function connectLive(
         // A replayed change can name a frame the board already lost.
         if (board) pruneUnseen(unseen, board)
       } else if (message.type === 'access') {
-        receiveAccess(store, message.write, message.dispatch)
+        receiveAccess(
+          store,
+          message.write,
+          message.dispatch,
+          message.editButton,
+        )
       } else if (message.type === 'reload') {
         receiveLiveReload(store, message.refs, message.hashes)
       } else if (message.type === 'renamed') {

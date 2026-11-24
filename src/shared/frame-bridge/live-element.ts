@@ -220,6 +220,8 @@ export interface Overflowing {
   /** In the frame's own pixels, from the viewport's top left. */
   box: MeasuredBox
   placed: Offsets | null
+  /** True when a lock keeps a press off its ghost, while its picture still paints. */
+  locked?: boolean
 }
 
 /** A frame's elements past its viewport, read at the bytes the frame shows. */
@@ -356,6 +358,7 @@ export const frameOverflowSchema: z.ZodType<FrameOverflow | null> = z
         index,
         box: measuredBoxSchema,
         placed: offsetsSchema.nullable(),
+        locked: z.boolean().optional(),
       }),
     ),
   })

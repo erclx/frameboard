@@ -24,7 +24,7 @@ export interface Size {
  */
 export function mountedRefs(
   frames: readonly (Pick<FrameRecord, 'ref' | 'box'> &
-    Partial<Pick<FrameRecord, 'widths' | 'device'>>)[],
+    Partial<Pick<FrameRecord, 'widths' | 'device' | 'showDevice'>>)[],
   view: View,
   size: Size,
 ): Set<string> {
@@ -36,8 +36,9 @@ export function mountedRefs(
   const bottom = top + 3 * height
 
   const refs = new Set<string>()
-  for (const { ref, box: own, widths, device } of frames) {
-    const box = drawnExtent(own, widths ?? [], device)
+  for (const frame of frames) {
+    const { ref, box: own, widths } = frame
+    const box = drawnExtent(own, widths ?? [], frame)
     if (
       box.x < right &&
       box.x + box.width > left &&

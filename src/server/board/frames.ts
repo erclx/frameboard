@@ -133,7 +133,7 @@ export interface FoldOptions {
   turn?: Turn
 }
 
-export type FrameFlag = 'hidden' | 'locked'
+export type FrameFlag = 'hidden' | 'locked' | 'showOverflow'
 
 /**
  * Places a frame, writing a skeleton only when no file exists. Every axis no
@@ -590,8 +590,9 @@ export function linkedWidths(
 }
 
 /** The x a copy placed beside a frame takes, its own body clear of the frame's device and linked widths. */
-export function pastExtent({ box, widths, device }: Placement): number {
-  const extent = drawnExtent(box, widths, device)
+export function pastExtent(placement: Placement): number {
+  const { box, widths, device } = placement
+  const extent = drawnExtent(box, widths, placement)
   return xPast(extent.x + extent.width, box.width, device)
 }
 
@@ -958,10 +959,11 @@ export async function setFrameFlag(
   flag: FrameFlag,
   { on, ...options }: RefOptions & JournalOptions & { on: boolean },
 ): Promise<FrameRecord> {
-  return updatePlacement(root, ref, options, (placement) => ({
-    ...placement,
-    [flag]: on,
-  }))
+  return updatePlacement(root, ref, options, (placement) => {
+    if (flag !== 'showOverflow') return { ...placement, [flag]: on }
+    const { showOverflow: _held, ...rest } = placement
+    return on ? { ...rest, showOverflow: true as const } : rest
+  })
 }
 
 /**
@@ -1405,6 +1407,7 @@ class PageLayout {
       island,
       turn,
       upright,
+      showOverflow,
       transition,
       speakerNotes,
       kit,
@@ -1448,6 +1451,7 @@ class PageLayout {
         : {}),
       // A foldable's pose gives its upright screen, so its turn keeps no size.
       ...(turn && foldable ? { turn } : {}),
+      ...(showOverflow ? { showOverflow } : {}),
       ...(transition ? { transition: { ...transition } } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
       ...(kit ? { kit } : {}),
@@ -1467,6 +1471,9 @@ class PageLayout {
     }
     if (turn && foldable) delete entry.upright
     if (typeof held?.device === 'string') delete entry.device
+    if (!showOverflow && held?.showOverflow === true) {
+      delete entry.showOverflow
+    }
     if (!transition && storedTransitionOf(held?.transition)) {
       delete entry.transition
     }

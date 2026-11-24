@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { ask, bridgedFrame } from '@/test/frame-bridge'
 
+import BRAND from '../../test/fixtures/boards/basic/marketing/assets/brand.woff2?url'
 import CLIP from '../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
 import { readResize, resizeKindOf } from './measure'
 
@@ -372,8 +373,10 @@ describe('overflow', () => {
     ).toEqual([])
   })
 
-  it('lists nothing locked, which takes no press past the edge', async () => {
-    expect(await ghosts(`<div data-locked="">${at(350, 20)}</div>`)).toEqual([])
+  it('marks one a lock holds, whose picture still paints', async () => {
+    expect(
+      await ghosts(`<div data-locked="">${at(350, 20)}</div>`),
+    ).toMatchObject([{ index: 4, locked: true }])
   })
 
   it('lists nothing an ancestor crops inside the frame', async () => {
@@ -407,6 +410,47 @@ describe('overflow', () => {
     await expect
       .poll(() => asked.pushes.at(-1))
       .toMatchObject({ hash: HASH, ghosts: [{ index: 3 }] })
+    asked.close()
+  })
+
+  it('pushes again once a face loads, which lays text out at another size', async () => {
+    const frame = await frameOf(
+      '<div style="position:absolute;left:350px;top:20px;width:100px;font:40px/normal Late, monospace">Wide</div>',
+    )
+    const asked = await ask(frame, 'overflow', {})
+    const before =
+      'value' in asked.reply ? asked.reply.value?.ghosts[0]?.box.height : null
+    const { contentWindow, contentDocument } = frame
+    if (!contentWindow || !contentDocument) throw new Error('no page')
+    const { FontFace } = contentWindow as Window & typeof globalThis
+    const face = new FontFace('Late', `url(${BRAND})`, {
+      ascentOverride: '300%',
+    })
+
+    contentDocument.fonts.add(face)
+    await face.load()
+
+    await expect
+      .poll(() => asked.pushes.at(-1)?.ghosts[0]?.box.height)
+      .toBeGreaterThan((before ?? 0) * 2)
+    asked.close()
+  })
+
+  it('pushes again once an image loads and runs past the edge', async () => {
+    const frame = await frameOf(
+      '<img style="position:absolute;left:350px;top:20px" alt="">',
+    )
+    const asked = await ask(frame, 'overflow', {})
+    const image = frame.contentDocument?.querySelector('img')
+
+    image?.setAttribute(
+      'src',
+      'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="50"/>',
+    )
+
+    await expect
+      .poll(() => asked.pushes.at(-1)?.ghosts)
+      .toMatchObject([{ index: 3, box: { width: 100, height: 50 } }])
     asked.close()
   })
 })

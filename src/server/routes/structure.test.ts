@@ -280,6 +280,34 @@ describe('structureRoutes', () => {
       })
     })
 
+    it('fits a shown phone width to its page and the status bar above it', async () => {
+      setHero({ showDevice: true, widths: [{ width: 390, height: 844 }] })
+      const opened: number[] = []
+      app = structureRoutes(
+        board.root,
+        ACCESS,
+        history,
+        async (_frame, box) => {
+          if (box) opened.push(box.height)
+          return {
+            width: box?.width ?? 1440,
+            height: box ? 2400 : 1232,
+            contentWidth: box?.width ?? 1440,
+            empty: false,
+          }
+        },
+      )
+
+      await post('/api/frame/height', {
+        refs: ['studio/home/hero'],
+        mode: 'fit',
+        expected: { 'studio/home/hero': HERO },
+      })
+
+      expect(opened).toEqual([790])
+      expect(frames().hero.widths).toEqual([{ width: 390, height: 2454 }])
+    })
+
     it('refuses a fit of content sized off the viewport with 422, writing nothing', async () => {
       app = structureRoutes(board.root, ACCESS, history, async () => {
         throw new FrameboardError('fit-unbounded', 'Grows with the viewport.')
@@ -776,6 +804,26 @@ describe('structureRoutes', () => {
         mobile: { hidden: true },
       })
       expect(history.counts().undo).toBe(1)
+    })
+
+    it('shows several frames past their edges as one step and undoes it', async () => {
+      const bytes = readFileSync(frameFile('hero'))
+
+      await post('/api/frame/flag', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+        flag: 'showOverflow',
+        on: true,
+      })
+      expect(layout()).toMatchObject({
+        hero: { showOverflow: true },
+        mobile: { showOverflow: true },
+      })
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(layout().hero).not.toHaveProperty('showOverflow')
+      expect(layout().mobile).not.toHaveProperty('showOverflow')
+      expect(readFileSync(frameFile('hero'))).toEqual(bytes)
     })
 
     it('sets a device on several frames as one step and undoes it', async () => {

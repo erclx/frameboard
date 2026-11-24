@@ -689,6 +689,31 @@ describe('relistedRefs', () => {
     ])
   })
 
+  it.each([
+    ['on', {}, { showDevice: true }],
+    ['off', { showDevice: true }, {}],
+  ])(
+    'names a hugging frame whose device turns %s around a linked phone',
+    async (_label, from, to) => {
+      writeHero({ hugHeight: true, widths: PHONE, ...from })
+      const previous = await scanBoard(board.root)
+      writeHero({ hugHeight: true, widths: PHONE, ...to })
+
+      expect(relistedRefs(previous, await scanBoard(board.root))).toEqual([
+        'studio/home/hero',
+      ])
+    },
+  )
+
+  it('leaves out a frame whose device turns on around a linked tablet, which draws no bar', async () => {
+    const widths = [{ width: 834, height: 1194 }]
+    writeHero({ hugHeight: true, widths })
+    const previous = await scanBoard(board.root)
+    writeHero({ hugHeight: true, widths, showDevice: true })
+
+    expect(relistedRefs(previous, await scanBoard(board.root))).toEqual([])
+  })
+
   it('leaves out a frame whose linked widths only took a measured height', async () => {
     writeHero({ hugHeight: true, widths: PHONE })
     const previous = await scanBoard(board.root)

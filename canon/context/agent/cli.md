@@ -33,10 +33,10 @@ Owns one module per verb group, with flags and JSON shapes in `frameboard docs`.
 
 ### `src/cli/commands/open.ts`
 
-Owns handing a tab write access, beside `show.ts`, `selection.ts`, and `preview.ts`, the other verbs that need a live server. A tab gets write access only through a single-use redeem URL.
+Owns handing a tab write access, beside `show.ts`, `selection.ts`, and `preview.ts`, the other verbs that need a live server. A tab gets write access through a single-use redeem URL, or through the Edit button `serve --edit-button` offers.
 
 - The tab `serve` opens carries a redeem URL, never in the JSON envelope's `url`, and a tab typed in by hand reads but cannot write
-- `open` mints one through the bearer-only ticket route and opens it unless `--no-open`, returning `writeUrl` and `expiresAt` and never the address token
+- `open` mints one through the bearer-only ticket route and opens it unless `--no-open`, returning `writeUrl` and `expiresAt` and never the address token, and `--ttl` takes 1 to 60 minutes
 - `open`, `show`, and `preview` exit 3 with `server-not-running` rather than start a server, and `preview --stop` ends the phone link, per `canon/context/board/phone-clipboard.md`
 - `show` takes several frame refs or page refs and logs a shown mark on each, which the change toast steps through, then sends every open board tab the first frame to jump to or offer by its own state
 - `selection` prints what the last writing tab reported selecting, the element in the address `edit --index --hash` takes, and exits 3 with `server-not-running` when no server holds one
@@ -49,7 +49,7 @@ Owns the frame verbs, `page.ts` reshaping pages the same way, both adding, dupli
 - `frame fit` sets height only, reading at the layout width and that width's preset height or 900, never the frame's own, and ignores what a cropping ancestor hides
 - `frame fit` refuses `fit-unbounded` for content sized off the viewport, like `100vh`, a block reset on `resize`, or one set once from `innerHeight`
 - `frame fit` refuses `fit-scroll`, exit 10, on a `scroll` frame before the browser launches, while the board's Height row fits one by clearing `scroll`
-- `frame fit` measures each linked width at its reference height and writes that height beside the frame's, and reports content wider than the frame rather than widening it
+- `frame fit` measures each linked width at its reference height and writes that height, with a shown phone's bar, beside the frame's, and reports content wider than the frame rather than widening it
 
 ### `src/cli/commands/project.ts`
 

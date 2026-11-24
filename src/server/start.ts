@@ -7,6 +7,7 @@ import { join, relative, sep } from 'node:path'
 
 import { serve } from '@hono/node-server'
 
+import { viewDevice } from '@/shared/frame-widths'
 import type { FrameChange } from '@/shared/records/changes'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
@@ -120,6 +121,8 @@ export interface StartOptions {
   dispatch?: { command: string; cwd: string; env: NodeJS.ProcessEnv }
   /** Mounts `GET /api/access/open`, which hands any local browser a writing tab. */
   openRoute?: boolean
+  /** Gives a reading tab the Edit button and mounts the grant it posts. */
+  editButton?: boolean
 }
 
 /**
@@ -206,6 +209,7 @@ async function listen({
   pause,
   dispatch,
   openRoute,
+  editButton,
 }: Omit<StartOptions, 'strictPort'>): Promise<RunningServer> {
   const tabs = new BoardTabs()
   const tickets = createTickets()
@@ -385,6 +389,7 @@ async function listen({
     changes: () => inTurn(async () => tracker.log()),
     closeTab: selection.closeTab,
     dispatch: dispatcher !== undefined,
+    editButton,
   })
   const claims = createClaimsPush(root, {
     broadcast: (list) => hub.broadcast({ type: 'claims', claims: list }),
@@ -425,9 +430,7 @@ async function listen({
             box,
             scroll: frame.scroll,
             hugHeight: frame.hugHeight,
-            // A linked width draws no device, so only the frame's own box has a page under a bar.
-            device: box.width === frame.box.width ? frame.device : undefined,
-            turn: frame.turn,
+            ...viewDevice(frame, box.width),
           },
           config: readConfig(root, frame.project),
         }),
@@ -482,6 +485,7 @@ async function listen({
     framePort: () => frameOrigin.port,
     tickets,
     openRoute,
+    editButton,
     delivery,
     dispatch: dispatcher,
     history,

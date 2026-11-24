@@ -216,8 +216,7 @@ const SLACK_PX = 1
 
 /**
  * The page's elements running past its viewport, not their descendants. A
- * fixed element and one an ancestor crops show nothing past the edge, and a
- * locked one takes no press there.
+ * fixed element and one an ancestor crops show nothing past the edge.
  */
 export function overflowing(): Overflowing[] {
   const body = document.body
@@ -237,9 +236,14 @@ export function overflowing(): Overflowing[] {
       rect.top < -SLACK_PX ||
       rect.right > width + SLACK_PX ||
       rect.bottom > height + SLACK_PX
-    if (!past || isLocked(element) || isCropped(element, body)) return
+    if (!past || isCropped(element, body)) return
     reported.push(element)
-    found.push({ index, box: rounded(element), placed: placedIn(element, []) })
+    found.push({
+      index,
+      box: rounded(element),
+      placed: placedIn(element, []),
+      ...(isLocked(element) ? { locked: true } : {}),
+    })
   })
   return found
 }
@@ -352,10 +356,15 @@ export const measureHandlers: Handlers = {
       subtree: true,
     })
     addEventListener('resize', later)
+    // A face or an image landing late moves what it lays out, with no style written.
+    document.fonts.addEventListener('loadingdone', later)
+    document.addEventListener('load', later, true)
     onClose(() => {
       cancelAnimationFrame(pending)
       styles.disconnect()
       removeEventListener('resize', later)
+      document.fonts.removeEventListener('loadingdone', later)
+      document.removeEventListener('load', later, true)
     })
     return frameOverflow()
   },

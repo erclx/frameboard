@@ -22,8 +22,6 @@ interface HeldSelection {
 
 let selection: HeldSelection | null = null
 const ghosts = new Map<string, FrameOverflow>()
-/** A copy of `ghosts` made on each change, so a render reads one value until the next. */
-let snapshot: ReadonlyMap<string, FrameOverflow> = new Map()
 const listeners = new Set<() => void>()
 
 function changed(): void {
@@ -133,56 +131,42 @@ function heldOf(
 }
 
 /**
- * Follows each named frame's elements past its viewport for as long as the
- * caller is mounted, answering them as held.
+ * Follows one frame's elements past its viewport for as long as the caller is
+ * mounted, answering them as held. One caller follows a frame at a time.
  */
 export function useGhosts(
   container: HTMLElement | null,
-  refs: readonly string[],
-): ReadonlyMap<string, FrameOverflow> {
-  const key = refs.join('\n')
+  ref: string,
+): FrameOverflow | null {
   useEffect(() => {
-    if (!container || key === '') return
-    const stops = key.split('\n').map((ref) => {
-      const hold = (overflow: FrameOverflow | null) => {
-        if (overflow) ghosts.set(ref, overflow)
-        else ghosts.delete(ref)
-        snapshot = new Map(ghosts)
-        changed()
-      }
-      return {
-        ref,
-        stop: followFrame(
-          container,
-          ref,
-          (iframe) => {
-            let live = true
-            const held = (overflow: FrameOverflow | null) => {
-              if (live) hold(overflow)
-            }
-            const overflow = subscribe(iframe, 'overflow', {}, held)
-            void overflow.opened.then(held)
-            return () => {
-              live = false
-              overflow.close()
-            }
-          },
-          () => hold(null),
-        ),
-      }
-    })
-    return () => {
-      for (const { ref, stop } of stops) {
-        stop()
-        ghosts.delete(ref)
-      }
-      snapshot = new Map(ghosts)
+    if (!container) return
+    const hold = (overflow: FrameOverflow | null) => {
+      if (overflow) ghosts.set(ref, overflow)
+      else ghosts.delete(ref)
       changed()
     }
-  }, [container, key])
-  return useSyncExternalStore(
-    listen,
-    () => snapshot,
-    () => snapshot,
-  )
+    const stop = followFrame(
+      container,
+      ref,
+      (iframe) => {
+        let live = true
+        const held = (overflow: FrameOverflow | null) => {
+          if (live) hold(overflow)
+        }
+        const overflow = subscribe(iframe, 'overflow', {}, held)
+        void overflow.opened.then(held)
+        return () => {
+          live = false
+          overflow.close()
+        }
+      },
+      () => hold(null),
+    )
+    return () => {
+      stop()
+      hold(null)
+    }
+  }, [container, ref])
+  const overflowNow = () => ghosts.get(ref) ?? null
+  return useSyncExternalStore(listen, overflowNow, overflowNow)
 }

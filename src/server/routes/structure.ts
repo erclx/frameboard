@@ -62,7 +62,7 @@ import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
 import { ISLANDS, POSES, TURNS } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES, referenceHeight } from '@/shared/frame-sizes'
-import type { LinkedWidth } from '@/shared/frame-widths'
+import { linkedBar, type LinkedWidth } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
 import { DIRECTIONS, TRANSITION_MS } from '@/shared/present-transition'
 import { shapePaint } from '@/shared/shape-paint'
@@ -183,7 +183,7 @@ const frameSpeakerNotesSchema = z.object({
 })
 const frameFlagSchema = z.object({
   refs,
-  flag: z.enum(['hidden', 'locked']),
+  flag: z.enum(['hidden', 'locked', 'showOverflow']),
   on: z.boolean(),
 })
 const sectionBox = z.object({
@@ -663,11 +663,12 @@ export function structureRoutes(
         // Measured here, since a fit writes no frame file and so queues no hug.
         const widths: LinkedWidth[] = []
         for (const { width } of frame.widths) {
+          const bar = linkedBar(frame, width)
           const linked = await measure(frame, {
             width,
-            height: referenceHeight(width),
+            height: referenceHeight(width) - bar,
           })
-          widths.push({ width, height: linked.height })
+          widths.push({ width, height: linked.height + bar })
         }
         target.measured = { height: content.height, widths }
       }

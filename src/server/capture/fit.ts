@@ -5,7 +5,7 @@ import type { RefOptions } from '@/server/board/refs'
 import { FrameboardError } from '@/shared/errors'
 import { pageBox, topInset } from '@/shared/frame-device'
 import { FRAME_SIZES, referenceHeight } from '@/shared/frame-sizes'
-import type { LinkedWidth } from '@/shared/frame-widths'
+import { linkedBar, type LinkedWidth } from '@/shared/frame-widths'
 import type { FitResult } from '@/shared/records/capture'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -151,13 +151,14 @@ export async function fitFrame(
   })
   const widths: LinkedWidth[] = []
   for (const { width } of frame.widths) {
+    const bar = linkedBar(frame, width)
     const linked = await measureContent(browser, {
       baseUrl,
       ref: frame.ref,
-      box: { width, height: referenceHeight(width) },
+      box: { width, height: referenceHeight(width) - bar },
       hugWidth: false,
     })
-    widths.push({ width, height: linked.height })
+    widths.push({ width, height: linked.height + bar })
   }
   return {
     frame: await fitHeight(

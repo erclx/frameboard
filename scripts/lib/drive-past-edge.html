@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>edges</title>
+    <style>
+      body {
+        position: relative;
+        margin: 0;
+        height: 900px;
+        background: var(--surface);
+        color: var(--text);
+        font-family: var(--font-text);
+      }
+      h1 {
+        margin: 0;
+        padding: 64px;
+        font-size: 40px;
+      }
+      .badge {
+        position: absolute;
+        left: 64px;
+        top: 912px;
+        width: 736px;
+        padding: 20px 24px;
+        border-radius: 12px;
+        background: var(--text);
+        color: var(--surface);
+        font-size: 18px;
+      }
+      .card {
+        position: absolute;
+        left: 1320px;
+        top: 300px;
+        width: 132px;
+        padding: 20px 24px;
+        border-radius: 12px;
+        background: var(--primary);
+        color: var(--surface);
+        font-size: 18px;
+      }
+    </style>
+  </head>
+  <body data-name="Body">
+    <h1 data-name="Title">A frame 900 tall</h1>
+    <div data-name="Badge" class="badge">
+      This badge sits wholly below the edge
+    </div>
+    <div data-name="Card" class="card">This card runs past the right edge</div>
+  </body>
+</html>

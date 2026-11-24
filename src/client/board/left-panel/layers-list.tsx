@@ -287,7 +287,10 @@ interface FrameRowProps {
   children: ReactNode
 }
 
-const FLAG_VERBS: Record<FrameFlag, readonly [string, string]> = {
+/** The flags a row sets, showOverflow being the inspector's. */
+type RowFlag = Exclude<FrameFlag, 'showOverflow'>
+
+const FLAG_VERBS: Record<RowFlag, readonly [string, string]> = {
   hidden: ['show', 'hide'],
   locked: ['unlock', 'lock'],
 }
@@ -333,7 +336,7 @@ function FrameRow({
       canvasView.reveal(drawn.box)
     }
   }
-  const flag = (name: FrameFlag, on: boolean) =>
+  const flag = (name: RowFlag, on: boolean) =>
     calls
       .flagFrames([frame.ref], name, on)
       .catch(

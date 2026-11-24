@@ -156,7 +156,9 @@ describe('startServer access', () => {
     rmSync(root, { recursive: true, force: true })
   })
 
-  async function start(options: { openRoute?: boolean } = {}) {
+  async function start(
+    options: { openRoute?: boolean; editButton?: boolean } = {},
+  ) {
     const server = await startServer({
       clientDir,
       facesDir: clientDir,
@@ -237,6 +239,43 @@ describe('startServer access', () => {
     expect(redeemed.headers.get('set-cookie')).toContain(
       JSON.parse(keyFile()).key,
     )
+  })
+
+  it("sets the cookie through the edit route for the board's own page when the server opts in", async () => {
+    const server = await start({ editButton: true })
+    const origin = `http://127.0.0.1:${server.port}`
+
+    const granted = await fetch(`${origin}/api/access/edit`, {
+      method: 'POST',
+      headers: { origin, 'content-type': 'application/json' },
+      body: '{}',
+    })
+
+    expect(granted.status).toBe(200)
+    expect(granted.headers.get('set-cookie')).toContain(
+      JSON.parse(keyFile()).key,
+    )
+  })
+
+  it('answers 404 on the edit route by default, and on the frame port always', async () => {
+    const server = await start()
+    const granting = await start({ editButton: true })
+    const post = (port: number) =>
+      fetch(`http://127.0.0.1:${port}/api/access/edit`, {
+        method: 'POST',
+        headers: {
+          origin: `http://127.0.0.1:${port}`,
+          'content-type': 'application/json',
+        },
+        body: '{}',
+      })
+
+    const answers = await Promise.all([
+      post(server.port),
+      post(granting.framePort),
+    ])
+
+    expect(answers.map(({ status }) => status)).toEqual([404, 404])
   })
 
   it('answers 404 on the open route by default', async () => {

@@ -185,6 +185,28 @@ async function devicesTurned(page: Page): Promise<void> {
 }
 
 /**
+ * Shows the about frame's phone with a tablet and a laptop width linked past
+ * it, the hero hidden, so the row's three bodies fill the view.
+ */
+async function linkedDevicesShown(page: Page): Promise<void> {
+  const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+  const originalLayout = readFileSync(layoutPath, 'utf8')
+  const layout = JSON.parse(originalLayout)
+  layout.frames.hero.hidden = true
+  Object.assign(layout.frames.about, {
+    showDevice: true,
+    widths: [
+      { width: 834, height: 1194 },
+      { width: 1440, height: 900 },
+    ],
+  })
+  writeFileSync(layoutPath, JSON.stringify(layout))
+  page.once('close', () => {
+    writeFileSync(layoutPath, originalLayout)
+  })
+}
+
+/**
  * Shows the about frame's phone, upright at 390 by 844 or turned left at
  * the box a turn writes, with a page of rows running far past its box.
  */
@@ -249,6 +271,39 @@ async function laptopOverflowing(page: Page): Promise<void> {
     writeFileSync(layoutPath, originalLayout)
     writeFileSync(htmlPath, originalHtml)
   })
+}
+
+/** A badge below a desktop frame's edge and a card crossing its right one. */
+const PAST_EDGE = join(
+  import.meta.dirname,
+  '../../../scripts/lib/drive-past-edge.html',
+)
+
+/** Both pictures asked for, whose loading holds the page's own, beside the check's finding. */
+const PAINTED_BOTH =
+  'body:has([data-findings-badge="webapp/home/hero"]) div:has(> img[src^="/api/frames/png"]) + div > img[src^="/api/frames/png"]'
+
+/**
+ * Serves the past-edge page in the hero's place, with its clipping switched
+ * off when `open`, putting both files back when the page closes.
+ */
+function heroPastEdge(open: boolean): (page: Page) => Promise<void> {
+  return async (page) => {
+    const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+    const htmlPath = join(SERVED_BOARD, 'webapp/home/hero.html')
+    const originalLayout = readFileSync(layoutPath, 'utf8')
+    const originalHtml = readFileSync(htmlPath, 'utf8')
+    if (open) {
+      const layout = JSON.parse(originalLayout)
+      layout.frames.hero.showOverflow = true
+      writeFileSync(layoutPath, JSON.stringify(layout))
+    }
+    writeFileSync(htmlPath, readFileSync(PAST_EDGE, 'utf8'))
+    page.once('close', () => {
+      writeFileSync(layoutPath, originalLayout)
+      writeFileSync(htmlPath, originalHtml)
+    })
+  }
 }
 
 /**
@@ -717,6 +772,43 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
         ),
       ),
     },
+    // Clip content off with nothing selected, the badge and the card whole past the edge.
+    {
+      section: 'clip-off',
+      writes: 'board',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          heroPastEdge(true),
+          noAgentChanges,
+          readyWhen(PAINTED_BOTH, '[data-element-ghost]'),
+        ),
+      ),
+    },
+    // Clip content on, each picture inside the selected frame's ghost.
+    {
+      section: 'clip-on-selected',
+      writes: 'board',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          heroPastEdge(false),
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/hero'] }),
+          readyWhen(PAINTED_BOTH),
+        ),
+      ),
+    },
     {
       section: 'device-bezel',
       writes: 'board',
@@ -727,11 +819,33 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
       mask: [AVATAR],
       setup: themed(
         both(
+          asWriter,
           devicesShown,
           noAgentChanges,
           onCanvas({ select: ['webapp/home/about'] }),
           readyWhen(
             'body:has([data-bezel="phone"]):has([data-bezel="laptop"])',
+          ),
+        ),
+      ),
+    },
+    {
+      // A phone's linked widths, each in the body its width names and clear of the last.
+      section: 'device-linked-widths',
+      writes: 'board',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          linkedDevicesShown,
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/about'] }),
+          readyWhen(
+            'body:has([data-linked-width="834"] [data-bezel="tablet"]):has([data-linked-width="1440"] [data-bezel="laptop"])',
           ),
         ),
       ),

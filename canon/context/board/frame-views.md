@@ -18,15 +18,15 @@ Owns `linked-box.tsx`, the views of a frame at each width its entry lists, drawn
 - A linked box is a view and never a frame. `frameAt` and `framesIn` answer the frame for a point or marquee on one, and `pickAt` reads the frame's own box alone, so no element picks inside it
 - It loads the frame's URL at the frame's reload version and theme, flips with it, and in Play takes the pointer while its frame is entered, binding Esc into its window
 - Its label names its width and counts the findings tagged with that width, and `mountedRefs` tests `drawnExtent` so a frame and its row mount together
-- Its row moves out by a laptop base's reach past the lid, so a linked box taller than the frame never meets the base
+- `linkedBoxes` stands each body 80 px past the last, and `linkedDevice` names a body by the width while `showDevice` is on, a phone's page under its bar, so `linkedBar` adds the bar to a hugging height
 
 ### `src/client/board/device/`
 
 Owns `bezel.tsx`, the body around a `device`, `page-colors.ts`, the fill its bar and strips paint, `poses.tsx`, the bar under a selected device, and `turn.ts`, Rotate. All read `src/shared/frame-device.ts`. A board point maps into a device's page through `pageBox`, but the frame and present overlay offset their iframe by `topInset` and `sideInset`.
 
 - The body is a `box-shadow` spread that misses a square corner, so the page rounds to `pageCorners`, square where a status bar or side strip meets it, and other boxes to `screenCorners`
-- A laptop's lid is that spread, its chin and base boxes from `laptopParts`, and the body scales with the canvas, its edge one screen pixel at any zoom, taking no pointer events
-- The label, the open-alone link, and the rail stand past the border, a laptop's lid, and the In frame tag below the body, a laptop's base, and a linked width draws no device
+- `laptopParts` gives a laptop's chin and base and `bodyParts` each camera and tablet button, and the body scales with the canvas, its edge one screen pixel at any zoom, taking no pointer events
+- The label, the open-alone link, and the rail stand past the border, a laptop's lid, the rail past a tablet's buttons through `railInset`, and the In frame tag below the body, a laptop's base
 - Every geometry helper takes the `turn`, so a turned phone or foldable insets a `sideInset` strip on each side edge, and a turned foldable runs its fold across in `foldBand`
 - Present and Play show a page-tall phone one screen tall through `shownBox`, centered by `bezelBox` and fit by `bezelReach`
 
@@ -40,4 +40,5 @@ Owns `rail.tsx`, the rail a frame `scrollsInBox` names draws in Edit, being a sc
 
 ## Gotchas
 
+- A frame with clipping off paints elements past its right or bottom edge in Edit from the PNG route, capped by `PAINTED_MAX`, and one past the left or top, or in a previewed or linked box, takes none
 - A fold, a turn, or naming the foldable that widens a body pushes each frame to its right on its rows by the growth, in one write and undo step, and a shrink or a bare show pushes nothing
