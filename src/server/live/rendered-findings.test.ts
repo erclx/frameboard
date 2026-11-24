@@ -276,6 +276,84 @@ describe('createRenderedFindings', () => {
     await expect(rendered.settle(['site/home/none'])).resolves.toBeUndefined()
   })
 
+  it('queues no primed frame, and queues one whose box moved since', async () => {
+    const { calls, check } = heldCheck()
+    const rendered = createRenderedFindings({ check, onResult: () => {} })
+    const board = boardOf({ hero: BOX, about: BOX })
+    rendered.prime(board, ['site/home/hero', 'site/home/gone'])
+
+    rendered.queue(board, [])
+    await tick()
+    calls[0]?.land([])
+    await tick()
+    const swept = calls.map((call) => call.frame.ref)
+    rendered.queue(
+      boardOf({ hero: { width: 400, height: 120 }, about: BOX }),
+      [],
+    )
+    await tick()
+
+    expect(swept).toEqual(['site/home/about'])
+    expect(calls.map((call) => call.frame.ref)).toEqual([
+      'site/home/about',
+      'site/home/hero',
+    ])
+  })
+
+  it('checks a fronted frame ahead of a queued sweep', async () => {
+    const { calls, check } = heldCheck()
+    const rendered = createRenderedFindings({ check, onResult: () => {} })
+    rendered.queue(boardOf({ a: BOX, b: BOX, c: BOX, d: BOX }), [])
+    await tick()
+
+    rendered.front(['site/home/d', 'site/home/none'])
+    calls[0]?.land([])
+    await tick()
+    calls[1]?.land([])
+    await tick()
+
+    expect(calls.map((call) => call.frame.name)).toEqual(['a', 'd', 'b'])
+  })
+
+  it('checks no primed frame once a browser launches after one did not', async () => {
+    const { calls, check } = heldCheck()
+    const rendered = createRenderedFindings({ check, onResult: () => {} })
+    const board = boardOf({ hero: BOX, about: BOX })
+    rendered.prime(board, ['site/home/about'])
+    rendered.queue(board, [])
+    await tick()
+    calls[0]?.fail(new FrameboardError('browser-not-found', 'No shell.'))
+    await tick()
+
+    rendered.queue(board, ['site/home/hero'])
+    await tick()
+    calls[1]?.land([])
+    await tick()
+
+    expect(calls.map((call) => call.frame.name)).toEqual(['hero', 'hero'])
+  })
+
+  it('tells a failed recheck from one that found nothing', async () => {
+    const { calls, check } = heldCheck()
+    const landed: [string, boolean][] = []
+    const rendered = createRenderedFindings({
+      check,
+      onResult: (ref, _findings, ran) => landed.push([ref, ran]),
+    })
+    rendered.queue(boardOf({ hero: BOX, about: BOX }), [])
+    await tick()
+
+    calls[0]?.fail(new Error('Timeout 10000ms exceeded.'))
+    await tick()
+    calls[1]?.land([])
+    await rendered.settle(['site/home/about'])
+
+    expect(landed).toEqual([
+      ['site/home/hero', false],
+      ['site/home/about', true],
+    ])
+  })
+
   it('reports browser-not-found while the browser does not launch', async () => {
     const { calls, check } = heldCheck()
     const rendered = createRenderedFindings({ check, onResult: () => {} })
