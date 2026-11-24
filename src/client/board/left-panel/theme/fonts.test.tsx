@@ -1,6 +1,6 @@
 import '../../../styles.css'
 
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -287,6 +287,56 @@ describe('FontsSection', () => {
       expect(removed).toEqual([])
     })
 
+    it('hands focus back to Remove when the confirmation is cancelled by keyboard', async () => {
+      render(
+        <FontsSection
+          project="studio"
+          load={listOf(installed('Lora'))}
+          readFrames={framesOf(['studio/home/hero'])}
+          remove={recordingRemove().remove}
+        />,
+      )
+      const button = await screen.findByRole('button', { name: 'Remove Lora' })
+      button.focus()
+      await userEvent.keyboard('{Enter}')
+      await screen.findByRole('dialog', { name: 'Remove Lora?' })
+
+      await userEvent.keyboard('{Escape}')
+
+      await waitFor(() => expect(button).toHaveFocus())
+    })
+
+    it('ignores a second Remove pressed while the first one’s frames read', async () => {
+      const asked: string[] = []
+      let answer = () => {}
+      render(
+        <FontsSection
+          project="studio"
+          load={listOf(installed('Lora'), installed('Playfair Display'))}
+          readFrames={(_project, id) => {
+            asked.push(id)
+            return new Promise((resolve) => {
+              answer = () => resolve(['studio/home/hero'])
+            })
+          }}
+          remove={recordingRemove().remove}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Remove Lora' }),
+      )
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Remove Playfair Display' }),
+      )
+      await act(async () => answer())
+
+      expect(asked).toEqual(['lora'])
+      expect(
+        await screen.findByRole('dialog', { name: 'Remove Lora?' }),
+      ).toBeInTheDocument()
+    })
+
     it('removes a family the board also serves without asking, since its frames keep drawing', async () => {
       const { removed, remove } = recordingRemove()
       render(
@@ -529,6 +579,37 @@ describe('FontsSection', () => {
       await userEvent.keyboard('{Escape}')
 
       expect(screen.queryByRole('searchbox')).toBeNull()
+    })
+
+    it('leaves focus where the person moved it while an install ran', async () => {
+      let land = () => {}
+      render(
+        <>
+          <FontsSection
+            project="studio"
+            load={listOf()}
+            find={async (_project, text) =>
+              findOf(text, [result('Playfair Display')])
+            }
+            install={(project, id) =>
+              new Promise((resolve) => {
+                land = () => resolve(savedOf(project, id))
+              })
+            }
+          />
+          <input aria-label="Elsewhere" />
+        </>,
+      )
+
+      await search('playfair')
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Install Playfair Display' }),
+      )
+      const elsewhere = screen.getByRole('textbox', { name: 'Elsewhere' })
+      elsewhere.focus()
+      await act(async () => land())
+
+      expect(elsewhere).toHaveFocus()
     })
 
     it('records the query whose answer drew a result, not text typed since', async () => {

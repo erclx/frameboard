@@ -111,6 +111,7 @@ export function FontsSection({
   const [removing, setRemoving] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const report = reportTo(useDrawn(), setProblem)
+  const reading = useRef(false)
 
   const rows = familyRows(installed)
 
@@ -127,8 +128,11 @@ export function FontsSection({
   }
 
   // A family the board also serves keeps every frame drawing, so it removes with no frame read.
+  // One read at a time, so a second press cannot swap the dialog to another font.
   const ask = async (font: InstalledFont) => {
+    if (reading.current) return
     if (font.bundled) return run(font)
+    reading.current = true
     setRemoving(font.id)
     setProblem(null)
     try {
@@ -138,6 +142,7 @@ export function FontsSection({
     } catch (error) {
       report(`Couldn’t remove ${font.family}`, error)
     } finally {
+      reading.current = false
       setRemoving(null)
     }
   }
@@ -310,14 +315,21 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
   }
 
   // The query recorded is the one whose answer drew the result, never text typed since.
-  const run = async (result: FontResult, query: string) => {
+  const run = async (
+    result: FontResult,
+    query: string,
+    pressed: HTMLElement,
+  ) => {
     if (installing.has(result.id)) return
     setInstalling((current) => new Set(current).add(result.id))
     setProblem(null)
     try {
       await install(project, result.id, query || null)
-      // The pressed Install unmounts once its row reads Installed, so focus goes back to the field.
-      field.current?.focus()
+      // The pressed Install unmounts once its row reads Installed. Focus the person moved elsewhere stays there.
+      const active = document.activeElement
+      if (active === pressed || active === null || active === document.body) {
+        field.current?.focus()
+      }
     } catch (error) {
       report(`Couldn’t install ${result.family}`, error)
     } finally {
@@ -401,8 +413,12 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
                 result={result}
                 held={heldAs(result, installed)}
                 installing={installing.has(result.id)}
-                onInstall={(picked) =>
-                  void run(picked, shown.state === 'found' ? shown.text : typed)
+                onInstall={(picked, pressed) =>
+                  void run(
+                    picked,
+                    shown.state === 'found' ? shown.text : typed,
+                    pressed,
+                  )
                 }
               />
             ))}
@@ -436,7 +452,7 @@ function ResultRow({
   result: FontResult
   held: 'Installed' | 'Built in' | null
   installing: boolean
-  onInstall: (result: FontResult) => void
+  onInstall: (result: FontResult, pressed: HTMLElement) => void
 }) {
   return (
     <li className="group flex min-h-8 items-center gap-2">
@@ -455,7 +471,7 @@ function ResultRow({
           aria-label={`Install ${result.family}`}
           // Kept focusable while it runs, since disabling the focused button drops focus to the page.
           aria-disabled={installing || undefined}
-          onClick={() => onInstall(result)}
+          onClick={(event) => onInstall(result, event.currentTarget)}
           className="flex h-6 shrink-0 items-center rounded-[5px] px-1.5 text-xs font-medium text-primary outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 aria-disabled:cursor-default aria-disabled:opacity-40"
         >
           Install
@@ -531,9 +547,12 @@ function RemoveButton({
     <button
       type="button"
       aria-label={`Remove ${font.family}`}
-      disabled={busy}
-      onClick={() => onRemove(font)}
-      className="grid size-5 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40"
+      // Kept focusable while its frames read, so Cancel on the dialog has a button to hand focus back to.
+      aria-disabled={busy || undefined}
+      onClick={() => {
+        if (!busy) onRemove(font)
+      }}
+      className="grid size-5 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-disabled:cursor-default aria-disabled:opacity-40"
     >
       <X aria-hidden className="size-3" />
     </button>
