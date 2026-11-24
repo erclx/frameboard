@@ -201,7 +201,7 @@ export async function addFrame(
           { ref: refOf(frame) },
         )
       }
-      // An entry left by a missing file keeps its box and its device.
+      // An entry left by a missing file outranks the name, so a hidden device stays hidden.
       if (onNamedWidth && !reserved && !sized && !layout.hasEntry(frame.name)) {
         named = namedWidth(frame.name)
       }
