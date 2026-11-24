@@ -221,6 +221,30 @@ describe('AssetsTab', () => {
       leftTabStore.setState({ tab: 'design' })
     })
 
+    it('draws no file until the font list answers, so no font file shows as a tile first', async () => {
+      let answer = () => {}
+      const fontsAnswered = new Promise<void>((resolve) => (answer = resolve))
+      render(
+        <AssetsTab
+          project="studio"
+          load={listing(WITH_FONTS)}
+          loadFonts={async () => {
+            await fontsAnswered
+            return loadFonts()
+          }}
+        />,
+      )
+
+      await screen.findByRole('tab', { name: 'Files' })
+      expect(screen.queryByText('latin-wght-normal.woff2')).toBeNull()
+      expect(screen.queryByText(/assets\/ ·/)).toBeNull()
+
+      await act(async () => answer())
+
+      expect(await screen.findByText('assets/ · 1 file')).toBeVisible()
+      expect(screen.queryByText('latin-wght-normal.woff2')).toBeNull()
+    })
+
     it('leaves them out and names them beside the kits on one line to the Theme tab', async () => {
       const user = userEvent.setup()
       render(

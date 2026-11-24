@@ -192,7 +192,8 @@ export function FilesView({
     void add(droppedFiles(event))
   }
 
-  if (list === undefined) return null
+  // Waits on the font list too, so an installed family's files never draw as tiles first.
+  if (list === undefined || installedFonts === undefined) return null
   if (list === null) {
     return (
       <p className="m-3 text-muted-foreground">
