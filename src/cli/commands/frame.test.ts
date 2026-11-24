@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
@@ -343,6 +343,57 @@ describe('frame', () => {
 
       expect(result.json().data).toMatchObject({ box: { width: 834 } })
       expect(result.json().data).not.toHaveProperty('showDevice')
+    })
+
+    it('lands past the last frame with room for its body', async () => {
+      const run = on('basic')
+
+      const result = await run('frame', 'add', 'webapp/home/pricing-390')
+
+      expect(result.json().data).toMatchObject({ box: { x: 2010 } })
+    })
+
+    it('lands with no room for a body where --width shows none', async () => {
+      const run = on('basic')
+
+      const result = await run(
+        'frame',
+        'add',
+        'webapp/home/pricing-390',
+        '--width',
+        '390',
+      )
+
+      expect(result.json().data).toMatchObject({ box: { x: 1990 } })
+    })
+
+    it('keeps the width and hidden device an entry left by a missing file holds', async () => {
+      const run = on('basic')
+      const ref = 'webapp/home/pricing-390'
+      await run('frame', 'add', ref)
+      await run('frame', 'resize', ref, '--width', '402')
+      await run('frame', 'device', ref, 'off')
+      rmSync(join(board.root, `${ref}.html`))
+
+      const result = await run('frame', 'add', ref, '--scroll')
+
+      expect(result.json().data).toMatchObject({ box: { width: 402 } })
+      expect(result.json().data).not.toHaveProperty('showDevice')
+    })
+
+    it('keeps the turned box an entry left by a missing file holds', async () => {
+      const run = on('basic')
+      const ref = 'webapp/home/pricing-390'
+      await run('frame', 'add', ref)
+      await run('frame', 'device', ref, '--turn', 'left')
+      rmSync(join(board.root, `${ref}.html`))
+
+      const result = await run('frame', 'add', ref)
+
+      expect(result.json().data).toMatchObject({
+        box: { width: 844, height: 390 },
+        turn: 'left',
+      })
     })
 
     it('holds a --scroll frame at the screen height of the named width', async () => {

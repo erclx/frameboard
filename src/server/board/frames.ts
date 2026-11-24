@@ -112,8 +112,8 @@ export interface DeviceOptions {
 export interface NamedWidthOptions {
   /**
    * Opts in to the width a trailing `-<px>` in the name states, shown in its
-   * device, where no size option and no reserved box gives one. Called with
-   * that width once the frame lands at it.
+   * device, where no size option, reserved box, or entry left by a missing
+   * file gives one. Called with that width once the frame lands at it.
    */
   onNamedWidth?: (width: number) => void
 }
@@ -167,24 +167,21 @@ export async function addFrame(
     options.size !== undefined ||
     options.width !== undefined ||
     options.height !== undefined
-  const named =
-    onNamedWidth && !reserved && !sized ? namedWidth(frame.name) : undefined
-  const sizing = named === undefined ? options : { width: named }
-  const showDevice = options.showDevice || named !== undefined
   // A reserved frame lands in its box, as the server's landing step puts it.
-  const size =
+  const statedSize =
     reserved && !sized
       ? { width: reserved.width, height: reserved.height }
-      : sizeOf(sizing)
+      : sizeOf(options)
   const scroll = options.scroll ?? false
-  const hugs = scroll
+  const statedHugs = scroll
     ? { hugWidth: false, hugHeight: false }
     : reserved && !sized
       ? {
           hugWidth: reserved.hugWidth ?? false,
           hugHeight: reserved.hugHeight ?? false,
         }
-      : hugsOf(sizing)
+      : hugsOf(options)
+  let named: number | undefined
   await withLayouts(
     [page],
     async (layouts) => {
@@ -204,13 +201,20 @@ export async function addFrame(
           { ref: refOf(frame) },
         )
       }
+      // An entry left by a missing file keeps its box and its device.
+      if (onNamedWidth && !reserved && !sized && !layout.hasEntry(frame.name)) {
+        named = namedWidth(frame.name)
+      }
+      const size = named === undefined ? statedSize : { width: named }
+      const hugs =
+        named === undefined ? statedHugs : { ...statedHugs, hugWidth: false }
+      const showDevice = options.showDevice || named !== undefined
       const names = exists ? layout.names : [...layout.names, frame.name].sort()
       // Lands past the placed frames alone, ignoring other unplaced files.
       const placed = placeFrames(
         layout.file.frames,
         names.filter((name) => layout.hasEntry(name)),
       )
-      // An entry left by a missing file keeps its box.
       const stale = placed.get(frame.name)
       const width =
         size.width ?? stale?.box.width ?? FRAME_SIZES[DEFAULT_FRAME_SIZE].width

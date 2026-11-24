@@ -162,7 +162,7 @@ export function registerFrame(
       withSize(
         verb(
           'add',
-          'Place a frame past every frame, as written when its file exists and with a skeleton file only when none does, so write the file first to show no empty box. Each axis no size names hugs its content, so a preset or --width fixes the width and the height hugs. With no size, a name ending in -<px> for a width a size names, such as overview-390, fixes that width and turns the device on.',
+          'Place a frame past every frame, as written when its file exists and with a skeleton file only when none does, so write the file first to show no empty box. Each axis no size names hugs its content, so a preset or --width fixes the width and the height hugs. With no size, and no reserved box or entry already in layout.json, a name ending in -<px> for a width a size names, such as overview-390, fixes that width and turns the device on.',
         )
           .option('--scroll', SCROLL_HELP)
           .option('--widths <list>', WIDTHS_HELP, parseWidths)
