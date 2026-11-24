@@ -19,6 +19,8 @@ Owns the left panel, being `project-header.tsx` with the way home, the name, and
 - A row restacks within its own group, never into or out of a section, landing at the page-wide index beside the frame it drops by
 - A canvas click waits out `REVEAL_DELAY_MS` before it centers a frame, since a travel would move the point a double-click picks at
 - The reveal reports as a hand move, so it stops Follow, and a row click fits a frame larger than the view where a canvas click never does
+- `row-flags.tsx` draws the eye and lock a frame row and an element row share. A frame's live in `layout.json`, and an element's are written on it in its file through `element/flags.ts`
+- An element row dims for a hide on it or on one holding it, and a hidden or locked element still selects from its row
 - An element row's F2 stops at the row, so the board's own F2 opens no second field, and its drag moves it among its siblings alone
 
 ### `src/client/board/assets/`
