@@ -32,7 +32,7 @@ export interface CheckRenderedOptions {
   baseUrl: string
   /** The board folder, which the frame's own sheets are read from. */
   root: string
-  /** The frame at the box it shows, with the device its page draws under, none at a linked width. */
+  /** The frame at the box it shows, with the device its page draws under at that width. */
   frame: RenderedTarget & { device?: Device | null; turn?: Turn }
   config: ProjectChecks
 }

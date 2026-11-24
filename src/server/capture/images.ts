@@ -6,7 +6,7 @@ import type { Browser } from 'playwright-core'
 import { COMPOSITE_MARGIN, filmstripWidth } from '@/shared/capture-limits'
 import { FrameboardError } from '@/shared/errors'
 import { type Device, insetsPage, type Turn } from '@/shared/frame-device'
-import { drawnExtent, linkedBoxes } from '@/shared/frame-widths'
+import { drawnExtent, linkedBoxes, viewDevice } from '@/shared/frame-widths'
 import type { FrameRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
 
@@ -158,11 +158,11 @@ export function compositeImagePath(
 export function compositeBounds(
   page: CompositePage,
   frames: (Pick<FrameRecord, 'box'> &
-    Partial<Pick<FrameRecord, 'widths' | 'device'>>)[],
+    Partial<Pick<FrameRecord, 'widths' | 'device' | 'showDevice'>>)[],
   scale = 1,
 ): { width: number; height: number; dx: number; dy: number } {
-  const extents = frames.map(({ box, widths, device }) =>
-    drawnExtent(box, widths ?? [], device),
+  const extents = frames.map((frame) =>
+    drawnExtent(frame.box, frame.widths ?? [], frame),
   )
   const left = Math.min(...extents.map((box) => box.x))
   const top = Math.min(...extents.map((box) => box.y))
@@ -316,7 +316,7 @@ export async function captureComposite(
     for (const frame of frames) {
       for (const box of [
         frame.box,
-        ...linkedBoxes(frame.box, frame.widths, frame.device),
+        ...linkedBoxes(frame.box, frame.widths, frame),
       ]) {
         const shot = await renderFrame(
           browser,
@@ -389,8 +389,7 @@ export async function captureMotionImages(
           frame: {
             ref: frame.ref,
             box: view,
-            device: viewDevice(frame, view),
-            turn: frame.turn,
+            ...viewDevice(frame, view.width),
           },
           theme,
           scale,
@@ -417,8 +416,7 @@ export async function captureMotionImages(
         baseUrl,
         ref: frame.ref,
         view,
-        device: viewDevice(frame, view),
-        turn: frame.turn,
+        ...viewDevice(frame, view.width),
         theme,
         scale,
         motionTimeoutMs,
@@ -587,17 +585,6 @@ async function holdShots(
   }
 }
 
-/**
- * The device a view draws its page under: the frame's own while the view
- * is the frame's own box, and none at a linked width, which draws no device.
- */
-function viewDevice(
-  frame: FrameRecord,
-  view: { width: number },
-): Device | undefined {
-  return view.width === frame.box.width ? frame.device : undefined
-}
-
 // One frame at a time, so a slow frame never holds several tabs open.
 async function renderFrame(
   browser: Browser,
@@ -610,11 +597,11 @@ async function renderFrame(
 ): Promise<{ bytes: Buffer; scrollY?: number } & Unloaded> {
   const box = { width: view.width, height: view.height }
   assertScreenshotFits(frame.ref, box, scale)
-  const device = viewDevice(frame, view)
+  const { device, turn } = viewDevice(frame, view.width)
   const opened = await openFrame(browser, {
     baseUrl,
     ref: frame.ref,
-    box: pageSize(box, device, frame.turn),
+    box: pageSize(box, device, turn),
     theme,
     scale,
   })
@@ -624,14 +611,14 @@ async function renderFrame(
         ? undefined
         : await opened.page.evaluate(scrollAndSettle, scroll)
     const shot = await opened.page.screenshot(SCREENSHOT)
-    const bytes = insetsPage(device, frame.turn)
+    const bytes = insetsPage(device, turn)
       ? await underPageInsets(
           browser,
           shot,
           box,
           {
             device,
-            turn: frame.turn,
+            turn,
             colors: await readPageColors(opened.page),
             theme,
           },

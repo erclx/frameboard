@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest'
 
-import { drawnExtent, linkedBoxes, widthsOf, xPast } from './frame-widths'
+import {
+  drawnExtent,
+  linkedBar,
+  linkedBoxes,
+  viewDevice,
+  widthsOf,
+  xPast,
+} from './frame-widths'
 
 const frame = { x: 100, y: 40, width: 1440, height: 900 }
+const phone = { x: 100, y: 40, width: 390, height: 844 }
+const TABLET_AND_LAPTOP = [
+  { width: 834, height: 1194 },
+  { width: 1440, height: 900 },
+]
 
 describe('widthsOf', () => {
   it('reads a list of width and height objects as written', () => {
@@ -50,18 +62,85 @@ describe('linkedBoxes', () => {
     ])
   })
 
-  it('starts the row past a laptop base reaching beyond the lid', () => {
+  it('stands a phone frame, its tablet, and its laptop 80 apart by their bodies', () => {
     expect(
-      linkedBoxes(frame, [{ width: 834, height: 1194 }], 'laptop'),
-    ).toEqual([{ x: 1709, y: 40, width: 834, height: 1194 }])
+      linkedBoxes(phone, TABLET_AND_LAPTOP, {
+        device: 'phone',
+        showDevice: true,
+      }),
+    ).toEqual([
+      { x: 628, y: 40, width: 834, height: 1194 },
+      { x: 1689, y: 40, width: 1440, height: 900 },
+    ])
   })
 
-  it("keeps the row 80 past a phone frame's buttons", () => {
-    const phone = { x: 100, y: 40, width: 390, height: 844 }
+  it('starts the row past a laptop base reaching beyond the lid', () => {
+    expect(
+      linkedBoxes(frame, [{ width: 834, height: 1194 }], {
+        device: 'laptop',
+        showDevice: true,
+      }),
+    ).toEqual([{ x: 1767, y: 40, width: 834, height: 1194 }])
+  })
 
-    expect(linkedBoxes(phone, [{ width: 320, height: 568 }], 'phone')).toEqual([
-      { x: 574, y: 40, width: 320, height: 568 },
-    ])
+  it('spaces a width under 320 as a bare box, since no device fits it', () => {
+    expect(
+      linkedBoxes(phone, [{ width: 300, height: 500 }], {
+        device: 'phone',
+        showDevice: true,
+      }),
+    ).toEqual([{ x: 590, y: 40, width: 300, height: 500 }])
+  })
+
+  it('gives a frame too narrow for a device the bodies its wider widths name', () => {
+    const narrow = { x: 0, y: 0, width: 300, height: 500 }
+
+    expect(
+      linkedBoxes(narrow, [{ width: 834, height: 1194 }], {
+        showDevice: true,
+      }),
+    ).toEqual([{ x: 418, y: 0, width: 834, height: 1194 }])
+  })
+})
+
+describe('viewDevice', () => {
+  const shown = { box: phone, device: 'phone', showDevice: true } as const
+
+  it.each([
+    [390, 'phone'],
+    [834, 'tablet'],
+    [1440, 'laptop'],
+    [320, 'phone'],
+    [300, null],
+  ] as const)(
+    'draws the %i view of a shown phone frame in %s',
+    (width, device) => {
+      expect(viewDevice(shown, width).device).toBe(device)
+    },
+  )
+
+  it('draws every view bare with the device off', () => {
+    const off = { box: phone }
+
+    expect(viewDevice(off, 390).device).toBeNull()
+    expect(viewDevice(off, 834).device).toBeNull()
+  })
+
+  it('turns the own view alone, since a linked one stands upright', () => {
+    const turned = { ...shown, turn: 'left' } as const
+
+    expect(viewDevice(turned, 390).turn).toBe('left')
+    expect(viewDevice(turned, 320).turn).toBeUndefined()
+  })
+})
+
+describe('linkedBar', () => {
+  it.each([
+    ['a phone, its status bar', 390, true, 54],
+    ['a tablet, none', 834, true, 0],
+    ['a phone with the device off, none', 390, false, 0],
+  ] as const)('takes off %s', (_label, width, showDevice, bar) => {
+    expect(linkedBar({ showDevice }, width)).toBe(bar)
   })
 })
 
@@ -73,6 +152,15 @@ describe('drawnExtent', () => {
         { width: 390, height: 844 },
       ]),
     ).toEqual({ x: 100, y: 40, width: 2824, height: 1194 })
+  })
+
+  it('holds the body of every width it draws one around', () => {
+    expect(
+      drawnExtent(phone, TABLET_AND_LAPTOP, {
+        device: 'phone',
+        showDevice: true,
+      }),
+    ).toEqual({ x: 80, y: 2, width: 3158, height: 1270 })
   })
 
   it('is the frame box when it lists no width', () => {

@@ -430,8 +430,17 @@ describe.skipIf(shell === null)(
       expect(pixel(own.path, 678 - 50, 5)).toBe('#0000ff')
     })
 
-    it('starts a linked width page at its top, since it draws no device', async () => {
+    it("starts a linked phone's page under its status bar, at the linked box's size", async () => {
       const [, linked] = await shoot('phone')
+      if (!linked) throw new Error('no image')
+
+      expect([linked.width, linked.height]).toEqual([320, 500])
+      expect(pixel(linked.path, 160, 50)).toBe('#0000ff')
+      expect(pixel(linked.path, 160, 54 + 5)).toBe('#ff0000')
+    })
+
+    it('starts a linked page at its top with the device off', async () => {
+      const [, linked] = await shoot()
       if (!linked) throw new Error('no image')
 
       expect(pixel(linked.path, 160, 5)).toBe('#ff0000')

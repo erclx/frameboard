@@ -158,24 +158,27 @@ describe('laptopParts', () => {
 
 describe('drawnExtent with a device', () => {
   it('holds the bezel, so a frame placed past it lands clear', () => {
-    const extent = drawnExtent(frame, [], 'phone')
+    const extent = drawnExtent(frame, [], { device: 'phone' })
     expect(extent).toEqual(bezelBox(frame, 'phone', 'upright'))
   })
 
   it('holds the laptop base reaching past the lid', () => {
     const desktop = { x: 0, y: 0, width: 1440, height: 900 }
-    expect(drawnExtent(desktop, [], 'laptop')).toEqual(
+    expect(drawnExtent(desktop, [], { device: 'laptop' })).toEqual(
       bezelBox(desktop, 'laptop', 'upright'),
     )
   })
 
   it('holds the bezel around the frame and the linked widths past it', () => {
-    const extent = drawnExtent(frame, [{ width: 834, height: 1194 }], 'tablet')
+    const extent = drawnExtent(frame, [{ width: 834, height: 1194 }], {
+      device: 'tablet',
+      showDevice: true,
+    })
     expect(extent).toEqual({
       x: 62,
       y: 2,
-      width: 390 + 80 + 834 + 38 + 6,
-      height: 1194 + 38,
+      width: 38 + 390 + 38 + 80 + 38 + 834 + 38,
+      height: 38 + 1194 + 38,
     })
   })
 })

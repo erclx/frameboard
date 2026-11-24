@@ -193,12 +193,10 @@ function within(box: Box, point: Point): boolean {
 }
 
 /** The boxes a frame draws: its own, then each linked width's, which all answer as the frame. */
-function drawnBoxes({
-  box,
-  widths,
-  device,
-}: Pick<FrameRecord, 'box' | 'widths' | 'device'>): Box[] {
-  return [box, ...linkedBoxes(box, widths, device)]
+function drawnBoxes(
+  frame: Pick<FrameRecord, 'box' | 'widths' | 'device' | 'showDevice'>,
+): Box[] {
+  return [frame.box, ...linkedBoxes(frame.box, frame.widths, frame)]
 }
 
 /**
