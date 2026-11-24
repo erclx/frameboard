@@ -22,6 +22,7 @@ import type {
 } from '@/shared/records/list'
 
 import { Canvas } from './canvas'
+import { useWaitingOnFirstLoad } from './frame-loading'
 import { modeStore } from './mode'
 import { closeNote, notesUi } from './notes/tool'
 import { leaveFrame } from './play/entered'
@@ -35,6 +36,8 @@ import {
 } from './structure/actions'
 import { canvasView } from './view'
 import { PAN_EASE_MS } from './wheel'
+
+vi.mock('./frame-loading', { spy: true })
 
 function frame(
   name: string,
@@ -948,11 +951,10 @@ describe('Canvas', () => {
       })
     }
 
-    /** The open page off the live store, as the board screen reads it. */
+    /** Renders the canvas on every message, as the shell above the board screen does. */
     function OpenPage({ onCommit }: { onCommit: () => void }) {
-      const open = useLive((state) =>
-        state.board?.projects.find((each) => each.name === 'studio'),
-      )?.pages[0]
+      const projects = useLive((state) => state.board?.projects)
+      const open = projects?.find((each) => each.name === 'studio')?.pages[0]
       const reloads = useLive((state) => state.reloads)
       const kept = useLive((state) => state.kept)
       const findings = useLive((state) => state.findings)
@@ -979,10 +981,15 @@ describe('Canvas', () => {
       render(<OpenPage onCommit={() => (commits += 1)} />)
       await expect.poll(() => holdsAcrossFrames(() => commits)).toBe(true)
       const before = commits
+      // A frame calls this hook once a render, and nothing else on a canvas does.
+      vi.mocked(useWaitingOnFirstLoad).mockClear()
 
       act(() => receiveBoard(liveStore, boardWith('borealis')))
 
-      expect(commits).toBe(before)
+      expect({
+        canvas: commits > before,
+        frames: vi.mocked(useWaitingOnFirstLoad).mock.calls.length,
+      }).toEqual({ canvas: true, frames: 0 })
     })
 
     it('draws a frame of the open page at the box the message carries', () => {
