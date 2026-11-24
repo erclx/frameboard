@@ -181,6 +181,21 @@ describe('the time limit', { timeout: 20_000 }, () => {
 })
 
 describe('settings', () => {
+  it('should run one at a time when no slot count is set', async () => {
+    tryAcquire(lock, {
+      pid: process.pid,
+      cwd: '/repo/other',
+      command: 'vitest run',
+      startedAt: '2026-11-14T10:00:00.000Z',
+    })
+    setTimeout(() => release(lock, process.pid), 1500)
+
+    const run = await wrapAsync({}, ['true'])
+
+    expect(run.stderr).toContain('waiting on pid')
+    expect(run.code).toBe(0)
+  })
+
   it('should run in slot two while slot one is held', () => {
     tryAcquire(lock, {
       pid: process.pid,
@@ -189,7 +204,11 @@ describe('settings', () => {
       startedAt: '2026-11-14T10:00:00.000Z',
     })
 
-    const run = wrap({}, ['bash', '-c', `test -f '${slotPath(lock, 2)}'`])
+    const run = wrap({ FRAMEBOARD_TEST_SLOTS: '2' }, [
+      'bash',
+      '-c',
+      `test -f '${slotPath(lock, 2)}'`,
+    ])
 
     expect(run.code).toBe(0)
     expect(existsSync(slotPath(lock, 2))).toBe(false)

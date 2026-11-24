@@ -15,7 +15,7 @@ import { processTable } from './lib/process-table.ts'
 const POLL_MS = 1000
 // How long a process has to exit on TERM before it is sent KILL.
 const GRACE_MS = 3000
-const DEFAULT_SLOTS = 2
+const DEFAULT_SLOTS = 1
 const DEFAULT_LIMIT_S = 900
 const USAGE = 'Usage: bun scripts/test-locked.ts <command> [args...]'
 
