@@ -281,6 +281,15 @@ describe.skipIf(shell === null)(
               order: 1,
               showDevice: true,
             },
+            shown: {
+              x: 3000,
+              y: 0,
+              width: 1440,
+              height: 900,
+              order: 3,
+              showDevice: true,
+              widths: [{ width: 390, height: 844 }],
+            },
             turned: {
               x: 2000,
               y: 0,
@@ -296,6 +305,10 @@ describe.skipIf(shell === null)(
         'studio/home/turned.html': page(
           '<div class="wide"></div>',
           '.wide { width: 800px; height: 100px }',
+        ),
+        'studio/home/shown.html': page(
+          '<div class="block"></div>',
+          '.block { height: 1200px }',
         ),
         'studio/home/mobile.html': page(
           '<div class="block"></div>',
@@ -330,6 +343,21 @@ describe.skipIf(shell === null)(
           { width: 390, height: 1200 },
         ],
       ])
+    })
+
+    it('fits a linked phone to its page and the status bar above it', async () => {
+      const frame = await readFrame(board.root, 'studio/home/shown', {
+        cwd: board.root,
+      })
+
+      const fit = await fitFrame(browser, {
+        root: board.root,
+        cwd: board.root,
+        baseUrl: host.url,
+        frame,
+      })
+
+      expect(fit.frame.widths).toEqual([{ width: 390, height: 1254 }])
     })
 
     it('fits a phone frame to its page and the status bar above it', async () => {

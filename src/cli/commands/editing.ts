@@ -264,9 +264,7 @@ async function rightOf(
   const page = await scanPage(root, frame.project, frame.page, 0)
   const prefix = `${frame.project}/${frame.page}/`
   const boxes: Box[] = [
-    ...page.frames.map((each) =>
-      drawnExtent(each.box, each.widths, each.device),
-    ),
+    ...page.frames.map((each) => drawnExtent(each.box, each.widths, each)),
     ...live.flatMap((each) =>
       each.box && each.frame.startsWith(prefix) ? [each.box] : [],
     ),

@@ -50,6 +50,18 @@ describe('frameAt', () => {
     expect(frameAt([linked], { x: 440, y: 100 }, 1)).toBeNull()
   })
 
+  it('answers a linked width where its body moved it, and nothing where it stood bare', () => {
+    const shown = {
+      ...BACK,
+      device: 'phone' as const,
+      showDevice: true,
+      widths: [{ width: 834, height: 1194 }],
+    }
+
+    expect(frameAt([shown], { x: 1350, y: 100 }, 1)?.name).toBe('back')
+    expect(frameAt([shown], { x: 500, y: 100 }, 1)).toBeNull()
+  })
+
   it('keeps the strip its screen height when zoomed out', () => {
     expect(frameAt([BACK], { x: 10, y: -60 }, 0.25)?.name).toBe('back')
   })
