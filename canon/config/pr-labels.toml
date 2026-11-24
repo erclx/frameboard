@@ -1,18 +1,39 @@
-[domains]
-cli = ["src/cli/"]
-server = ["src/server/"]
-client = ["src/client/", "src/frame-bridge/"]
-shared = ["src/shared/"]
-web = ["web/"]
-plugin = [
+[domains.cli]
+paths = ["src/cli/"]
+color = "1f6feb"
+
+[domains.server]
+paths = ["src/server/"]
+color = "2da44e"
+
+[domains.client]
+paths = ["src/client/", "src/frame-bridge/"]
+color = "a371f7"
+
+[domains.shared]
+paths = ["src/shared/"]
+color = "d29922"
+
+[domains.web]
+paths = ["web/"]
+color = "bf3989"
+
+[domains.plugin]
+paths = [
   "plugins/frameboard/skills/",
   "plugins/frameboard/hooks/",
   "plugins/frameboard/monitors/",
   "plugins/frameboard/lib/",
   ".claude-plugin/",
 ]
-design = ["canon/design/", "canon/DESIGN.md"]
-documentation = [
+color = "0598bc"
+
+[domains.design]
+paths = ["canon/design/", "canon/DESIGN.md"]
+color = "e16f24"
+
+[domains.documentation]
+paths = [
   "README.md",
   "CONTRIBUTING.md",
   "SECURITY.md",
@@ -27,19 +48,28 @@ documentation = [
   ".github/readme-hero-",
   ".github/readme-themes/",
 ]
-tests = [
+color = "6e7781"
+
+[domains.tests]
+paths = [
   "e2e/",
   "test/",
   "src/test/",
   "playwright.config.ts",
   "vitest.config.ts",
 ]
-ci = [
+color = "56d364"
+
+[domains.ci]
+paths = [
   ".github/workflows/",
   ".github/dependabot.yml",
   "release-please-config.json",
 ]
-tooling = [
+color = "d2a8ff"
+
+[domains.tooling]
+paths = [
   "scripts/",
   ".husky/",
   ".lintstagedrc",
@@ -47,6 +77,7 @@ tooling = [
   ".oxlintrc.json",
   ".prettierignore",
   ".gitignore",
+  ".gitattributes",
   "commitlint.config.js",
   "components.json",
   "rolldown.config.ts",
@@ -54,7 +85,11 @@ tooling = [
   "vite.config.ts",
   "bun.lock",
 ]
-claude = [".claude/", "CLAUDE.md", "canon/config/"]
+color = "79c0ff"
+
+[domains.claude]
+paths = [".claude/", "CLAUDE.md", "canon/config/"]
+color = "ffa657"
 
 [declined]
 release-managed = [
