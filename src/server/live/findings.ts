@@ -3,6 +3,7 @@ import { relative, sep } from 'node:path'
 import {
   checkFrameIn,
   type ProjectContext,
+  readConfig,
   readProjectContext,
 } from '@/server/checks/frame'
 import { withoutOff } from '@/server/checks/rule'
@@ -10,25 +11,47 @@ import { PROJECT_FILE } from '@/shared/board-files'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
 
+import type { Kept, RememberedFrame } from './remembered'
 import { reloadRefs } from './watch'
 
+/** Findings, under the key of what they were read from once one is known. */
+type Held = Omit<Kept, 'key'> & Partial<Pick<Kept, 'key'>>
+
 export interface BoardFindings {
+  /**
+   * Holds what a previous server left for the frames `board` still holds, as
+   * though checked here, so nothing is sent and nothing rechecked.
+   */
+  prime: (
+    board: ListResult,
+    stored: Readonly<
+      Record<string, Pick<RememberedFrame, 'checks' | 'rendered'>>
+    >,
+  ) => void
+  /** The results held under a key, which the next start can prime. */
+  kept: () => Record<string, Pick<RememberedFrame, 'checks' | 'rendered'>>
   /** Every frame's findings by ref, as a board client's hello receives them. */
   all: () => Record<string, Finding[]>
   /**
    * Rechecks the frames `paths` changed, or every frame for `'all'`, and drops
    * refs `board` no longer holds. Returns each rechecked ref's findings, an
    * empty list clearing a frame, which is the partial map a batch sends.
+   * `keys` names what each was read from, and a result with none is not kept.
    */
   update: (
     board: ListResult,
     paths: string[] | 'all',
+    keys?: ReadonlyMap<string, string>,
   ) => Record<string, Finding[]>
   /**
    * Holds a frame's browser findings beside its static ones, sending nothing
-   * until the static ones land.
+   * until the static ones land, and kept as `update` keeps one.
    */
-  setRendered: (ref: string, findings: Finding[]) => Record<string, Finding[]>
+  setRendered: (
+    ref: string,
+    findings: Finding[],
+    key?: string,
+  ) => Record<string, Finding[]>
   /** The browser findings held for each of `refs`, an unchecked one as empty. */
   rendered: (refs: string[]) => Record<string, Finding[]>
   /**
@@ -50,31 +73,55 @@ export function createBoardFindings(
   root: string,
   tokens: string | null = null,
 ): BoardFindings {
-  const held = new Map<string, Finding[]>()
+  const held = new Map<string, Held>()
   const change = new Map<string, Finding[]>()
-  const browser = new Map<string, Finding[]>()
+  const browser = new Map<string, Held>()
   /** Each project's `checks.off` as its last recheck read it. */
   const off = new Map<string, readonly string[] | undefined>()
   const on = (ref: string, list: Finding[] | undefined) =>
     withoutOff(list ?? [], off.get(projectOf(ref)))
-  const merged = (ref: string, own: Finding[]) => [
-    ...own,
+  const merged = (ref: string, own: Held) => [
+    ...own.findings,
     ...on(ref, change.get(ref)),
-    ...on(ref, browser.get(ref)),
+    ...on(ref, browser.get(ref)?.findings),
   ]
 
   return {
+    prime: (board, stored) => {
+      for (const project of board.projects) {
+        // A project with nothing to recheck never reads its config in `update`.
+        off.set(project.name, readConfig(root, project.name).off)
+      }
+      for (const ref of framesOf(board).keys()) {
+        const { checks, rendered } = stored[ref] ?? {}
+        if (checks) held.set(ref, checks)
+        if (rendered) browser.set(ref, rendered)
+      }
+    },
+    kept: () => {
+      const frames: ReturnType<BoardFindings['kept']> = {}
+      for (const [ref, { key, findings }] of held) {
+        if (key !== undefined) frames[ref] = { checks: { key, findings } }
+      }
+      for (const [ref, { key, findings }] of browser) {
+        if (key === undefined) continue
+        frames[ref] = { ...frames[ref], rendered: { key, findings } }
+      }
+      return frames
+    },
     all: () =>
       Object.fromEntries(
         [...held].map(([ref, own]) => [ref, merged(ref, own)]),
       ),
-    setRendered: (ref, findings) => {
-      browser.set(ref, findings)
+    setRendered: (ref, findings, key) => {
+      browser.set(ref, { findings, key })
       const own = held.get(ref)
       return own ? { [ref]: merged(ref, own) } : {}
     },
     rendered: (refs) =>
-      Object.fromEntries(refs.map((ref) => [ref, on(ref, browser.get(ref))])),
+      Object.fromEntries(
+        refs.map((ref) => [ref, on(ref, browser.get(ref)?.findings)]),
+      ),
     setChanged: (ref, findings) => {
       change.set(ref, findings)
       const own = held.get(ref)
@@ -82,7 +129,7 @@ export function createBoardFindings(
     },
     changed: (refs) =>
       Object.fromEntries(refs.map((ref) => [ref, on(ref, change.get(ref))])),
-    update: (board, paths) => {
+    update: (board, paths, keys) => {
       const frames = framesOf(board)
       for (const ref of [...held.keys(), ...change.keys(), ...browser.keys()]) {
         if (!frames.has(ref)) {
@@ -108,8 +155,9 @@ export function createBoardFindings(
         }
         const findings = checkOne(root, frame, context)
         if (findings === null) continue
-        held.set(ref, findings)
-        changed[ref] = merged(ref, findings)
+        const own = { findings, key: keys?.get(ref) }
+        held.set(ref, own)
+        changed[ref] = merged(ref, own)
       }
       return changed
     },

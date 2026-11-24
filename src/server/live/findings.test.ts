@@ -291,6 +291,99 @@ describe('browser findings', () => {
   })
 })
 
+describe('remembered findings', () => {
+  const FOUND: Finding = {
+    rule: 'default-font',
+    severity: 'warning',
+    frame: 'site/home/hero',
+    path: 'site/home/hero.html',
+    message: 'From the last server.',
+    location: null,
+  }
+  const CLIPPED: Finding = { ...FOUND, rule: 'clipped', severity: 'error' }
+  const STORED = {
+    'site/home/hero': {
+      checks: { key: 'own', findings: [FOUND] },
+      rendered: { key: 'drawn', findings: [CLIPPED] },
+    },
+  }
+
+  it('answers a hello for a primed frame with no check', async () => {
+    board = writeBoard({ 'site/home/hero.html': CLEAN })
+    const findings = createBoardFindings(board.root)
+
+    findings.prime(await scanBoard(board.root), STORED)
+
+    expect(findings.all()).toEqual({ 'site/home/hero': [FOUND, CLIPPED] })
+    expect(findings.rendered(['site/home/hero'])).toEqual({
+      'site/home/hero': [CLIPPED],
+    })
+  })
+
+  it('replaces a primed frame on its recheck', async () => {
+    board = writeBoard({ 'site/home/hero.html': CLEAN })
+    const findings = createBoardFindings(board.root)
+    const scanned = await scanBoard(board.root)
+    findings.prime(scanned, STORED)
+
+    findings.update(
+      scanned,
+      [join(board.root, 'site/home/hero.html')],
+      new Map([['site/home/hero', 'newer']]),
+    )
+    findings.setRendered('site/home/hero', [], 'redrawn')
+
+    expect(findings.all()).toEqual({ 'site/home/hero': [] })
+    expect(findings.kept()).toEqual({
+      'site/home/hero': {
+        checks: { key: 'newer', findings: [] },
+        rendered: { key: 'redrawn', findings: [] },
+      },
+    })
+  })
+
+  it('keeps no result landing without a key, in place of the one it replaced', async () => {
+    board = writeBoard({ 'site/home/hero.html': CLEAN })
+    const findings = createBoardFindings(board.root)
+    const scanned = await scanBoard(board.root)
+    findings.prime(scanned, STORED)
+
+    findings.setRendered('site/home/hero', [])
+
+    expect(findings.kept()).toEqual({
+      'site/home/hero': { checks: STORED['site/home/hero'].checks },
+    })
+  })
+
+  it('drops a stored frame the board no longer holds', async () => {
+    board = writeBoard({ 'site/home/renamed.html': CLEAN })
+    const findings = createBoardFindings(board.root)
+
+    findings.prime(await scanBoard(board.root), STORED)
+
+    expect(findings.all()).toEqual({})
+    expect(findings.kept()).toEqual({})
+  })
+
+  it('leaves out a rule its project turns off with no frame rechecked', async () => {
+    board = writeBoard({
+      'site/project.json':
+        '{ "version": 1, "pages": [], "checks": { "off": ["outranked"] } }',
+      'site/home/hero.html': CLEAN,
+    })
+    const findings = createBoardFindings(board.root)
+    findings.prime(await scanBoard(board.root), STORED)
+
+    const sent = findings.setChanged('site/home/hero', [
+      { ...FOUND, rule: 'outranked' },
+    ])
+
+    expect(rulesOf(sent)).toEqual({
+      'site/home/hero': ['default-font', 'clipped'],
+    })
+  })
+})
+
 describe('recheckRefs', () => {
   it('rechecks every frame of a page when a sheet beside them changes', async () => {
     board = writeBoard({
