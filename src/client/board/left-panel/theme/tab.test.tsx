@@ -461,7 +461,8 @@ describe('ThemeTab', () => {
       )
       await screen.findByText('primary')
 
-      // Add kit and the source note's help mark take the first two stops, above the tokens.
+      // Add kit, Find a font, and the source note's help mark take the first three stops, above the tokens.
+      await userEvent.tab()
       await userEvent.tab()
       await userEvent.tab()
       await userEvent.tab()

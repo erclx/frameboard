@@ -1,5 +1,5 @@
-import { X } from 'lucide-react'
-import { useState } from 'react'
+import { Plus, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/client/components/ui/button'
 import {
@@ -10,13 +10,23 @@ import {
   DialogTitle,
 } from '@/client/components/ui/dialog'
 import { useLive } from '@/client/live/store'
+import { BoardWriteError } from '@/client/live/write'
 import { FACES, faceSheetUrl, faceStack } from '@/shared/faces'
 import { FONT_SHEET } from '@/shared/fonts'
 import type { ListResult } from '@/shared/records/list'
-import type { FontList, InstalledFont } from '@/shared/records/sourcing'
+import type {
+  FontFind,
+  FontList,
+  FontResult,
+  InstalledFont,
+} from '@/shared/records/sourcing'
 
-import { fetchInstalledFonts, useInstalledFonts } from '../../assets/sourcing'
-import { removeFont } from './write'
+import {
+  fetchInstalledFonts,
+  findFonts,
+  useInstalledFonts,
+} from '../../assets/sourcing'
+import { installFont, removeFont } from './write'
 
 /** How many frame names the removal confirmation spells out before counting the rest. */
 const NAMED_FRAMES = 5
@@ -25,8 +35,13 @@ interface FontsSectionProps {
   project: string
   /** Reads the project's installed fonts, the API in the app. */
   load?: (project: string) => Promise<FontList | null>
+  find?: typeof findFonts
+  install?: typeof installFont
   remove?: typeof removeFont
 }
+
+/** How long typing rests before the search runs, so each keystroke sends no request. */
+const SEARCH_REST_MS = 250
 
 /** One family a frame may name, built in or installed. */
 interface FamilyRow {
@@ -47,6 +62,8 @@ interface FamilyRow {
 export function FontsSection({
   project,
   load = fetchInstalledFonts,
+  find = findFonts,
+  install = installFont,
   remove = removeFont,
 }: FontsSectionProps) {
   const canWrite = useLive((state) => state.canWrite)
@@ -134,7 +151,14 @@ export function FontsSection({
           {problem}
         </p>
       ) : null}
-      {canWrite ? null : (
+      {canWrite ? (
+        <FindFont
+          project={project}
+          installed={installed}
+          find={find}
+          install={install}
+        />
+      ) : (
         <p className="pt-1 leading-[1.45] text-muted-foreground">
           View only, so fonts can’t be added or removed here.
         </p>
@@ -171,6 +195,270 @@ export function FontsSection({
       </Dialog>
     </section>
   )
+}
+
+type Search =
+  | { state: 'idle' }
+  | { state: 'searching' }
+  | { state: 'found'; find: FontFind }
+  | { state: 'failed'; message: string }
+
+interface FindFontProps {
+  project: string
+  installed: readonly InstalledFont[]
+  find: typeof findFonts
+  install: typeof installFont
+}
+
+/**
+ * Find a font and the search it opens, finding once typing rests. Escape
+ * closes the search and hands focus back to Find a font.
+ */
+function FindFont({ project, installed, find, install }: FindFontProps) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const [search, setSearch] = useState<Search>({ state: 'idle' })
+  const [installing, setInstalling] = useState<ReadonlySet<string>>(new Set())
+  const [problem, setProblem] = useState<string | null>(null)
+  const opener = useRef<HTMLButtonElement>(null)
+  const closed = useRef(false)
+
+  useEffect(() => {
+    if (!open && closed.current) {
+      closed.current = false
+      opener.current?.focus()
+    }
+  }, [open])
+
+  const typed = text.trim()
+  useEffect(() => {
+    if (!open || typed === '') return
+    const abort = new AbortController()
+    const rest = setTimeout(() => {
+      setSearch({ state: 'searching' })
+      find(project, typed, abort.signal)
+        .then((found) => setSearch({ state: 'found', find: found }))
+        .catch((error: unknown) => {
+          if (abort.signal.aborted) return
+          setSearch({ state: 'failed', message: searchFailure(error) })
+        })
+    }, SEARCH_REST_MS)
+    return () => {
+      clearTimeout(rest)
+      abort.abort()
+    }
+  }, [open, typed, project, find])
+
+  const close = () => {
+    closed.current = true
+    setOpen(false)
+    setText('')
+    setSearch({ state: 'idle' })
+    setProblem(null)
+  }
+
+  const run = async (result: FontResult) => {
+    setInstalling((current) => new Set(current).add(result.id))
+    setProblem(null)
+    try {
+      await install(project, result.id, typed || null)
+    } catch (error) {
+      setProblem(
+        `Couldn’t install ${result.family}. ${error instanceof Error ? error.message : String(error)}`,
+      )
+    } finally {
+      setInstalling((current) => {
+        const next = new Set(current)
+        next.delete(result.id)
+        return next
+      })
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        ref={opener}
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-1 -ml-1 flex h-6 items-center gap-1 rounded-[5px] px-1 text-xs font-medium text-primary outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
+      >
+        <Plus aria-hidden className="size-3" />
+        Find a font
+      </button>
+    )
+  }
+
+  // A cleared field shows no stale results while the next search waits to run.
+  const shown: Search = typed === '' ? { state: 'idle' } : search
+  const found = shown.state === 'found' ? shown.find : null
+  return (
+    <div
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.stopPropagation()
+          close()
+        }
+      }}
+    >
+      <label className="mt-1 flex h-7 items-center gap-2 rounded-md border border-border bg-background px-2 text-xs text-foreground focus-within:ring-2 focus-within:ring-ring/50">
+        <span className="sr-only">Search Fontsource by name or category</span>
+        <input
+          type="search"
+          // The field opens from Find a font, a press asking to type.
+          // oxlint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          className="min-w-0 flex-1 bg-transparent outline-none [&::-webkit-search-cancel-button]:hidden"
+        />
+        <span
+          aria-live="polite"
+          className="shrink-0 text-label text-muted-foreground tabular-nums"
+        >
+          {shown.state === 'searching'
+            ? 'Searching'
+            : found
+              ? `${found.total} found`
+              : null}
+        </span>
+      </label>
+      {shown.state === 'failed' ? (
+        <p role="alert" className="pt-1 leading-[1.45] text-destructive">
+          {shown.message}
+        </p>
+      ) : null}
+      {found && found.results.length === 0 ? (
+        <p className="pt-1 leading-[1.45] text-muted-foreground">
+          Nothing matched “{typed}”. Try part of a name, or a category such as
+          serif or monospace.
+        </p>
+      ) : null}
+      {found && found.results.length > 0 ? (
+        <>
+          <SampleFaces results={found.results} />
+          <ul
+            aria-label="Fonts found"
+            className="-mx-1 mt-1 max-h-64 overflow-y-auto px-1"
+          >
+            {found.results.map((result) => (
+              <ResultRow
+                key={result.id}
+                result={result}
+                held={heldAs(result, installed)}
+                installing={installing.has(result.id)}
+                onInstall={(picked) => void run(picked)}
+              />
+            ))}
+          </ul>
+          {found.total > found.results.length ? (
+            <p className="pt-1 leading-[1.45] text-muted-foreground">
+              Showing the first {found.results.length} of {found.total}. Type
+              more of a name to narrow them.
+            </p>
+          ) : null}
+        </>
+      ) : null}
+      {problem ? (
+        <p role="alert" className="pt-1 leading-[1.45] text-destructive">
+          {problem}
+        </p>
+      ) : null}
+      <p className="pt-1 leading-[1.45] text-muted-foreground">
+        From Fontsource. Each font saves into this project with its license.
+      </p>
+    </div>
+  )
+}
+
+function ResultRow({
+  result,
+  held,
+  installing,
+  onInstall,
+}: {
+  result: FontResult
+  held: 'Installed' | 'Built in' | null
+  installing: boolean
+  onInstall: (result: FontResult) => void
+}) {
+  return (
+    <li className="group flex min-h-8 items-center gap-2">
+      <span
+        className="min-w-0 flex-1 truncate text-[15px] leading-tight group-focus-within:whitespace-normal"
+        style={{ fontFamily: `"${sampleFamily(result)}", var(--font-sans)` }}
+      >
+        {result.family}
+      </span>
+      <span className="shrink-0 text-label text-muted-foreground">
+        {held ?? (installing ? 'Installing' : licenseMark(result.license))}
+      </span>
+      {held === null ? (
+        <button
+          type="button"
+          aria-label={`Install ${result.family}`}
+          disabled={installing}
+          onClick={() => onInstall(result)}
+          className="flex h-6 shrink-0 items-center rounded-[5px] px-1.5 text-xs font-medium text-primary outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40"
+        >
+          Install
+        </button>
+      ) : null}
+    </li>
+  )
+}
+
+/**
+ * Declares each result's sample file under a family of its own, so its name
+ * draws in its face before it is installed, and in the board's face where the
+ * sample does not load.
+ */
+function SampleFaces({ results }: { results: readonly FontResult[] }) {
+  const rules = results.flatMap((result) => {
+    const url = safeSample(result.sample)
+    return url
+      ? [
+          `@font-face{font-family:"${sampleFamily(result)}";src:url("${url}") format("woff2");font-display:swap}`,
+        ]
+      : []
+  })
+  return <style>{rules.join('')}</style>
+}
+
+/** A sample's address when it is a plain https URL, whose href percent-encodes any quote. */
+function safeSample(sample: string): string | null {
+  try {
+    const url = new URL(sample)
+    return url.protocol === 'https:' ? url.href : null
+  } catch {
+    return null
+  }
+}
+
+function sampleFamily(result: FontResult): string {
+  return `frameboard-sample-${result.id.replace(/[^a-z0-9-]/gi, '')}`
+}
+
+/** Whether a result is already one the project's frames may name. */
+function heldAs(
+  result: FontResult,
+  installed: readonly InstalledFont[],
+): 'Installed' | 'Built in' | null {
+  const family = result.family.toLowerCase()
+  const isInstalled = installed.some(
+    (font) => font.id === result.id || font.family.toLowerCase() === family,
+  )
+  if (isInstalled) return 'Installed'
+  return FACES.some((face) => face.family.toLowerCase() === family)
+    ? 'Built in'
+    : null
+}
+
+function searchFailure(error: unknown): string {
+  if (error instanceof BoardWriteError && error.code === 'source-failed') {
+    return 'Fontsource didn’t answer, so nothing can be found right now. Check the connection and search again.'
+  }
+  return error instanceof Error ? error.message : String(error)
 }
 
 function RemoveButton({
