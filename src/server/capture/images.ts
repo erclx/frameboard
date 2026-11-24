@@ -7,8 +7,9 @@ import { COMPOSITE_MARGIN, filmstripWidth } from '@/shared/capture-limits'
 import { FrameboardError } from '@/shared/errors'
 import { type Device, insetsPage, type Turn } from '@/shared/frame-device'
 import { drawnExtent, linkedBoxes } from '@/shared/frame-widths'
+import { isReservedPageName, isValidName } from '@/shared/names'
 import type { FrameRecord } from '@/shared/records/list'
-import type { Theme } from '@/shared/theme'
+import { type Theme, THEMES } from '@/shared/theme'
 
 import type { UnloadedModel } from './model-loads'
 import {
@@ -121,6 +122,24 @@ function imageName(
         ? `${scrolled}.at-${moment.at}`
         : `${scrolled}.filmstrip-${moment.filmstrip}`
   return scale === 1 ? `${stem}.${theme}.png` : `${stem}.${theme}@${scale}x.png`
+}
+
+// What `imageName` ends every file on, so a suffix added there is added here.
+const IMAGE_END = String.raw`\.(?:${THEMES.join('|')})(?:@[23]x)?\.png$`
+const FRAME_IMAGE = new RegExp(
+  String.raw`^([^@]+?)(?:@\d+)?(?:\.(?:scroll|at|filmstrip)-\d+)?${IMAGE_END}`,
+)
+const COMPOSITE_IMAGE = new RegExp(`^([^@]+)${IMAGE_END}`)
+
+/** Whether a file in a page's folder is named as a capture of some frame names it. */
+export function isFrameImageName(file: string): boolean {
+  return isValidName(FRAME_IMAGE.exec(file)?.[1] ?? '')
+}
+
+/** Whether a file in a project's folder is named as a composite of some page names it. */
+export function isCompositeImageName(file: string): boolean {
+  const page = COMPOSITE_IMAGE.exec(file)?.[1] ?? ''
+  return isValidName(page) && !isReservedPageName(page)
 }
 
 /** Where one frame's capture in one theme lands under `out`. */

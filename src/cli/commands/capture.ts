@@ -13,6 +13,7 @@ import {
   captureFrameImages,
   captureMotionImages,
 } from '@/server/capture/images'
+import { pruneImages } from '@/server/capture/prune'
 import { FrameboardError } from '@/shared/errors'
 import type { CaptureResult } from '@/shared/records/capture'
 import type { PageRecord } from '@/shared/records/list'
@@ -31,6 +32,7 @@ type CaptureOptions = CommonOptions & {
   page?: string
   allPages?: boolean
   composite?: boolean
+  prune?: boolean
   theme: Theme | 'both'
   scale: number
   scroll?: number
@@ -65,6 +67,10 @@ export function registerCapture(
     .option(
       '--composite',
       'with --page or --all-pages, one image of each page with each frame at its layout position',
+    )
+    .option(
+      '--prune',
+      "with --all-pages, remove every other image a capture could have written under the project's folder in --out, such as a deleted frame's, the theme not captured, or a composite, leaving every other file",
     )
     .addOption(
       new Option('--theme <theme>', 'the theme to capture')
@@ -121,6 +127,9 @@ export function registerCapture(
         '--composite needs --page or --all-pages.',
       )
     }
+    if (options.prune && !options.allPages) {
+      throw new FrameboardError('usage', '--prune needs --all-pages.')
+    }
     if (options.scroll !== undefined && pageFlag !== undefined) {
       throw new FrameboardError(
         'usage',
@@ -157,10 +166,13 @@ export function registerCapture(
         : join(await ensureRunFolder(root), 'captures')
 
     if (pageFlag !== undefined) {
-      const { ref: target, pages } =
-        options.page === undefined
-          ? await projectOf(root, options.project)
-          : await pageOf(root, options.page, refOptions)
+      const {
+        ref: target,
+        project,
+        pages,
+      } = options.page === undefined
+        ? await projectOf(root, options.project)
+        : await pageOf(root, options.page, refOptions)
       const shown = pages
         .map((page) => ({
           ...page,
@@ -169,8 +181,11 @@ export function registerCapture(
         .filter((page) => page.frames.length > 0)
       if (shown.length === 0) {
         return {
-          data: { images: [] } satisfies CaptureResult,
-          human: `${target} holds no visible frame, so nothing was captured.`,
+          data: {
+            images: [],
+            ...(options.prune ? { removed: [] } : {}),
+          } satisfies CaptureResult,
+          human: `${target} holds no visible frame, so nothing was captured${options.prune ? ' or removed' : ''}.`,
         }
       }
       const out = await outOf()
@@ -194,9 +209,22 @@ export function registerCapture(
                 scale: options.scale,
               }),
       )
+      const removed = options.prune
+        ? await pruneImages(
+            out,
+            project,
+            images.map((image) => image.path),
+          )
+        : undefined
       return {
-        data: { images } satisfies CaptureResult,
-        human: describe(images),
+        data: {
+          images,
+          ...(removed === undefined ? {} : { removed }),
+        } satisfies CaptureResult,
+        human: [
+          describe(images),
+          ...(removed ?? []).map((path) => `Removed ${path}`),
+        ].join('\n'),
       }
     }
 
@@ -276,6 +304,7 @@ function parseMoments(value: string): number[] {
 /** The pages one call captures, and the ref naming them. */
 interface PageSet {
   ref: string
+  project: string
   pages: PageRecord[]
 }
 
@@ -292,13 +321,13 @@ async function pageOf(
     resolved.page,
     pages.indexOf(resolved.page),
   )
-  return { ref: page.ref, pages: [page] }
+  return { ref: page.ref, project: resolved.project, pages: [page] }
 }
 
 async function projectOf(root: string, project?: string): Promise<PageSet> {
   const { name } = await resolveProject(root, project)
   const { pages } = await scanProject(root, name)
-  return { ref: name, pages }
+  return { ref: name, project: name, pages }
 }
 
 /** One line per image written, and under it one per video or model it shows with no picture. */
