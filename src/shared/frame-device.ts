@@ -79,7 +79,7 @@ export function deviceForWidth(width: number): Device | null {
 
 /**
  * The body's colors, fixed in both themes, since the board draws hardware
- * rather than chrome: the body, the hairline around it, and the island.
+ * rather than chrome: the body, its hairline, its marks, and the island.
  */
 export const BEZEL_COLORS = {
   body: '#17181b',
@@ -88,6 +88,10 @@ export const BEZEL_COLORS = {
   island: '#050506',
   homeBar: 'rgba(128, 128, 128, 0.6)',
   button: '#2a2c31',
+  tabletButton: '#4a4e57',
+  cameraRing: '#4a4e57',
+  cameraLens: '#0a0a0c',
+  cameraGlint: '#5b6170',
   islandText: '#ffffff',
   islandLive: '#34c759',
 } as const
@@ -145,6 +149,106 @@ export const PHONE_BUTTONS = [
   top: number
   height: number
 }[]
+
+/** How far a tablet's buttons stand past the body, in points. */
+export const TABLET_BUTTON_DEPTH = 6
+
+/** A camera's look, a lens with a glint in a ring past its size. */
+export const CAMERA = {
+  ring: 2,
+  fill: `radial-gradient(circle at 35% 35%, ${BEZEL_COLORS.cameraGlint} 0 18%, ${BEZEL_COLORS.cameraLens} 22%)`,
+} as const
+
+const CAMERA_SIZES = { laptop: 10, tablet: 12 } as const
+
+type Edge = 'top' | 'right' | 'bottom' | 'left'
+
+/** The edge each edge of an upright body stands on once turned. */
+const TURNED_EDGES = {
+  upright: { top: 'top', right: 'right', bottom: 'bottom', left: 'left' },
+  left: { top: 'left', right: 'top', bottom: 'right', left: 'bottom' },
+  right: { top: 'right', right: 'bottom', bottom: 'left', left: 'top' },
+} as const satisfies Record<Turn, Record<Edge, Edge>>
+
+/**
+ * An upright tablet's power button and two volume buttons off the picked
+ * mock, each on an edge and `at` points from the screen's end it counts from.
+ */
+const TABLET_BUTTONS = [
+  { name: 'power', edge: 'top', from: 'right', at: 60, length: 80 },
+  { name: 'volume-up', edge: 'right', from: 'top', at: 90, length: 64 },
+  { name: 'volume-down', edge: 'right', from: 'top', at: 165, length: 64 },
+] as const satisfies readonly {
+  name: string
+  edge: Edge
+  from: Edge
+  at: number
+  length: number
+}[]
+
+type TabletButton = (typeof TABLET_BUTTONS)[number]['name']
+
+/** A camera or a button on a body, which the board and the PNG each draw from its box. */
+export interface BodyPart {
+  name: 'camera' | TabletButton
+  /** The screen edge it stands past. */
+  edge: Edge
+  /** Its box as CSS lengths against the screen. */
+  place: Partial<Record<Edge, string>> & { width: string; height: string }
+}
+
+/** A laptop's camera, or a tablet's camera and buttons as its turn stands them, none for another device. */
+export function bodyParts(device: Device, turn: Turn | undefined): BodyPart[] {
+  if (device !== 'laptop' && device !== 'tablet') return []
+  const edges = TURNED_EDGES[isTurned(device, turn) ? turnOf(turn) : 'upright']
+  const { border } = BEZELS[device]
+  const size = CAMERA_SIZES[device]
+  const camera = edges.top
+  const parts: BodyPart[] = [
+    {
+      name: 'camera',
+      edge: camera,
+      place: {
+        [camera]: `${-(border + size) / 2}px`,
+        [runsAcross(camera) ? 'left' : 'top']: `calc(50% - ${size / 2}px)`,
+        width: `${size}px`,
+        height: `${size}px`,
+      },
+    },
+  ]
+  if (device === 'laptop') return parts
+  const depth = `${TABLET_BUTTON_DEPTH}px`
+  return parts.concat(
+    TABLET_BUTTONS.map(({ name, edge: upright, from, at, length }) => {
+      const edge = edges[upright]
+      const across = runsAcross(edge)
+      return {
+        name,
+        edge,
+        place: {
+          [edge]: `${-border - TABLET_BUTTON_DEPTH}px`,
+          [edges[from]]: `${at}px`,
+          width: across ? `${length}px` : depth,
+          height: across ? depth : `${length}px`,
+        },
+      }
+    }),
+  )
+}
+
+function runsAcross(edge: Edge): boolean {
+  return edge === 'top' || edge === 'bottom'
+}
+
+/**
+ * How far a scroll rail stands past a frame's screen: the border, and a
+ * tablet's buttons, which reach as deep as the rail's own gap.
+ */
+export function railInset(device: Device | null | undefined): number {
+  if (!device) return 0
+  const { border } = BEZELS[device]
+  return device === 'tablet' ? border + TABLET_BUTTON_DEPTH : border
+}
 
 /**
  * The phone's status bar, ending 10 below the island so a page under it
@@ -487,9 +591,10 @@ export function laptopParts({
   }
 }
 
-/** How far a device's parts stand past its body's sides, a laptop's base or a phone's buttons. */
+/** How far a device's parts stand past its body's sides, a laptop's base or a phone's or tablet's buttons. */
 function sideReach(device: Device, width: number): number {
   if (device === 'laptop') return baseReach(width)
+  if (device === 'tablet') return TABLET_BUTTON_DEPTH
   return device === 'phone' ? BUTTON_DEPTH : 0
 }
 
@@ -521,8 +626,8 @@ export function bezelShadow(
 
 /**
  * The box a device's body covers around a frame's box, the box itself with
- * none. A laptop's base and a phone's buttons reach past its sides, and a
- * turned phone's buttons past its top and bottom instead.
+ * none. A phone's buttons reach past its sides, or its ends once turned, and
+ * a tablet's past every edge alike, so no turn shifts it off center.
  */
 export function bezelBox(
   box: Box,
@@ -533,8 +638,9 @@ export function bezelBox(
   const { border, bottom } = BEZELS[device]
   const reach = sideReach(device, box.width)
   const turned = isTurned(device, turn)
-  const side = border + (turned ? 0 : reach)
-  const end = turned ? reach : 0
+  const everyEdge = device === 'tablet'
+  const side = border + (turned && !everyEdge ? 0 : reach)
+  const end = turned || everyEdge ? reach : 0
   return {
     x: box.x - side,
     y: box.y - border - end,

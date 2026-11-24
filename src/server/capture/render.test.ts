@@ -358,9 +358,82 @@ describe.skipIf(shell === null)(
         },
         'light',
       )
-      const line = await pixelAt(requireShell(shell), bytes, 300, 32 + 5)
+      const line = await pixelAt(requireShell(shell), bytes, 300, 38 + 5)
 
       expect(line).toEqual([255, 0, 0, 255])
+    })
+
+    const MARK = [74, 78, 87, 255]
+    const LENS = [10, 10, 12, 255]
+
+    it('draws a tablet with its camera and its three buttons whole', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/edge',
+          box: { width: 600, height: 400 },
+          device: 'tablet',
+        },
+        'light',
+      )
+      const at = (x: number, y: number) =>
+        pixelAt(requireShell(shell), bytes, x, y)
+
+      expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+        676, 476,
+      ])
+      expect(await at(340, 24)).toEqual(LENS)
+      expect(await at(538, 2)).toEqual(MARK)
+      expect(await at(673, 158)).toEqual(MARK)
+      expect(await at(673, 233)).toEqual(MARK)
+    })
+
+    it('turns a tablet right with its power button on the right and its volume along the bottom', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/edge',
+          box: { width: 800, height: 500 },
+          device: 'tablet',
+          turn: 'right',
+        },
+        'light',
+      )
+      const at = (x: number, y: number) =>
+        pixelAt(requireShell(shell), bytes, x, y)
+
+      expect(await at(873, 438)).toEqual(MARK)
+      expect(await at(718, 573)).toEqual(MARK)
+      expect(await at(643, 573)).toEqual(MARK)
+    })
+
+    it('draws a laptop with its camera in the lid', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/edge',
+          box: { width: 1200, height: 700 },
+          device: 'laptop',
+        },
+        'light',
+      )
+
+      expect(await pixelAt(requireShell(shell), bytes, 695, 11)).toEqual(LENS)
     })
 
     it('draws a phone turned left with its page at the top between its strips and the island on its left short side', async () => {

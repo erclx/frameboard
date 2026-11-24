@@ -353,13 +353,12 @@ describe('Bezel', () => {
       expect(top[0]?.right).toBeCloseTo(100 + 844 + 16 - 142)
     })
 
-    it('draws a turned tablet with no island and no buttons', () => {
+    it('draws no camera', () => {
       const { container } = render(
-        <Framed device="tablet" width={1194} height={834} turn="left" />,
+        <Framed device="phone" width={844} height={390} turn="left" />,
       )
 
-      expect(container.querySelector('[data-bezel-island]')).toBeNull()
-      expect(container.querySelector('[data-bezel-button]')).toBeNull()
+      expect(container.querySelector('[data-bezel-camera]')).toBeNull()
     })
   })
 
@@ -376,6 +375,88 @@ describe('Bezel', () => {
     expect(borderOf(bezel)).toBe(32)
     expect(radius + borderOf(bezel)).toBe(50)
     expect(container.querySelector('[data-bezel-island]')).toBeNull()
+  })
+
+  describe('tablet', () => {
+    const rectsOf = (container: HTMLElement, selector: string) =>
+      [...container.querySelectorAll(selector)].map((element) =>
+        element.getBoundingClientRect(),
+      )
+    const middle = (rect: DOMRect | undefined) => ({
+      x: (rect?.left ?? 0) + (rect?.width ?? 0) / 2,
+      y: (rect?.top ?? 0) + (rect?.height ?? 0) / 2,
+    })
+
+    it('centers one 12 camera in the top of the body', () => {
+      const { container } = render(
+        <Framed device="tablet" width={834} height={1194} />,
+      )
+
+      const cameras = rectsOf(container, '[data-bezel-camera]')
+
+      expect(cameras).toHaveLength(1)
+      expect(cameras[0]?.width).toBeCloseTo(12)
+      expect(middle(cameras[0]).x).toBeCloseTo(100 + 417)
+      expect(middle(cameras[0]).y).toBeCloseTo(100 - 16)
+    })
+
+    it('hangs a power button past the top and two volume buttons past the right', () => {
+      const { container } = render(
+        <Framed device="tablet" width={834} height={1194} />,
+      )
+
+      const power = rectsOf(container, '[data-bezel-button="top"]')
+      const volume = rectsOf(container, '[data-bezel-button="right"]')
+
+      expect(power).toHaveLength(1)
+      expect(power[0]?.bottom).toBeCloseTo(100 - 32)
+      expect(power[0]?.height).toBeCloseTo(6)
+      expect(power[0]?.width).toBeCloseTo(80)
+      expect(power[0]?.right).toBeCloseTo(100 + 834 - 60)
+      expect(volume.map(({ left }) => left - (100 + 834 + 32))).toEqual([0, 0])
+      expect(volume.map(({ top }) => top - 100)).toEqual([90, 165])
+      expect(volume.map(({ height }) => height)).toEqual([64, 64])
+    })
+
+    it('turns left with its camera and power on the left and its volume along the top', () => {
+      const { container } = render(
+        <Framed device="tablet" width={1194} height={834} turn="left" />,
+      )
+
+      const [camera] = rectsOf(container, '[data-bezel-camera]')
+      const power = rectsOf(container, '[data-bezel-button="left"]')
+      const volume = rectsOf(container, '[data-bezel-button="top"]')
+
+      expect(middle(camera).x).toBeCloseTo(100 - 16)
+      expect(middle(camera).y).toBeCloseTo(100 + 417)
+      expect(power).toHaveLength(1)
+      expect(power[0]?.right).toBeCloseTo(100 - 32)
+      expect(power[0]?.top).toBeCloseTo(100 + 60)
+      expect(power[0]?.height).toBeCloseTo(80)
+      expect(volume.map(({ bottom }) => bottom)).toEqual([100 - 32, 100 - 32])
+      expect(volume.map(({ left }) => left - 100)).toEqual([90, 165])
+    })
+
+    it('turns right with its camera and power on the right and its volume along the bottom', () => {
+      const { container } = render(
+        <Framed device="tablet" width={1194} height={834} turn="right" />,
+      )
+
+      const [camera] = rectsOf(container, '[data-bezel-camera]')
+      const power = rectsOf(container, '[data-bezel-button="right"]')
+      const volume = rectsOf(container, '[data-bezel-button="bottom"]')
+
+      expect(middle(camera).x).toBeCloseTo(100 + 1194 + 16)
+      expect(middle(camera).y).toBeCloseTo(100 + 417)
+      expect(power).toHaveLength(1)
+      expect(power[0]?.left).toBeCloseTo(100 + 1194 + 32)
+      expect(power[0]?.bottom).toBeCloseTo(100 + 834 - 60)
+      expect(volume.map(({ top }) => top)).toEqual([
+        100 + 834 + 32,
+        100 + 834 + 32,
+      ])
+      expect(volume.map(({ right }) => 100 + 1194 - right)).toEqual([90, 165])
+    })
   })
 
   describe('laptop', () => {
@@ -397,6 +478,25 @@ describe('Bezel', () => {
       expect(container.querySelector('[data-bezel-island]')).toBeNull()
       expect(container.querySelector('[data-bezel-home]')).toBeNull()
     })
+
+    it.each([1024, 1920])(
+      "centers one 10 camera in the lid's top edge at %i wide, with no button",
+      (width) => {
+        const { container } = render(
+          <Framed device="laptop" width={width} height={900} />,
+        )
+
+        const cameras = [
+          ...container.querySelectorAll('[data-bezel-camera]'),
+        ].map((camera) => camera.getBoundingClientRect())
+
+        expect(cameras).toHaveLength(1)
+        expect(cameras[0]?.width).toBeCloseTo(10)
+        expect(cameras[0]?.left).toBeCloseTo(100 + width / 2 - 5)
+        expect(cameras[0]?.top).toBeCloseTo(100 - 15)
+        expect(container.querySelector('[data-bezel-button]')).toBeNull()
+      },
+    )
 
     it('rounds the screen on its top corners alone', () => {
       const { container } = render(

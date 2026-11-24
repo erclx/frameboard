@@ -9,7 +9,9 @@ import {
   bezelBox,
   BEZELS,
   bezelShadow,
+  bodyParts,
   BUTTON_DEPTH,
+  CAMERA,
   type Device,
   FOLDABLE_ISLAND,
   foldBand,
@@ -32,6 +34,7 @@ import {
   SIGNAL_BARS,
   STATUS_BAR,
   STATUS_FONT,
+  TABLET_BUTTON_DEPTH,
   type Turn,
   turnOf,
   WIDE_ISLAND_LEVEL,
@@ -365,7 +368,6 @@ async function drawBezel(
   const screen = { x: 0, y: 0, width: box.width, height: box.height }
   const outer = bezelBox(screen, device, turn)
   const page = pageBox(screen, device, turn)
-  const laptop = device === 'laptop'
   const context = await browser.newContext({
     viewport: { width: outer.width, height: outer.height },
     deviceScaleFactor: scale,
@@ -379,14 +381,13 @@ async function drawBezel(
           ? statusBarHtml(bar.colors, bar.theme) + phoneMarks(island)
           : sideStripsHtml(bar.colors, bar.theme) +
             turnedPhoneMarks(island, sideways)
-        : laptop
-          ? laptopMarks(box)
-          : device === 'foldable'
-            ? (sideways === 'upright'
-                ? ''
-                : sideStripsHtml(bar.colors, bar.theme, { device })) +
-              foldableMarks(pose, sideways)
-            : ''
+        : device === 'foldable'
+          ? (sideways === 'upright'
+              ? ''
+              : sideStripsHtml(bar.colors, bar.theme, { device })) +
+            foldableMarks(pose, sideways)
+          : (device === 'laptop' ? laptopMarks(box) : '') +
+            bodyPartsHtml(device, turn)
     const radius = screenCorners(device)
     await tab.setContent(
       `<!doctype html><html><body style="margin:0;background:transparent">` +
@@ -528,6 +529,20 @@ function laptopMarks(box: { width: number; height: number }): string {
     `<span style="position:absolute;box-sizing:border-box;left:${chin.x}px;top:${chin.y}px;width:${chin.width}px;height:${chin.height}px;background:${BEZEL_COLORS.body};border-left:${edge};border-right:${edge}"></span>` +
     `<span style="position:absolute;box-sizing:border-box;left:${base.x}px;top:${base.y}px;width:${base.width}px;height:${base.height}px;background:${BEZEL_COLORS.base};border:${edge};border-radius:0 0 ${LAPTOP_BASE.radius}px ${LAPTOP_BASE.radius}px"></span>`
   )
+}
+
+/** A laptop's camera, or a tablet's camera and buttons, as the board draws them. */
+function bodyPartsHtml(device: Device, turn: Turn | undefined): string {
+  return bodyParts(device, turn)
+    .map(({ name, place }) => {
+      const box = Object.entries(place)
+        .map(([side, length]) => `${side}:${length}`)
+        .join(';')
+      return name === 'camera'
+        ? `<span style="position:absolute;${box};border-radius:50%;background:${CAMERA.fill};box-shadow:0 0 0 ${CAMERA.ring}px ${BEZEL_COLORS.cameraRing}"></span>`
+        : `<span style="position:absolute;${box};border-radius:${TABLET_BUTTON_DEPTH / 2}px;background:${BEZEL_COLORS.tabletButton}"></span>`
+    })
+    .join('')
 }
 
 /** The phone's buttons, island, and home bar as the board draws them. */
