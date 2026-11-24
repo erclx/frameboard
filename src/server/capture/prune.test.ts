@@ -12,7 +12,7 @@ import { dirname, join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { pruneImages } from './prune'
+import { assertPrunable, pruneImages } from './prune'
 
 describe('pruneImages', () => {
   let out: string
@@ -161,5 +161,64 @@ describe('pruneImages', () => {
       ]),
     ).toEqual([])
     expect(existsSync(String(outside))).toBe(true)
+  })
+})
+
+describe('assertPrunable', () => {
+  let parent: string
+  let root: string
+
+  beforeEach(() => {
+    parent = mkdtempSync(join(tmpdir(), 'frameboard-prunable-'))
+    root = join(parent, 'board')
+    mkdirSync(join(root, 'studio/studio'), { recursive: true })
+    mkdirSync(join(root, '.run/captures'), { recursive: true })
+  })
+
+  afterEach(() => {
+    rmSync(parent, { recursive: true, force: true })
+  })
+
+  it.each([
+    ['the project itself', 'board'],
+    ['a page of the project', 'board/studio'],
+    ['a folder in the board not made yet', 'board/shots'],
+  ])('refuses usage for %s', async (_where, out) => {
+    await expect(
+      assertPrunable(root, join(parent, out), 'studio'),
+    ).rejects.toMatchObject({ code: 'usage' })
+  })
+
+  it('refuses usage for the board itself', async () => {
+    await expect(assertPrunable(root, parent, 'board')).rejects.toMatchObject({
+      code: 'usage',
+    })
+  })
+
+  it('refuses usage for the project reached through a link', async () => {
+    symlinkSync(root, join(parent, 'linked'))
+
+    await expect(
+      assertPrunable(root, join(parent, 'linked'), 'studio'),
+    ).rejects.toMatchObject({ code: 'usage' })
+  })
+
+  it('refuses usage for a linked project at the folder its link points to', async () => {
+    mkdirSync(join(parent, 'elsewhere/shop'), { recursive: true })
+    symlinkSync(join(parent, 'elsewhere/shop'), join(root, 'shop'))
+
+    await expect(
+      assertPrunable(root, join(parent, 'elsewhere'), 'shop'),
+    ).rejects.toMatchObject({ code: 'usage' })
+  })
+
+  it.each([
+    ["the board's own .run folder", 'board/.run/captures'],
+    ['a folder beside the board', 'designs'],
+    ['a folder opening on the board name', 'board-shots'],
+  ])('takes %s', async (_where, out) => {
+    await expect(
+      assertPrunable(root, join(parent, out), 'studio'),
+    ).resolves.toBeUndefined()
   })
 })

@@ -1,9 +1,50 @@
-import { lstat, readdir, rm, rmdir, stat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { lstat, readdir, realpath, rm, rmdir, stat } from 'node:fs/promises'
+import { basename, dirname, join, relative } from 'node:path'
 
+import { isCode } from '@/server/board/json-record'
+import { FrameboardError } from '@/shared/errors'
 import { isReservedPageName } from '@/shared/names'
 
 import { isCompositeImageName, isFrameImageName } from './images'
+
+/**
+ * Refuses `usage` where a prune would reach the board's own files, which a
+ * frame may link. A dot-named folder of the board holds none, so it passes.
+ */
+export async function assertPrunable(
+  root: string,
+  out: string,
+  project: string,
+): Promise<void> {
+  const folder = join(out, project)
+  const [target, ...sources] = await Promise.all(
+    [folder, root, join(root, project)].map(resolvedPath),
+  )
+  if (sources.some((source) => holds(source, target ?? folder))) {
+    throw new FrameboardError(
+      'usage',
+      `--prune would remove files from ${folder}, which is part of the board. Pass an --out outside the board.`,
+      { folder },
+    )
+  }
+}
+
+/** Whether `path` is `source` or below it, outside its dot-named folders. */
+function holds(source: string, path: string): boolean {
+  const inside = relative(source, path)
+  // A path outside `source` opens on `..`, so one test reads both.
+  return !inside.startsWith('.')
+}
+
+/** The real path of `path`, through its nearest folder that exists. */
+async function resolvedPath(path: string): Promise<string> {
+  try {
+    return await realpath(path)
+  } catch (error) {
+    if (!isCode(error, 'ENOENT') || dirname(path) === path) throw error
+    return join(await resolvedPath(dirname(path)), basename(path))
+  }
+}
 
 /**
  * Removes every image a capture could have written under `<out>/<project>` but

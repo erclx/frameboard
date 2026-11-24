@@ -755,6 +755,24 @@ describe('capture', () => {
       expect(held('studio/archive/old.light.png')).toBe(true)
     })
 
+    it("refuses to prune the board's own project folder, writing nothing", async () => {
+      board = writeBoard({
+        ...PROJECT,
+        'studio/home/logo.light.png': 'linked by a frame',
+      })
+
+      const run = await capture(['--all-pages', '--prune', '--out', '.'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+      expect(
+        readFileSync(join(board.root, 'studio/home/logo.light.png'), 'utf8'),
+      ).toBe('linked by a frame')
+      expect(existsSync(join(board.root, 'studio/home/hero.light.png'))).toBe(
+        false,
+      )
+    })
+
     it('names each removed file in the human output', async () => {
       board = writeBoard(PROJECT)
       lay('studio/home/gone.light.png')

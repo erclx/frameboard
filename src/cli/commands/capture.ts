@@ -13,7 +13,7 @@ import {
   captureFrameImages,
   captureMotionImages,
 } from '@/server/capture/images'
-import { pruneImages } from '@/server/capture/prune'
+import { assertPrunable, pruneImages } from '@/server/capture/prune'
 import { FrameboardError } from '@/shared/errors'
 import type { CaptureResult } from '@/shared/records/capture'
 import type { PageRecord } from '@/shared/records/list'
@@ -70,7 +70,7 @@ export function registerCapture(
     )
     .option(
       '--prune',
-      "with --all-pages, remove every other image a capture could have written under the project's folder in --out, such as a deleted frame's, the theme not captured, or a composite, leaving every other file",
+      "with --all-pages, remove every other image a capture could have written under the project's folder in --out, such as a deleted frame's, the theme not captured, or a composite, leaving every other file. Refused where that folder is part of the board",
     )
     .addOption(
       new Option('--theme <theme>', 'the theme to capture')
@@ -189,6 +189,7 @@ export function registerCapture(
         }
       }
       const out = await outOf()
+      if (options.prune) await assertPrunable(root, out, project)
       const images = await withFrameHost(
         { root, facesDir: context.facesDir },
         'capture',
