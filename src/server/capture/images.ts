@@ -5,7 +5,12 @@ import type { Browser } from 'playwright-core'
 
 import { COMPOSITE_MARGIN, filmstripWidth } from '@/shared/capture-limits'
 import { FrameboardError } from '@/shared/errors'
-import { type Device, insetsPage, type Turn } from '@/shared/frame-device'
+import {
+  type Device,
+  insetsPage,
+  screenCorners,
+  type Turn,
+} from '@/shared/frame-device'
 import { drawnExtent, linkedBoxes, viewDevice } from '@/shared/frame-widths'
 import type { FrameRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
@@ -13,6 +18,7 @@ import type { Theme } from '@/shared/theme'
 import type { UnloadedModel } from './model-loads'
 import {
   assertScreenshotFits,
+  bodyHtml,
   LOAD_TIMEOUT_MS,
   MAX_COMPOSITE_SIDE,
   openFrame,
@@ -284,9 +290,9 @@ function viewsOf(
 }
 
 /**
- * Captures one image of a page per theme, every frame at its layout box on
- * the theme's canvas color. Each frame renders as it does alone, font check
- * included, and the composite is written only once every theme rendered.
+ * Captures one image of a page per theme, every frame at its layout box in
+ * the device it shows, on the theme's canvas color. Each frame renders as it
+ * does alone, and no composite is written until every theme rendered.
  */
 export async function captureComposite(
   browser: Browser,
@@ -332,9 +338,7 @@ export async function captureComposite(
         for (const model of inFrame(frame.ref, shot.models)) {
           models.set(`${model.ref} ${model.index}`, model)
         }
-        tiles.push(
-          `<img src="data:image/png;base64,${shot.bytes.toString('base64')}" style="position:absolute;left:${box.x + bounds.dx}px;top:${box.y + bounds.dy}px;width:${box.width}px;height:${box.height}px">`,
-        )
+        tiles.push(compositeTile(frame, box, bounds, shot.bytes))
       }
     }
     rendered.push({
@@ -349,6 +353,26 @@ export async function captureComposite(
     })
   }
   return writeImages(rendered)
+}
+
+/** One view in a composite, inside the device it shows or bare, its shot already holding its bar. */
+function compositeTile(
+  frame: FrameRecord,
+  box: { x: number; y: number; width: number; height: number },
+  { dx, dy }: { dx: number; dy: number },
+  bytes: Buffer,
+): string {
+  const { device, turn } = viewDevice(frame, box.width)
+  const src = `data:image/png;base64,${bytes.toString('base64')}`
+  const place = `position:absolute;left:${box.x + dx}px;top:${box.y + dy}px;width:${box.width}px;height:${box.height}px`
+  if (!device) return `<img src="${src}" style="${place}">`
+  const { pose, island } = frame
+  return (
+    `<div style="${place}">` +
+    `<img src="${src}" style="display:block;width:100%;height:100%;border-radius:${screenCorners(device)}">` +
+    bodyHtml(box, { device, pose, island, turn }) +
+    `</div>`
+  )
 }
 
 /**

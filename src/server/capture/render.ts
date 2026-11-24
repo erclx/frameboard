@@ -348,22 +348,10 @@ async function drawBezel(
   browser: Browser,
   shot: Buffer,
   box: { width: number; height: number },
-  {
-    device,
-    pose = 'closed',
-    island = 'compact',
-    turn,
-    bar,
-  }: {
-    device: Device
-    pose?: Pose
-    island?: Island
-    turn?: Turn
-    /** The page's colors and theme, which a phone's status bar or a turned phone's or foldable's side strips paint. */
-    bar: { colors: PageColors | null; theme: Theme }
-  },
+  body: DrawnBody & { bar: PageBar },
   scale: number,
 ): Promise<Buffer> {
+  const { device, turn } = body
   // A frame record's box also carries its canvas place, which the PNG drops.
   const screen = { x: 0, y: 0, width: box.width, height: box.height }
   const outer = bezelBox(screen, device, turn)
@@ -374,26 +362,11 @@ async function drawBezel(
   })
   try {
     const tab = await context.newPage()
-    const sideways = turnOf(turn)
-    const marks =
-      device === 'phone'
-        ? sideways === 'upright'
-          ? statusBarHtml(bar.colors, bar.theme) + phoneMarks(island)
-          : sideStripsHtml(bar.colors, bar.theme) +
-            turnedPhoneMarks(island, sideways)
-        : device === 'foldable'
-          ? (sideways === 'upright'
-              ? ''
-              : sideStripsHtml(bar.colors, bar.theme, { device })) +
-            foldableMarks(pose, sideways)
-          : (device === 'laptop' ? laptopMarks(box) : '') +
-            bodyPartsHtml(device, turn)
-    const radius = screenCorners(device)
     await tab.setContent(
       `<!doctype html><html><body style="margin:0;background:transparent">` +
         `<div style="position:absolute;left:${-outer.x}px;top:${-outer.y}px;width:${box.width}px;height:${box.height}px">` +
         `<img alt="" src="data:image/png;base64,${shot.toString('base64')}" style="position:absolute;left:${page.x}px;top:${page.y}px;width:${page.width}px;height:${page.height}px;border-radius:${pageCorners(device, turn)}">` +
-        `<div style="position:absolute;inset:0;border-radius:${radius};box-shadow:${bezelShadow(device, { board: false })}">${marks}</div>` +
+        bodyHtml(screen, body) +
         `</div></body></html>`,
       { waitUntil: 'load' },
     )
@@ -401,6 +374,51 @@ async function drawBezel(
   } finally {
     await context.close()
   }
+}
+
+/** A device's body as a capture draws it, with how it is held. */
+interface DrawnBody {
+  device: Device
+  pose?: Pose
+  island?: Island
+  turn?: Turn
+}
+
+/** The page's colors and theme, which a phone's status bar or a turned phone's or foldable's side strips paint. */
+interface PageBar {
+  colors: PageColors | null
+  theme: Theme
+}
+
+/**
+ * A device's body and marks over a screen `box` sized by its parent, with no
+ * `bar` where the shot under it already holds the bar or the side strips.
+ */
+export function bodyHtml(
+  box: { width: number; height: number },
+  {
+    device,
+    pose = 'closed',
+    island = 'compact',
+    turn,
+    bar,
+  }: DrawnBody & { bar?: PageBar },
+): string {
+  const sideways = turnOf(turn)
+  const strips =
+    bar && sideways !== 'upright'
+      ? sideStripsHtml(bar.colors, bar.theme, { device })
+      : ''
+  const marks =
+    device === 'phone'
+      ? sideways === 'upright'
+        ? (bar ? statusBarHtml(bar.colors, bar.theme) : '') + phoneMarks(island)
+        : strips + turnedPhoneMarks(island, sideways)
+      : device === 'foldable'
+        ? strips + foldableMarks(pose, sideways)
+        : (device === 'laptop' ? laptopMarks(box) : '') +
+          bodyPartsHtml(device, turn)
+  return `<div style="position:absolute;inset:0;border-radius:${screenCorners(device)};box-shadow:${bezelShadow(device, { board: false })}">${marks}</div>`
 }
 
 /**

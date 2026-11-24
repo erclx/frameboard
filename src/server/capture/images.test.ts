@@ -19,6 +19,7 @@ import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { frameOf } from '../../test/board'
 import { startFrameHost } from './host'
 import {
+  captureComposite,
   captureFrameImages,
   captureMotionImages,
   compositeBounds,
@@ -451,6 +452,80 @@ describe.skipIf(shell === null)(
       if (!own) throw new Error('no image')
 
       expect(pixel(own.path, 195, 5)).toBe('#ff0000')
+    })
+  },
+)
+
+describe.skipIf(shell === null)(
+  'captureComposite of a frame with linked widths',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    const BODY = '#17181b'
+    const BUTTON = '#4a4e57'
+    const CANVAS = '#ffffff'
+    const LINE = '#ff0000'
+    let browser: Browser
+    let board: TempBoard
+    let out: string
+
+    beforeAll(() => {
+      browser = requireShell(shell)
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterEach(() => {
+      board.cleanup()
+      rmSync(out, { recursive: true, force: true })
+    })
+
+    /** Answers a reader of one composite pixel, the composite's size beside it. */
+    async function composite(overrides: Partial<FrameRecord>) {
+      board = writeBoard({ 'studio/home/hero.html': EDGE_PAGE })
+      out = mkdtempSync(join(tmpdir(), 'frameboard-shots-'))
+      const host = await startFrameHost({ root: board.root, facesDir: out })
+      try {
+        const [image] = await captureComposite(browser, {
+          baseUrl: host.url,
+          page: PAGE,
+          frames: [
+            frameOf('hero', {
+              box: { x: 0, y: 0, width: 390, height: 600 },
+              widths: [{ width: 834, height: 400 }],
+              ...overrides,
+            }),
+          ],
+          themes: ['light'],
+          out,
+        })
+        if (!image) throw new Error('No composite captured.')
+        const { data, width } = PNG.sync.read(readFileSync(image.path))
+        return (x: number, y: number) => {
+          const at = (y * width + x) * 4
+          return `#${[...data.subarray(at, at + 3)].map((byte) => byte.toString(16).padStart(2, '0')).join('')}`
+        }
+      } finally {
+        await host.close()
+      }
+    }
+
+    it("draws the frame's own body and each linked one whole", async () => {
+      const pixel = await composite({ device: 'phone', showDevice: true })
+
+      // The phone's screen lands at 60, 78, its left body and a rounded corner outside it.
+      expect(pixel(52, 378)).toBe(BODY)
+      expect(pixel(74, 92)).toBe(BODY)
+      expect(pixel(255, 78 + 54 + 5)).toBe(LINE)
+      // The tablet's screen lands at 588, 78, its volume button past the right of its body.
+      expect(pixel(572, 278)).toBe(BODY)
+      expect(pixel(1457, 198)).toBe(BUTTON)
+    })
+
+    it('draws every width bare and square with the device off', async () => {
+      const pixel = await composite({})
+
+      expect(pixel(38, 300)).toBe(CANVAS)
+      expect(pixel(40, 40)).toBe(LINE)
+      expect(pixel(508, 200)).toBe(CANVAS)
+      expect(pixel(510, 40)).toBe(LINE)
     })
   },
 )
