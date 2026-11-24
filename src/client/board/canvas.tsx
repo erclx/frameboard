@@ -123,6 +123,12 @@ const FOLD_CHROME_ROOM = POSE_BAR_ROOM + 24
 const PLAY_CLICK_SLOP = 3
 /** How long a gesture has to rest before the view counts as settled and the cull runs. */
 const SETTLE_MS = 150
+/**
+ * The longest a zoom runs before `--zoom` catches up with it. Every step
+ * writing it restyled each label, outline, and device body on the page, so the
+ * chrome scales with the canvas for that long instead.
+ */
+const ZOOM_WRITE_MS = 100
 /** How long the view takes to travel to a shown frame. */
 const FOCUS_MS = 400
 
@@ -277,7 +283,23 @@ export function Canvas({
     // Marks the canvas's own moves, since `sourceEvent` is absent on wheel and key pans.
     let travelling = false
 
-    const settle = (view: View) => setSettled({ view, size: sizeOf(viewport) })
+    let zoomWrite: ReturnType<typeof setTimeout> | undefined
+    let written = ''
+    const writeZoom = () => {
+      clearTimeout(zoomWrite)
+      zoomWrite = undefined
+      const k = String(zoomTransform(viewport).k)
+      if (k === written) return
+      written = k
+      for (const moved of [layer, notesLayerRef.current]) {
+        moved?.style.setProperty('--zoom', k)
+      }
+    }
+
+    const settle = (view: View) => {
+      writeZoom()
+      setSettled({ view, size: sizeOf(viewport) })
+    }
 
     const zoomer: ZoomBehavior<HTMLDivElement, unknown> = zoom<
       HTMLDivElement,
@@ -304,7 +326,9 @@ export function Canvas({
         for (const moved of [layer, notesLayerRef.current]) {
           if (!moved) continue
           moved.style.transform = `translate(${x}px, ${y}px) scale(${k})`
-          moved.style.setProperty('--zoom', String(k))
+        }
+        if (zoomWrite === undefined && String(k) !== written) {
+          zoomWrite = setTimeout(writeZoom, ZOOM_WRITE_MS)
         }
         markCrowded(layer, roomsRef.current, k)
         pageViews.set(identity, { x, y, k })
@@ -543,6 +567,7 @@ export function Canvas({
       viewport.removeEventListener('pointerleave', leave)
       controlsRef.current = null
       clearTimeout(timer)
+      clearTimeout(zoomWrite)
       cancelAnimationFrame(animation)
       cancelAnimationFrame(glide)
       moveToRef.current = null

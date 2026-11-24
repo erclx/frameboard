@@ -1060,6 +1060,58 @@ describe('Canvas', () => {
     expect(layerOf(container).style.transform).toMatch(/scale\(1\.2\)$/)
   })
 
+  describe('the --zoom property the chrome reads', () => {
+    const zoomOf = (element: HTMLElement) =>
+      element.style.getPropertyValue('--zoom')
+
+    it('holds through the steps of a pinch and lands on the settled scale', async () => {
+      const { container } = renderCanvas(
+        page('studio/hold', [
+          frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+        ]),
+      )
+
+      pinch(container, -200, { clientX: 100, clientY: 100 })
+
+      expect(viewOf(container).k).toBeGreaterThan(1)
+      expect(zoomOf(layerOf(container))).toBe('1')
+      await expect
+        .poll(() => Number(zoomOf(layerOf(container))))
+        .toBeCloseTo(viewOf(container).k)
+    })
+
+    it('catches up within 100 ms while a zoom runs without a pause', () => {
+      const { container } = renderCanvas(
+        page('studio/bound', [
+          frame('a', { x: 0, y: 0, width: 200, height: 200 }),
+        ]),
+      )
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+
+      wheel(container, { deltaY: -100, ctrlKey: true })
+      vi.advanceTimersByTime(60)
+      wheel(container, { deltaY: -100, ctrlKey: true })
+      vi.advanceTimersByTime(60)
+
+      expect(Number(zoomOf(layerOf(container)))).toBeCloseTo(1.44)
+    })
+
+    it('reads the opened view at once on the frames and the notes layer', () => {
+      const { container } = renderCanvas(
+        page('studio/open', [
+          frame('a', { x: 0, y: 0, width: 4000, height: 4000 }),
+        ]),
+      )
+      const notes = container.querySelector<HTMLElement>('[data-notes-layer]')
+      if (!notes) throw new Error('no notes layer')
+      const { k } = viewOf(container)
+
+      expect(k).toBeLessThan(1)
+      expect(Number(zoomOf(layerOf(container)))).toBeCloseTo(k)
+      expect(Number(zoomOf(notes))).toBeCloseTo(k)
+    })
+  })
+
   it('keeps live pages near the view and placeholders far from it', () => {
     const { container } = renderCanvas(
       page('studio/cull', [
