@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -54,6 +54,20 @@ describe('gateKey', () => {
     write('a.ts', 'two')
 
     expect(gateKey(root, 'base')).not.toBe(before)
+  })
+
+  it('should move on an edit in the tick the index was written', () => {
+    // Size and time both match the index entry, so only a content read tells.
+    const tick = 1_700_000_000
+    git('config', 'core.trustctime', 'false')
+    utimesSync(join(root, 'a.ts'), tick, tick)
+    git('add', '-A')
+    utimesSync(join(root, '.git', 'index'), tick, tick)
+    const before = git('rev-parse', 'HEAD^{tree}')
+    write('a.ts', 'two')
+    utimesSync(join(root, 'a.ts'), tick, tick)
+
+    expect(gateKey(root, 'base')).not.toBe(`base ${before}`)
   })
 
   it('should move on an untracked file', () => {

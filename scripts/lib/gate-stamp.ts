@@ -4,6 +4,8 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -16,6 +18,17 @@ function gitPath(root: string, name: string): string {
 }
 
 /**
+ * Git reads a file's content when its time is no older than the index's, so a
+ * copy stamped now would hide an edit made in the tick the index was written.
+ * The time is rounded down, since an older index only reads more content.
+ */
+function copyIndex(from: string, to: string): void {
+  copyFileSync(from, to)
+  const seconds = Math.floor(statSync(from).mtimeMs / 1000)
+  utimesSync(to, seconds, seconds)
+}
+
+/**
  * Names the content the gate reads, being every file git would track and the
  * merge base its changed set is measured from. It holds across a commit of
  * that content, so a push after the commit matches the run before it.
@@ -25,7 +38,7 @@ export function gateKey(root: string, base: string): string {
   try {
     const index = join(scratch, 'index')
     const real = gitPath(root, 'index')
-    if (existsSync(real)) copyFileSync(real, index)
+    if (existsSync(real)) copyIndex(real, index)
     git(root, ['add', '-A'], { GIT_INDEX_FILE: index })
     const tree = git(root, ['write-tree'], { GIT_INDEX_FILE: index })
     return `${base} ${tree.trim()}`
