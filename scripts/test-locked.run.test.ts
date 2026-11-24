@@ -54,6 +54,7 @@ function wrap(settings: Record<string, string>, command: string[]): Run {
 function wrapAsync(
   settings: Record<string, string>,
   command: string[],
+  onStderr: (text: string) => void = () => {},
 ): Promise<Run> {
   const child = spawn(BUN, [WRAPPER, ...command], {
     env: wrapperEnv(settings),
@@ -61,6 +62,7 @@ function wrapAsync(
   let stderr = ''
   child.stderr.on('data', (chunk: Buffer) => {
     stderr += chunk.toString()
+    onStderr(stderr)
   })
   return new Promise((resolve) => {
     child.on('exit', (code) => resolve({ code, stderr }))
@@ -188,9 +190,10 @@ describe('settings', () => {
       command: 'vitest run',
       startedAt: '2026-11-14T10:00:00.000Z',
     })
-    setTimeout(() => release(lock, process.pid), 1500)
-
-    const run = await wrapAsync({}, ['true'])
+    // Freed only once the wrapper says it waits, so a slow start still meets it.
+    const run = await wrapAsync({}, ['true'], (text) => {
+      if (text.includes('waiting on pid')) release(lock, process.pid)
+    })
 
     expect(run.stderr).toContain('waiting on pid')
     expect(run.code).toBe(0)
