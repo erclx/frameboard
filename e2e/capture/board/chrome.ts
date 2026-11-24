@@ -78,7 +78,8 @@ const DESIGN_FONTS = 'canon/design/assets/groundwork-61/fonts'
 /** Lora installed in `webapp`, used by `frames` and drawn from its file through the project's font sheet. */
 function installedLora(frames: string[]): (page: Page) => Promise<void> {
   return async (page) => {
-    await page.route('**/api/projects/*/sourcing/fonts/installed', (route) =>
+    // Ends in a wildcard, since the board reads the list with `?frames=false`.
+    await page.route('**/api/projects/*/sourcing/fonts/installed*', (route) =>
       route.fulfill({
         json: {
           ok: true,
