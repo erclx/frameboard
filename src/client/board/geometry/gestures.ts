@@ -350,6 +350,12 @@ export function attachGestures(
     if (on) target.layer.dataset.carrying = ''
     else delete target.layer.dataset.carrying
   }
+  // A free element's outline follows the drag, so it hides where the ghost draws the same box.
+  const showGhost = (ghost: DropGhost | null) => {
+    carriedStore.setState({ ghost })
+    if (ghost && gesture.kind === 'placed') target.layer.dataset.draggedOut = ''
+    else delete target.layer.dataset.draggedOut
+  }
   const shiftElementOutline = (dx: number, dy: number) => {
     for (const outline of target.layer.querySelectorAll<HTMLElement>(
       '[data-element-selection]',
@@ -953,11 +959,11 @@ export function attachGestures(
         gesture.move.preview(gesture.to)
         shiftElementOutline(ox, oy)
         shiftElementPins(gesture.key, ox, oy)
-        carriedStore.setState({ ghost: frameMadeAt(event, gesture) })
+        showGhost(frameMadeAt(event, gesture))
         return
       }
       case 'carry': {
-        carriedStore.setState({ ghost: frameMadeAt(event, gesture) })
+        showGhost(frameMadeAt(event, gesture))
         return
       }
       case 'group': {
@@ -1187,7 +1193,7 @@ export function attachGestures(
     } else if (gesture.kind === 'placed') {
       const { from: start, to, move, key } = gesture
       const made = frameMadeAt(event, gesture)
-      carriedStore.setState({ ghost: null })
+      showGhost(null)
       if (to && (to.left !== start.left || to.top !== start.top)) {
         // Held until the reload measures the element, and a refusal puts it back.
         const outline = selectedElementBox(target.layer)
@@ -1223,7 +1229,8 @@ export function attachGestures(
     } else if (gesture.kind === 'carry') {
       const { key } = gesture
       const made = frameMadeAt(event, gesture)
-      carriedStore.setState({ carried: null, ghost: null })
+      carriedStore.setState({ carried: null })
+      showGhost(null)
       if (made) {
         void stores.extractElement(target.page, key, made.box)
       } else {
@@ -1313,7 +1320,7 @@ export function attachGestures(
       gesture.move.cancel()
       shiftElementOutline(0, 0)
       shiftElementPins(gesture.key, 0, 0)
-      carriedStore.setState({ ghost: null })
+      showGhost(null)
     } else if (gesture.kind === 'element-resize') {
       gesture.resize.cancel()
     } else if (gesture.kind === 'group' || gesture.kind === 'group-resize') {
@@ -1322,7 +1329,8 @@ export function attachGestures(
     } else if (gesture.kind === 'section-resize') {
       placeSection(gesture.section.name, gesture.section.box)
     } else if (gesture.kind === 'carry') {
-      carriedStore.setState({ carried: null, ghost: null })
+      carriedStore.setState({ carried: null })
+      showGhost(null)
     } else if (gesture.kind === 'marquee' || gesture.kind === 'inner-marquee') {
       if (root) drawRest(root)
     } else if (
@@ -1427,7 +1435,7 @@ export function attachGestures(
       stopCorners()
       clearTimeout(revealing)
       markCarrying(false)
-      carriedStore.setState({ ghost: null })
+      showGhost(null)
       selectionOfHit.on('.drag', null)
       hit.removeEventListener('contextmenu', noMenu)
       removeEventListener('keydown', onEscape, true)

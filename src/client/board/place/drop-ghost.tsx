@@ -17,7 +17,7 @@ export function DropGhost() {
   const element = useStore(carriedStore, (state) => state.ghost)
   const ghost = tile ?? element
   if (!ghost) return null
-  const { box, name, hugsHeight } = ghost
+  const { box, name, hugging } = ghost
   return (
     <div
       data-drop-ghost
@@ -37,7 +37,7 @@ export function DropGhost() {
         {name}
       </span>
       <span className="text-label font-medium whitespace-nowrap [transform:scale(calc(1/var(--zoom,1)))]">
-        New frame · {sizeLabel(box, hugsHeight ? 'height' : undefined)}
+        New frame · {sizeLabel(box, hugging)}
       </span>
     </div>
   )

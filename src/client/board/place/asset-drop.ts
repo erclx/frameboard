@@ -46,8 +46,8 @@ export interface DropGhost {
   box: Box
   /** Null while the board cannot tell what the frame will be named. */
   name: string | null
-  /** Whether the frame takes its height from its content, as an audio's does. */
-  hugsHeight: boolean
+  /** The sides the frame takes from its content, an audio's height and both of an element's. */
+  hugging?: 'height' | 'both'
 }
 
 interface AssetDropOptions {
@@ -146,7 +146,7 @@ export function useAssetDrop(
                   fileFrameName(path),
                   all.map((frame) => frame.name),
                 ),
-                hugsHeight: file?.kind === 'audio',
+                hugging: file?.kind === 'audio' ? 'height' : undefined,
               }
             : null,
       })

@@ -419,7 +419,7 @@ test.describe('placing text and shapes into a frame', () => {
     await page.mouse.down()
     await page.mouse.move(one.x, frame.y + frame.height + 60, { steps: 8 })
     const ghost = page.locator('[data-drop-ghost]')
-    await expect(ghost).toContainText('New frame · 80 × Hug')
+    await expect(ghost).toContainText('New frame · Hug × Hug')
     await expect(ghost).toContainText('one')
     await page.mouse.up()
 

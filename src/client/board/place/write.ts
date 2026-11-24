@@ -445,7 +445,7 @@ export function elementGhost(
           frames.map(({ name }) => name),
         )
       : null,
-    hugsHeight: true,
+    hugging: 'both',
   }
 }
 

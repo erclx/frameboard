@@ -761,7 +761,7 @@ describe('elementGhost', () => {
     expect(elementGhost(KEY, BOX, [HERO], null)).toEqual({
       box: { x: 620, y: 80, width: 120, height: 1 },
       name: null,
-      hugsHeight: true,
+      hugging: 'both',
     })
   })
 

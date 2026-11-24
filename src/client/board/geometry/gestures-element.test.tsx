@@ -142,6 +142,19 @@ describe('attachGestures', () => {
         expect([inside, over, ghost()]).toEqual([null, null, null])
       })
 
+      it('keeps the outline of a carried element, which stays where it was', () => {
+        const canvas = setupWithElement()
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(350, 355)
+        const bare = canvas
+          .part('[data-layer]')
+          .hasAttribute('data-dragged-out')
+        canvas.pointer.up(350, 355)
+
+        expect(bare).toBe(false)
+      })
+
       it('makes no frame released over another frame', () => {
         const canvas = setupWithElement()
 
@@ -678,6 +691,25 @@ describe('attachGestures', () => {
         expect([canvas.placedMoves[0]?.cancelled, heldOutline()]).toEqual([
           false,
           null,
+        ])
+      })
+
+      it('hides its outline while the ghost of its frame draws there alone', () => {
+        const canvas = setupPlaced()
+        const layer = canvas.part('[data-layer]')
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+        const inside = layer.hasAttribute('data-dragged-out')
+        canvas.pointer.move(350, 355)
+        const bare = layer.hasAttribute('data-dragged-out')
+        canvas.pointer.up(350, 355)
+
+        expect([inside, bare, layer.hasAttribute('data-dragged-out')]).toEqual([
+          false,
+          true,
+          false,
         ])
       })
 

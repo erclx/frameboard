@@ -22,7 +22,6 @@ describe('DropGhost', () => {
         ghost: {
           box: { x: 80, y: 120, width: 640, height: 360 },
           name: 'showcase',
-          hugsHeight: false,
         },
       }),
     )
@@ -48,7 +47,7 @@ describe('DropGhost', () => {
         ghost: {
           box: { x: 250, y: 273, width: 300, height: 54 },
           name: 'voice',
-          hugsHeight: true,
+          hugging: 'height',
         },
       }),
     )
@@ -56,7 +55,7 @@ describe('DropGhost', () => {
     expect(screen.getByText('New frame · 300 × Hug')).toBeVisible()
   })
 
-  it('shows the frame a carried element would make, its height hugging', () => {
+  it('shows the frame a carried element would make, hugging both ways', () => {
     const { container } = render(<DropGhost />)
 
     act(() =>
@@ -64,12 +63,12 @@ describe('DropGhost', () => {
         ghost: {
           box: { x: 620, y: 80, width: 120, height: 40 },
           name: 'buy',
-          hugsHeight: true,
+          hugging: 'both',
         },
       }),
     )
 
-    expect(screen.getByText('New frame · 120 × Hug')).toBeVisible()
+    expect(screen.getByText('New frame · Hug × Hug')).toBeVisible()
     expect(screen.getByText('buy')).toBeVisible()
     expect(
       container.querySelector<HTMLElement>('[data-drop-ghost]')?.style,
