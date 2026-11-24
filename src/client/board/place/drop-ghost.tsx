@@ -5,14 +5,17 @@ import { cn } from '@/client/lib/cn'
 import { screen, sizeLabel } from '../geometry/draw'
 import { OVERLAY_Z } from '../geometry/overlay'
 import { tileDragStore } from './asset-drop'
+import { carriedStore } from './tool'
 import type { GhostSpot } from './write'
 
 /**
- * The frame a dragged tile would make over bare canvas, drawn once its size is
- * read and never over a frame, where the drop line shows the gap instead.
+ * The frame a dragged tile or element would make over bare canvas, drawn once
+ * its size is read and never over a frame, where the drop line shows the gap.
  */
 export function DropGhost() {
-  const ghost = useStore(tileDragStore, (state) => state.ghost)
+  const tile = useStore(tileDragStore, (state) => state.ghost)
+  const element = useStore(carriedStore, (state) => state.ghost)
+  const ghost = tile ?? element
   if (!ghost) return null
   const { box, name, hugsHeight } = ghost
   return (

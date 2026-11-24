@@ -4,8 +4,9 @@ import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
 import { assetKind, isPlaceableKind } from '@/shared/asset-kinds'
 import { pageBox } from '@/shared/frame-device'
-import { NAME_MAX_LENGTH, nextFreeName } from '@/shared/names'
+import { elementFrameName, NAME_MAX_LENGTH, nextFreeName } from '@/shared/names'
 import type {
+  ExtractResult,
   InsertResult,
   MoveResult,
   PlaceResult,
@@ -38,6 +39,7 @@ import {
   selectionStore,
 } from '../selection'
 import { canvasView } from '../view'
+import type { DropGhost } from './asset-drop'
 import {
   type AssetSize,
   fitFromPointer,
@@ -417,6 +419,67 @@ export async function moveElement(
 }
 
 /**
+ * The frame a release makes of an element drawn at `box`, named as the server
+ * names it, with no name while the tree held is of other bytes.
+ */
+export function elementGhost(
+  { frame, index, hash }: ElementKey,
+  box: Box,
+  frames: readonly FrameRecord[],
+  tree: ElementTree | null = treeOf(frame),
+): DropGhost {
+  const row =
+    tree?.hash === hash
+      ? tree.elements.find((element) => element.index === index)
+      : undefined
+  return {
+    box: {
+      x: Math.round(box.x),
+      y: Math.round(box.y),
+      width: Math.max(1, Math.round(box.width)),
+      height: Math.max(1, Math.round(box.height)),
+    },
+    name: row
+      ? nextFreeName(
+          elementFrameName(row.named ? row.name : null, row.tag),
+          frames.map(({ name }) => name),
+        )
+      : null,
+    hugsHeight: true,
+  }
+}
+
+/**
+ * Moves the selected element out of its frame into a hugging frame of its own
+ * at `box`, in the frame's turn, then selects that frame. Answers its ref, or
+ * null with nothing sent while the source frame is held.
+ */
+export async function extractElement(
+  page: string,
+  key: ElementKey,
+  box: Box,
+  {
+    selection = selectionStore,
+    live = liveStore,
+    send = fetch,
+    notify = (refusal) => toast.add({ ...refusal, type: 'warning' }),
+  }: Omit<PlaceDeps, 'mode' | 'size'> = {},
+): Promise<string | null> {
+  const answer = await writeShifting<ExtractResult>(
+    key.frame,
+    key.hash,
+    'Nothing moved',
+    (from) => ({
+      url: '/api/frames/extract',
+      body: { ref: key.frame, hash: from, index: key.index, box },
+    }),
+    ({ frame }) => select(selection, page, [frame]),
+    { live, send, notify },
+  )
+  return answer?.frame ?? null
+}
+
+/**
  * Moves an element among its siblings. The gap is read in the frame's turn, so
  * a move queued behind another goes from the index and hash that one answered
  * rather than from the tree the press saw.
@@ -536,28 +599,53 @@ async function treeAtHash(
   return read?.hash === hash ? read : null
 }
 
-/**
- * Sends a gap's write in the frame's turn from the hash the edit ahead
- * answered, and refuses a held frame, whose indices go stale when it writes.
- */
+/** Sends a gap's write as `writeShifting` does, landing on the element it answers. */
 async function writeAtGap(
-  { frame, hash }: FrameGap,
+  { frame: { ref }, hash }: FrameGap,
   title: string,
   request: (from: string) => { url: string; body: unknown },
   land: (key: ElementKey) => void,
-  { live, send, notify }: Required<Pick<PlaceDeps, 'live' | 'send' | 'notify'>>,
+  deps: Required<Pick<PlaceDeps, 'live' | 'send' | 'notify'>>,
 ): Promise<ElementKey | null> {
-  const ref = frame.ref
+  const keyOf = ({ index, hash }: InsertResult | MoveResult) => ({
+    frame: ref,
+    index,
+    hash,
+  })
+  const answer = await writeShifting<InsertResult | MoveResult>(
+    ref,
+    hash,
+    title,
+    request,
+    (written) => land(keyOf(written)),
+    deps,
+  )
+  return answer && keyOf(answer)
+}
+
+/**
+ * Sends a write that shifts a frame's indices, in the frame's turn and from the
+ * hash the edit ahead answered, refusing a held frame, whose indices go stale
+ * when it writes.
+ */
+async function writeShifting<T extends { hash: string }>(
+  ref: string,
+  hash: string,
+  title: string,
+  request: (from: string) => { url: string; body: unknown },
+  land: (answer: T) => void,
+  { live, send, notify }: Required<Pick<PlaceDeps, 'live' | 'send' | 'notify'>>,
+): Promise<T | null> {
   const holder = live.getState().claims[ref]
   if (holder) {
     notify({
       title,
-      description: `${holder.tag} is editing ${frame.name}, so nothing was written.`,
+      description: `${holder.tag} is editing ${ref.split('/').at(-1) ?? ref}, so nothing was written.`,
     })
     return null
   }
 
-  let landed: ElementKey | null = null
+  let landed: T | null = null
   await inFrameTurn(ref, async (prior): Promise<Landed> => {
     const before = prior ? await prior : undefined
     if (before === null) return null
@@ -569,16 +657,11 @@ async function writeAtGap(
     rememberHash(ref, from)
     try {
       const { url, body } = request(from)
-      const answer = await writeBoard<InsertResult | MoveResult>(
-        url,
-        body,
-        'POST',
-        send,
-      )
+      const answer = await writeBoard<T>(url, body, 'POST', send)
       rememberHash(ref, answer.hash)
       void catchUpTree(ref, answer.hash)
-      landed = { frame: ref, index: answer.index, hash: answer.hash }
-      land(landed)
+      landed = answer
+      land(answer)
       // Every index past the gap moved, so no edit queued behind keeps its own.
       return { from: [from], to: answer.hash, at: new Map(), shifted: true }
     } catch (error) {

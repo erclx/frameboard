@@ -3,9 +3,13 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { tileDragStore } from './asset-drop'
 import { DropGhost, PlaceGhost } from './drop-ghost'
+import { carriedStore } from './tool'
 
 afterEach(() => {
-  act(() => tileDragStore.setState({ at: null, ghost: null }))
+  act(() => {
+    tileDragStore.setState({ at: null, ghost: null })
+    carriedStore.setState({ carried: null, ghost: null })
+  })
 })
 
 describe('DropGhost', () => {
@@ -50,6 +54,26 @@ describe('DropGhost', () => {
     )
 
     expect(screen.getByText('New frame · 300 × Hug')).toBeVisible()
+  })
+
+  it('shows the frame a carried element would make, its height hugging', () => {
+    const { container } = render(<DropGhost />)
+
+    act(() =>
+      carriedStore.setState({
+        ghost: {
+          box: { x: 620, y: 80, width: 120, height: 40 },
+          name: 'buy',
+          hugsHeight: true,
+        },
+      }),
+    )
+
+    expect(screen.getByText('New frame · 120 × Hug')).toBeVisible()
+    expect(screen.getByText('buy')).toBeVisible()
+    expect(
+      container.querySelector<HTMLElement>('[data-drop-ghost]')?.style,
+    ).toMatchObject({ left: '620px', top: '80px' })
   })
 
   it('draws nothing while the tile is over a frame', () => {

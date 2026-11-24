@@ -13,6 +13,8 @@ import { createSelectionStore, selectElement } from '../selection'
 import type { FrameGap } from './gap'
 import {
   deleteElement,
+  elementGhost,
+  extractElement,
   fileFrameName,
   ghostFor,
   moveElement,
@@ -643,6 +645,143 @@ describe('moveElement', () => {
     expect(told).toEqual([
       'claude · studio is editing hero, so nothing was written.',
     ])
+  })
+})
+
+describe('extractElement', () => {
+  const KEY = { frame: HERO.ref, index: 4, hash: HASH }
+  const BOX = { x: 620, y: 80, width: 120, height: 40 }
+
+  it('sends the element and the box its frame lands at, then selects the new frame', async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', KEY)
+    const { sent, send } = server(200, {
+      ok: true,
+      data: { ref: HERO.ref, hash: ANSWERED, frame: 'studio/home/buy' },
+    })
+
+    const made = await extractElement('studio/home', KEY, BOX, {
+      selection,
+      live: createLiveStore(),
+      send,
+    })
+
+    expect(sent).toEqual([{ ref: HERO.ref, hash: HASH, index: 4, box: BOX }])
+    expect(made).toBe('studio/home/buy')
+    expect(selection.getState()).toMatchObject({
+      frames: ['studio/home/buy'],
+      element: null,
+    })
+  })
+
+  it('refuses a frame another session holds and sends nothing', async () => {
+    const live = createLiveStore()
+    live.setState({
+      claims: {
+        [HERO.ref]: {
+          frame: HERO.ref,
+          session: 'sess-a',
+          agent: 'claude',
+          tag: 'claude · studio',
+          claimedAt: '2026-10-15T00:00:00.000Z',
+          expiresAt: '2026-10-15T01:00:00.000Z',
+        },
+      },
+    })
+    const { sent, send } = server(200, {})
+    const told: string[] = []
+
+    const made = await extractElement('studio/home', KEY, BOX, {
+      selection: createSelectionStore(),
+      live,
+      send,
+      notify: ({ description }) => told.push(description),
+    })
+
+    expect(made).toBeNull()
+    expect(sent).toEqual([])
+    expect(told).toEqual([
+      'claude · studio is editing hero, so nothing was written.',
+    ])
+  })
+
+  it("shows the server's refusal and keeps the element selected", async () => {
+    const selection = createSelectionStore()
+    selectElement(selection, 'studio/home', KEY)
+    const { send } = server(409, {
+      ok: false,
+      error: {
+        code: 'invalid-container',
+        message: 'a <tr> cannot stand alone in a frame, so nothing was written',
+      },
+    })
+    const told: string[] = []
+
+    const made = await extractElement('studio/home', KEY, BOX, {
+      selection,
+      live: createLiveStore(),
+      send,
+      notify: ({ title, description }) => told.push(title, description),
+    })
+
+    expect(made).toBeNull()
+    expect(told).toEqual([
+      'Nothing moved',
+      'A <tr> cannot stand alone in a frame, so nothing was written.',
+    ])
+    expect(selection.getState().element).toEqual(KEY)
+  })
+})
+
+describe('elementGhost', () => {
+  const KEY = { frame: HERO.ref, index: 4, hash: HASH }
+  const BOX = { x: 620.4, y: 79.6, width: 120.2, height: 0.3 }
+  const treeWith = (
+    element: Partial<TreeElement>,
+    hash = HASH,
+  ): ElementTree => ({
+    ref: HERO.ref,
+    hash,
+    elements: [
+      {
+        index: 4,
+        parent: null,
+        tag: 'button',
+        name: 'Buy now',
+        textOnly: true,
+        layout: 'block',
+        round: false,
+        placed: false,
+        ...element,
+      },
+    ],
+  })
+
+  it('draws the whole-pixel box a hugging frame lands at', () => {
+    expect(elementGhost(KEY, BOX, [HERO], null)).toEqual({
+      box: { x: 620, y: 80, width: 120, height: 1 },
+      name: null,
+      hugsHeight: true,
+    })
+  })
+
+  it.each([
+    ['its data-name', { named: true } as const, [HERO], 'buy-now'],
+    ['its tag where its name is its text', {}, [HERO], 'button'],
+    [
+      'the next free name on a clash',
+      { named: true } as const,
+      [HERO, frameOf('buy-now')],
+      'buy-now-2',
+    ],
+  ])('names the frame by %s', (_case, element, frames, name) => {
+    expect(elementGhost(KEY, BOX, frames, treeWith(element)).name).toBe(name)
+  })
+
+  it('names nothing from a tree of other bytes', () => {
+    const tree = treeWith({ named: true }, ANSWERED)
+
+    expect(elementGhost(KEY, BOX, [HERO], tree).name).toBeNull()
   })
 })
 

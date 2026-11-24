@@ -18,6 +18,7 @@ import type { PlaceableFile } from '../assets/drag'
 import { modeStore, type Tool } from '../mode'
 import type { BoardPoint } from '../notes/pick'
 import type { ElementKey } from '../selection'
+import type { DropGhost } from './asset-drop'
 import type { PlacedKind } from './write'
 
 export type ShapeKind = Exclude<PlacedKind, 'text' | 'asset'>
@@ -91,10 +92,13 @@ export function armFile(file: PlaceableFile): void {
   refreshActions()
 }
 
-/** The selected element a Move drag carries, which the drop line follows, null while none is dragged. */
-export const carriedStore = createStore<{ carried: ElementKey | null }>()(
-  () => ({ carried: null }),
-)
+/** What a Move drag of the selected element would do at the pointer, each null while it would not. */
+export const carriedStore = createStore<{
+  /** The element in the flow it carries, which the drop line follows. */
+  carried: ElementKey | null
+  /** The frame a release makes of the element, while over bare canvas. */
+  ghost: DropGhost | null
+}>()(() => ({ carried: null, ghost: null }))
 
 /**
  * A Rectangle, Ellipse, Image, or Frame drag as it ended, where it started, the top

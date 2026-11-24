@@ -139,6 +139,7 @@ export function setup(
   const opened: string[] = []
   const splits: number[] = []
   const moves: { page: string; at: Point; key: ElementKey }[] = []
+  const extracts: { page: string; key: ElementKey; box: Box }[] = []
   const resizes: {
     page: string
     key: ElementKey
@@ -345,6 +346,10 @@ export function setup(
         moves.push({ page, at, key })
         return null
       },
+      extractElement: async (page, key, box) => {
+        extracts.push({ page, key, box })
+        return lands ? `${PAGE}/own` : null
+      },
       pickElement: async (_layer, _frames, at) => pick(at),
       // False at once as the store answers where it can tell, else the frame's word.
       onBareFrame: (_layer, _frames, at) =>
@@ -427,6 +432,7 @@ export function setup(
     opened,
     splits,
     moves,
+    extracts,
     resizes,
     placedMoves,
     groupEdits,
@@ -449,12 +455,23 @@ class Pointer {
     this.hit.dispatchEvent(this.event('mousedown', x, y, init))
   }
 
-  move(x: number, y: number, init: MouseEventInit = {}) {
-    window.dispatchEvent(this.event('mousemove', x, y, init))
+  /** Sent on the hit layer, as a pointer over the canvas sends it, unless `over` is on top. */
+  move(
+    x: number,
+    y: number,
+    init: MouseEventInit = {},
+    over: HTMLElement = this.hit,
+  ) {
+    over.dispatchEvent(this.event('mousemove', x, y, init))
   }
 
-  up(x: number, y: number, init: MouseEventInit = {}) {
-    window.dispatchEvent(this.event('mouseup', x, y, init))
+  up(
+    x: number,
+    y: number,
+    init: MouseEventInit = {},
+    over: HTMLElement = this.hit,
+  ) {
+    over.dispatchEvent(this.event('mouseup', x, y, init))
   }
 
   click(x: number, y: number, init: MouseEventInit = {}) {

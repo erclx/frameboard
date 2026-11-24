@@ -154,14 +154,14 @@ export function selectedElementBoxes(
 }
 
 /**
- * The element whose ghost draws under a canvas point, leaving a point inside
- * the frame to the frame.
+ * The element whose ghost draws under a canvas point, with the box it draws
+ * at, leaving a point inside the frame to the frame.
  */
 export function ghostAt(
   layer: ParentNode,
   frames: readonly FrameRecord[],
   point: Point,
-): ElementKey | null {
+): { key: ElementKey; box: Box } | null {
   const ghosts = [
     ...layer.querySelectorAll<HTMLElement>('[data-element-ghost]'),
   ].reverse()
@@ -169,15 +169,14 @@ export function ghostAt(
     const { ghostFrame, ghostIndex, ghostHash } = ghost.dataset
     const frame = frames.find(({ ref }) => ref === ghostFrame)
     if (!frame || ghostIndex === undefined || ghostHash === undefined) continue
-    const { left, top, width, height } = ghost.style
-    const box = {
-      x: parseFloat(left),
-      y: parseFloat(top),
-      width: parseFloat(width),
-      height: parseFloat(height),
-    }
+    const box = drawnBox(ghost)
     if (within(box, point) && !within(frame.box, point)) {
-      return { frame: frame.ref, index: Number(ghostIndex), hash: ghostHash }
+      const key = {
+        frame: frame.ref,
+        index: Number(ghostIndex),
+        hash: ghostHash,
+      }
+      return { key, box }
     }
   }
   return null
