@@ -1,6 +1,6 @@
 ---
 title: Sourcing
-description: The image verbs that find or generate a picture, the model verbs that find a public domain 3D model or make one from a picture, and the font verbs that install an openly licensed font, each saved into a project's assets with its license
+description: The image, model, and font verbs that find or generate a picture, a 3D model, or an openly licensed font, each saved into a project with its license
 ---
 
 # Sourcing
