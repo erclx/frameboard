@@ -251,6 +251,39 @@ async function laptopOverflowing(page: Page): Promise<void> {
   })
 }
 
+/** A badge below a desktop frame's edge and a card crossing its right one. */
+const PAST_EDGE = join(
+  import.meta.dirname,
+  '../../../scripts/lib/drive-past-edge.html',
+)
+
+/** Both pictures asked for, whose loading holds the page's own. */
+const PAINTED_BOTH =
+  'div:has(> img[src^="/api/frames/png"]) + div > img[src^="/api/frames/png"]'
+
+/**
+ * Serves the past-edge page in the hero's place, with its clipping switched
+ * off when `open`, putting both files back when the page closes.
+ */
+function heroPastEdge(open: boolean): (page: Page) => Promise<void> {
+  return async (page) => {
+    const layoutPath = join(SERVED_BOARD, 'webapp/home/layout.json')
+    const htmlPath = join(SERVED_BOARD, 'webapp/home/hero.html')
+    const originalLayout = readFileSync(layoutPath, 'utf8')
+    const originalHtml = readFileSync(htmlPath, 'utf8')
+    if (open) {
+      const layout = JSON.parse(originalLayout)
+      layout.frames.hero.showOverflow = true
+      writeFileSync(layoutPath, JSON.stringify(layout))
+    }
+    writeFileSync(htmlPath, readFileSync(PAST_EDGE, 'utf8'))
+    page.once('close', () => {
+      writeFileSync(layoutPath, originalLayout)
+      writeFileSync(htmlPath, originalHtml)
+    })
+  }
+}
+
 /**
  * Names the about frame a foldable in `pose`, at that pose's screen size, or
  * with its sides swapped when `turn` names a quarter turn, putting the layout
@@ -714,6 +747,43 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           noAgentChanges,
           onCanvas({ select: ['webapp/home/about'] }),
           readyWhen('[data-rail-thumb]', '[data-element-ghost]'),
+        ),
+      ),
+    },
+    // Clip content off with nothing selected, the badge and the card whole past the edge.
+    {
+      section: 'clip-off',
+      writes: 'board',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          heroPastEdge(true),
+          noAgentChanges,
+          readyWhen(PAINTED_BOTH, '[data-element-ghost]'),
+        ),
+      ),
+    },
+    // Clip content on, each picture inside the selected frame's ghost.
+    {
+      section: 'clip-on-selected',
+      writes: 'board',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          heroPastEdge(false),
+          noAgentChanges,
+          onCanvas({ select: ['webapp/home/hero'] }),
+          readyWhen(PAINTED_BOTH),
         ),
       ),
     },
