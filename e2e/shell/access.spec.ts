@@ -111,6 +111,38 @@ test.describe('the board write key', () => {
   })
 })
 
+test.describe('a board served with --edit-button', () => {
+  let board: FixtureBoard
+  let server: BoardServer
+
+  test.beforeEach(async () => {
+    board = copyFixtureBoard('live')
+    server = await serveBoard(board.root, ['--edit-button'])
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('turns a plain-URL tab into one that writes, with no terminal', async ({
+    page,
+  }) => {
+    await page.goto(`${server.url}/p/studio/home`)
+    const pill = page.getByRole('status').filter({ hasText: 'View only' })
+    await pill.getByRole('button', { name: 'Edit this board' }).click()
+    const confirm = page.getByRole('dialog', { name: 'Edit this board?' })
+    expect(await show(page)).toBe(401)
+
+    await confirm.getByRole('button', { name: 'Edit', exact: true }).click()
+
+    await expect(confirm).toHaveCount(0)
+    await expect(pill).toHaveCount(0)
+    await expect(page).toHaveURL(`${server.url}/p/studio/home`)
+    await expect.poll(() => show(page)).toBe(200)
+  })
+})
+
 test.describe('a note card in a read-only tab', () => {
   let board: FixtureBoard
   let server: BoardServer

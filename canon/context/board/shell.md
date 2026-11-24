@@ -67,7 +67,8 @@ Owns what a tab shows about its write access, mirroring `src/server/access/`.
 
 - The View only pill takes the Reconnecting pill's slot once the server answers that the tab reads, and Play hides it on the board, where its banner holds that spot
 - The inspector opens on one View only line in the same state, read through `view-only.ts`, so neither shows before the first answer
-- `expired-link.ts` reads the redeem route's `link=expired` flag, strips it once access is answered, and raises a toast that stays until dismissed in a tab that cannot write
+- Where the server offers it, both hold an Edit button in place of the command, and `edit-access.tsx` confirms once, posts the grant, and reloads the tab
+- `expired-link.ts` reads the redeem route's `link=expired` flag, strips it once access is answered, and raises a toast that stays until dismissed in a reading tab, with that button if offered
 
 ### Other folders
 

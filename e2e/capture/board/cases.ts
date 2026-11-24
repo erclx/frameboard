@@ -2,6 +2,7 @@ import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
 import type { CaptureCase } from '../types'
+import { accessCases } from './access'
 import { agentCases } from './agent'
 import { canvasCases } from './canvas'
 import { chromeCases } from './chrome'
@@ -16,6 +17,7 @@ const CASES: CaptureCase[] = [
   ...homeCases(),
   ...(['light', 'dark'] as const).flatMap((theme): CaptureCase[] => [
     ...chromeCases(theme),
+    ...accessCases(theme),
     ...canvasCases(theme),
     ...editingCases(theme),
     ...agentCases(theme),

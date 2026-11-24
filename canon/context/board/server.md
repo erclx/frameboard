@@ -41,9 +41,17 @@ Owns the claims record, its expiry, and the gate on hand writes, apart from `not
 
 Owns who may write, apart from the route modules.
 
-- `key.ts` loads the board key from `.run/board-key.json`, `tickets.ts` mints single-use tickets valid for two minutes, and `guard.ts` holds `isWriter` and `requireWriter`
+- `key.ts` loads the board key from `.run/board-key.json`, `tickets.ts` mints single-use tickets valid for two minutes, or up to 60 by `open --ttl`, and `guard.ts` holds `isWriter` and `requireWriter`
 - A writer is the address file's token as a bearer, or the board's cookie carrying the key sent with the board's own `Origin`, and the live socket's upgrade asks the same rule
 - A route that changes the board folder or drives an agent mounts `requireWriter`, and a GET that only reads takes no guard
+
+View-only guards against web pages and frames, whose `Origin` the rule refuses, and never against a program that can read `.run/`. Under `serve --edit-button`, off by default, any program reaching the loopback port can write to the board, send notes to a listening session, and start one under `FRAMEBOARD_DISPATCH`.
+
+- The flag mounts `POST /api/access/edit`, which sets the key cookie for a fetch from the board's own page, and the socket's `access` message carries `editButton` to a reading tab
+- A program is no browser, so it can send every header the grant reads, and no check on the request keeps one out
+- The grant takes JSON alone, since a kit page's form or ping carries the board's `Origin` and neither can send JSON
+- The grant's `Origin` has to equal the address asked, since a page on `[::1]` at the board's port sends one reading `localhost`
+- The client's HTML answers `frame-ancestors 'none'` and a kit page `form-action 'none'`, so no page lures the press that grants
 
 ### `src/server/routes/`
 
