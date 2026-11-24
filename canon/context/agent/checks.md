@@ -45,7 +45,7 @@ The server's checker runs every rule once per box through `acrossWidths` in `ren
 
 ### `src/server/routes/checks.ts`
 
-Owns `POST /api/checks`, behind the write token, which `check` calls with the refs it read. It rescans the board first, hands a write the watcher has not batched yet to the change tracker, and waits out that write's grace and every pending recheck of those frames before answering.
+Owns `POST /api/checks`, behind the write token, which `check` calls with the refs it read. It rescans the board first, moves those frames to the front of both queues, hands a write the watcher has not batched yet to the change tracker, and waits out that write's grace and every pending check of those frames before answering.
 
 - It answers the held change findings, then the held browser findings, and `browser: { ran: true }`
 - A browser that does not launch answers `browser: { ran: false, reason: 'browser-not-found' }` with the change findings alone
@@ -61,6 +61,6 @@ The plugin side of the hook sits outside `src/`.
 
 - `checkFrame` sits in `frame.ts` apart from `run.ts`, because the runner reads the board scanner and its zod import would double the hook's start
 - Browser rules run on the server and never in the hook, so an agent sees them through `check` with a server running, never in the turn of its write
-- Every serve sweeps with Chromium at startup, so a spec reading a label count waits on `check` or `POST /api/checks` first
+- A start checks every frame whose stored key moved, so a spec reading a label count waits on `check` first, and an edited rule needs `.run/checks.json` deleted, since keys hold the version alone
 - The browser comparison in `e2e/cli/checks.spec.ts` never sets `color-scheme`, since that flips the default text color around a fixed literal color
 - Both cropping tests walk the containing block chain, skipping an ancestor an absolute element anchors past, so an escaping element counts for `clipped`

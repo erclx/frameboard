@@ -22,9 +22,9 @@ Owns the loopback server around the folders below. `app.ts` is the Hono app, `st
 Owns the board folder's watcher, the socket hub, the decision to open a tab, and the selection `selection.ts` keeps in memory from the last writing tab, forgotten once that tab's socket closes. A reload carries a frame's hash only when its own file was the batch's sole cause, so a tab keeps a page already showing those bytes.
 
 - `.html` or `.swap` reloads its frame, a page file the page, non-kit `assets/` media its linking frames, other assets the project, `layout.json` a `kit` change, `notes.json` or `.license.json` nothing
-- Writes gather into batches closing 50 ms after the last event or 250 ms after the first, so one agent turn costs one rescan
-- `fs.watch` on macOS drops writes in its first tens of milliseconds, so the watch counts nothing for its first 100 ms and resolves only once warm
+- Writes gather into batches closing 50 ms after the last event or 250 ms after the first, and a watch resolves only past its first 100 ms, since `fs.watch` on macOS drops writes then
 - `hug.ts` measures a hugging frame under the layout lock with no undo step, before the board goes out for its own reload and after it for an asset or sheet, and logs a failed measure to stderr
+- A start answers hellos from `.run/checks.json`, whose results `remembered.ts` keys by what they read, and `start-checks.ts` rechecks what moved in slices of the scan turn
 - A frame placed mid-measure is measured in that rescan, one a waiting batch saw placed by the batch naming its `layout.json`, and a size whose file changed since its scan is dropped
 
 ### `src/server/claims/`
