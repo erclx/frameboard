@@ -49,7 +49,7 @@ Owns who may write, apart from the route modules.
 
 Owns the routes that hand a tab the key. View-only guards against web pages and frames, whose `Origin` the rule refuses, and never against a program that can read `.run/`.
 
-- Under `serve --edit-button`, off by default, any program reaching the port can send the headers the grant reads, then write, send notes to a listening session, and start one under `FRAMEBOARD_DISPATCH`
+- Under `serve --edit-button`, off by default, any program reaching the port can send the headers the grant reads, write, send notes to a listening session, and start one under `FRAMEBOARD_DISPATCH`
 - The flag mounts `POST /api/access/edit`, which sets the key cookie for the board's own page, and `editButton` on the socket's `access` message draws the button in a reading tab
 - The grant takes JSON alone, since a kit page's form or ping carries the board's `Origin` and neither can send JSON
 - The grant's `Origin` has to equal the address asked, since a page on `[::1]` at the board's port sends one reading `localhost`
