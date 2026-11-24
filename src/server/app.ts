@@ -170,7 +170,7 @@ export function createApp({
     '/',
     assetsRoutes(root, actions.access, history, { usage: assetUsage }),
   )
-  app.route('/', sourcingRoutes(root, actions.access))
+  app.route('/', sourcingRoutes(root, actions.access, { history }))
   app.route('/', elementsRoutes(root, actions.access, selection, given))
   app.route('/', findRoutes(root))
   app.route('/', claimsRoutes(root, actions.access))
