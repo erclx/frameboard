@@ -74,10 +74,9 @@ export interface KeyMaker {
 }
 
 /**
- * Keys frames by the bytes of their file, project file, and token sheets, and
- * the path, size, and time of every other file in their page folder and their
- * project's `assets/`, beside the Frameboard version, which pins the rules,
- * the browser, and the faces.
+ * Keys frames by the bytes of their file, project file, and token sheets, the
+ * path, size, and time of what else their page folder and `assets/` hold, and
+ * the Frameboard version, which pins the rules, the browser, and the faces.
  */
 export function createFrameKeys(
   root: string,

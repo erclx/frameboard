@@ -8,15 +8,11 @@ import { type Access, requireWriter } from '../access/guard'
 /** What the route reads off the server's warm checker and its held findings. */
 export interface BrowserChecks {
   /**
-   * Rescans the board, queues every frame whose file or box changed with
-   * `refs` at the front, and takes in an agent's write to any of `refs`, so a
-   * write the watcher has not batched yet is checked before the route answers.
+   * Queues every frame that changed, `refs` at the front, and takes in a write
+   * to any of `refs` the watcher has not batched yet.
    */
   refresh: (refs: string[]) => Promise<void>
-  /**
-   * Resolves once no check of any of `refs` is queued or running, the start's
-   * included, and no agent write to one waits out its grace.
-   */
+  /** Resolves once no check of `refs` is pending and no write to one waits out its grace. */
   settle: (refs: string[]) => Promise<void>
   /** The browser findings held for each of `refs`. */
   rendered: (refs: string[]) => Record<string, Finding[]>
