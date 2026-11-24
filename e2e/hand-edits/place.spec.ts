@@ -508,7 +508,7 @@ test.describe('placing text and shapes into a frame', () => {
       frame.x + (left + 1) * k,
       frame.y + (top + height / 2) * k,
     )
-    // The board's caret move crosses processes, and a key typed at once can beat it there.
+    // The caret moves by a message, which a key typed at once can beat to the frame.
     await expect
       .poll(() =>
         hero(page)
