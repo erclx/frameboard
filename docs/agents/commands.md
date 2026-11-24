@@ -53,7 +53,7 @@ A page meant to scroll, such as one with a sticky section, takes `--scroll` on `
 
 A responsive page is one frame file shown at several widths, so every fix to the file lands at all of them.
 
-- `--widths 834,390` on `frame add` or `frame resize` draws the frame again at each width, in a row beside it
+- `--widths 834,390` on `frame add` or `frame resize` draws the frame again at each width, in a row beside it, each inside the device its width names while the frame's device is on
 - Each width hugs its content when the frame does and holds its device height otherwise
 - `capture` names each width's image `<frame>@<width>.<theme>.png`, and a browser finding at a width prints as `<path>@<width>`
 
@@ -62,7 +62,7 @@ A responsive page is one frame file shown at several widths, so every fix to the
 `frame device <frame-ref> on`, or `--device on` on `frame add`, has the board draw the frame inside the device its width names, being a phone from 320 to 479 wide, a tablet from 480 to 1023, and a laptop from 1024 up. The frame file and its size stay as they are, and `off` hides it.
 
 - A phone draws a status bar over the top 54 px of the box and lays the page out under it, so a 390 by 844 frame holds a 390 by 790 page
-- `capture` draws the bar too, and a hugging height counts it
+- `capture` draws the bar too, and a hugging height counts it, and `capture --page <page> --composite` draws the body of every device shown
 - `--island wide` gives the phone its wide island, and `--island compact` takes it back
 - `--turn left` or `--turn right` lays a phone, tablet, or foldable out landscape with no status bar, and `--turn upright` stands it back up. `list --json` reports `turn` while it is turned
 - A turned phone or foldable insets its page 54 px from each side edge, so a phone's 844 by 390 box holds a 736 by 390 page clear of the island

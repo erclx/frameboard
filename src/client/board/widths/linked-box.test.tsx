@@ -66,6 +66,95 @@ describe('LinkedBoxes', () => {
     ])
   })
 
+  describe('with the device on', () => {
+    const PHONE = frameOf('hero', {
+      box: { x: 100, y: 40, width: 390, height: 844 },
+      widths: [
+        { width: 834, height: 1194 },
+        { width: 1440, height: 900 },
+        { width: 320, height: 568 },
+        { width: 300, height: 500 },
+      ],
+      device: 'phone',
+      showDevice: true,
+    })
+
+    it('draws each width in the device it names, and one under 320 bare', () => {
+      const { container } = render(
+        <LinkedBoxes frame={PHONE} live={false} version={0} />,
+      )
+
+      expect(
+        boxes(container).map((box) => [
+          box.dataset.linkedWidth,
+          box.querySelector<HTMLElement>('[data-bezel]')?.dataset.bezel,
+        ]),
+      ).toEqual([
+        ['834', 'tablet'],
+        ['1440', 'laptop'],
+        ['320', 'phone'],
+        ['300', undefined],
+      ])
+    })
+
+    it('keeps each body clear of the last', () => {
+      const { container } = render(
+        <LinkedBoxes frame={PHONE} live={false} version={0} />,
+      )
+
+      const [tablet, laptop, phone] = boxes(container)
+      const volume = tablet?.querySelector('[data-bezel-button="right"]')
+      const base = laptop?.querySelector('[data-bezel-base]')
+      const side = phone?.querySelector('[data-bezel-button="left"]')
+      const rect = (element?: Element | null) =>
+        element?.getBoundingClientRect()
+
+      expect(rect(base)?.left).toBeCloseTo((rect(volume)?.right ?? 0) + 80)
+      expect(rect(side)?.left).toBeCloseTo((rect(base)?.right ?? 0) + 80)
+    })
+
+    it("starts a linked phone's page under its status bar", () => {
+      const { container } = render(
+        <LinkedBoxes frame={PHONE} live version={0} />,
+      )
+
+      const [tablet, , phone] = boxes(container).map((box) => {
+        const page = box.querySelector('iframe')?.getBoundingClientRect()
+        const { top, height } = box.getBoundingClientRect()
+        return { top: (page?.top ?? 0) - top, height, page: page?.height }
+      })
+
+      expect(tablet).toEqual({ top: 0, height: 1194, page: 1194 })
+      expect(phone).toEqual({ top: 54, height: 568, page: 514 })
+    })
+
+    it("labels a width above its body, as a frame's own label stands", () => {
+      const { container } = render(
+        <LinkedBoxes frame={PHONE} live={false} version={0} />,
+      )
+
+      const [tablet] = boxes(container)
+      const label = tablet?.firstElementChild?.getBoundingClientRect()
+      const box = tablet?.getBoundingClientRect()
+
+      expect(label?.bottom).toBeCloseTo((box?.top ?? 0) - 32)
+      expect(label?.left).toBeCloseTo((box?.left ?? 0) - 32)
+    })
+
+    it('draws every width bare with the device off', () => {
+      const { container } = render(
+        <LinkedBoxes
+          frame={{ ...PHONE, device: undefined, showDevice: undefined }}
+          live={false}
+          version={0}
+        />,
+      )
+
+      expect(container.querySelector('[data-bezel]')).toBeNull()
+      expect(boxes(container)[0]?.style.left).toBe('570px')
+    })
+  })
+
   describe('the pill’s form', () => {
     const CLEAR = 'rgba(0, 0, 0, 0)'
     const pillOf = (findings: Finding[]) => {

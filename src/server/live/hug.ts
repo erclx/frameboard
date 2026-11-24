@@ -8,6 +8,7 @@ import type { ContentSize } from '@/server/capture/fit'
 import { FrameboardError } from '@/shared/errors'
 import { pageBox, sideInset, topInset } from '@/shared/frame-device'
 import { referenceHeight } from '@/shared/frame-sizes'
+import { linkedBar } from '@/shared/frame-widths'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
 
 /**
@@ -208,11 +209,12 @@ async function measureParts(
   if (parts !== 'own' && frame.hugHeight && frame.widths.length > 0) {
     const widths = []
     for (const { width } of frame.widths) {
+      const bar = linkedBar(frame, width)
       const linked = await measure(frame, {
         width,
-        height: referenceHeight(width),
+        height: referenceHeight(width) - bar,
       })
-      if (!linked.empty) widths.push({ width, height: linked.height })
+      if (!linked.empty) widths.push({ width, height: linked.height + bar })
     }
     if (widths.length > 0) size.widths = widths
   }

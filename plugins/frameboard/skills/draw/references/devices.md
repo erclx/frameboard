@@ -21,7 +21,7 @@ The frame's width names the device, so choose the size name for the screen first
 
 - A phone, tablet, or laptop is the width's band, and a width below the phone band shows none
 - Resize an upright frame to change the device, and never write a second file to show another one. A turned frame keeps the device its upright width picked.
-- Place a responsive page once with extra widths, and know that a linked width draws no body
+- Place a responsive page once with extra widths, and with the device on each linked width draws inside the device it names, so one frame shows the page on a phone, a tablet, and a laptop
 
 ## Name the foldable instead of resizing to it
 
