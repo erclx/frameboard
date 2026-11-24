@@ -43,6 +43,14 @@ CI alone runs the full suites, since a push runs only the tests beside its chang
 - The shards need `build-verify` alone, so a red unit test never holds them back
 - The ruleset requires neither macOS nor `🌐 Landing Page Gate`, and a push no longer builds `web/`, so a red landing page can merge
 
+### `.github/workflows/perf-compare.yml`
+
+Compares two commits' performance when someone starts it, and neither a push nor a pull request does. It gates nothing, and a run fails only when a side does not build or cannot be measured.
+
+- `base` and `head` take any branch, tag, or commit, older ones included, since each builds in its own worktree and is driven from outside through its CLI, live socket, and page
+- A commit that rechecks every frame on each start takes minutes a round, so lower `rounds` for one
+- What it measures and how to read it are in `canon/context/development/capture-scripts.md`
+
 ### `canon/config/`
 
 Holds the config the ship chain and the toolkit read, beside the sync record in `config.json`.

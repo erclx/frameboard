@@ -7,7 +7,9 @@ description: The scripts that capture and measure what the board renders, and th
 
 ## Overview
 
-Owns the commands that capture screenshots, drift, and design references, the one that measures the canvas and its frames' processes, and the preview a drive reads from its copy. The scripts that gate a change and serve the board are in `canon/context/development/local.md`, and the capture harness is in `canon/context/development/testing.md`.
+Owns the commands that capture screenshots, drift, and design references, the one that measures the canvas and its frames' processes, the comparison CI runs on two commits, and the preview a drive reads from its copy.
+
+The scripts that gate a change and serve the board are in `canon/context/development/local.md`, and the capture harness is in `canon/context/development/testing.md`.
 
 ## Layout
 
@@ -42,6 +44,14 @@ Where the sync reads from, and what moves every reference, follow.
 - It reads the design board at the main root's `.canon/board` from any worktree, through the path the script derives from `git rev-parse`
 - The verb's formatter options live in `src/server/references/format.ts`, and `.oxfmtrc.json` no longer reaches a reference
 - An oxfmt bump changes every reference's bytes, so the commit bumping it runs `design:sync` too
+
+`scripts/perf-compare/` measures two commits for `perf-compare.yml`, on a runner and never on a developer's machine. Start it with `gh workflow run perf-compare.yml -f base=<ref> -f head=<ref>` and read the run's summary page.
+
+- It generates a board of 1,000 frames, opens its 40-frame page in a tab, and writes a frame of another project
+- A second start is read until its server and browser use under 5% of a core for five seconds, and 10 minutes without that reads `not reached` and skips the writes
+- The first start of each side is never counted, since it fills what a second start reads
+- Read a change against a run of one commit with itself, which shows how far apart two equal sides land
+- The harness waits for the live socket's `board` message and the canvas's `[data-layer]`, so a change to either shape moves the harness too
 
 A running `preview` and the drive copy it serves carry these conditions.
 
