@@ -36,6 +36,7 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
    - Pass `slide-16-9` or `slide-4-3` for a slide, `og-card` for a link preview card at 1200 × 630, and `linkedin-post` for a LinkedIn post at 1200 × 627
    - Pass `video-landscape` or `video-portrait` for a video scene at 1920 × 1080 or 1080 × 1920
    - A frame with no size hugs its content on both axes, and a size fixes its width alone, so leave the size off a component and let the running server measure it
+   - With no size and no reserved box, a name ending in a listed width, such as `overview-390`, fixes that width and turns the device on, so pass `--width 390` for the width with no device
    - Resize an axis only to fix it, since a resize stops that axis hugging
    - Pass `--scroll` for a page meant to scroll at a screen height, such as one with a sticky section, rather than running `frame fit`, which grows it to its full length
    - Place one frame with `--widths 834,390` for a responsive page, rather than copying its file per width, so every fix lands once and the board draws each width beside it
