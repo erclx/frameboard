@@ -45,12 +45,10 @@ export function frameOriginOf({
     : `http://${frameHost}:${framePort}`
 }
 
-/** `frameOriginOf` the live store, followed. */
 export function useFrameOrigin(): string | null {
   return useLive(frameOriginOf)
 }
 
-/** `path` on the frame port's origin, null until that is settled. */
 export function onFramePort(
   path: string,
   origin: string | null,
