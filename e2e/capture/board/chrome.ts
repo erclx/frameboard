@@ -9,6 +9,7 @@ import type { ListResult } from '@/shared/records/list'
 import type { CaptureCase } from '../types'
 import { pointerPressOnLoad } from './canvas'
 import {
+  actWhen,
   asWriter,
   AVATAR,
   both,
@@ -70,6 +71,140 @@ function leftTab(name: string): (page: Page) => Promise<void> {
 }
 
 const themeTab = leftTab('Theme')
+
+/** The picked design's own font files, tracked beside its reference, so a shot draws real faces offline. */
+const DESIGN_FONTS = 'canon/design/assets/groundwork-61/fonts'
+
+/** Lora installed in `webapp`, used by `frames` and drawn from its file through the project's font sheet. */
+function installedLora(frames: string[]): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.route('**/api/projects/*/sourcing/fonts/installed', (route) =>
+      route.fulfill({
+        json: {
+          ok: true,
+          data: {
+            version: 1,
+            project: 'webapp',
+            fonts: [
+              {
+                id: 'lora',
+                family: 'Lora',
+                category: 'serif',
+                license: 'OFL-1.1',
+                licenseUrl: 'https://fontsource.org/fonts/lora',
+                landingUrl: 'https://fontsource.org/fonts/lora',
+                variable: true,
+                weights: [{ min: 400, max: 700 }],
+                styles: ['normal'],
+                path: 'fonts/lora',
+                files: 2,
+                bundled: false,
+                frames,
+              },
+            ],
+          },
+        },
+      }),
+    )
+    await page.route('**/frames/webapp/fonts.css*', (route) =>
+      route.fulfill({
+        contentType: 'text/css',
+        body: "@font-face{font-family:'Lora';src:url(/capture-fonts/lora.woff2) format('woff2');font-weight:400 700}",
+      }),
+    )
+    await page.route('**/capture-fonts/*.woff2', (route) =>
+      route.fulfill({
+        contentType: 'font/woff2',
+        body: readFileSync(
+          join(
+            DESIGN_FONTS,
+            new URL(route.request().url()).pathname.split('/').pop() ?? '',
+          ),
+        ),
+      }),
+    )
+  }
+}
+
+/** A search for `serif` answering three families, their samples drawn from the design's files. */
+async function foundSerifs(page: Page): Promise<void> {
+  const result = (number: number, id: string, family: string) => ({
+    number,
+    id,
+    family,
+    category: 'serif',
+    license: 'OFL-1.1',
+    variable: true,
+    weights: [400, 700],
+    styles: ['normal'],
+    subsets: ['latin'],
+    landingUrl: `https://fontsource.org/fonts/${id}`,
+    sample: `https://cdn.jsdelivr.net/fontsource/fonts/${id}@latest/latin-400-normal.woff2`,
+  })
+  await page.route('**/api/projects/*/sourcing/fonts?*', (route) =>
+    route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          version: 1,
+          query: null,
+          category: 'serif',
+          licenses: ['OFL-1.1', 'Apache-2.0', 'UFL-1.0'],
+          source: { name: 'Fontsource', url: 'https://fontsource.org' },
+          total: 366,
+          results: [
+            result(1, 'lora', 'Lora'),
+            result(2, 'playfair-display', 'Playfair Display'),
+            result(3, 'source-serif-4', 'Source Serif 4'),
+          ],
+        },
+      },
+    }),
+  )
+  await page.route('https://cdn.jsdelivr.net/**', (route) => {
+    const id = /fonts\/([a-z0-9-]+)@/.exec(route.request().url())?.[1]
+    return id === 'lora' || id === 'playfair-display'
+      ? route.fulfill({
+          contentType: 'font/woff2',
+          body: readFileSync(join(DESIGN_FONTS, `${id}.woff2`)),
+        })
+      : route.abort()
+  })
+}
+
+/**
+ * Types `text` into the font search once Find a font has opened it, through
+ * the native value setter so React reads it as typing.
+ */
+function searchFontsOnLoad(text: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ typed, frames }) => {
+        let left = frames
+        const type = () => {
+          const field = document.querySelector<HTMLInputElement>(
+            'section[aria-labelledby="theme-fonts"] input[type="search"]',
+          )
+          if (!field) {
+            if (--left > 0) requestAnimationFrame(type)
+            else console.error('The font search never opened')
+            return
+          }
+          const setter = Object.getOwnPropertyDescriptor(
+            HTMLInputElement.prototype,
+            'value',
+          )?.set
+          setter?.call(field, typed)
+          field.dispatchEvent(new Event('input', { bubbles: true }))
+        }
+        document.addEventListener('DOMContentLoaded', type)
+      },
+      { typed: text, frames: PRESS_FRAMES },
+    )
+  }
+}
+
+const REMOVE_LORA = 'button[aria-label="Remove Lora"]'
 
 /**
  * Names the board sheet at a long absolute path in the token read, filtered
@@ -776,6 +911,58 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
             'section[aria-labelledby="theme-kits"] [aria-haspopup="menu"]',
           ),
           readyWhen('[role="menu"] [role="menuitem"][aria-disabled="true"]'),
+        ),
+      ),
+    },
+    {
+      // The Fonts section under Kits, the built-in five and Lora installed, in their own faces.
+      section: 'theme-tab-fonts',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(asWriter, installedLora([]), themeTab, readyWhen(REMOVE_LORA)),
+      ),
+    },
+    {
+      // Find a font opened on a search for serif, three results in their samples.
+      section: 'theme-tab-fonts-find',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          installedLora([]),
+          foundSerifs,
+          themeTab,
+          pressOnLoad('Find a font'),
+          searchFontsOnLoad('serif'),
+          readyWhen(
+            '[aria-label="Fonts found"] button[aria-label="Install Playfair Display"]',
+          ),
+        ),
+      ),
+    },
+    {
+      // Removing Lora, which hero draws in, asks first and names the frame.
+      section: 'theme-tab-fonts-remove',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          installedLora(['webapp/home/hero']),
+          themeTab,
+          actWhen(REMOVE_LORA, 'Remove Lora', 'click'),
+          readyWhen('[role="dialog"]'),
         ),
       ),
     },
