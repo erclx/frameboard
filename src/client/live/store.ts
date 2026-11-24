@@ -323,13 +323,9 @@ function siblingPath(path: string, name: string): string {
 }
 
 /**
- * Replaces the board, dropping the counters, findings, and claims of frames
- * it no longer holds and the notes of pages it no longer holds. A
- * reservation's claim stays, since its frame is listed only once it lands.
- *
- * Each record equal to the one held stays that object, so what renders from
- * it does not render again. The board itself is always a new object, since
- * its subscribers read a new one as a board having arrived.
+ * Replaces the board, keeping each record equal to the one held and dropping
+ * keys of frames and pages it no longer holds. The board itself is always new,
+ * since its subscribers read a new one as a board having arrived.
  */
 export function receiveBoard(store: LiveStore, board: ListResult): void {
   const state = store.getState()
