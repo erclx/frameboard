@@ -7,6 +7,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { installedLicense } from '../../../test/support/installed-font'
 import { type AssetUsage, createAssetUsage } from '../board/asset-usage'
 import { claim } from '../claims/store'
 import { History } from '../history/stack'
@@ -290,6 +291,32 @@ describe('assetsRoutes', () => {
       expect(response.status).toBe(404)
       expect(existsSync(asset('kits/clean/kit.css'))).toBe(true)
     })
+
+    it("refuses an installed font's file, which its record names", async () => {
+      writeAsset(
+        'fonts/lora/font.license.json',
+        JSON.stringify(installedLicense('lora', 'Lora')),
+      )
+      writeAsset('fonts/lora/lora.woff2', 'x')
+
+      const response = await write('DELETE', 'fonts/lora/lora.woff2')
+
+      expect(response.status).toBe(404)
+      expect(existsSync(asset('fonts/lora/lora.woff2'))).toBe(true)
+    })
+
+    it.each(['fonts/brand/brand.woff2', 'fonts/brand.woff2'])(
+      'deletes %s, a font a project added by hand',
+      async (path) => {
+        writeAsset('fonts/brand/font.license.json', '{}')
+        writeAsset(path, 'x')
+
+        const response = await write('DELETE', path)
+
+        expect(response.status).toBe(200)
+        expect(existsSync(asset(path))).toBe(false)
+      },
+    )
 
     it('refuses a caller that is not a writer with 401 and keeps the file', async () => {
       writeAsset('lake.jpg', 'pixels')

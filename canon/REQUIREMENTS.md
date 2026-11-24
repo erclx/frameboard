@@ -33,7 +33,7 @@ This record holds at most 650 words.
 - The agent sees the developer's selection and works through notes pinned on frames, with images and replies, which reach a listening session or start one
 - The board shows the frame an agent is editing and warns a second session
 - A frame breaking a content rule is reported at once to its agent and the board, and projects add rules or turn one off
-- An agent screenshots a frame or page, and the developer exports a frame or element as a PNG in either theme
+- An agent screenshots a frame or page, and the developer exports a frame or element as PNG in either theme
 - A developer opens one project's frames read only on a phone on the same network
 
 ### Themes and tokens
@@ -44,7 +44,7 @@ This record holds at most 650 words.
 ## Richer frames
 
 - A developer plays controls drawn in a frame and keeps the values they set
-- A developer or an agent finds an openly licensed image or 3D model, or generates one, saved into the project with its license
+- A developer or an agent finds an openly licensed image, 3D model, or font, or generates one, saved into the project with its license
 
 ## Non-goals
 

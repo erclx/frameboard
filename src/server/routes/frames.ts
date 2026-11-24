@@ -12,9 +12,11 @@ import {
   type TokenSheetPaths,
 } from '@/server/checks/tokens'
 import { contentHash } from '@/server/edit/address'
+import { fontSheet, holdsFonts, projectFonts } from '@/server/fonts/installed'
 import { BRIDGE_URL, frameHead, injectHead } from '@/server/look/inject'
 import { FRAME_EXTENSION, TOKEN_FILE } from '@/shared/board-files'
 import { FACES, faceSheetUrl } from '@/shared/faces'
+import { FONT_SHEET } from '@/shared/fonts'
 import { AT_QUERY } from '@/shared/theme'
 
 const NOTES_FILE = 'notes.json'
@@ -82,6 +84,15 @@ export function frameRoutes(
     // The URL parser has already resolved `..` and `%2e%2e` segments.
     const raw = new URL(c.req.url).pathname.slice('/frames/'.length)
     const parts = decodeSegments(raw.split('/'))
+    if (parts?.length === 2 && parts[1] === FONT_SHEET) {
+      const dir = await resolveProjectDir(root, parts[0])
+      const fonts = dir === null ? [] : await projectFonts(dir)
+      if (fonts.length === 0) return c.notFound()
+      return c.body(fontSheet(fonts), 200, {
+        'Content-Type': CONTENT_TYPES['.css'] ?? '',
+        'Cache-Control': 'no-store',
+      })
+    }
     const file = parts && (await resolveFile(root, parts))
     if (!file) return c.notFound()
 
@@ -163,6 +174,7 @@ export function frameRoutes(
       frameHead(
         sheetUrls(
           project,
+          await holdsFonts(join(root, project)),
           look.sheets(project),
           kitSheetFiles(root, project, kit),
         ).map((url) => `${base}${url}`),
@@ -231,18 +243,20 @@ function parseRange(
 }
 
 /**
- * The sheets a frame imports, being every face, then the board's tokens, then
- * the project's, then its kit sheets, which read the tokens and still lose to
- * the frame's own sheets. `kitFiles` come as `kitSheetFiles` answers them.
+ * The sheets a frame imports, being every face, the project's installed fonts,
+ * the board's tokens, the project's, then its kit sheets, which read the tokens
+ * and still lose to the frame's own. `kitFiles` come as `kitSheetFiles` answers.
  */
 function sheetUrls(
   project: string,
+  fonts: boolean,
   sheets: TokenSheetPaths,
   kitFiles: string[],
 ): string[] {
   const folder = `/frames/${encodeURIComponent(project)}`
   return [
     ...FACES.map(faceSheetUrl),
+    ...(fonts ? [`${folder}/${FONT_SHEET}`] : []),
     ...(sheets.board ? [BOARD_SHEET_URL] : []),
     ...(sheets.project ? [`${folder}/${TOKEN_FILE}`] : []),
     ...kitFiles.map(
@@ -269,6 +283,19 @@ export function decodeSegments(segments: string[]): string[] | null {
   return decoded
 }
 
+/** The realpath of a project folder, or null for one missing or leaving the board. */
+async function resolveProjectDir(
+  root: string,
+  project = '',
+): Promise<string | null> {
+  try {
+    const dir = await realpath(join(root, project))
+    return dir.startsWith(root + sep) ? dir : null
+  } catch {
+    return null
+  }
+}
+
 /** The realpath of the file a request names, or null when it is refused or missing. */
 async function resolveFile(
   root: string,
@@ -281,8 +308,8 @@ async function resolveFile(
   if (inPage && (rest.length > 1 || isRecord(rest[0] ?? ''))) return null
 
   try {
-    const projectDir = await realpath(join(root, project))
-    if (!projectDir.startsWith(root + sep)) return null
+    const projectDir = await resolveProjectDir(root, project)
+    if (projectDir === null) return null
     const file = await realpath(join(projectDir, page, ...rest))
     if (!file.startsWith(projectDir + sep)) return null
     if (!servableInProject(relative(projectDir, file).split(sep))) return null

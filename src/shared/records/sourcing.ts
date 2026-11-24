@@ -1,5 +1,11 @@
 import { z } from 'zod'
 
+import {
+  FONT_CATEGORIES,
+  FONT_LICENSE_TEXT,
+  FONT_LICENSES,
+} from '@/shared/fonts'
+
 /** So `house.jpg` carries its license in `house.jpg.license.json` beside it. */
 export const LICENSE_FILE_SUFFIX = '.license.json'
 
@@ -77,6 +83,95 @@ export const modelFindSchema = z.object({
 
 export type ModelFind = z.infer<typeof modelFindSchema>
 
+const fontLicenseSchema = z.enum(FONT_LICENSES)
+
+const fontStyleSchema = z.enum(['normal', 'italic'])
+
+/** One Fontsource family a search found, numbered from 1 in the order the ranking put it. */
+export const fontResultSchema = z.object({
+  number: z.int().min(1),
+  /** Fontsource's own id, which `--save` takes in place of the number and names the installed folder. */
+  id: z.string(),
+  family: z.string(),
+  category: z.string(),
+  license: fontLicenseSchema,
+  /** Whether one file spans the family's weights, so an install keeps them all. */
+  variable: z.boolean(),
+  weights: z.array(z.int()),
+  styles: z.array(fontStyleSchema),
+  subsets: z.array(z.string()),
+  /** The family's page on fontsource.org. */
+  landingUrl: z.string(),
+  /** One small WOFF2 to draw the family's name in before it is installed. */
+  sample: z.string(),
+})
+
+export type FontResult = z.infer<typeof fontResultSchema>
+
+/** What `font find` answers without `--save`, writing nothing. */
+export const fontFindSchema = z.object({
+  version: z.literal(1),
+  /** Null when a category alone was asked for. */
+  query: z.string().nullable(),
+  category: z.enum(FONT_CATEGORIES).nullable(),
+  licenses: z.array(fontLicenseSchema),
+  source: z.object({ name: z.literal('Fontsource'), url: z.string() }),
+  /** How many families matched, more than `results` holds past the listing's limit. */
+  total: z.int(),
+  results: z.array(fontResultSchema),
+})
+
+export type FontFind = z.infer<typeof fontFindSchema>
+
+/** A range of weights, both ends included and equal for a single weight. */
+const fontWeightsSchema = z.object({
+  min: z.int().min(1).max(1000),
+  max: z.int().min(1).max(1000),
+})
+
+export type FontWeights = z.infer<typeof fontWeightsSchema>
+
+/** One installed font file, every field checked since the served sheet is built from a file a clone may carry. */
+export const fontFaceSchema = z.object({
+  /** The file as the source serves it, in the family's folder. */
+  file: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]*\.woff2$/),
+  style: fontStyleSchema,
+  weights: fontWeightsSchema,
+  /** The characters the file covers, null for one covering all the family draws. */
+  unicodeRange: z
+    .string()
+    .regex(/^[uU+0-9a-fA-F?,\s-]+$/)
+    .nullable(),
+})
+
+export type FontFace = z.infer<typeof fontFaceSchema>
+
+/** The `font.license.json` in an installed font's folder, saying where it came from and what it holds. */
+export const fontsourceLicenseSchema = z.object({
+  version: z.literal(1),
+  origin: z.literal('found'),
+  source: z.literal('fontsource'),
+  id: z.string(),
+  /** The search that found it, null when it was saved by id. */
+  query: z.string().nullable(),
+  /** The name a frame's `font-family` calls it by, held to characters that cannot close a CSS string. */
+  family: z.string().regex(/^[^"'\\{}\p{Cc}]+$/u),
+  category: z.string(),
+  license: fontLicenseSchema,
+  licenseUrl: z.string(),
+  /** The source's license text beside this record, kept as served. */
+  licenseFile: z.literal(FONT_LICENSE_TEXT),
+  landingUrl: z.string(),
+  /** The package its files came from, at its release. */
+  url: z.string(),
+  variable: z.boolean(),
+  faces: z.array(fontFaceSchema).min(1),
+  /** ISO 8601. */
+  savedAt: z.string(),
+})
+
+export type FontLicenseFile = z.infer<typeof fontsourceLicenseSchema>
+
 const openverseLicenseSchema = z.object({
   version: z.literal(1),
   origin: z.literal('found'),
@@ -119,6 +214,7 @@ const polyhavenLicenseSchema = z.object({
 const foundLicenseSchema = z.discriminatedUnion('source', [
   openverseLicenseSchema,
   polyhavenLicenseSchema,
+  fontsourceLicenseSchema,
 ])
 
 const generatedImageLicenseSchema = z.object({
@@ -183,9 +279,9 @@ const generatedLicenseSchema = z.discriminatedUnion('kind', [
 ])
 
 /**
- * The `<file>.license.json` beside every saved image or model, saying where
- * it came from. A generated one carries `kind: 'model'` for a model, and no
- * kind or `kind: 'image'` for an image.
+ * The `<file>.license.json` beside every saved image or model, or in an
+ * installed font's folder, saying where it came from. A generated one carries
+ * `kind: 'model'` for a model, and no kind or `kind: 'image'` for an image.
  */
 export const licenseFileSchema = z.discriminatedUnion('origin', [
   foundLicenseSchema,
@@ -210,6 +306,62 @@ export type SavedImage = z.infer<typeof savedImageSchema>
 export const savedModelSchema = savedImageSchema
 
 export type SavedModel = SavedImage
+
+/** A font family installed into a project's `assets/fonts/<id>/`. */
+export const savedFontSchema = z.object({
+  version: z.literal(1),
+  project: z.string(),
+  /** Relative to the project's `assets/`, the folder holding the family. */
+  path: z.string(),
+  licensePath: z.string(),
+  license: fontsourceLicenseSchema,
+})
+
+export type SavedFont = z.infer<typeof savedFontSchema>
+
+/** One font family a project holds. */
+export const installedFontSchema = z.object({
+  id: z.string(),
+  family: z.string(),
+  category: z.string(),
+  license: fontLicenseSchema,
+  licenseUrl: z.string(),
+  landingUrl: z.string(),
+  variable: z.boolean(),
+  /** Lightest first, one entry per range its files span. */
+  weights: z.array(fontWeightsSchema),
+  styles: z.array(fontStyleSchema),
+  /** Relative to the project's `assets/`, the folder holding the family. */
+  path: z.string(),
+  files: z.int(),
+  /** Whether the board serves the family too, so its frames keep drawing once it is removed. */
+  bundled: z.boolean(),
+  /** The refs of the frames drawing text in the family, in page then frame order. */
+  frames: z.array(z.string()),
+})
+
+export type InstalledFont = z.infer<typeof installedFontSchema>
+
+/** What `font list` answers, by family name. */
+export const fontListSchema = z.object({
+  version: z.literal(1),
+  project: z.string(),
+  fonts: z.array(installedFontSchema),
+})
+
+export type FontList = z.infer<typeof fontListSchema>
+
+/** What `font remove` answers. */
+export const fontRemoveSchema = z.object({
+  version: z.literal(1),
+  project: z.string(),
+  id: z.string(),
+  family: z.string(),
+  /** The refs of the frames left falling back, in page then frame order, none for a family the board serves too. */
+  frames: z.array(z.string()),
+})
+
+export type FontRemove = z.infer<typeof fontRemoveSchema>
 
 /** What `model generate` answers, with `saved` null on a dry run. */
 export const modelGenerateSchema = z.object({

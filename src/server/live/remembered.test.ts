@@ -101,6 +101,11 @@ describe('createFrameKeys', () => {
     ["the frame's own bytes", 'site/home/hero.html', '<p>new</p>'],
     ['an asset', 'site/assets/photo.png', 'another photo'],
     ['a new asset', 'site/assets/kits/dark/kit.css', 'p {}'],
+    [
+      "an installed font's record, which its sheet is built from",
+      'site/assets/fonts/lora/font.license.json',
+      '{}',
+    ],
     ['the project file', 'site/project.json', '{ "version": 1, "pages": [] }'],
     ['the project token sheet', 'site/tokens.css', ':root { --ink: #000 }'],
     ['the board token sheet', 'tokens.css', ':root { --ink: #000 }'],

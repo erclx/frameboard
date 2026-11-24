@@ -1,13 +1,13 @@
 ---
 title: Sourcing
-description: The image verbs that find or generate a picture and the model verbs that find a public domain 3D model or make one from a picture, saving each into a project's assets with a license file
+description: The image, model, and font verbs that find or generate a picture, a 3D model, or an openly licensed font, each saved into a project with its license
 ---
 
 # Sourcing
 
 ## Overview
 
-Owns where a picture or a 3D model in a frame comes from, being the `image find`, `image generate`, `image doctor`, `image free`, `model find`, and `model generate` verbs and the code saving what they fetch into a project's `assets/`. Every saved file carries a `<file>.license.json` beside it, so a reader can tell where it came from.
+Owns where a picture, a 3D model, or a font in a frame comes from, being the `image`, `model`, and `font` verbs and the code saving what they fetch into a project's `assets/`. Every saved file carries a `<file>.license.json` beside it, or its folder's `font.license.json`, so a reader can tell where it came from.
 
 ## Layout
 
@@ -19,6 +19,16 @@ Owns finding, generating, and saving, apart from `src/cli/` because the board's 
 - `polyhaven.ts` ranks Poly Haven's whole model list locally, having no search to call, and `pack-glb.ts` packs one size's glTF, read at `gltf['1k'].gltf`, into a GLB
 - `save.ts` holds a download whole before any write, lands an image or a packed model through `addAssets`, and names the license file after it, taking the file back out when that write fails
 - `generate.ts` picks the provider named, else the first in `PROVIDERS` whose key is set, and prices it with no request, so `--dry-run` and a refusal spend nothing
+
+### `src/server/sourcing/fontsource.ts`
+
+Owns finding and fetching a font family, apart from `save.ts` whose `saveFont` lands it, because a family is many files that stand or fall together.
+
+- It ranks Fontsource's whole list locally as Poly Haven's is, and reads an install's sheets, files, and `LICENSE` from one npm package release, since the API carries no license text
+- `saveFont` writes the WOFF2 files as served, the source's text as `LICENSE.txt`, and the record into a dot-named folder, then renames it to `assets/fonts/<id>/`, so a project holds all of it or none
+- It refuses `name-taken` for any folder by that name, and `license-refused` for a license outside OFL-1.1, Apache-2.0, and UFL-1.0 comes ahead of any download
+- Never rename, convert, or subset a saved file, since the Open Font License reserves a font's name against a modified one
+- The Assets tab's delete, replace, and rename refuse `asset-not-found` for a file in an installed font's folder
 
 ### `src/server/sourcing/generate-model.ts`
 
@@ -78,10 +88,18 @@ Owns `model find`, which takes the flags `image find` takes plus `--size`, and `
 - A picture outside the project's `assets/` is named by its file name alone, never a path on the machine
 - It shows no progress, since ComfyUI reports progress only over its socket
 
+### `src/cli/commands/font.ts`
+
+Owns `font find`, `font list`, and `font remove`, the last two over `src/server/fonts/`. The board's routes under `sourcing/fonts` answer the same records and hold Fontsource's list for the server's life.
+
+- `find` takes a query, `--category`, or both, and lists only families under the three licenses
+- A variable family keeps every subset and weight, and a static one 400 and 700 or the weights `--weights` names
+- The routes record an install and a removal as one undo step each, which the verbs never do
+
 ## Gotchas
 
 - A key set to an empty string reads as unset, and `providerFailed` scrubs the key from a provider's echoed message
 - `listAssets` skips `*.license.json`, so the Assets tab and the usage counts never draw a license file as a tile
-- A CLI test hands the network in through `cli(argv, { fetch })`, which reaches the verbs as `CliIo.fetch`, with fakes in `test/support/polyhaven.ts` and `comfyui.ts`
+- A CLI test hands the network in through `cli(argv, { fetch })`, which reaches the verbs as `CliIo.fetch`, with fakes in `test/support/polyhaven.ts`, `fontsource.ts`, and `comfyui.ts`
 - The board's `POST sourcing/generate` builds its own license apart from `image generate`, so a field the verb starts recording, as the seed was, has to land in `src/server/routes/sourcing.ts` too
-- An e2e `serve` child reaches Openverse and Poly Haven through `e2e/support/openverse-stub.mjs` and `polyhaven-stub.mjs`, preloaded by `NODE_OPTIONS=--import`, past the spec's reach
+- An e2e child reaches each source through a stub in `e2e/support/`, such as `fontsource-stub.mjs`, preloaded by `NODE_OPTIONS=--import`, past the spec's reach

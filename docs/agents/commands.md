@@ -106,6 +106,16 @@ Generating makes an image nobody licensed, on the developer's own server or key.
 - The license file names the picture and carries a project asset's own license forward, and `--dry-run` answers without calling the server
 - The server keeps the model loaded between runs, so `image free` unloads it once a batch ends
 
+## Fonts
+
+`font find [query]` searches Fontsource with no key and writes nothing, by family name or by a category `--category <category>` names. It lists only families under OFL-1.1, Apache-2.0, or UFL-1.0.
+
+- `--save <number-or-id>` installs one into `assets/fonts/<id>/`, its files as served beside the source's `LICENSE.txt` and a license record, and refuses a family the project holds
+- A variable family keeps every weight, and a static one keeps 400 and 700, or the weights `--weights 300,700` names
+- A frame then names the family, as `font-family: 'Playfair Display'`, with no link of its own, on the board, in a capture, and on the phone link
+- `font list` answers each installed font with its license and the frames drawing text in it
+- `font remove <id>` deletes the folder and names the frames left falling back, which `capture` refuses as `font-missing`
+
 ## Design references
 
 `references sync <folder>` fills a folder of design references from the frames its `frames.json` maps, and `--check` exits 14 when the folder has drifted. It needs `oxfmt` installed in that project or beside Frameboard, an optional peer, and prints the install command without it. For images alone with no map, use `capture --all-pages`.
