@@ -1,18 +1,22 @@
-/** The popups that take the developer's attention, which leaves the toast viewport out. */
-const POPUPS = [
-  'dropdown-menu-content',
-  'context-menu-content',
-  'popover-content',
-  'dialog-content',
-]
-  .map((slot) => `[data-slot="${slot}"][data-open]`)
-  .join(',')
+/**
+ * The popups that take the developer's attention, which leaves the toast
+ * viewport out, and a presentation over the board.
+ */
+const OVERLAYS = [
+  ...[
+    'dropdown-menu-content',
+    'context-menu-content',
+    'popover-content',
+    'dialog-content',
+  ].map((slot) => `[data-slot="${slot}"][data-open]`),
+  '[data-presenting]',
+].join(',')
 
 const FIELD =
   'input:not([type=button],[type=checkbox],[type=radio],[type=submit]),textarea,select,[contenteditable=""],[contenteditable="true"]'
 
 export interface Busy {
-  /** Whether a field has focus, a pointer is held down, or a menu, popover, or palette is open. */
+  /** Whether a field has focus, a pointer is held down, a menu, popover, or palette is open, or a page presents. */
   busy: () => boolean
   /** Calls back once, the first time nothing is busy, and returns the function that cancels it. */
   whenIdle: (run: () => void) => () => void
@@ -34,7 +38,7 @@ export function watchBusy(doc: Document = document): Busy {
   const busy = () =>
     pointer ||
     (doc.activeElement?.matches(FIELD) ?? false) ||
-    doc.querySelector(POPUPS) !== null
+    doc.querySelector(OVERLAYS) !== null
 
   // Focus has not moved yet inside `focusout`, so the read waits a turn.
   const settle = () => {

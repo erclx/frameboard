@@ -87,6 +87,18 @@ describe('busy', () => {
     expect(busy.busy()).toBe(false)
   })
 
+  it('reads busy while a page presents', () => {
+    const busy = watch()
+    const presenting = document.createElement('div')
+    presenting.dataset.presenting = ''
+    document.body.append(presenting)
+
+    expect(busy.busy()).toBe(true)
+
+    presenting.remove()
+    expect(busy.busy()).toBe(false)
+  })
+
   it('ignores a popup that is not open and the toast viewport', () => {
     const busy = watch()
     popup('popover-content', false)
