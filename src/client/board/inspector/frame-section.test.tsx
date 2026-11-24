@@ -957,6 +957,27 @@ describe('FrameSection', () => {
       expect(toggle()).toBeChecked()
     })
 
+    it('reads on where only a frame that scrolls holds the flag, and writes both', async () => {
+      const { sent, calls } = flagCalls(ok)
+      render(
+        <FrameSection
+          page={PAGE}
+          frames={[{ ...OPEN, scroll: true }, SUNSET]}
+          calls={calls}
+        />,
+      )
+      expect(toggle()).toBeChecked()
+      expect(toggle()).toHaveAccessibleDescription(
+        expect.not.stringMatching(/^Mixed/),
+      )
+
+      await userEvent.click(toggle())
+
+      expect(sent).toMatchObject([
+        { refs: [SWATCHES.ref, SUNSET.ref], on: true },
+      ])
+    })
+
     it('stays live over a scroll frame and one that can show past its edge', () => {
       render(
         <FrameSection

@@ -609,13 +609,20 @@ const CLIP_TIP =
  */
 function ClipRow({ frames, disabled, calls }: HeightRowProps) {
   const id = 'inspector-clip'
+  const open = frames.filter(drawsOverflow)
+  const fixed = open.length === 0
+  // Read off the frames the flag draws for, and written on all.
   const { shown, pick } = usePick({
-    frames,
+    frames: open,
     valueOf: (frame) => !frame.showOverflow,
     refusal: 'Couldn’t set the clipping',
-    write: (refs, clip) => calls.flagFrames(refs, 'showOverflow', !clip),
+    write: (_open, clip) =>
+      calls.flagFrames(
+        frames.map(({ ref }) => ref),
+        'showOverflow',
+        !clip,
+      ),
   })
-  const fixed = !frames.some(drawsOverflow)
   const mixed = shown === null && !fixed
   return (
     <div className="mt-2.5 flex h-4 items-center justify-between gap-2">
