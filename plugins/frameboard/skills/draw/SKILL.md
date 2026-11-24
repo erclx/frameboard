@@ -1,6 +1,6 @@
 ---
 name: draw
-description: Draws screens on a Frameboard board as plain HTML frames and keeps each one passing the board's content checks. Use when asked to design, mock up, or sketch a screen, to put a frame on the board, or to change a frame the developer is reviewing. Also use when asked to draw slides or a deck, add a slide transition or step, make a link preview card, lay out a video scene, draw sliders that tune an element, show a 3D model, or draw in a design kit such as a sketch or a wireframe. It also covers putting a screen in a phone or another device, finding or generating a picture for a frame, copying a live page onto the board, and tilting an element in 3D.
+description: Draws screens on a Frameboard board as plain HTML frames and keeps each one passing the board's content checks. Use when asked to design, mock up, or sketch a screen, to put a frame on the board, or to change a frame the developer is reviewing. Also use when asked to draw slides or a deck, add a slide transition or step, make a link preview card, lay out a video scene, draw sliders that tune an element, show a 3D model, or draw in a design kit such as a sketch or a wireframe. It also covers putting a screen in a phone or another device, finding or generating a picture for a frame, setting up local image and model generation, keeping accepted designs as a design record, copying a live page onto the board, and tilting an element in 3D.
 ---
 
 # Frameboard
@@ -42,6 +42,14 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
    - Place one frame with `--widths 834,390` for a responsive page, rather than copying its file per width, so every fix lands once and the board draws each width beside it
    - Leave the top of a phone frame unpadded for the status bar. While its device shows, the board draws the bar over the top 54 px of the box and starts the page under it, so a page at 390 × 844 lays out at 390 × 790.
 
+## Tidy the board
+
+When the developer asks to rearrange the board, run the verb for it rather than moving files or editing `layout.json`, and take its arguments from `docs`.
+
+- Run `frame hide` when they want a frame out of sight for now, and `frame lock` when they want one kept as it is
+- Run `frame move` to place a frame or carry it to another page, `frame order` when one covers another, and `frame rename`, `frame duplicate`, or `frame delete` when they ask for that
+- Run `page move` to reorder pages, and `page rename`, `page duplicate`, or `page delete` when they ask for that, since deleting a page deletes its frames
+
 ## Check it and hand it back
 
 Run these on each frame once it is placed.
@@ -56,6 +64,7 @@ Run these on each frame once it is placed.
    - Only a running server adds clipping, scrollbars, viewport sizing, and minimum font size, and the result's `browser.ran` says whether those rules ran
 4. Capture the frame in both themes with `frameboard capture <page>/<frame> --json` and look at each image before handing back, since a theme you never saw is a theme nobody checked.
    - Capture any motion you wrote at a few moments with `--at` or `--filmstrip`, since a plain capture shows only where it comes to rest
+   - Judge a whole page at once with `capture --page --composite`, and run `capture --all-pages` only when the developer asks for a project's images
 5. Run `frameboard show <ref> [<ref>...]` naming every frame you drew, in the order to review them, so the developer's board turns to the first and its toast steps through the rest.
    - A ref is `<page>/<frame>`, or a page ref such as `<page>` standing for every frame on that page
 
@@ -71,7 +80,9 @@ Each feature past the core loop keeps its judgment in its own file. Read the one
 - When a frame shows a device body, the developer names a phone, a tablet, a laptop, or the foldable, or asks for a screen turned landscape, read `${CLAUDE_SKILL_DIR}/references/devices.md`
 - When an element should lean or turn in 3D, such as a tilted card or a screenshot at an angle, read `${CLAUDE_SKILL_DIR}/references/tilt.md`
 - When a frame plays a video or a sound, read `${CLAUDE_SKILL_DIR}/references/media.md`
-- When a frame shows a 3D model, the developer asks for an object they can turn, or a picture should become a model on their own ComfyUI server through `model generate`, read `${CLAUDE_SKILL_DIR}/references/models.md`
+- When a frame shows a 3D model, the developer asks for an object they can turn, or a picture should become a model through `model generate`, read `${CLAUDE_SKILL_DIR}/references/models.md`
+- When the developer asks to set up local image or model generation on their own machine, or a picture or a model should be made on their ComfyUI server, read `${CLAUDE_SKILL_DIR}/references/generate.md`
+- When the project keeps its accepted frames in a tracked folder, or the developer asks for a design record, read `${CLAUDE_SKILL_DIR}/references/record.md`
 
 ## Keep frames in their sections
 
@@ -82,6 +93,7 @@ The developer draws sections on the board, and `list --json` names each section'
 - Take colors and fonts from the board's token variables through `var()` wherever a token exists, since a token carries both themes.
 - Define the dark theme beside any color you set yourself, through a `[data-theme="dark"]` rule, a `prefers-color-scheme` query, or `light-dark()`.
 - Name a font first in every `font-family`, keeping a generic family as the fallback only.
+- Run `font find` when the developer asks for a typeface the project does not hold, save the one they pick, and name its family in the frame with no link.
 
 ## Claim a frame before you rewrite it
 

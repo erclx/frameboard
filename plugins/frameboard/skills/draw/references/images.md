@@ -20,13 +20,11 @@ Add `--credited` only when no public domain image fits, since a CC BY image owes
 
 ## Generate only when nothing fits
 
-`frameboard image generate` spends on the developer's own key the moment it runs, and it never asks first. When `FRAMEBOARD_COMFYUI_URL` is set, it runs on the developer's own ComfyUI server first, at no charge.
+`frameboard image generate` spends on the developer's own key the moment it runs, and it never asks first. A ComfyUI server the developer runs comes first when one is set and charges nothing. Read `${CLAUDE_SKILL_DIR}/references/generate.md` before a run on it, since it says when to free the GPU.
 
 - Run `frameboard image doctor --json` to see which keys are set before offering to generate
 - Run `frameboard image generate "<prompt>" --dry-run --json` first and tell the developer the provider and `priceUsd` it answers
 - Run it without `--dry-run` only once the developer agrees to that spend, or asked for a generated image in so many words. A `comfyui` answer at `priceUsd` 0 spends nothing, so generate at once.
-- Run `frameboard image free --json` once a batch of local generations ends, since the server holds the model in GPU memory until then
-- Pass `--workflow <file>` only for a ComfyUI workflow the developer names, never one you wrote
 - On `no-provider`, tell the developer which key to set and use a found image meanwhile
 - Never print, log, or write a key, even when a refusal names one as unset
 

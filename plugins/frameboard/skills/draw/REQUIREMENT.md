@@ -29,3 +29,5 @@ It also rewrites a frame the developer edited by hand, or one another session ho
 - The facts themselves, which `frameboard docs` prints from the code the verbs run on
 - Copying a page from a live site step by step, which `references/lift.md` owns
 - Presenting a page, which `references/slides.md` owns
+- Running images and models on the developer's own ComfyUI server, which `references/generate.md` owns
+- Keeping accepted frames in a tracked folder, which `references/record.md` owns
