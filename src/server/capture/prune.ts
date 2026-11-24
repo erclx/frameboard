@@ -4,6 +4,7 @@ import { basename, dirname, join, relative } from 'node:path'
 import { isCode } from '@/server/board/json-record'
 import { FrameboardError } from '@/shared/errors'
 import { isReservedPageName } from '@/shared/names'
+import type { Theme } from '@/shared/theme'
 
 import { isCompositeImageName, isFrameImageName } from './images'
 
@@ -47,23 +48,23 @@ async function resolvedPath(path: string): Promise<string> {
 }
 
 /**
- * Removes every image a capture could have written under `<out>/<project>` but
- * those at `kept`, with each page folder that empties, and returns the files
- * removed, sorted. Nothing behind a link goes, the project's folder included.
+ * Removes every image in `themes` a capture could have written under
+ * `<out>/<project>` but those at `kept`, and each page folder that empties,
+ * returning the files removed, sorted. Nothing behind a link goes.
  */
 export async function pruneImages(
   out: string,
   project: string,
-  kept: readonly string[],
+  { themes, kept }: { themes: readonly Theme[]; kept: readonly string[] },
 ): Promise<string[]> {
   const folder = join(out, project)
   if (!(await lstat(folder)).isDirectory()) return []
 
   const keptFiles = new Set(await Promise.all(kept.map(fileIdentity)))
-  const stale = async (dir: string, isImage: (file: string) => boolean) => {
+  const stale = async (dir: string, isImage: typeof isFrameImageName) => {
     const entries = await readdir(dir, { withFileTypes: true })
     const images = entries
-      .filter((entry) => entry.isFile() && isImage(entry.name))
+      .filter((entry) => entry.isFile() && isImage(entry.name, themes))
       .map((entry) => join(dir, entry.name))
     const identities = await Promise.all(images.map(fileIdentity))
     return images.filter((_, index) => !keptFiles.has(identities[index] ?? ''))

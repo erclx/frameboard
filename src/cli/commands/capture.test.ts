@@ -671,14 +671,7 @@ describe('capture', () => {
         'studio/removed.light.png',
       )
 
-      const run = await capture([
-        '--all-pages',
-        '--prune',
-        '--theme',
-        'light',
-        '--out',
-        '../shots',
-      ])
+      const run = await capture(['--all-pages', '--prune', '--out', '../shots'])
 
       expect(run.exitCode).toBe(0)
       expect(captureResultSchema.parse(run.json().data).removed).toEqual([
@@ -690,6 +683,30 @@ describe('capture', () => {
       expect(held('studio/removed')).toBe(false)
       expect(held('studio/home/hero.light.png')).toBe(true)
       expect(held('studio/basics/type.light.png')).toBe(true)
+    })
+
+    it('leaves every image of the theme not captured', async () => {
+      board = writeBoard(PROJECT)
+      lay(
+        'studio/home/hero.dark.png',
+        'studio/home/gone.dark.png',
+        'studio/home/gone.light.png',
+      )
+
+      const run = await capture([
+        '--all-pages',
+        '--prune',
+        '--theme',
+        'light',
+        '--out',
+        '../shots',
+      ])
+
+      expect(captureResultSchema.parse(run.json().data).removed).toEqual([
+        join(board.root, '../shots/studio/home/gone.light.png'),
+      ])
+      expect(held('studio/home/hero.dark.png')).toBe(true)
+      expect(held('studio/home/gone.dark.png')).toBe(true)
     })
 
     it("removes a hidden frame's images", async () => {

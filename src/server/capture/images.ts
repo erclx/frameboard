@@ -9,7 +9,7 @@ import { type Device, insetsPage, type Turn } from '@/shared/frame-device'
 import { drawnExtent, linkedBoxes } from '@/shared/frame-widths'
 import { isReservedPageName } from '@/shared/names'
 import type { FrameRecord } from '@/shared/records/list'
-import { type Theme, THEMES } from '@/shared/theme'
+import type { Theme } from '@/shared/theme'
 
 import type { UnloadedModel } from './model-loads'
 import {
@@ -126,19 +126,24 @@ function imageName(
 
 // A scan lists any name opening on no dot, so every suffix `imageName` puts
 // ahead of the theme reads as part of one.
-const IMAGE_NAME = new RegExp(
-  String.raw`^([^.].*)\.(?:${THEMES.join('|')})(?:@[23]x)?\.png$`,
-)
+const IMAGE_NAME = /^(?<name>[^.].*)\.(?<theme>light|dark)(?:@[23]x)?\.png$/
 
-/** Whether a file in a page's folder is named as a capture of some frame names it. */
-export function isFrameImageName(file: string): boolean {
-  return IMAGE_NAME.test(file)
+/** Whether a file in a page's folder is named as a capture of some frame in one of `themes` names it. */
+export function isFrameImageName(
+  file: string,
+  themes: readonly Theme[],
+): boolean {
+  const theme = IMAGE_NAME.exec(file)?.groups?.theme
+  return themes.some((each) => each === theme)
 }
 
-/** Whether a file in a project's folder is named as a composite of some page names it. */
-export function isCompositeImageName(file: string): boolean {
-  const page = IMAGE_NAME.exec(file)?.[1]
-  return page !== undefined && !isReservedPageName(page)
+/** Whether a file in a project's folder is named as a composite of some page in one of `themes` names it. */
+export function isCompositeImageName(
+  file: string,
+  themes: readonly Theme[],
+): boolean {
+  const page = IMAGE_NAME.exec(file)?.groups?.name ?? ''
+  return isFrameImageName(file, themes) && !isReservedPageName(page)
 }
 
 /** Where one frame's capture in one theme lands under `out`. */

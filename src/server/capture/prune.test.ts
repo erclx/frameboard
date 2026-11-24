@@ -12,6 +12,8 @@ import { dirname, join } from 'node:path'
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { THEMES } from '@/shared/theme'
+
 import { assertPrunable, pruneImages } from './prune'
 
 describe('pruneImages', () => {
@@ -53,7 +55,7 @@ describe('pruneImages', () => {
     const kept = write('studio/home/hero.light.png')
     const [stale] = write(`studio/${path}`)
 
-    const removed = await pruneImages(out, 'studio', kept)
+    const removed = await pruneImages(out, 'studio', { themes: THEMES, kept })
 
     expect(removed).toEqual([stale])
     expect(existsSync(join(out, 'studio', path))).toBe(false)
@@ -78,17 +80,41 @@ describe('pruneImages', () => {
     const kept = write('studio/home/hero.light.png')
     write(`studio/${path}`)
 
-    const removed = await pruneImages(out, 'studio', kept)
+    const removed = await pruneImages(out, 'studio', { themes: THEMES, kept })
 
     expect(removed).toEqual([])
     expect(existsSync(join(out, 'studio', path))).toBe(true)
+  })
+
+  it('removes the themes named and leaves every image in another', async () => {
+    const kept = write('studio/home/hero.light.png')
+    const dark = write(
+      'studio/home/hero.dark.png',
+      'studio/home/gone.dark@2x.png',
+      'studio/home/gone.light.dark.png',
+      'studio/gone.dark.png',
+      'studio/old/a.dark.png',
+    )
+    const light = write(
+      'studio/gone.light.png',
+      'studio/home/gone.dark.light.png',
+      'studio/old/a.light@2x.png',
+    )
+
+    const removed = await pruneImages(out, 'studio', {
+      themes: ['light'],
+      kept,
+    })
+
+    expect(removed).toEqual(light)
+    expect(dark.filter((path) => !existsSync(path))).toEqual([])
   })
 
   it("keeps another project's images in the same folder", async () => {
     const kept = write('studio/home/hero.light.png')
     const [other] = write('shop/cart/empty.light.png')
 
-    await pruneImages(out, 'studio', kept)
+    await pruneImages(out, 'studio', { themes: THEMES, kept })
 
     expect(existsSync(String(other))).toBe(true)
   })
@@ -97,7 +123,7 @@ describe('pruneImages', () => {
     const kept = write('studio/home/hero.light.png')
     write('studio/old/a.light.png', 'studio/old/a.dark.png')
 
-    await pruneImages(out, 'studio', kept)
+    await pruneImages(out, 'studio', { themes: THEMES, kept })
 
     expect(existsSync(join(out, 'studio/old'))).toBe(false)
   })
@@ -106,7 +132,7 @@ describe('pruneImages', () => {
     const kept = write('studio/home/hero.light.png')
     write('studio/old/a.light.png', 'studio/old/notes.md')
 
-    await pruneImages(out, 'studio', kept)
+    await pruneImages(out, 'studio', { themes: THEMES, kept })
 
     expect(existsSync(join(out, 'studio/old/a.light.png'))).toBe(false)
     expect(existsSync(join(out, 'studio/old/notes.md'))).toBe(true)
@@ -116,7 +142,7 @@ describe('pruneImages', () => {
     const kept = write('studio/home/hero.light.png')
     mkdirSync(join(out, 'studio/later'))
 
-    await pruneImages(out, 'studio', kept)
+    await pruneImages(out, 'studio', { themes: THEMES, kept })
 
     expect(existsSync(join(out, 'studio/later'))).toBe(true)
   })
@@ -128,7 +154,10 @@ describe('pruneImages', () => {
       'studio/home/a.light.png',
     )
 
-    expect(await pruneImages(out, 'studio', kept)).toEqual([first, second])
+    expect(await pruneImages(out, 'studio', { themes: THEMES, kept })).toEqual([
+      first,
+      second,
+    ])
   })
 
   // Two spellings of one file, as a disk that ignores case gives a renamed frame.
@@ -137,7 +166,9 @@ describe('pruneImages', () => {
     const listed = join(out, 'studio/home/Hero.light.png')
     if (!existsSync(listed)) linkSync(String(kept[0]), listed)
 
-    expect(await pruneImages(out, 'studio', kept)).toEqual([])
+    expect(await pruneImages(out, 'studio', { themes: THEMES, kept })).toEqual(
+      [],
+    )
     expect(existsSync(listed)).toBe(true)
   })
 
@@ -146,7 +177,9 @@ describe('pruneImages', () => {
     const [outside] = write('elsewhere/gone.light.png')
     symlinkSync(join(out, 'elsewhere'), join(out, 'studio/linked'))
 
-    expect(await pruneImages(out, 'studio', kept)).toEqual([])
+    expect(await pruneImages(out, 'studio', { themes: THEMES, kept })).toEqual(
+      [],
+    )
     expect(existsSync(String(outside))).toBe(true)
   })
 
@@ -156,9 +189,10 @@ describe('pruneImages', () => {
     symlinkSync(join(out, 'elsewhere'), join(out, 'studio'))
 
     expect(
-      await pruneImages(out, 'studio', [
-        join(out, 'studio/home/hero.light.png'),
-      ]),
+      await pruneImages(out, 'studio', {
+        themes: THEMES,
+        kept: [join(out, 'studio/home/hero.light.png')],
+      }),
     ).toEqual([])
     expect(existsSync(String(outside))).toBe(true)
   })
