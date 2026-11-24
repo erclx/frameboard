@@ -15,14 +15,14 @@ The scripts that gate a change and serve the board are in `canon/context/develop
 
 These capture and measure what the board renders.
 
-| Command                      | Purpose                                                                                                |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `bun run measure:canvas`     | Pans and pinches over fifty live frames in headed Chrome and prints p50, p95, and the share past 33 ms |
-| `bun run screenshot`         | Builds, serves a board copy, and captures every case into `screenshots/` and `e2e/evidence/`           |
-| `bun run screenshot:drift`   | Captures twice into `screenshots/drift/` and sorts evidence into noise, stale, and equal               |
-| `bun run screenshot:compare` | Captures each shell surface at 1440 by 900, light and dark, into `screenshots/compare/`                |
-| `bun run smoke:prod`         | Captures against `SCREENSHOT_BASE_URL`, failing on any console error                                   |
-| `bun run design:sync`        | Builds, then runs `references sync canon/design` over the main root's `.canon/board`                   |
+| Command                      | Purpose                                                                                                          |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `bun run measure:canvas`     | Runs every `e2e/perf/` spec in headed Chrome, such as a traced pan and zoom's dropped frames on a 108-frame page |
+| `bun run screenshot`         | Builds, serves a board copy, and captures every case into `screenshots/` and `e2e/evidence/`                     |
+| `bun run screenshot:drift`   | Captures twice into `screenshots/drift/` and sorts evidence into noise, stale, and equal                         |
+| `bun run screenshot:compare` | Captures each shell surface at 1440 by 900, light and dark, into `screenshots/compare/`                          |
+| `bun run smoke:prod`         | Captures against `SCREENSHOT_BASE_URL`, failing on any console error                                             |
+| `bun run design:sync`        | Builds, then runs `references sync canon/design` over the main root's `.canon/board`                             |
 
 The capture scripts each carry a condition the table leaves out.
 
