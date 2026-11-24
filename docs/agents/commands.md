@@ -13,7 +13,7 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 
 - `edit` changes one style, attribute, or text on one element without touching another byte, and `--drop-attr` removes an attribute, such as a boolean `muted`, that `--attr` can only set
 - `remove` takes one element and everything inside it out of a frame, given the `--index` and `--hash` that `inspect` reports, and refuses with exit 7 once the file has changed
-- `frame add` with no size makes a frame that hugs its content, which a running server measures once it is placed and after each write, and `frame fit` sets a height to its content and keeps it hugging
+- `frame add` with no size hugs the frame's content unless its name ends in a width, and `frame fit` sets a height to its content and keeps it hugging
 - `inspect` lists each rendered element with the index `edit` takes, its box, and its computed color and type
 - `frameboard docs` prints every command, flag, record shape, and exit code
 
@@ -42,6 +42,12 @@ A moving frame captures at chosen moments.
 `preview <frame>` prints a link and a code that open the frame's project on a phone on the same Wi-Fi, read only, and `preview --stop` ends it
 
 ## Sizes, widths, and devices
+
+`frame add` with no size takes one from the frame's name or its content, unless `editing --new` reserved a box for it.
+
+- A name ending in the width of a preset or device, such as `overview-390`, fixes that width and turns the device on
+- Any other name hugs its content on both axes, which a running server measures once the frame is placed and after each write
+- Pass `--width 390` for that width with no device, since a size flag wins over the name
 
 A page meant to scroll, such as one with a sticky section, takes `--scroll` on `frame add` or `frame resize`, which holds it at a screen height rather than its full length. A frame already fixed taller than a screen keeps its height, so pass `--height` with the resize.
 
