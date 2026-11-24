@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.50.0](https://github.com/erclx/frameboard/compare/v0.49.0...v0.50.0) (2026-11-24)
+
+
+### Features
+
+* **board:** load frames in a process apart from the board ([#463](https://github.com/erclx/frameboard/issues/463)) ([97c3c32](https://github.com/erclx/frameboard/commit/97c3c329768e9e0308e18c542b95032795998ddb))
+* **cli:** size an added frame from a -&lt;px&gt; name and show its device ([#462](https://github.com/erclx/frameboard/issues/462)) ([3d2e0fc](https://github.com/erclx/frameboard/commit/3d2e0fcdf0d318aae7e6161bc3a67b88cc8eb3da))
+* **server:** recheck only the frames that changed at start ([#464](https://github.com/erclx/frameboard/issues/464)) ([91d28f5](https://github.com/erclx/frameboard/commit/91d28f59ecee71fef060eeeba0c08e8861ef5a6c))
+
+
+### Bug Fixes
+
+* **checks:** unblock the postcss and vitest bumps on Bun ([#459](https://github.com/erclx/frameboard/issues/459)) ([7cfb991](https://github.com/erclx/frameboard/commit/7cfb9917b87fa7ca4bc405ecdbbe3736bd19ceae))
+
+
+### Performance Improvements
+
+* **live:** render no unchanged frame again on a board message ([#465](https://github.com/erclx/frameboard/issues/465)) ([70570c1](https://github.com/erclx/frameboard/commit/70570c17ff8f763ff553fbc41f469310ce71b482))
+
 ## [0.49.0](https://github.com/erclx/frameboard/compare/v0.48.0...v0.49.0) (2026-11-20)
 
 
