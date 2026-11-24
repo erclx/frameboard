@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Access } from '../access/guard'
 import { createTickets, TICKET_TTL_MS } from '../access/tickets'
-import { accessRoutes } from './access'
+import { type AccessRouteOptions, accessRoutes } from './access'
 
 const TOKEN = 'a'.repeat(64)
 const KEY = 'b'.repeat(64)
@@ -13,11 +13,12 @@ const access: Access = {
   token: () => TOKEN,
   key: KEY,
   cookieName: COOKIE,
-  isOwnOrigin: (host) => host === '127.0.0.1:4173',
+  // Either loopback name, as the board's own check takes them.
+  isOwnOrigin: (host) => ['127.0.0.1:4173', 'localhost:4173'].includes(host),
 }
 
 describe('accessRoutes', () => {
-  function setup(options: { openRoute?: boolean } = {}) {
+  function setup(options: AccessRouteOptions = {}) {
     const tickets = createTickets()
     return { tickets, routes: accessRoutes(access, tickets, options) }
   }
@@ -160,6 +161,163 @@ describe('accessRoutes', () => {
 
       expect(response.status).toBe(404)
       expect(minted).toBe(0)
+    })
+  })
+
+  describe('POST /api/access/edit', () => {
+    /** What a fetch from the board's own page sends in a current browser. */
+    const own = {
+      origin: BASE,
+      'content-type': 'application/json',
+      'sec-fetch-site': 'same-origin',
+      'sec-fetch-mode': 'cors',
+    }
+
+    function edit(
+      headers: Record<string, string>,
+      { base = BASE, editButton = true } = {},
+    ) {
+      const { routes } = setup({ editButton })
+      return routes.request(`${base}/api/access/edit`, {
+        method: 'POST',
+        headers,
+        body: '{}',
+      })
+    }
+
+    it("sets the key cookie for a fetch from the board's own page", async () => {
+      const response = await edit(own)
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({ ok: true, data: { write: true } })
+      const cookie = response.headers.get('set-cookie') ?? ''
+      expect(cookie).toContain(`${COOKIE}=${KEY}`)
+      expect(cookie).toContain('HttpOnly')
+      expect(cookie).toContain('SameSite=Strict')
+      expect(cookie).toContain('Path=/api')
+    })
+
+    it.each([
+      ['a tab on localhost', 'http://localhost:4173', {}],
+      [
+        'a charset on the type',
+        BASE,
+        {
+          'content-type': 'application/json; charset=utf-8',
+        },
+      ],
+    ])('sets it for %s', async (_case, base, headers) => {
+      const response = await edit(
+        { ...own, origin: base, ...headers },
+        { base },
+      )
+
+      expect(response.headers.get('set-cookie')).toContain(KEY)
+    })
+
+    it('sets it in a browser that sends no fetch metadata', async () => {
+      const response = await edit({
+        origin: BASE,
+        'content-type': 'application/json',
+      })
+
+      expect(response.headers.get('set-cookie')).toContain(KEY)
+    })
+
+    it.each([
+      ['another site', { ...own, origin: 'https://evil.test' }],
+      [
+        "a frame, on the frame port's origin",
+        {
+          ...own,
+          origin: 'http://127.0.0.1:47123',
+        },
+      ],
+      [
+        'a page under no origin, as a sandboxed one sends',
+        {
+          ...own,
+          origin: 'null',
+        },
+      ],
+      [
+        "the board's port over https",
+        {
+          ...own,
+          origin: 'https://127.0.0.1:4173',
+        },
+      ],
+      ['a request with no origin', { 'content-type': 'application/json' }],
+      ['a cross-site fetch', { ...own, 'sec-fetch-site': 'cross-site' }],
+      ["another port's fetch", { ...own, 'sec-fetch-site': 'same-site' }],
+      [
+        'a no-cors fetch',
+        {
+          ...own,
+          'sec-fetch-mode': 'no-cors',
+          'content-type': 'text/plain',
+        },
+      ],
+      [
+        "a kit page's form",
+        {
+          ...own,
+          'sec-fetch-mode': 'navigate',
+          'content-type': 'application/x-www-form-urlencoded',
+        },
+      ],
+      [
+        "a kit page's form with no fetch metadata",
+        {
+          origin: BASE,
+          'content-type': 'text/plain',
+        },
+      ],
+      [
+        "a kit page's ping",
+        {
+          ...own,
+          'sec-fetch-mode': 'no-cors',
+          'content-type': 'text/ping',
+        },
+      ],
+      ['a navigation sending JSON', { ...own, 'sec-fetch-mode': 'navigate' }],
+      [
+        "a page on [::1] under the board's port",
+        {
+          origin: 'http://localhost:4173',
+          'content-type': 'application/json',
+        },
+      ],
+      ['a request with no content type', { origin: BASE }],
+    ])(
+      'refuses %s in the envelope and sets no cookie',
+      async (_case, headers) => {
+        const response = await edit(headers)
+
+        expect(response.status).toBe(403)
+        expect(await response.json()).toEqual({
+          ok: false,
+          error: { code: 'forbidden', message: expect.any(String) },
+        })
+        expect(response.headers.get('set-cookie')).toBeNull()
+      },
+    )
+
+    it('refuses a foreign name rebound to loopback, sent as both origin and host', async () => {
+      const base = 'http://evil.test:4173'
+
+      const response = await edit({ ...own, origin: base }, { base })
+
+      expect(response.status).toBe(403)
+      expect(response.headers.get('set-cookie')).toBeNull()
+    })
+
+    it('answers 404 and sets no cookie when the button is off', async () => {
+      const response = await edit(own, { editButton: false })
+
+      expect(response.status).toBe(404)
+      expect(response.headers.get('set-cookie')).toBeNull()
     })
   })
 })

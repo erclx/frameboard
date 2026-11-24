@@ -55,6 +55,8 @@ export interface HubOptions {
   closeTab?: (tab: string) => void
   /** Whether `serve` holds a command a note can start a session with. */
   dispatch?: boolean
+  /** Whether a reading tab may ask for edit access with the Edit button. */
+  editButton?: boolean
   /** The frame listener's port, sent to a board client first on its hello. */
   framePort?: () => number
 }
@@ -76,6 +78,7 @@ export function createHub({
   changes,
   closeTab,
   dispatch = false,
+  editButton = false,
   framePort,
 }: HubOptions): LiveHub {
   const server = new WebSocketServer({ noServer: true })
@@ -130,6 +133,7 @@ export function createHub({
             type: 'access',
             write: writer,
             dispatch: writer && dispatch,
+            ...(editButton && !writer ? { editButton: true } : {}),
           })
           if (history) send(socket, { type: 'history', ...history() })
           if (claims) send(socket, { type: 'claims', claims: await claims() })

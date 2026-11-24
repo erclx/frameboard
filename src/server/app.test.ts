@@ -107,6 +107,19 @@ describe('createApp', () => {
     expect(await response.text()).toContain('<title>Frameboard</title>')
   })
 
+  it.each([['/'], ['/index.html'], ['/p/studio/home']])(
+    'lets no page frame the client at %s',
+    async (path) => {
+      const response = await buildApp(clientDir).request(
+        `http://127.0.0.1:${PORT}${path}`,
+      )
+
+      expect(response.headers.get('content-security-policy')).toBe(
+        "frame-ancestors 'none'",
+      )
+    },
+  )
+
   it('answers 404 for an unknown path outside the board routes', async () => {
     const response = await request(`http://127.0.0.1:${PORT}/nowhere`)
 

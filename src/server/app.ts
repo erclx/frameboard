@@ -78,6 +78,8 @@ export interface AppOptions {
   tickets: Tickets
   /** Mounts `GET /api/access/open`, which hands any local browser a writing tab. */
   openRoute?: boolean
+  /** Mounts `POST /api/access/edit`, which the Edit button posts and any local program can. */
+  editButton?: boolean
   /** Renders a frame for `GET /api/frames/png`. */
   renderFrame: RenderFrame
   /** Renders a frame's filmstrip for `GET /api/frames/png?filmstrip=<n>`. */
@@ -120,6 +122,7 @@ export function createApp({
   actions,
   tickets,
   openRoute,
+  editButton,
   renderFrame,
   renderFilmstrip,
   clipboard = null,
@@ -161,7 +164,10 @@ export function createApp({
       clipboard: clipboard?.backend ?? null,
     }),
   )
-  app.route('/', accessRoutes(actions.access, tickets, { openRoute }))
+  app.route(
+    '/',
+    accessRoutes(actions.access, tickets, { openRoute, editButton }),
+  )
   app.route('/', apiRoutes(root, actions, frames.look, history))
   app.route('/', structureRoutes(root, actions.access, history, measure, given))
   app.route('/', historyRoutes(actions.access, history))
@@ -199,6 +205,14 @@ export function createApp({
     return c.redirect(url.href, 307)
   })
   app.all('/frames/*', (c) => c.notFound())
+  // Framed, a lure over it could take the press that hands out the key.
+  app.use('*', async (c, next) => {
+    await next()
+    const type = c.res.headers.get('Content-Type') ?? ''
+    if (type.startsWith('text/html')) {
+      c.header('Content-Security-Policy', "frame-ancestors 'none'")
+    }
+  })
   app.use('*', serveStatic({ root: clientDir }))
   // A board route reloaded in the browser gets the client, which routes it.
   app.get(
