@@ -6,6 +6,7 @@ import {
   assetTag,
   elementMarkup,
   ensureViewerScript,
+  extractElement,
   insertElement,
   moveElement,
   relocateMoved,
@@ -514,6 +515,168 @@ describe('removeElement', () => {
 
   it('should refuse the body, which is no element under it', () => {
     expect(removeElement(source, BODY)).toMatchObject({
+      ok: false,
+      reason: 'invalid-address',
+    })
+  })
+})
+
+describe('extractElement', () => {
+  const VIEWER =
+    '<script type="module" src="../assets/model-viewer.min.js"></script>'
+
+  /** A whole frame holding `body`, whose head holds a rule, a script, and `head` after its title. */
+  const frame = (body: string, head = '') =>
+    `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      .cta { color: red }
+    </style>
+    <script>document.querySelector('.cta').focus()</script>
+    <title>hero</title>${head}
+  </head>
+  <body class="page" style="margin: 0">
+    ${body}
+  </body>
+</html>
+`
+
+  // html, head, meta, style, script, title, and body take 0 to 6.
+  const BODY_FIRST = 7
+
+  it("should stand the element alone under the source's head and body tag", () => {
+    const source = frame('<button class="cta">Buy</button>')
+
+    expect(extractElement(source, BODY_FIRST)).toMatchObject({
+      ok: true,
+      frame: `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      .cta { color: red }
+    </style>
+    <title>hero</title>
+  </head>
+  <body class="page" style="margin: 0"><button class="cta">Buy</button></body>
+</html>
+`,
+      index: 6,
+    })
+  })
+
+  it('should leave every byte of the source but the element', () => {
+    const source = frame('<h1>Hi</h1>\n    <p>Text</p>')
+
+    expect(extractElement(source, BODY_FIRST)).toMatchObject({
+      ok: true,
+      html: frame('\n    <p>Text</p>'),
+    })
+  })
+
+  it('should carry the element with its children as the file states them', () => {
+    const card = '<div class="card">\n      <b>One</b> two\n    </div>'
+
+    const extracted = extractElement(frame(card), BODY_FIRST)
+
+    expect(extracted).toMatchObject({ ok: true, span: { markup: card } })
+    expect(extracted.ok && extracted.frame).toContain(`>${card}</body>`)
+  })
+
+  it('should leave a valid empty body when the element was its last', () => {
+    const source =
+      '<!doctype html><html><head></head><body><p>x</p></body></html>'
+
+    expect(extractElement(source, 3)).toMatchObject({
+      ok: true,
+      html: '<!doctype html><html><head></head><body></body></html>',
+    })
+  })
+
+  it('should answer a span that puts the element back byte for byte', () => {
+    const source = frame('<h1>Hi</h1>\n    <p>Text</p>')
+
+    const extracted = extractElement(source, BODY_FIRST)
+
+    expect(
+      extracted.ok && restoreInserted(extracted.html, extracted.span)?.html,
+    ).toBe(source)
+  })
+
+  it('should state the wrappers a fragment leaves to the browser', () => {
+    const source = '<style>p { margin: 0 }</style><p>x</p><p>y</p>'
+
+    expect(extractElement(source, 4)).toMatchObject({
+      ok: true,
+      frame: `<html>
+  <head><style>p { margin: 0 }</style></head>
+  <body><p>x</p></body>
+</html>
+`,
+    })
+  })
+
+  it.each([
+    ['its data-name', '<p data-name=" Sign up ">x</p>', 'Sign up'],
+    ['no name when it states none', '<p>x</p>', null],
+  ])('should answer its tag with %s', (_case, body, name) => {
+    expect(extractElement(frame(body), BODY_FIRST)).toMatchObject({
+      tagName: 'p',
+      name,
+    })
+  })
+
+  it('should keep the viewer script alone for an element holding a model', () => {
+    const source = frame(
+      '<div><model-viewer src="../assets/a.glb"></model-viewer></div>',
+      VIEWER,
+    )
+
+    const extracted = extractElement(source, BODY_FIRST + 1)
+
+    expect(extracted.ok && extracted.frame).toContain(`${VIEWER}\n  </head>`)
+    expect(extracted.ok && extracted.frame).not.toContain('focus()')
+  })
+
+  it('should carry a viewer script the body holds into the head for a model', () => {
+    const source = frame(
+      `<model-viewer src="../assets/a.glb"></model-viewer>${VIEWER}`,
+    )
+
+    const extracted = extractElement(source, BODY_FIRST)
+
+    expect(extracted.ok && extracted.frame).toContain(`${VIEWER}</head>`)
+  })
+
+  it('should drop the viewer script for an element holding no model', () => {
+    const extracted = extractElement(frame('<p>x</p>', VIEWER), BODY_FIRST + 1)
+
+    expect(extracted.ok && extracted.frame).not.toContain('<script')
+  })
+
+  it.each([
+    ['a table row', '<table><tbody><tr><td>x</td></tr></tbody></table>', 9],
+    ['a table cell', '<table><tbody><tr><td>x</td></tr></tbody></table>', 10],
+  ])('should refuse %s, which no body holds alone', (_case, body, index) => {
+    expect(extractElement(frame(body), index)).toMatchObject({
+      ok: false,
+      reason: 'invalid-container',
+    })
+  })
+
+  it('should refuse a shape inside an svg, as a delete does', () => {
+    const source = frame('<svg><path d="M0 0"></path></svg>')
+
+    expect(extractElement(source, BODY_FIRST + 1)).toMatchObject({
+      ok: false,
+      reason: 'verify-failed',
+    })
+  })
+
+  it('should refuse an index past the last element', () => {
+    expect(extractElement(frame('<p>x</p>'), 40)).toMatchObject({
       ok: false,
       reason: 'invalid-address',
     })

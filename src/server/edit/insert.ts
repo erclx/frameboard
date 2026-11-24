@@ -3,6 +3,7 @@ import {
   html,
   parseFragment,
   serialize,
+  serializeOuter,
 } from 'parse5'
 
 import type { PlaceableKind } from '@/shared/asset-kinds'
@@ -633,6 +634,120 @@ export function removeElement(source: string, index: number): Removed {
     )
   }
   return { ok: true, html: removed, span: back.span }
+}
+
+export type Extracted =
+  | {
+      readonly ok: true
+      /** The source with the element taken out. */
+      readonly html: string
+      /** The element as `restoreInserted` puts it back, its bytes in `markup`. */
+      readonly span: InsertedSpan
+      /** A file holding the element alone. */
+      readonly frame: string
+      /** The element's index in `frame`. */
+      readonly index: number
+      readonly tagName: string
+      /** Its `data-name`, null when it states none. */
+      readonly name: string | null
+    }
+  | EditRefused
+
+/**
+ * Takes an element out as `removeElement` does, and stands its bytes alone in
+ * a file under the source's head and `body` tag, refusing one the parser would
+ * rebuild there, such as a table row.
+ */
+export function extractElement(source: string, index: number): Extracted {
+  const removed = removeElement(source, index)
+  if (!removed.ok) return removed
+  const tree = parseFrame(source)
+  // Holds the whitespace a delete's span drops, so an undo is byte for byte.
+  const taken = takeOut(source, tree, index)
+  if (!taken || restoreInserted(taken.html, taken.span)?.html !== source) {
+    return refuse(
+      'verify-failed',
+      `the element at ${index} could not be put back once taken out, so nothing was written`,
+    )
+  }
+  const element = tree.elements[index]
+  const { markup } = taken.span
+  const frame = element ? frameHolding(source, tree, element, markup) : ''
+  const stood = parseFrame(frame).elements
+  const at = stood.findIndex(({ tagName }) => tagName === 'body') + 1
+  const alone = stood[at]
+  if (
+    !element ||
+    !alone ||
+    alone.namespaceURI !== element.namespaceURI ||
+    spanText(frame, alone, 'element') !== markup ||
+    serializeOuter(alone) !== serializeOuter(element)
+  ) {
+    return refuse(
+      'invalid-container',
+      `a <${element?.tagName ?? 'missing element'}> cannot stand alone in a frame, so nothing was written`,
+    )
+  }
+  const named = element.attrs.find(({ name }) => name === 'data-name')
+  return {
+    ok: true,
+    html: taken.html,
+    span: taken.span,
+    frame,
+    index: at,
+    tagName: element.tagName,
+    name: named?.value.trim() || null,
+  }
+}
+
+/**
+ * The source's doctype, `html` tag, head, and `body` tag around `markup`. The
+ * head's scripts stay behind, since they expect the page they were written
+ * for, except a viewer's where the element holds a model.
+ */
+function frameHolding(
+  source: string,
+  tree: FrameTree,
+  element: Element,
+  markup: string,
+): string {
+  const tagOf = (tagName: string) => {
+    const wrapper = tree.elements.find((each) => each.tagName === tagName)
+    return (wrapper && startTag(source, wrapper)) || `<${tagName}>`
+  }
+  const head = tree.elements.find(({ tagName }) => tagName === 'head')
+  const viewers = holdsModel(element) ? tree.elements.filter(loadsViewer) : []
+  let inner = ''
+  for (const node of head?.childNodes ?? []) {
+    const at = node.sourceCodeLocation
+    if (!at) continue
+    const left =
+      hasTag(node) && node.tagName === 'script' && !viewers.includes(node)
+    // The line a script sat on goes with it.
+    inner = left
+      ? inner.trimEnd()
+      : inner + source.slice(at.startOffset, at.endOffset)
+  }
+  for (const viewer of viewers) {
+    if (viewer.parentNode !== head) inner += spanText(source, viewer, 'element')
+  }
+  const doctype = tree.document.childNodes.find(
+    (node) => node.nodeName === '#documentType',
+  )?.sourceCodeLocation
+  const opening = doctype
+    ? `${source.slice(doctype.startOffset, doctype.endOffset)}\n`
+    : ''
+  // canon-allow-embedded: interpolates the source's own tags, and the bundled CLI has no substitution step for a file on disk
+  return `${opening}${tagOf('html')}
+  ${tagOf('head')}${inner}</head>
+  ${tagOf('body')}${markup}</body>
+</html>
+`
+}
+
+/** Whether `element` is a model viewer or holds one at any depth. */
+function holdsModel(element: Element): boolean {
+  return element.tagName === VIEWER_TAG || children(element).some(holdsModel)
 }
 
 function underBody(element: Element): boolean {
