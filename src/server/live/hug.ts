@@ -2,6 +2,7 @@ import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { type MeasuredSize, setMeasured } from '@/server/board/frames'
+import { isCode } from '@/server/board/json-record'
 import { LAYOUT_FILE } from '@/server/board/scan'
 import type { ContentSize } from '@/server/capture/fit'
 import { FrameboardError } from '@/shared/errors'
@@ -92,16 +93,13 @@ export function createHug({
         }
         size = await measureParts(measure, frame, parts)
       } catch (error) {
-        begun.delete(frame.ref)
+        // Read off the same inputs a size is, so measuring again refuses again.
+        if (isCode(error, 'fit-unbounded')) stored(frame, {})
+        else begun.delete(frame.ref)
         report(
           `frameboard: ${frame.ref} keeps its box, since its measure failed: ${failureOf(error)}`,
         )
-        if (
-          error instanceof FrameboardError &&
-          error.code === 'browser-not-found'
-        ) {
-          break
-        }
+        if (isCode(error, 'browser-not-found')) break
         continue
       }
       if (Object.keys(size).length === 0) {

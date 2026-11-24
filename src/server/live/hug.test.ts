@@ -561,6 +561,40 @@ describe('a remembered measure', () => {
     ])
   })
 
+  it('is remembered at the box kept for a frame sized off the viewport', async () => {
+    board = boardOf({ hero: { hugHeight: true } })
+    const { stored, remember } = remembering()
+    const hug = createHug({
+      root: board.root,
+      measure: async () => {
+        throw new FrameboardError('fit-unbounded', 'Grows with the viewport.')
+      },
+      remember,
+      report: () => {},
+    })
+
+    await hug.now(await scanBoard(board.root), [HERO])
+
+    expect(stored).toEqual([[HERO, {}]])
+  })
+
+  it('is not remembered when no browser launched', async () => {
+    board = boardOf({ hero: { hugHeight: true } })
+    const { stored, remember } = remembering()
+    const hug = createHug({
+      root: board.root,
+      measure: async () => {
+        throw new FrameboardError('browser-not-found', 'No shell.')
+      },
+      remember,
+      report: () => {},
+    })
+
+    await hug.now(await scanBoard(board.root), [HERO])
+
+    expect(stored).toEqual([])
+  })
+
   it('is not remembered when it failed or its file changed meanwhile', async () => {
     board = boardOf({ card: { hugHeight: true }, hero: { hugHeight: true } })
     const { stored, remember } = remembering()
