@@ -11,7 +11,8 @@ How you pick what to edit on the board, and how an undo treats an agent's later 
 
 On the board, Cmd-click or double-click selects an element inside a frame. Once one is selected, a plain click on another element of that frame selects it, and a click on the frame's bare background or label goes back to the frame.
 
-- Enter, Esc, and Tab walk the tree, and the layers panel lists each frame's elements.
+- Enter, Esc, and Tab walk the tree, and the layers panel lists each frame's elements, leaving out scripts, styles, and other tags that draw nothing.
+- The eye on an element's row, or Cmd+Shift+H, hides it in the page itself, and the lock, or Cmd+Shift+L, sends your clicks and drags to what sits behind it. A locked element still selects from its row.
 - With one frame selected and focus on the board, Tab and Shift+Tab step through the frames in layers order. On a frame label's button, such as Compare, Tab moves focus as usual.
 - `selection` prints what you picked, with the element's index and hash ready for `edit`, naming the last one picked when several are selected
 
