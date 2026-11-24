@@ -6,7 +6,7 @@ import type { WriteValues } from './report'
 
 // The first write after a load runs code no later one compiles again.
 const WARM_WRITES = 1
-const WRITES = 4
+const WRITES = 8
 const REST_MS = 2000
 const WINDOW_MS = 3000
 const LOAD_LIMIT_MS = 120_000

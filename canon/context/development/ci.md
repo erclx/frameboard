@@ -48,7 +48,7 @@ CI alone runs the full suites, since a push runs only the tests beside its chang
 Compares two commits' performance when someone starts it, and neither a push nor a pull request does. It gates nothing, and a run fails only when a side does not build or cannot be measured.
 
 - `base` and `head` take any branch, tag, or commit, older ones included, since each builds in its own worktree and is driven from outside through its CLI, live socket, and page
-- A commit that rechecks every frame on each start takes minutes a round, so lower `rounds` for one
+- A run takes most of its time on the first start of each side, which checks the whole board, and `rounds` adds about two minutes each
 - What it measures and how to read it are in `canon/context/development/capture-scripts.md`
 
 ### `canon/config/`

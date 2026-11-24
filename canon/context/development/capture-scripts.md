@@ -48,8 +48,12 @@ Where the sync reads from, and what moves every reference, follow.
 `scripts/perf-compare/` measures two commits for `perf-compare.yml`, on a runner and never on a developer's machine. Start it with `gh workflow run perf-compare.yml -f base=<ref> -f head=<ref>` and read the run's summary page.
 
 - It generates a board of 1,000 frames, opens its 40-frame page in a tab, and writes a frame of another project
-- A second start is read until its server and browser use under 5% of a core for five seconds, and 10 minutes without that reads `not reached` and skips the writes
-- The first start of each side is never counted, since it fills what a second start reads
+- Both sides start once at the same time, uncounted, to fill what a second start reads, and the writes are measured on those servers
+- A start is quiet once its server and browser use under 5% of a core for five seconds, and a second start still busy at two minutes reads `not reached`
+- CPU covers the start until quiet or the two minutes, so it is a floor where quiet reads `not reached`
+
+What a run says, and what it leans on, follow.
+
 - Read a change against a run of one commit with itself, which shows how far apart two equal sides land
 - The harness waits for the live socket's `board` message and the canvas's `[data-layer]`, so a change to either shape moves the harness too
 

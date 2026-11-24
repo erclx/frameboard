@@ -37,7 +37,7 @@ export function readTree(pid: number): ProcessTree {
 }
 
 export interface Reading {
-  /** Milliseconds since the process was spawned. */
+  /** Milliseconds since the first reading. */
   atMs: number
   cpuMs: number
 }
@@ -59,28 +59,26 @@ export function quietSince(
   return start && last.cpuMs - start.cpuMs <= busyMs ? start : undefined
 }
 
-/** Reads a process's tree until it goes quiet, undefined when the limit comes first, throwing once it exits. */
+/** The last reading taken, or the one a quiet window follows. */
+export interface Settled extends Reading {
+  quiet: boolean
+}
+
+/** Reads a process's tree until it goes quiet or the limit comes, throwing once it exits. */
 export async function waitForQuiet(
   pid: number,
-  {
-    spawnedAt,
-    limitMs,
-    ...rule
-  }: QuietRule & {
-    /** The `performance.now()` a reading's time counts from. */
-    spawnedAt: number
-    limitMs: number
-  },
-): Promise<Reading | undefined> {
+  { limitMs, ...rule }: QuietRule & { limitMs: number },
+): Promise<Settled> {
   const readings: Reading[] = []
-  const deadline = performance.now() + limitMs
-  while (performance.now() < deadline) {
+  const startedAt = performance.now()
+  for (;;) {
     const { pids, cpuMs } = readTree(pid)
     if (pids.length === 0) throw new Error(`process ${pid} exited`)
-    readings.push({ atMs: performance.now() - spawnedAt, cpuMs })
+    const reading = { atMs: performance.now() - startedAt, cpuMs }
+    readings.push(reading)
     const quiet = quietSince(readings, rule)
-    if (quiet) return quiet
+    if (quiet) return { ...quiet, quiet: true }
+    if (reading.atMs >= limitMs) return { ...reading, quiet: false }
     await sleep(POLL_MS)
   }
-  return undefined
 }

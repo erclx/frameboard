@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   median,
-  type Round,
   roundOrder,
+  type SideValues,
   type StartValues,
   summarize,
   type WriteValues,
@@ -17,22 +17,28 @@ const START: StartValues = {
 }
 const WRITE: WriteValues = { taskMs: 10, scriptMs: 5, messages: 2, bytes: 1000 }
 
-function round(
-  side: Round['side'],
-  start: Partial<StartValues> = {},
-  writes: Partial<WriteValues>[] = [{}],
-): Round {
+function values({
+  first = {},
+  starts = [{}],
+  writes = [[{}]],
+}: {
+  first?: Partial<StartValues>
+  starts?: Partial<StartValues>[]
+  writes?: Partial<WriteValues>[][]
+} = {}): SideValues {
   return {
-    side,
-    start: { ...START, ...start },
-    writes: writes.map((write) => ({ ...WRITE, ...write })),
+    first: { ...START, ...first },
+    starts: starts.map((start) => ({ ...START, ...start })),
+    writes: writes.map((round) =>
+      round.map((write) => ({ ...WRITE, ...write })),
+    ),
   }
 }
 
 function lineOf(report: string, ...cells: string[]): string | undefined {
   return report
     .split('\n')
-    .find((line) => cells.every((cell) => line.includes(`| ${cell} |`)))
+    .find((line) => line.includes(`| ${cells.join(' | ')} |`))
 }
 
 const SIDES = { base: 'aaaa1111', head: 'bbbb2222' }
@@ -71,12 +77,10 @@ describe('roundOrder', () => {
 
 describe('summarize', () => {
   it('names both sides and sets their medians beside the change', () => {
-    const report = summarize(SIDES, [
-      round('base', { addressMs: 100 }),
-      round('head', { addressMs: 50 }),
-      round('head', { addressMs: 70 }),
-      round('base', { addressMs: 140 }),
-    ])
+    const report = summarize(SIDES, {
+      base: values({ starts: [{ addressMs: 100 }, { addressMs: 140 }] }),
+      head: values({ starts: [{ addressMs: 50 }, { addressMs: 70 }] }),
+    })
 
     expect(report).toContain('`aaaa1111`')
     expect(report).toContain('`bbbb2222`')
@@ -84,53 +88,61 @@ describe('summarize', () => {
   })
 
   it('lists every value of a side by its round', () => {
-    const report = summarize(SIDES, [
-      round('base', { quietMs: 5100 }),
-      round('head', {}),
-      round('head', {}),
-      round('base', { quietMs: 5300 }),
-    ])
+    const report = summarize(SIDES, {
+      base: values({ starts: [{ quietMs: 5100 }, { quietMs: 5300 }] }),
+      head: values({ starts: [{}, {}] }),
+    })
 
     expect(lineOf(report, 'base', '5100', '5300')).toBeDefined()
   })
 
   it('takes the median over every write of every round', () => {
-    const report = summarize(SIDES, [
-      round('base', {}, [{ taskMs: 10 }, { taskMs: 90 }]),
-      round('head', {}, [{ taskMs: 7 }]),
-      round('base', {}, [{ taskMs: 30 }]),
-    ])
+    const report = summarize(SIDES, {
+      base: values({
+        writes: [[{ taskMs: 10 }, { taskMs: 90 }], [{ taskMs: 30 }]],
+      }),
+      head: values({ writes: [[{ taskMs: 7 }], [{ taskMs: 7 }]] }),
+    })
 
     expect(lineOf(report, '30', '7', '-77%')).toContain('thread')
     expect(lineOf(report, 'base', '10, 90', '30')).toBeDefined()
   })
 
   it('says a value was not reached and compares nothing with it', () => {
-    const report = summarize(SIDES, [
-      round('base', { quietMs: null, cpuMs: null }),
-      round('head', {}),
-    ])
+    const report = summarize(SIDES, {
+      base: values({ starts: [{ quietMs: null }] }),
+      head: values(),
+    })
 
     expect(lineOf(report, 'not reached', '300', 'n/a')).toContain('quiet')
   })
 
   it('says a round measured no write', () => {
-    const report = summarize(SIDES, [
-      round('base', {}, []),
-      round('head', {}, [{ taskMs: 7 }]),
-      round('base', {}, [{ taskMs: 9 }]),
-    ])
+    const report = summarize(SIDES, {
+      base: values({ writes: [[], [{ taskMs: 9 }]] }),
+      head: values({ writes: [[{ taskMs: 7 }], [{ taskMs: 7 }]] }),
+    })
 
     expect(lineOf(report, 'base', 'not reached', '9')).toBeDefined()
     expect(lineOf(report, '9', '7', '-22%')).toContain('thread')
   })
 
   it('gives no percentage off a base of nothing', () => {
-    const report = summarize(SIDES, [
-      round('base', {}, [{ messages: 0 }]),
-      round('head', {}, [{ messages: 3 }]),
-    ])
+    const report = summarize(SIDES, {
+      base: values({ writes: [[{ messages: 0 }]] }),
+      head: values({ writes: [[{ messages: 3 }]] }),
+    })
 
     expect(lineOf(report, '0', '3', 'n/a')).toContain('messages')
+  })
+
+  it('lists each first start apart from the medians', () => {
+    const report = summarize(SIDES, {
+      base: values({ first: { quietMs: 520_000, cpuMs: 935_000 } }),
+      head: values({ first: { quietMs: null, cpuMs: 941_000 } }),
+    })
+
+    expect(lineOf(report, 'base', '520000', '935000')).toBeDefined()
+    expect(lineOf(report, 'head', 'not reached', '941000')).toBeDefined()
   })
 })

@@ -29,8 +29,7 @@ jobs:
   compare:
     name: 📏 Compare Performance
     runs-on: ubuntu-latest
-    # A commit that rechecks every frame on each start takes minutes a round.
-    timeout-minutes: 180
+    timeout-minutes: 120
     env:
       BASE: ${{ inputs.base }}
       HEAD: ${{ inputs.head }}

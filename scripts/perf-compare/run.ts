@@ -13,13 +13,17 @@ import { join, resolve } from 'node:path'
 
 import { git } from '../lib/git'
 import { writeBoard } from './board'
-import { type Round, roundOrder, type Side, summarize } from './report'
-import { startSide } from './second-start'
+import { roundOrder, type Side, type SideValues, summarize } from './report'
+import { type SideServer, startSide } from './second-start'
 import { measureWrites } from './unrelated-write'
 
 const USAGE =
   'Usage: bun scripts/perf-compare/run.ts <baseDir> <headDir> <rounds>'
 const MAX_ROUNDS = 20
+// A whole board's checks take about nine minutes alone on a four-core runner.
+const FIRST_LIMIT_MS = 1_200_000
+// Past this a second start is rechecking the whole board, which the first says the length of.
+const SECOND_LIMIT_MS = 120_000
 
 const [baseDir, headDir, roundsArg] = process.argv.slice(2)
 const rounds = Number(roundsArg)
@@ -44,23 +48,35 @@ const commits = {
   head: commitOf(sides.head.dir),
 }
 
-try {
-  for (const side of ['base', 'head'] as const) {
-    mkdirSync(sides[side].root)
-    writeBoard(sides[side].root)
-    // Uncounted, since it fills what a second start reads.
-    const { start, stop } = await startSide(sides[side].dir, sides[side].root)
-    await stop()
-    log({ side, round: 'first start', start })
-  }
+const started: SideServer[] = []
 
-  const measured: Round[] = []
-  for (let round = 1; round <= rounds; round += 1) {
-    for (const side of roundOrder(round)) {
-      const values = await measure(side)
-      measured.push(values)
-      log({ round, ...values })
-    }
+try {
+  // At once, since neither is compared, and each checks the whole board.
+  const [baseServer, headServer] = await Promise.all([
+    firstStart('base'),
+    firstStart('head'),
+  ])
+  const servers = { base: baseServer, head: headServer }
+  const measured: Record<Side, SideValues> = {
+    base: { first: baseServer.start, starts: [], writes: [] },
+    head: { first: headServer.start, starts: [], writes: [] },
+  }
+  // On servers already checked, so no write round waits for a start.
+  for (const { round, side } of turns()) {
+    const { url, start, settle } = servers[side]
+    const quiet = start.quietMs !== null
+    const writes = quiet ? await measureWrites(url, sides[side].root) : []
+    if (quiet) await settle()
+    measured[side].writes.push(writes)
+    log({ round, side, writes })
+  }
+  await stopStarted()
+  for (const { round, side } of turns()) {
+    const { dir, root } = sides[side]
+    const { start, stop } = await startSide(dir, root, SECOND_LIMIT_MS)
+    await stop()
+    measured[side].starts.push(start)
+    log({ round, side, start })
   }
 
   log({ commits, cpus: cpus().length, model: cpus()[0]?.model, measured })
@@ -70,20 +86,28 @@ try {
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, report)
   }
 } finally {
+  await stopStarted()
   rmSync(scratch, { recursive: true, force: true })
 }
 
-async function measure(side: Side): Promise<Round> {
+async function firstStart(side: Side): Promise<SideServer> {
   const { dir, root } = sides[side]
-  const server = await startSide(dir, root)
-  try {
-    const quiet = server.start.quietMs !== null
-    const writes = quiet ? await measureWrites(server.url, root) : []
-    if (quiet) await server.settle()
-    return { side, start: server.start, writes }
-  } finally {
-    await server.stop()
-  }
+  mkdirSync(root)
+  writeBoard(root)
+  const server = await startSide(dir, root, FIRST_LIMIT_MS)
+  started.push(server)
+  log({ side, first: server.start })
+  return server
+}
+
+async function stopStarted(): Promise<void> {
+  await Promise.all(started.splice(0).map(({ stop }) => stop()))
+}
+
+function turns(): { round: number; side: Side }[] {
+  return Array.from({ length: rounds }, (_, index) => index + 1).flatMap(
+    (round) => roundOrder(round).map((side) => ({ round, side })),
+  )
 }
 
 function commitOf(dir: string): string {

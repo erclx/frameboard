@@ -1,12 +1,12 @@
 export type Side = 'base' | 'head'
 
-/** What a start on a board this side has started before took, null where it was never reached. */
+/** What one start took from its spawn, null where its limit came first. */
 export interface StartValues {
   addressMs: number
   boardMs: number | null
   quietMs: number | null
-  /** CPU time of the server and its browser until it went quiet. */
-  cpuMs: number | null
+  /** CPU time of the server and its browser until quiet, or until the limit. */
+  cpuMs: number
 }
 
 /** What one write in another project cost the open tab. */
@@ -17,52 +17,44 @@ export interface WriteValues {
   bytes: number
 }
 
-export interface Round {
-  side: Side
-  start: StartValues
-  /** None where the server never went quiet to measure them on. */
-  writes: WriteValues[]
+export interface SideValues {
+  /** The start that checks the whole board, taken while the other side's does. */
+  first: StartValues
+  /** One second start a round. */
+  starts: StartValues[]
+  /** Each round's writes, none where the server never went quiet before them. */
+  writes: WriteValues[][]
 }
 
 interface Measure {
   label: string
-  values: (round: Round) => (number | null)[]
+  /** The values of each round. */
+  rounds: (side: SideValues) => (number | null)[][]
 }
 
+const startMeasure = (label: string, name: keyof StartValues): Measure => ({
+  label: `Second start, ${label}`,
+  rounds: ({ starts }) => starts.map((start) => [start[name]]),
+})
+
+const writeMeasure = (label: string, name: keyof WriteValues): Measure => ({
+  label: `Unrelated write, ${label}`,
+  rounds: ({ writes }) =>
+    writes.map((round) => round.map((write) => write[name])),
+})
+
 const MEASURES: Measure[] = [
-  {
-    label: 'Second start, address printed (ms)',
-    values: ({ start }) => [start.addressMs],
-  },
-  {
-    label: 'Second start, first board message (ms)',
-    values: ({ start }) => [start.boardMs],
-  },
-  {
-    label: 'Second start, quiet (ms)',
-    values: ({ start }) => [start.quietMs],
-  },
-  {
-    label: 'Second start, CPU until quiet (ms)',
-    values: ({ start }) => [start.cpuMs],
-  },
-  {
-    label: 'Unrelated write, main thread (ms)',
-    values: ({ writes }) => writes.map(({ taskMs }) => taskMs),
-  },
-  {
-    label: 'Unrelated write, script (ms)',
-    values: ({ writes }) => writes.map(({ scriptMs }) => scriptMs),
-  },
-  {
-    label: 'Unrelated write, messages',
-    values: ({ writes }) => writes.map(({ messages }) => messages),
-  },
-  {
-    label: 'Unrelated write, message bytes',
-    values: ({ writes }) => writes.map(({ bytes }) => bytes),
-  },
+  startMeasure('address printed (ms)', 'addressMs'),
+  startMeasure('first board message (ms)', 'boardMs'),
+  startMeasure('quiet (ms)', 'quietMs'),
+  startMeasure('CPU until quiet or the limit (ms)', 'cpuMs'),
+  writeMeasure('main thread (ms)', 'taskMs'),
+  writeMeasure('script (ms)', 'scriptMs'),
+  writeMeasure('messages', 'messages'),
+  writeMeasure('message bytes', 'bytes'),
 ]
+
+const SIDES = ['base', 'head'] as const
 
 /** Which side round `round`, counted from 1, measures first, so neither always runs on the warmer machine. */
 export function roundOrder(round: number): [Side, Side] {
@@ -80,46 +72,52 @@ export function median(values: readonly (number | null)[]): number | null {
 /** The run as markdown, the medians first and every value under them. */
 export function summarize(
   commits: Record<Side, string>,
-  rounds: readonly Round[],
+  measured: Record<Side, SideValues>,
 ): string {
-  const of = (side: Side) => rounds.filter((round) => round.side === side)
-  const count = Math.max(of('base').length, of('head').length)
   return [
     `## Base \`${commits.base}\`, head \`${commits.head}\``,
     '',
     '| Median | Base | Head | Change |',
     '| --- | ---: | ---: | ---: |',
-    ...MEASURES.map(({ label, values }) => {
-      const [base, head] = [
-        median(of('base').flatMap(values)),
-        median(of('head').flatMap(values)),
-      ]
+    ...MEASURES.map(({ label, rounds }) => {
+      const base = median(rounds(measured.base).flat())
+      const head = median(rounds(measured.head).flat())
       return row([label, shown(base), shown(head), change(base, head)])
     }),
     '',
     '### Every value',
-    ...MEASURES.flatMap(({ label, values }) => [
-      '',
-      row([
-        label,
-        ...Array.from({ length: count }, (_, index) => `Round ${index + 1}`),
-      ]),
-      row(['---', ...Array.from({ length: count }, () => '---:')]),
-      ...(['base', 'head'] as const).map((side) =>
-        row([
-          side,
-          ...of(side).map(
-            (each) => values(each).map(shown).join(', ') || shown(null),
-          ),
-        ]),
-      ),
-    ]),
+    ...MEASURES.flatMap(({ label, rounds }) => {
+      const headings = rounds(measured.base).map(
+        (_, index) => `Round ${index + 1}`,
+      )
+      return [
+        '',
+        row([label, ...headings]),
+        row(['---', ...headings.map(() => '---:')]),
+        ...SIDES.map((side) =>
+          row([side, ...rounds(measured[side]).map(listed)]),
+        ),
+      ]
+    }),
+    '',
+    '### First start, uncounted, both sides at once',
+    '',
+    '| Side | Quiet (ms) | CPU until quiet or the limit (ms) |',
+    '| --- | ---: | ---: |',
+    ...SIDES.map((side) => {
+      const { quietMs, cpuMs } = measured[side].first
+      return row([side, shown(quietMs), shown(cpuMs)])
+    }),
     '',
   ].join('\n')
 }
 
 function row(cells: readonly string[]): string {
   return `| ${cells.join(' | ')} |`
+}
+
+function listed(values: readonly (number | null)[]): string {
+  return values.map(shown).join(', ') || shown(null)
 }
 
 function shown(value: number | null): string {

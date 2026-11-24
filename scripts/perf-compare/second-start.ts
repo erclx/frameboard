@@ -8,7 +8,7 @@ import type { StartValues } from './report'
 
 // Five seconds at under 5% of one core, wider than any gap between two checks.
 const QUIET = { windowMs: 5000, busyMs: 250 }
-const QUIET_LIMIT_MS = 600_000
+const SETTLE_LIMIT_MS = 120_000
 const ADDRESS_LIMIT_MS = 120_000
 const BOARD_LIMIT_MS = 120_000
 const STOP_LIMIT_MS = 10_000
@@ -16,18 +16,20 @@ const STOP_LIMIT_MS = 10_000
 export interface SideServer {
   url: string
   start: StartValues
-  /** Waits out the work the last write started, so the next start finds none. */
+  /** Waits out the work the last write started, so nothing it left loads the other side. */
   settle: () => Promise<void>
   stop: () => Promise<void>
 }
 
 /**
  * Starts a side's built CLI on a board and follows the start until its checks
- * go quiet, with one board tab's socket open as a person's would be.
+ * go quiet or the limit comes, with one board tab's socket open as a person's
+ * would be.
  */
 export async function startSide(
   sideDir: string,
   root: string,
+  limitMs: number,
 ): Promise<SideServer> {
   const spawnedAt = performance.now()
   const since = () => performance.now() - spawnedAt
@@ -48,25 +50,31 @@ export async function startSide(
   const { pid } = child
   if (pid === undefined) throw new Error(`no server started in ${sideDir}`)
   const stop = () => stopTree(child, pid)
-  const quiet = () =>
-    waitForQuiet(pid, { ...QUIET, spawnedAt, limitMs: QUIET_LIMIT_MS })
-  try {
+  const quiet = (within: number) =>
+    waitForQuiet(pid, { ...QUIET, limitMs: within })
+  const connect = async () => {
     const url = await printedUrl(child)
     const addressMs = since()
     const socket = new WebSocket(`${url.replace(/^http/, 'ws')}/api/live`)
     const boardMs = (await boardMessage(socket)) ? since() : null
-    const settled = await quiet()
+    return { url, addressMs, boardMs, socket }
+  }
+  try {
+    const [{ url, addressMs, boardMs, socket }, settled] = await Promise.all([
+      connect(),
+      quiet(limitMs),
+    ])
     socket.close()
     return {
       url,
       start: {
         addressMs,
         boardMs,
-        quietMs: settled?.atMs ?? null,
-        cpuMs: settled?.cpuMs ?? null,
+        quietMs: settled.quiet ? settled.atMs : null,
+        cpuMs: settled.cpuMs,
       },
       settle: async () => {
-        await quiet()
+        await quiet(SETTLE_LIMIT_MS)
       },
       stop,
     }
