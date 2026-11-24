@@ -1,6 +1,8 @@
 import { toast } from '@/client/components/ui/toast'
 import { type LiveStore, liveStore } from '@/client/live/store'
 
+import { askToEdit } from './edit-store'
+
 /** The query the server's redeem route lands a failed ticket on. */
 const FLAG = 'link'
 const EXPIRED = 'expired'
@@ -11,18 +13,18 @@ const EXPIRED = 'expired'
  */
 export function watchExpiredLink(
   store: LiveStore = liveStore,
-  notify: () => void = toastExpired,
+  notify: (editButton: boolean) => void = toastExpired,
 ): () => void {
   if (new URLSearchParams(location.search).get(FLAG) !== EXPIRED) {
     return () => {}
   }
   const settle = (): boolean => {
-    const { accessKnown, canWrite } = store.getState()
+    const { accessKnown, canWrite, editButton } = store.getState()
     if (!accessKnown) return false
     const url = new URL(location.href)
     url.searchParams.delete(FLAG)
     history.replaceState(history.state, '', url)
-    if (!canWrite) notify()
+    if (!canWrite) notify(editButton)
     return true
   }
   if (settle()) return () => {}
@@ -32,12 +34,24 @@ export function watchExpiredLink(
   return unsubscribe
 }
 
-function toastExpired(): void {
-  toast.add({
+export function toastExpired(editButton: boolean): void {
+  const id = toast.add({
     title: 'This edit link has expired',
-    description:
-      'A link works once, for two minutes. Run frameboard open for a new one.',
+    description: editButton
+      ? 'A link works once, for a short time.'
+      : 'A link works once, for a short time. Run frameboard open for a new one.',
     type: 'warning',
     timeout: 0,
+    ...(editButton
+      ? {
+          actionProps: {
+            children: 'Edit this board',
+            onClick: () => {
+              toast.close(id)
+              askToEdit()
+            },
+          },
+        }
+      : {}),
   })
 }
