@@ -35,11 +35,15 @@ function sameness(finding: Finding): string {
 }
 
 export interface RenderedFindings {
+  /** Marks `refs` as already read at the box and file time `board` gives, queueing none. */
+  prime: (board: ListResult, refs: readonly string[]) => void
   /**
    * Queues `refs` and every frame whose box or file time moved, catching a
    * resize no write announces.
    */
   queue: (board: ListResult, refs: string[]) => void
+  /** Moves whichever of `refs` are queued ahead of the rest, in queue order. */
+  front: (refs: readonly string[]) => void
   /** Resolves once no recheck of any of `refs` is queued or running. */
   settle: (refs: string[]) => Promise<void>
   /** `browser-not-found` while the last recheck could not launch a browser. */
@@ -62,15 +66,18 @@ export function createRenderedFindings({
   onResult,
 }: {
   check: CheckFrame
-  onResult: (ref: string, findings: Finding[]) => void
+  /** `ran` is false for the empty list a failed recheck lands. */
+  onResult: (ref: string, findings: Finding[], ran: boolean) => void
 }): RenderedFindings {
   // What each frame rendered from when last queued, being its box and file time.
   const seen = new Map<string, string>()
   let known = new Map<string, FrameRecord>()
-  const pending = new Map<string, FrameRecord>()
+  let pending = new Map<string, FrameRecord>()
   const generation = new Map<string, number>()
   let running: string | null = null
   let failure: 'browser-not-found' | null = null
+  // The frames no browser launched for, which the next launch checks.
+  const missed = new Set<string>()
   let closed = false
   let waiters: Waiter[] = []
 
@@ -102,14 +109,15 @@ export function createRenderedFindings({
     const current = () => !closed && generation.get(ref) === asked
     check(frame)
       .then((findings) => {
-        const recovered = failure !== null
         failure = null
+        missed.delete(ref)
         // A stale reading lands nothing, and the write's batch queues the frame again.
-        if (findings && current()) onResult(ref, findings)
-        if (!recovered) return
-        for (const [other, record] of known) {
-          if (other !== ref && !pending.has(other)) enqueue(other, record)
+        if (findings && current()) onResult(ref, findings, true)
+        for (const other of missed) {
+          const record = known.get(other)
+          if (record && !pending.has(other)) enqueue(other, record)
         }
+        missed.clear()
       })
       .catch((error: unknown) => {
         if (
@@ -117,10 +125,11 @@ export function createRenderedFindings({
           error.code === 'browser-not-found'
         ) {
           failure = 'browser-not-found'
+          missed.add(ref)
           return
         }
         // Clears the older file's findings, and the next write requeues it.
-        if (current()) onResult(ref, [])
+        if (current()) onResult(ref, [], false)
       })
       .finally(() => {
         running = null
@@ -130,14 +139,16 @@ export function createRenderedFindings({
   }
 
   return {
+    prime: (board, refs) => {
+      const frames = framesOf(board)
+      for (const ref of refs) {
+        const frame = frames.get(ref)
+        if (frame) seen.set(ref, drawnFrom(frame))
+      }
+    },
     queue: (board, refs) => {
       if (closed) return
-      const frames = new Map<string, FrameRecord>()
-      for (const project of board.projects) {
-        for (const page of project.pages) {
-          for (const frame of page.frames) frames.set(frame.ref, frame)
-        }
-      }
+      const frames = framesOf(board)
       for (const ref of [...seen.keys(), ...pending.keys()]) {
         if (frames.has(ref)) continue
         seen.delete(ref)
@@ -147,10 +158,7 @@ export function createRenderedFindings({
       known = frames
       const due = new Set(refs)
       for (const [ref, frame] of frames) {
-        const views = [frame.box, ...frame.widths]
-          .map(({ width, height }) => `${width}x${height}`)
-          .join(',')
-        const from = `${views}@${frame.modifiedAt}`
+        const from = drawnFrom(frame)
         if (seen.get(ref) !== from) due.add(ref)
         seen.set(ref, from)
       }
@@ -160,6 +168,14 @@ export function createRenderedFindings({
       }
       notify()
       pump()
+    },
+    front: (refs) => {
+      const named = new Set(refs)
+      const queued = [...pending]
+      pending = new Map([
+        ...queued.filter(([ref]) => named.has(ref)),
+        ...queued.filter(([ref]) => !named.has(ref)),
+      ])
     },
     settle: (refs) =>
       new Promise((resolve) => {
@@ -173,4 +189,21 @@ export function createRenderedFindings({
       notify()
     },
   }
+}
+
+/** What a frame renders from, being its boxes and file time. */
+function drawnFrom(frame: FrameRecord): string {
+  const views = [frame.box, ...frame.widths]
+    .map(({ width, height }) => `${width}x${height}`)
+    .join(',')
+  return `${views}@${frame.modifiedAt}`
+}
+
+function framesOf(board: ListResult): Map<string, FrameRecord> {
+  return new Map(
+    board.projects
+      .flatMap((project) => project.pages)
+      .flatMap((page) => page.frames)
+      .map((frame) => [frame.ref, frame]),
+  )
 }

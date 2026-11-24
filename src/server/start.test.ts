@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import WebSocket from 'ws'
 
 import type { ServerMessage } from '@/shared/live-messages'
+import type { Finding } from '@/shared/records/check'
 
 import { cli } from '../../test/support/cli'
 import {
@@ -31,7 +32,13 @@ import {
 } from '../../test/support/headless-shell'
 import { withoutRepeats } from '../../test/support/live-pushes'
 import { loadChanges } from './changes/persist'
-import { BoardTabs, type RunningServer, startServer } from './start'
+import type { RememberedFrame } from './live/remembered'
+import {
+  BoardTabs,
+  type RunningServer,
+  type StartOptions,
+  startServer,
+} from './start'
 
 function sha256(text: string): string {
   return createHash('sha256').update(text).digest('hex')
@@ -255,6 +262,11 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
   beforeEach(async () => {
     clientDir = mkdtempSync(join(tmpdir(), 'frameboard-client-'))
     board = copyFixtureBoard('live')
+    // Held past the hello, so no slice lands between two of its messages.
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
     server = await startServer({
       clientDir,
       facesDir: clientDir,
@@ -262,6 +274,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
       port: 0,
       openUrl: () => {},
       launch: noBrowser,
+      pause: () => gate,
     })
     messages = []
     socket = new WebSocket(`ws://127.0.0.1:${server.port}/api/live`)
@@ -272,6 +285,18 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     await expect
       .poll(() => messages.length, { timeout: 5000 })
       .toBeGreaterThanOrEqual(8)
+    release()
+    await expect
+      .poll(
+        () =>
+          new Set(
+            messages.flatMap((message) =>
+              message.type === 'findings' ? Object.keys(message.findings) : [],
+            ),
+          ).size,
+        { timeout: 5000 },
+      )
+      .toBe(3)
     hello = messages.slice(0, 8)
     messages = []
   })
@@ -283,7 +308,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     rmSync(clientDir, { recursive: true, force: true })
   })
 
-  it('sends the frame port, the board, whether it may write, the history, the claims, the changes, the listeners, and then every frame checked on hello', () => {
+  it('sends the frame port, the board, whether it may write, the history, the claims, the changes, the listeners, and then the findings on hello', () => {
     expect(hello.map((message) => message.type)).toEqual([
       'frames',
       'board',
@@ -300,9 +325,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     expect(hello[4]).toEqual({ type: 'claims', claims: [] })
     expect(hello[5]).toEqual({ type: 'changes', changes: [] })
     expect(hello[6]).toEqual({ type: 'listeners', listeners: [] })
-    expect(hello[7]).toMatchObject({
-      findings: { 'studio/home/hero': expect.any(Array) },
-    })
+    expect(hello[7]).toMatchObject({ findings: expect.any(Object) })
   })
 
   it('pushes a reply the CLI writes to the board as its page notes', async () => {
@@ -1206,6 +1229,459 @@ describe.skipIf(shell === null)(
     })
   },
 )
+
+describe('startServer remembered checks', { timeout: 30_000 }, () => {
+  const TOKEN = 'd'.repeat(64)
+  const REFS = [
+    'studio/home/hero',
+    'studio/home/mobile',
+    'studio/pricing/plans',
+  ]
+  const page = (body: string) =>
+    `<!doctype html><html><head><style>body { margin: 0 }</style></head><body>${body}</body></html>`
+
+  let clientDir: string
+  let board: FixtureBoard
+  let servers: RunningServer[]
+  let sockets: WebSocket[]
+  let release: () => void
+
+  beforeEach(() => {
+    clientDir = mkdtempSync(join(tmpdir(), 'frameboard-client-'))
+    board = copyFixtureBoard('live')
+    // Content at the stored height, so a measure writes nothing.
+    write('studio/home/hero.html', page('<div style="height: 900px"></div>'))
+    write('studio/home/mobile.html', page('<div style="height: 844px"></div>'))
+    write(
+      'studio/pricing/plans.html',
+      page('<div style="width: 9000px; height: 40px"></div>'),
+    )
+    editFrames((frames) => {
+      frames.hero.hugHeight = true
+      frames.mobile.hugHeight = true
+    })
+    servers = []
+    sockets = []
+    release = () => {}
+  })
+
+  afterEach(async () => {
+    release()
+    for (const socket of sockets) socket.terminate()
+    await Promise.all(servers.map((server) => server.close()))
+    board.cleanup()
+    rmSync(clientDir, { recursive: true, force: true })
+  }, SHELL_HOOK_TIMEOUT_MS)
+
+  function write(path: string, contents: string) {
+    writeFileSync(join(board.root, path), contents)
+  }
+
+  function editFrames(
+    edit: (frames: Record<'hero' | 'mobile', Record<string, unknown>>) => void,
+  ) {
+    const path = join(board.root, 'studio/home/layout.json')
+    const file = JSON.parse(readFileSync(path, 'utf8'))
+    edit(file.frames)
+    writeFileSync(path, JSON.stringify(file))
+  }
+
+  async function start(
+    options: Pick<StartOptions, 'launch' | 'pause'> = {},
+  ): Promise<RunningServer> {
+    const server = await startServer({
+      clientDir,
+      facesDir: clientDir,
+      root: board.root,
+      port: 0,
+      openUrl: () => {},
+      launch: noBrowser,
+      ...options,
+    })
+    server.authorize(TOKEN)
+    servers.push(server)
+    return server
+  }
+
+  /** A pause that holds every slice of the start's check until `release`. */
+  function heldPause() {
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    return () => gate
+  }
+
+  async function connect(server: RunningServer) {
+    const messages: ServerMessage[] = []
+    const socket = new WebSocket(`ws://127.0.0.1:${server.port}/api/live`)
+    sockets.push(socket)
+    socket.on('message', (data) => messages.push(JSON.parse(String(data))))
+    await new Promise((resolve) => socket.once('open', resolve))
+    socket.send(JSON.stringify({ type: 'hello', role: 'board' }))
+    return messages
+  }
+
+  /** The findings a hello carries, as against what the start sends after it. */
+  async function helloFindings(server: RunningServer) {
+    const messages = await connect(server)
+    const first = () =>
+      messages.find((message) => message.type === 'findings')?.findings
+    await expect.poll(first, { timeout: 5000 }).toBeDefined()
+    return { findings: first() ?? {}, messages }
+  }
+
+  function findingsSent(messages: ServerMessage[]) {
+    return Object.assign(
+      {},
+      ...messages.map((message) =>
+        message.type === 'findings' ? message.findings : {},
+      ),
+    ) as Record<string, Finding[]>
+  }
+
+  async function check(server: RunningServer, refs: string[]) {
+    const response = await fetch(`http://127.0.0.1:${server.port}/api/checks`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${TOKEN}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ refs }),
+    })
+    return response.json()
+  }
+
+  const stored = (): Record<string, RememberedFrame> => {
+    try {
+      return JSON.parse(
+        readFileSync(join(board.root, '.run/checks.json'), 'utf8'),
+      ).frames
+    } catch {
+      return {}
+    }
+  }
+
+  it('answers a hello, then sends the findings, while the start has yet to check', async () => {
+    const server = await start({ pause: heldPause() })
+
+    const { findings, messages } = await helloFindings(server)
+    release()
+
+    expect(findings).toEqual({})
+    expect(messages.map((message) => message.type)).toContain('board')
+    await expect
+      .poll(() => Object.keys(findingsSent(messages)).sort(), { timeout: 5000 })
+      .toEqual(REFS)
+  })
+
+  it("holds a check's answer until its frames are through the start's check", async () => {
+    const server = await start({ pause: heldPause() })
+    let answered = false
+    const answer = check(server, ['studio/home/hero']).then(() => {
+      answered = true
+    })
+    // Its turn comes after the first's, so by its answer the first only waits.
+    await check(server, ['studio/home/none'])
+    const before = answered
+    release()
+    await answer
+
+    const { findings } = await helloFindings(server)
+    expect(before).toBe(false)
+    expect(Object.keys(findings)).toContain('studio/home/hero')
+  })
+
+  it("answers a second start's hello with the first's findings and no check", async () => {
+    const first = await start()
+    await check(first, REFS)
+    const { findings: checked } = await helloFindings(first)
+    await first.close()
+
+    let slices = 0
+    const second = await start({
+      pause: async () => {
+        slices += 1
+      },
+    })
+    const { findings } = await helloFindings(second)
+
+    expect(Object.keys(checked).sort()).toEqual(REFS)
+    expect(findings).toEqual(checked)
+    expect(slices).toBe(0)
+  })
+
+  it.each([
+    [
+      'a frame',
+      'studio/home/hero.html',
+      page('<p>new</p>'),
+      ['studio/home/mobile', 'studio/pricing/plans'],
+    ],
+    [
+      "a page's sheet",
+      'studio/home/styles.css',
+      'p { color: red }',
+      ['studio/pricing/plans'],
+    ],
+    ['an asset', 'studio/assets/dot.svg', '<svg></svg>', []],
+    [
+      'project.json',
+      'studio/project.json',
+      '{ "version": 1, "pages": [] }',
+      [],
+    ],
+    ['the token sheet', 'tokens.css', ':root { --ink: #111 }', []],
+  ])(
+    'rechecks what %s reaches when it was edited while no server ran',
+    async (_name, path, contents, held) => {
+      const first = await start()
+      await check(first, REFS)
+      await first.close()
+      write(path, contents)
+
+      const second = await start({ pause: heldPause() })
+      const { findings, messages } = await helloFindings(second)
+      release()
+
+      expect(Object.keys(findings).sort()).toEqual(held)
+      await expect
+        .poll(() => Object.keys(findingsSent(messages)).sort(), {
+          timeout: 5000,
+        })
+        .toEqual(REFS)
+    },
+  )
+
+  it('rechecks a frame loading a sheet of another page, edited while no server ran', async () => {
+    write('studio/pricing/shared.css', 'p { color: red }')
+    write(
+      'studio/home/hero.html',
+      '<link rel="stylesheet" href="../pricing/shared.css"><p>hero</p>',
+    )
+    const first = await start()
+    await check(first, REFS)
+    await first.close()
+
+    const second = await start()
+    await helloFindings(second)
+    await second.close()
+    const unchanged = stored()['studio/home/hero']
+    write('studio/pricing/shared.css', 'p { color: var(--missing) }')
+
+    const third = await start({ pause: heldPause() })
+    const { findings } = await helloFindings(third)
+
+    expect(unchanged?.outside).toEqual(['studio/pricing/shared.css'])
+    expect(Object.keys(findings)).toEqual(['studio/home/mobile'])
+  })
+
+  describe('a frame whose sheet link names a folder', () => {
+    const FOLDER_LINK = '<link rel="stylesheet" href="./"><p>hero</p>'
+
+    it('leaves the other frames their findings at start', async () => {
+      write('studio/home/hero.html', FOLDER_LINK)
+      const server = await start()
+      await check(server, REFS)
+
+      const { findings } = await helloFindings(server)
+
+      expect(Object.keys(findings).sort()).toEqual([
+        'studio/home/mobile',
+        'studio/pricing/plans',
+      ])
+    })
+
+    it('leaves a neighbor written beside it its findings', async () => {
+      const server = await start()
+      await check(server, REFS)
+      const messages = await connect(server)
+
+      write('studio/home/hero.html', FOLDER_LINK)
+      write('studio/home/mobile.html', '<p>bare</p>')
+
+      await expect
+        .poll(
+          () =>
+            findingsSent(messages)['studio/home/mobile']?.map(
+              ({ rule }) => rule,
+            ),
+          { timeout: 5000 },
+        )
+        .toEqual(['default-font'])
+    })
+  })
+
+  it('checks a frame written mid-sweep against its new bytes, and once', async () => {
+    const server = await start({ pause: heldPause() })
+    const messages = await connect(server)
+    const hero = join(board.root, 'studio/home/hero.html')
+    const heroFindings = () =>
+      messages.flatMap((message) =>
+        message.type === 'findings' && message.findings['studio/home/hero']
+          ? [message.findings['studio/home/hero'].map(({ rule }) => rule)]
+          : [],
+      )
+
+    writeFileSync(hero, '<p>bare</p>')
+    await expect.poll(heroFindings, { timeout: 5000 }).toHaveLength(1)
+    release()
+    await expect
+      .poll(() => Object.keys(findingsSent(messages)).sort(), { timeout: 5000 })
+      .toEqual(REFS)
+
+    expect(heroFindings()).toEqual([['default-font']])
+  })
+
+  it('shows a stored result on no other frame once its own is renamed', async () => {
+    const first = await start()
+    await check(first, REFS)
+    await first.close()
+    renameSync(
+      join(board.root, 'studio/pricing/plans.html'),
+      join(board.root, 'studio/pricing/prices.html'),
+    )
+
+    const second = await start({ pause: heldPause() })
+    const { findings } = await helloFindings(second)
+
+    expect(Object.keys(findings).sort()).toEqual([
+      'studio/home/hero',
+      'studio/home/mobile',
+    ])
+  })
+
+  describe.skipIf(shell === null)('with a browser', () => {
+    /** Chromium, and the frames its pages loaded. */
+    function recorded() {
+      const loaded = new Set<string>()
+      const launch = async () => {
+        const { chromium } = await import('playwright-core')
+        const browser = await chromium.launch()
+        const open = browser.newContext.bind(browser)
+        browser.newContext = async (options) => {
+          const context = await open(options)
+          context.on('request', (request) => {
+            if (!request.isNavigationRequest()) return
+            const { pathname } = new URL(request.url())
+            loaded.add(pathname.replace(/^\/frames\//, '').replace('.html', ''))
+          })
+          return context
+        }
+        return browser
+      }
+      return { launch, loaded }
+    }
+
+    /** Runs a first server until it remembers every result, and closes it. */
+    async function warm() {
+      const first = await start({ launch: recorded().launch })
+      await expect
+        .poll(
+          () => {
+            const frames = stored()
+            return REFS.every(
+              (ref) =>
+                frames[ref]?.checks &&
+                frames[ref].rendered &&
+                (frames[ref].measured || ref === 'studio/pricing/plans'),
+            )
+          },
+          { timeout: 20_000 },
+        )
+        .toBe(true)
+      const { findings } = await helloFindings(first)
+      await first.close()
+      return findings
+    }
+
+    it('opens no page on a second start of an unchanged board, and sends the same findings', async () => {
+      const before = await warm()
+      const { launch, loaded } = recorded()
+
+      const second = await start({ launch })
+      const answer = await check(second, REFS)
+      const { findings } = await helloFindings(second)
+      await second.close()
+
+      expect([...loaded]).toEqual([])
+      expect(findings).toEqual(before)
+      expect(findings['studio/pricing/plans']?.map(({ rule }) => rule)).toEqual(
+        expect.arrayContaining(['clipped']),
+      )
+      expect(answer.data.browser).toEqual({ ran: true })
+    })
+
+    it('checks and measures a frame edited while no server ran, and no other', async () => {
+      await warm()
+      write('studio/home/hero.html', page('<div style="height: 1200px"></div>'))
+      const { launch, loaded } = recorded()
+
+      const second = await start({ launch })
+
+      await expect
+        .poll(
+          () =>
+            JSON.parse(
+              readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
+            ).frames.hero.height,
+          { timeout: 10_000 },
+        )
+        .toBe(1200)
+      await check(second, REFS)
+      expect([...loaded]).toEqual(['studio/home/hero'])
+    })
+
+    it('measures a frame sized off the viewport once, opening no page on the next start', async () => {
+      write('studio/home/hero.html', page('<div style="height: 100vh"></div>'))
+      await warm()
+      const { launch, loaded } = recorded()
+
+      const second = await start({ launch })
+      await check(second, REFS)
+
+      expect([...loaded]).toEqual([])
+    })
+
+    it('checks again only a frame given a linked width while no server ran', async () => {
+      await warm()
+      editFrames((frames) => {
+        frames.mobile.widths = [{ width: 834, height: 844 }]
+      })
+      const { launch, loaded } = recorded()
+
+      const second = await start({ launch })
+      await check(second, REFS)
+
+      expect([...loaded]).toEqual(['studio/home/mobile'])
+    })
+
+    it('serves and keeps stored browser findings while no browser launches', async () => {
+      const before = await warm()
+      const kept = stored()
+      editFrames((frames) => {
+        frames.hero.width = 1200
+      })
+      write('studio/pricing/added.html', page('<p>added</p>'))
+
+      const second = await start()
+      await check(second, [...REFS, 'studio/pricing/added'])
+      const { findings } = await helloFindings(second)
+      await second.close()
+
+      expect(findings['studio/pricing/plans']).toEqual(
+        before['studio/pricing/plans'],
+      )
+      expect(stored()['studio/pricing/plans']).toEqual(
+        kept['studio/pricing/plans'],
+      )
+      expect(stored()['studio/pricing/added']).toMatchObject({
+        checks: { findings: expect.any(Array) },
+      })
+      expect(stored()['studio/pricing/added']?.rendered).toBeUndefined()
+      expect(stored()['studio/home/hero']?.rendered).toBeUndefined()
+    })
+  })
+})
 
 describe('withoutRepeats', () => {
   const board = (name: string): ServerMessage =>

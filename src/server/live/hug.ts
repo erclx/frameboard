@@ -2,6 +2,7 @@ import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import { type MeasuredSize, setMeasured } from '@/server/board/frames'
+import { isCode } from '@/server/board/json-record'
 import { LAYOUT_FILE } from '@/server/board/scan'
 import type { ContentSize } from '@/server/capture/fit'
 import { FrameboardError } from '@/shared/errors'
@@ -17,6 +18,14 @@ export type MeasureFrame = (
   frame: FrameRecord,
   box?: { width: number; height: number },
 ) => Promise<ContentSize>
+
+/**
+ * Hears a frame before it is measured, and answers what to call with the size
+ * once every part it holds is measured and stored.
+ */
+export type RememberMeasure = (
+  frame: FrameRecord,
+) => Promise<(size: MeasuredSize) => void>
 
 export interface Hug {
   /**
@@ -41,10 +50,12 @@ export interface Hug {
 export function createHug({
   root,
   measure,
+  remember = async () => () => {},
   report = (line) => console.error(line),
 }: {
   root: string
   measure: MeasureFrame
+  remember?: RememberMeasure
   report?: (line: string) => void
 }): Hug {
   let queue: Promise<unknown> = Promise.resolve()
@@ -54,30 +65,47 @@ export function createHug({
     board: ListResult,
     refs: readonly string[],
     parts: Parts,
+    begun: Begun = new Map(),
   ): Promise<boolean> => {
     const pages = new Map<
       string,
       { frame: FrameRecord; size: MeasuredSize }[]
     >()
+    const stored = (frame: FrameRecord, size: MeasuredSize) => {
+      const own = begun.get(frame.ref)
+      begun.delete(frame.ref)
+      if (!own) return
+      const whole = { ...own.size, ...size }
+      const unfinished =
+        parts === 'own' &&
+        huggingFrames(board, [frame.ref], 'linked').length > 0
+      if (unfinished) begun.set(frame.ref, { ...own, size: whole })
+      else own.done(whole)
+    }
     let stale = false
     for (const frame of huggingFrames(board, refs, parts)) {
       if (closed) return false
       let size: MeasuredSize
       try {
+        // Read ahead of the measure, whose own part `linked` finishes.
+        if (parts !== 'linked') {
+          begun.set(frame.ref, { done: await remember(frame), size: {} })
+        }
         size = await measureParts(measure, frame, parts)
       } catch (error) {
+        // Read off the same inputs a size is, so measuring again refuses again.
+        if (isCode(error, 'fit-unbounded')) stored(frame, {})
+        else begun.delete(frame.ref)
         report(
           `frameboard: ${frame.ref} keeps its box, since its measure failed: ${failureOf(error)}`,
         )
-        if (
-          error instanceof FrameboardError &&
-          error.code === 'browser-not-found'
-        ) {
-          break
-        }
+        if (isCode(error, 'browser-not-found')) break
         continue
       }
-      if (Object.keys(size).length === 0) continue
+      if (Object.keys(size).length === 0) {
+        stored(frame, size)
+        continue
+      }
       stale ||=
         (frame.hugWidth &&
           size.width !== undefined &&
@@ -95,15 +123,15 @@ export function createHug({
       const unchanged = await Promise.all(
         measured.map(({ frame }) => unchangedSince(frame)),
       )
+      const current = measured.filter((_, index) => unchanged[index])
+      if (current.length === 0) continue
       const sizes = Object.fromEntries(
-        measured
-          .filter((_, index) => unchanged[index])
-          .map(({ frame, size }) => [frame.name, size]),
+        current.map(({ frame, size }) => [frame.name, size]),
       )
-      if (Object.keys(sizes).length === 0) continue
       try {
         const names = await setMeasured(root, page, sizes, { cwd: root })
         written ||= names.length > 0
+        for (const { frame, size } of current) stored(frame, size)
       } catch (error) {
         // An unparsable layout or a removed page has nothing to write.
         if (!(error instanceof FrameboardError)) throw error
@@ -116,15 +144,17 @@ export function createHug({
     board: ListResult,
     refs: readonly string[],
     parts: Parts,
+    begun?: Begun,
   ) => {
     if (closed || huggingFrames(board, refs, parts).length === 0) return
-    queue = queue.then(() => run(board, refs, parts)).catch(() => {})
+    queue = queue.then(() => run(board, refs, parts, begun)).catch(() => {})
   }
 
   return {
     now: async (board, refs) => {
-      const stale = await run(board, refs, 'own')
-      enqueue(board, refs, 'linked')
+      const begun: Begun = new Map()
+      const stale = await run(board, refs, 'own', begun)
+      enqueue(board, refs, 'linked', begun)
       return stale
     },
     later: (board, refs) => enqueue(board, refs, 'all'),
@@ -143,6 +173,12 @@ function failureOf(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error)
   return message.split('\n', 1)[0] ?? ''
 }
+
+/** The frames a measure has begun and not finished storing, with the size read so far. */
+type Begun = Map<
+  string,
+  { done: (size: MeasuredSize) => void; size: MeasuredSize }
+>
 
 /** Which boxes a run measures: the frame's own, its linked widths, or both. */
 type Parts = 'own' | 'linked' | 'all'

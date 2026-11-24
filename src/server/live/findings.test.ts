@@ -5,9 +5,14 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { scanBoard } from '@/server/board/scan'
 import type { Finding } from '@/shared/records/check'
+import type { ListResult } from '@/shared/records/list'
 
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
-import { createBoardFindings, recheckRefs } from './findings'
+import {
+  type BoardFindings,
+  createBoardFindings,
+  recheckRefs,
+} from './findings'
 
 const CLEAN = '<style>body { font-family: Geist }</style><p>Hello</p>'
 const UNSTYLED = '<p>Hello</p>'
@@ -28,6 +33,16 @@ function rulesOf(findings: Record<string, { rule: string }[]>) {
   )
 }
 
+function checkAll(findings: BoardFindings, scanned: ListResult) {
+  return findings.update(
+    scanned,
+    scanned.projects
+      .flatMap((project) => project.pages)
+      .flatMap((page) => page.frames)
+      .map((frame) => frame.ref),
+  )
+}
+
 describe('createBoardFindings', () => {
   it('checks every frame on a full update', async () => {
     board = writeBoard({
@@ -36,7 +51,7 @@ describe('createBoardFindings', () => {
     })
     const findings = createBoardFindings(board.root)
 
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
 
     expect(rulesOf(findings.all())).toEqual({
       'site/home/about': [],
@@ -50,11 +65,13 @@ describe('createBoardFindings', () => {
       'site/home/about.html': UNSTYLED,
     })
     const findings = createBoardFindings(board.root)
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
     const hero = join(board.root, 'site/home/hero.html')
     writeFileSync(hero, CLEAN)
 
-    const changed = findings.update(await scanBoard(board.root), [hero])
+    const changed = findings.update(await scanBoard(board.root), [
+      'site/home/hero',
+    ])
 
     expect(changed).toEqual({ 'site/home/hero': [] })
     expect(rulesOf(findings.all())).toEqual({
@@ -69,11 +86,11 @@ describe('createBoardFindings', () => {
       'site/home/about.html': UNSTYLED,
     })
     const findings = createBoardFindings(board.root)
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
     const about = join(board.root, 'site/home/about.html')
     rmSync(about)
 
-    findings.update(await scanBoard(board.root), [about])
+    findings.update(await scanBoard(board.root), ['site/home/about'])
 
     expect(Object.keys(findings.all())).toEqual(['site/home/hero'])
   })
@@ -92,7 +109,7 @@ describe('change findings', () => {
   it('merges a held change finding after the static ones', async () => {
     board = writeBoard({ 'site/home/hero.html': UNSTYLED })
     const findings = createBoardFindings(board.root)
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
 
     const sent = findings.setChanged('site/home/hero', [outranked('first')])
 
@@ -104,11 +121,11 @@ describe('change findings', () => {
   it('keeps it across a recheck until the next agent write replaces it', async () => {
     board = writeBoard({ 'site/home/hero.html': UNSTYLED })
     const findings = createBoardFindings(board.root)
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
     findings.setChanged('site/home/hero', [outranked('first')])
     const hero = join(board.root, 'site/home/hero.html')
     writeFileSync(hero, CLEAN)
-    findings.update(await scanBoard(board.root), [hero])
+    findings.update(await scanBoard(board.root), ['site/home/hero'])
     expect(rulesOf(findings.all())).toEqual({ 'site/home/hero': ['outranked'] })
 
     findings.setChanged('site/home/hero', [])
@@ -122,12 +139,12 @@ describe('change findings', () => {
       'site/home/about.html': UNSTYLED,
     })
     const findings = createBoardFindings(board.root)
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
     findings.setChanged('site/home/hero', [outranked('first')])
     const hero = join(board.root, 'site/home/hero.html')
     rmSync(hero)
 
-    findings.update(await scanBoard(board.root), [hero])
+    findings.update(await scanBoard(board.root), ['site/home/hero'])
 
     expect(findings.changed(['site/home/hero'])).toEqual({
       'site/home/hero': [],
@@ -146,25 +163,22 @@ describe('a rule turned off', () => {
   }
   const clipped: Finding = { ...outranked, rule: 'clipped', severity: 'error' }
 
-  function writeChecks(root: string, checks: unknown): string {
+  function writeChecks(root: string, checks: unknown) {
     const file = join(root, 'site/project.json')
     writeFileSync(file, JSON.stringify({ version: 1, pages: ['home'], checks }))
-    return file
   }
 
   it('takes a held change finding out of the merged list and puts it back when turned on', async () => {
     board = writeBoard({ 'site/home/hero.html': CLEAN })
     const findings = createBoardFindings(board.root)
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
     findings.setChanged('site/home/hero', [outranked])
 
-    const off = findings.update(await scanBoard(board.root), [
-      writeChecks(board.root, { off: ['outranked'] }),
-    ])
+    writeChecks(board.root, { off: ['outranked'] })
+    const off = checkAll(findings, await scanBoard(board.root))
     const heldOff = findings.changed(['site/home/hero'])
-    const on = findings.update(await scanBoard(board.root), [
-      writeChecks(board.root, {}),
-    ])
+    writeChecks(board.root, {})
+    const on = checkAll(findings, await scanBoard(board.root))
 
     expect(off).toEqual({ 'site/home/hero': [] })
     expect(heldOff).toEqual({ 'site/home/hero': [] })
@@ -174,12 +188,11 @@ describe('a rule turned off', () => {
   it('takes a held browser finding out the same way', async () => {
     board = writeBoard({ 'site/home/hero.html': CLEAN })
     const findings = createBoardFindings(board.root)
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
     findings.setRendered('site/home/hero', [clipped])
 
-    const off = findings.update(await scanBoard(board.root), [
-      writeChecks(board.root, { off: ['clipped'] }),
-    ])
+    writeChecks(board.root, { off: ['clipped'] })
+    const off = checkAll(findings, await scanBoard(board.root))
 
     expect(off).toEqual({ 'site/home/hero': [] })
     expect(findings.rendered(['site/home/hero'])).toEqual({
@@ -193,14 +206,13 @@ describe('a rule turned off', () => {
       'docs/home/hero.html': CLEAN,
     })
     const findings = createBoardFindings(board.root)
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
     findings.setChanged('docs/home/hero', [
       { ...outranked, frame: 'docs/home/hero', path: 'docs/home/hero.html' },
     ])
 
-    findings.update(await scanBoard(board.root), [
-      writeChecks(board.root, { off: ['outranked'] }),
-    ])
+    writeChecks(board.root, { off: ['outranked'] })
+    findings.update(await scanBoard(board.root), ['site/home/hero'])
 
     expect(rulesOf(findings.all())).toEqual({
       'site/home/hero': [],
@@ -222,7 +234,7 @@ describe('browser findings', () => {
   it('sends a frame its static and browser findings merged', async () => {
     board = writeBoard({ 'site/home/hero.html': UNSTYLED })
     const findings = createBoardFindings(board.root)
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
 
     const changed = findings.setRendered('site/home/hero', [CLIPPED])
 
@@ -237,12 +249,14 @@ describe('browser findings', () => {
   it('keeps the browser findings through a static recheck', async () => {
     board = writeBoard({ 'site/home/hero.html': UNSTYLED })
     const findings = createBoardFindings(board.root)
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
     findings.setRendered('site/home/hero', [CLIPPED])
     const hero = join(board.root, 'site/home/hero.html')
     writeFileSync(hero, CLEAN)
 
-    const changed = findings.update(await scanBoard(board.root), [hero])
+    const changed = findings.update(await scanBoard(board.root), [
+      'site/home/hero',
+    ])
 
     expect(rulesOf(changed)).toEqual({ 'site/home/hero': ['clipped'] })
   })
@@ -252,7 +266,7 @@ describe('browser findings', () => {
     const findings = createBoardFindings(board.root)
 
     const early = findings.setRendered('site/home/hero', [CLIPPED])
-    const changed = findings.update(await scanBoard(board.root), 'all')
+    const changed = checkAll(findings, await scanBoard(board.root))
 
     expect(early).toEqual({})
     expect(rulesOf(changed)).toEqual({ 'site/home/hero': ['clipped'] })
@@ -264,12 +278,12 @@ describe('browser findings', () => {
       'site/home/about.html': CLEAN,
     })
     const findings = createBoardFindings(board.root)
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
     findings.setRendered('site/home/about', [CLIPPED])
     const about = join(board.root, 'site/home/about.html')
     rmSync(about)
 
-    findings.update(await scanBoard(board.root), [about])
+    findings.update(await scanBoard(board.root), ['site/home/about'])
 
     expect(findings.rendered(['site/home/about'])).toEqual({
       'site/home/about': [],
@@ -282,12 +296,105 @@ describe('browser findings', () => {
       'site/home/about.html': CLEAN,
     })
     const findings = createBoardFindings(board.root)
-    findings.update(await scanBoard(board.root), 'all')
+    checkAll(findings, await scanBoard(board.root))
     findings.setRendered('site/home/hero', [CLIPPED])
 
     expect(
       rulesOf(findings.rendered(['site/home/hero', 'site/home/about'])),
     ).toEqual({ 'site/home/hero': ['clipped'], 'site/home/about': [] })
+  })
+})
+
+describe('remembered findings', () => {
+  const FOUND: Finding = {
+    rule: 'default-font',
+    severity: 'warning',
+    frame: 'site/home/hero',
+    path: 'site/home/hero.html',
+    message: 'From the last server.',
+    location: null,
+  }
+  const CLIPPED: Finding = { ...FOUND, rule: 'clipped', severity: 'error' }
+  const STORED = {
+    'site/home/hero': {
+      checks: { key: 'own', findings: [FOUND] },
+      rendered: { key: 'drawn', findings: [CLIPPED] },
+    },
+  }
+
+  it('answers a hello for a primed frame with no check', async () => {
+    board = writeBoard({ 'site/home/hero.html': CLEAN })
+    const findings = createBoardFindings(board.root)
+
+    findings.prime(await scanBoard(board.root), STORED)
+
+    expect(findings.all()).toEqual({ 'site/home/hero': [FOUND, CLIPPED] })
+    expect(findings.rendered(['site/home/hero'])).toEqual({
+      'site/home/hero': [CLIPPED],
+    })
+  })
+
+  it('replaces a primed frame on its recheck', async () => {
+    board = writeBoard({ 'site/home/hero.html': CLEAN })
+    const findings = createBoardFindings(board.root)
+    const scanned = await scanBoard(board.root)
+    findings.prime(scanned, STORED)
+
+    findings.update(
+      scanned,
+      ['site/home/hero'],
+      new Map([['site/home/hero', 'newer']]),
+    )
+    findings.setRendered('site/home/hero', [], 'redrawn')
+
+    expect(findings.all()).toEqual({ 'site/home/hero': [] })
+    expect(findings.kept()).toEqual({
+      'site/home/hero': {
+        checks: { key: 'newer', findings: [] },
+        rendered: { key: 'redrawn', findings: [] },
+      },
+    })
+  })
+
+  it('keeps no result landing without a key, in place of the one it replaced', async () => {
+    board = writeBoard({ 'site/home/hero.html': CLEAN })
+    const findings = createBoardFindings(board.root)
+    const scanned = await scanBoard(board.root)
+    findings.prime(scanned, STORED)
+
+    findings.setRendered('site/home/hero', [])
+
+    expect(findings.kept()).toEqual({
+      'site/home/hero': { checks: STORED['site/home/hero'].checks },
+    })
+  })
+
+  it('drops a stored frame the board no longer holds', async () => {
+    board = writeBoard({ 'site/home/renamed.html': CLEAN })
+    const findings = createBoardFindings(board.root)
+
+    findings.prime(await scanBoard(board.root), STORED)
+
+    expect(findings.all()).toEqual({})
+    expect(findings.kept()).toEqual({})
+  })
+
+  it('leaves out a rule its project turns off with no frame rechecked', async () => {
+    board = writeBoard({
+      'site/project.json':
+        '{ "version": 1, "pages": [], "checks": { "off": ["outranked"] } }',
+      'site/home/hero.html': CLEAN,
+    })
+    const findings = createBoardFindings(board.root)
+    findings.prime(await scanBoard(board.root), STORED)
+
+    const sent = findings.setChanged('site/home/hero', [
+      { ...FOUND, rule: 'outranked' },
+    ])
+
+    expect(rulesOf(sent)).toEqual({
+      'site/home/hero': ['default-font', 'clipped'],
+    })
   })
 })
 

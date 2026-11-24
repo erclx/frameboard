@@ -9,7 +9,7 @@ import { serve } from '@hono/node-server'
 
 import type { FrameChange } from '@/shared/records/changes'
 import type { Finding } from '@/shared/records/check'
-import type { ListResult } from '@/shared/records/list'
+import type { FrameRecord, ListResult } from '@/shared/records/list'
 import { THEMES } from '@/shared/theme'
 
 import { type Access } from './access/guard'
@@ -50,11 +50,18 @@ import {
 } from './live/hug'
 import { openBoard } from './live/open-board'
 import {
+  createFrameKeys,
+  createRememberedStore,
+  type KeyMaker,
+  type RememberedFrame,
+} from './live/remembered'
+import {
   acrossWidths,
   createRenderedFindings,
   type RenderedFindings,
 } from './live/rendered-findings'
 import { createSelectionHolder } from './live/selection'
+import { createStartChecks } from './live/start-checks'
 import {
   type BoardWatcher,
   type MovedFolder,
@@ -107,6 +114,8 @@ export interface StartOptions {
   openUrl: (url: string) => void
   /** Launches the warm browser, the headless shell unless a test stands in. */
   launch?: Launcher
+  /** What runs ahead of each slice of the start's static check, unless a test stands in. */
+  pause?: () => Promise<void>
   /** The command a note starts a session with, from `FRAMEBOARD_DISPATCH`, run in `cwd`. */
   dispatch?: { command: string; cwd: string; env: NodeJS.ProcessEnv }
   /** Mounts `GET /api/access/open`, which hands any local browser a writing tab. */
@@ -194,6 +203,7 @@ async function listen({
   port,
   openUrl,
   launch,
+  pause,
   dispatch,
   openRoute,
 }: Omit<StartOptions, 'strictPort'>): Promise<RunningServer> {
@@ -234,6 +244,53 @@ async function listen({
   const tracker = createChangeTracker(root)
   // A log that fails to save costs the next start its marks, never this one its changes.
   const saveLog = () => tracker.save().catch(() => {})
+  const keys = createFrameKeys(root, { tokens })
+  // The files each frame's keys cover past its folders, for the next start to key it by.
+  const outside = new Map<string, string[]>()
+  const keysOf = async (frame: FrameRecord) => {
+    const now = await keys.of(frame)
+    if (now) outside.set(frame.ref, now.outside)
+    return now
+  }
+  // The key each hugging frame's stored size was measured under.
+  const measured = new Map<string, string>()
+  const store = createRememberedStore(root, () => {
+    const frames: Record<string, RememberedFrame> = findings.kept()
+    for (const { ref } of scanned.board ? framesOf(scanned.board) : []) {
+      const key = measured.get(ref)
+      if (key !== undefined) frames[ref] = { ...frames[ref], measured: key }
+      const files = outside.get(ref) ?? []
+      if (files.length > 0) frames[ref] = { ...frames[ref], outside: files }
+    }
+    return frames
+  })
+  /** Rechecks `refs` in the scan turn, keeping each result under what it was read from. */
+  const recheck: Recheck = async (board, refs) => {
+    const asked = new Set(refs)
+    const named = await Promise.all(
+      framesOf(board)
+        .filter(({ ref }) => asked.has(ref))
+        .map(async (frame) => {
+          const key = (await keysOf(frame))?.checks
+          return key === undefined ? [] : [[frame.ref, key] as const]
+        }),
+    )
+    const changed = findings.update(board, refs, new Map(named.flat()))
+    startChecks.drop(Object.keys(changed))
+    if (Object.keys(changed).length > 0) store.saveSoon()
+    return changed
+  }
+  const startChecks = createStartChecks({
+    inTurn,
+    pause,
+    check: async (refs) => {
+      if (closing || !scanned.board) return
+      const changed = await recheck(scanned.board, refs)
+      if (Object.keys(changed).length > 0) {
+        hub.broadcast({ type: 'findings', findings: changed })
+      }
+    },
+  })
   const settling = new Map<ReturnType<typeof setTimeout>, () => void>()
   // The bytes each frame's held `outranked` warning was raised against.
   const raised = new Map<string, string>()
@@ -353,8 +410,11 @@ async function listen({
   })
   // Captures a previous server left could show a frame edited while none ran.
   await thumbnails.empty()
+  // The running recheck's key, read ahead of it. The queue runs one at a time.
+  let rendering: string | undefined
   const rendered = createRenderedFindings({
     check: async (frame) => {
+      rendering = (await keysOf(frame))?.rendered
       const list = await acrossWidths(frame, async (box) =>
         checkRendered(await browser.get(), {
           baseUrl: baseUrl(),
@@ -376,10 +436,16 @@ async function listen({
       // Left to a newer write's batch, since this read used the old box.
       return (await modifiedAt(frame.path)) === frame.modifiedAt ? list : null
     },
-    onResult: (ref, list) => {
+    onResult: (ref, list, ran) => {
       const before = findings.rendered([ref])[ref]
+      // A failed recheck is no reading, so the next start runs it again.
+      const changed = findings.setRendered(
+        ref,
+        list,
+        ran ? rendering : undefined,
+      )
+      store.saveSoon()
       if (JSON.stringify(before) === JSON.stringify(list)) return
-      const changed = findings.setRendered(ref, list)
       if (Object.keys(changed).length > 0) {
         hub.broadcast({ type: 'findings', findings: changed })
       }
@@ -393,7 +459,18 @@ async function listen({
       hugWidth: box === undefined && frame.hugWidth,
       fonts: 'wait',
     })
-  const hug = createHug({ root, measure })
+  const hug = createHug({
+    root,
+    measure,
+    remember: async (frame) => {
+      const at = await keysOf(frame)
+      return (size) => {
+        if (!at) return
+        measured.set(frame.ref, at.measured(size))
+        store.saveSoon()
+      }
+    },
+  })
   const assetUsage = createAssetUsage(root)
   const preview = createPreviewSlot({ root, facesDir, tokens })
   const app = createApp({
@@ -426,6 +503,8 @@ async function listen({
           try {
             const board = await scanBoard(root)
             rendered.queue(board, [])
+            startChecks.front(refs)
+            rendered.front(refs)
             // Takes in an unbatched agent write, so its findings land before the answer.
             const held = await tracker.update(
               board,
@@ -441,6 +520,7 @@ async function listen({
         }),
       settle: async (refs) => {
         await Promise.all(refs.map((ref) => graces.get(ref)))
+        await startChecks.settle(refs)
         await rendered.settle(refs)
       },
       rendered: findings.rendered,
@@ -487,21 +567,35 @@ async function listen({
   })
   server.on('upgrade', hub.handleUpgrade)
 
-  // Checked once at start, ahead of any hello's findings.
+  let checkedAtStart: Promise<void> = Promise.resolve()
+  // Primed ahead of any hello, which the checks after it never hold.
   const sweep = inTurn(async () => {
     // A reserved frame written while no server ran lands in its box first.
     await landReserved(root, new Date()).catch(() => [])
     const board = await scanBoard(root)
-    const stale = await writtenSinceLayout(board).catch((): string[] => [])
+    const written = await writtenSinceLayout(board).catch((): string[] => [])
     scanned.board = board
-    await tracker.prime(board)
-    findings.update(board, 'all')
+    const [stored] = await Promise.all([store.load(), tracker.prime(board)])
+    const held = await unmoved(board, stored, keys)
+    const refs = Object.keys(held)
+    findings.prime(board, held)
+    rendered.prime(
+      board,
+      refs.filter((ref) => held[ref]?.rendered),
+    )
+    for (const ref of refs) {
+      const key = held[ref]?.measured
+      if (key !== undefined) measured.set(ref, key)
+      outside.set(ref, stored[ref]?.outside ?? [])
+    }
+    const stale = written.filter((ref) => !measured.has(ref))
     // A stale frame's box moves with its measure, so the checks wait on it.
     if (stale.length === 0) rendered.queue(board, [])
     hug.later(
       board,
-      frameRefs(board).filter((ref) => !stale.includes(ref)),
+      refs.filter((ref) => !measured.has(ref) && !stale.includes(ref)),
     )
+    checkedAtStart = startChecks.run(refs.filter((ref) => !held[ref]?.checks))
     return { board, stale }
   })
   // Measured outside the turn, so a hello hears the stored sizes meanwhile.
@@ -524,12 +618,7 @@ async function listen({
           scanned.board = latest
           hub.broadcast({ type: 'board', data: latest })
           shown.board = latest
-          const changed = findings.update(
-            latest,
-            framePaths(latest)
-              .filter(([ref]) => stale.includes(ref))
-              .map(([, path]) => path),
-          )
+          const changed = await recheck(latest, stale)
           if (Object.keys(changed).length > 0) {
             hub.broadcast({ type: 'findings', findings: changed })
           }
@@ -542,6 +631,7 @@ async function listen({
   void claims.push()
   const watcher = await watchBoard(root, tokens ? [tokens] : [])
   watcher.onBatch(assetUsage.drop)
+  watcher.onBatch(keys.drop)
   watcher.onBatch((paths) => {
     // A claim or a renewal sends the claims alone, never a rescan or a check.
     const rest = paths.filter((path) => path !== claims.path)
@@ -550,7 +640,7 @@ async function listen({
     void inTurn(() =>
       pushBatch(root, tokens ?? null, rest, {
         hub,
-        findings,
+        recheck,
         rendered,
         delivery,
         tracker,
@@ -577,6 +667,7 @@ async function listen({
     boardUrl,
     close: () => {
       closing ??= (async () => {
+        startChecks.close()
         rendered.close()
         hug.close()
         claims.close()
@@ -600,12 +691,14 @@ async function listen({
         })
         // Its last turn is queued only once the measure ends, so the drain waits on it.
         await measuredAtStart
+        await checkedAtStart
         // Drains until the tail stops moving, so no turn writes into a removed folder.
         let tail: Promise<unknown>
         do {
           tail = scanning
           await tail
         } while (tail !== scanning)
+        await store.close()
       })()
       return closing
     },
@@ -623,6 +716,12 @@ interface ScannedBoard {
   unmeasured: string[]
 }
 
+/** Runs the static rules on `refs` again, answering each one's merged findings. */
+type Recheck = (
+  board: ListResult,
+  refs: readonly string[],
+) => Promise<Record<string, Finding[]>>
+
 /**
  * One rescan per batch, pushing the board, then reloads, then findings, then
  * notes, an agent's changes waiting out the grace before the board hears.
@@ -633,7 +732,7 @@ async function pushBatch(
   paths: string[],
   {
     hub,
-    findings,
+    recheck,
     rendered,
     delivery,
     tracker,
@@ -646,7 +745,7 @@ async function pushBatch(
     scanned,
   }: {
     hub: LiveHub
-    findings: BoardFindings
+    recheck: Recheck
     rendered: RenderedFindings
     delivery: Delivery
     tracker: ChangeTracker
@@ -743,23 +842,40 @@ async function pushBatch(
   }
   const held = await tracker.update(board, paths, await claims.read())
   if (held.length > 0) settleLater(held)
-  const changed = findings.update(board, paths)
+  const due = recheckRefs(root, paths, board, tokens)
+  const changed = await recheck(board, due)
   if (Object.keys(changed).length > 0) {
     hub.broadcast({ type: 'findings', findings: changed })
   }
-  rendered.queue(board, recheckRefs(root, paths, board, tokens))
+  rendered.queue(board, due)
   await pushNotes(root, paths, hub, delivery)
 }
 
-function frameRefs(board: ListResult): string[] {
-  return framePaths(board).map(([ref]) => ref)
-}
-
-function framePaths(board: ListResult): [ref: string, path: string][] {
+function framesOf(board: ListResult): FrameRecord[] {
   return board.projects
     .flatMap((project) => project.pages)
     .flatMap((page) => page.frames)
-    .map((frame) => [frame.ref, frame.path])
+}
+
+/** Every frame's stored results whose inputs held still, keyed in board order. */
+async function unmoved(
+  board: ListResult,
+  stored: Readonly<Record<string, RememberedFrame>>,
+  keys: KeyMaker,
+): Promise<Record<string, RememberedFrame>> {
+  const frames = await Promise.all(
+    framesOf(board).map(async (frame) => {
+      const { checks, rendered, measured, outside } = stored[frame.ref] ?? {}
+      const now = await keys.of(frame, outside ?? [])
+      const held: RememberedFrame = {
+        ...(now && checks?.key === now.checks ? { checks } : {}),
+        ...(now && rendered?.key === now.rendered ? { rendered } : {}),
+        ...(now && measured === now.measured() ? { measured } : {}),
+      }
+      return [frame.ref, held] as const
+    }),
+  )
+  return Object.fromEntries(frames)
 }
 
 /**

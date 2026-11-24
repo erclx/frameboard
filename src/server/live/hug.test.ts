@@ -475,6 +475,148 @@ describe('createHug', () => {
   })
 })
 
+describe('a remembered measure', () => {
+  let board: TempBoard
+
+  afterEach(() => {
+    board.cleanup()
+  })
+
+  /** What each frame's measure remembered, in the order it was stored. */
+  function remembering() {
+    const stored: [string, object][] = []
+    const remember = async (frame: FrameRecord) => (size: object) => {
+      stored.push([frame.ref, size])
+    }
+    return { stored, remember }
+  }
+
+  it('is remembered at the size it stored', async () => {
+    board = boardOf({ hero: { hugHeight: true } })
+    const { stored, remember } = remembering()
+    const hug = createHug({
+      root: board.root,
+      measure: async () => sized(1440, 1232),
+      remember,
+    })
+
+    await hug.now(await scanBoard(board.root), [HERO])
+
+    expect(stored).toEqual([[HERO, { width: 1440, height: 1232 }]])
+  })
+
+  it('is remembered for a frame whose size already holds, and for an empty one', async () => {
+    board = boardOf({ card: { hugHeight: true }, hero: { hugHeight: true } })
+    const { stored, remember } = remembering()
+    const hug = createHug({
+      root: board.root,
+      measure: async (frame) => ({
+        ...sized(1440, 900),
+        empty: frame.ref === HERO,
+      }),
+      remember,
+    })
+
+    await hug.now(await scanBoard(board.root), [CARD, HERO])
+
+    expect(stored).toEqual([
+      [HERO, {}],
+      [CARD, { width: 1440, height: 900 }],
+    ])
+  })
+
+  it('waits on the linked widths a measure left to its queue', async () => {
+    board = boardOf({
+      hero: { hugHeight: true, widths: [{ width: 390, height: 844 }] },
+    })
+    const { stored, remember } = remembering()
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const hug = createHug({
+      root: board.root,
+      measure: async (_frame, box) => {
+        if (box?.width === 390) await gate
+        return box?.width === 390 ? sized(390, 2000) : sized(1440, 1232)
+      },
+      remember,
+    })
+
+    await hug.now(await scanBoard(board.root), [HERO])
+    const before = [...stored]
+    release()
+
+    await expect.poll(() => stored).toHaveLength(1)
+    expect(before).toEqual([])
+    expect(stored).toEqual([
+      [
+        HERO,
+        {
+          width: 1440,
+          height: 1232,
+          widths: [{ width: 390, height: 2000 }],
+        },
+      ],
+    ])
+  })
+
+  it('is remembered at the box kept for a frame sized off the viewport', async () => {
+    board = boardOf({ hero: { hugHeight: true } })
+    const { stored, remember } = remembering()
+    const hug = createHug({
+      root: board.root,
+      measure: async () => {
+        throw new FrameboardError('fit-unbounded', 'Grows with the viewport.')
+      },
+      remember,
+      report: () => {},
+    })
+
+    await hug.now(await scanBoard(board.root), [HERO])
+
+    expect(stored).toEqual([[HERO, {}]])
+  })
+
+  it('is not remembered when no browser launched', async () => {
+    board = boardOf({ hero: { hugHeight: true } })
+    const { stored, remember } = remembering()
+    const hug = createHug({
+      root: board.root,
+      measure: async () => {
+        throw new FrameboardError('browser-not-found', 'No shell.')
+      },
+      remember,
+      report: () => {},
+    })
+
+    await hug.now(await scanBoard(board.root), [HERO])
+
+    expect(stored).toEqual([])
+  })
+
+  it('is not remembered when it failed or its file changed meanwhile', async () => {
+    board = boardOf({ card: { hugHeight: true }, hero: { hugHeight: true } })
+    const { stored, remember } = remembering()
+    const hug = createHug({
+      root: board.root,
+      measure: async (frame) => {
+        if (frame.ref === CARD) throw new Error('Timeout 10000ms exceeded.')
+        const hero = join(board.root, 'studio/home/hero.html')
+        const later = new Date(Date.now() + 60_000)
+        utimesSync(hero, later, later)
+        return sized(1440, 1232)
+      },
+      remember,
+      report: () => {},
+    })
+
+    await hug.now(await scanBoard(board.root), [CARD, HERO])
+
+    expect(stored).toEqual([])
+  })
+})
+
 describe('writtenSinceLayout', () => {
   let board: TempBoard
 
