@@ -1,7 +1,6 @@
 // Usage: bun scripts/perf-compare/run.ts <baseDir> <headDir> <rounds>
-// Measures two built checkouts in alternating rounds on generated boards. It
-// prints each round and the report, and adds the report to the run's summary
-// on GitHub. It exits 0 whatever the values say.
+// Measures two built checkouts in alternating rounds on generated boards,
+// prints the report, and exits 0 whatever it says.
 import {
   appendFileSync,
   mkdirSync,
