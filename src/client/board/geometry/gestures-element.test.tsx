@@ -163,6 +163,23 @@ describe('attachGestures', () => {
         expect(canvas.extracts).toEqual([])
       })
 
+      it.each([
+        ['a linked width drawn beside its frame', [430, 200]],
+        ['the label strip over a frame', [200, 92]],
+      ] as const)('makes no frame released over %s', (_case, to) => {
+        const canvas = setup(
+          [{ ...LEFT, widths: [{ width: 150, height: 200 }] }],
+          { elementBox: ELEMENT_BOX },
+        )
+        detach = canvas.detach
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.drag([200, 175], [...to])
+
+        expect(canvas.extracts).toEqual([])
+        expect(canvas.moves).toHaveLength(1)
+      })
+
       it('makes no frame over one the page hides', () => {
         const hidden = { ...RIGHT, ref: `${PAGE}/hidden`, hidden: true }
         const canvas = setup([LEFT], {

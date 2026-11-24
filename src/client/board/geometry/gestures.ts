@@ -436,7 +436,7 @@ export function attachGestures(
     if (!box || (event.target ?? last?.target) !== hit) return null
     const all = withDrawn(target.pageFrames?.() ?? target.frames())
     const point = toCanvas(event)
-    if (overFrame(all, point)) return null
+    if (overFrame(all, point) || frameAt(all, point, zoom())) return null
     const x = box.x + point.x - from.x
     const y = box.y + point.y - from.y
     return elementGhost(key, { ...box, x, y }, all)
