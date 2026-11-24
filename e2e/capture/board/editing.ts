@@ -263,6 +263,57 @@ function ellipseHeld(ref: string): (page: Page) => Promise<void> {
 }
 
 /**
+ * Drags the selected element out of `ref` and holds it under the frame's
+ * bottom edge, where a release would make a frame of its own.
+ */
+function heldOutOf(ref: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ owner, granted, frames }) => {
+        if (window !== window.top) return
+        let left = frames
+        const run = () => {
+          const outline = document.querySelector('[data-element-selection]')
+          const frame = document.querySelector(`[data-frame="${owner}"]`)
+          const hit = document.querySelector('[data-hit-layer]')
+          // A drag pressed before the server grants writes never starts.
+          if (!outline || !frame || !hit || !document.querySelector(granted)) {
+            if (--left > 0) requestAnimationFrame(run)
+            else console.error(`No selected element in ${owner} to drag out`)
+            return
+          }
+          const box = outline.getBoundingClientRect()
+          const x = box.left + box.width / 2
+          const from = box.top + box.height / 2
+          const to = frame.getBoundingClientRect().bottom + 60
+          const send = (type: string, y: number) =>
+            hit.dispatchEvent(
+              new MouseEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX: x,
+                clientY: y,
+              }),
+            )
+          send('mousedown', from)
+          send('mousemove', (from + to) / 2)
+          send('mousemove', to)
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(run),
+        )
+      },
+      {
+        owner: ref,
+        granted: `button[aria-label="Lock ${ref.split('/').at(-1)}"]:not([disabled])`,
+        frames: PRESS_FRAMES,
+      },
+    )
+  }
+}
+
+/**
  * Opens `ref`'s headline and types a second line, holding the write back so
  * the served board keeps its bytes whatever ends the edit.
  */
@@ -935,6 +986,23 @@ export function editingCases(theme: 'light' | 'dark'): CaptureCase[] {
           pressOnLoad('^Shapes$'),
           ellipseHeld('webapp/home/hero'),
           readyWhen('[data-shape-draft]'),
+        ),
+      ),
+    },
+    {
+      // A shape held over bare canvas, wearing the ghost of the frame a release makes.
+      section: 'drop-ghost-element',
+      theme,
+      route: '/p/marketing/states',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          elementInFrame('marketing/states/free', '[data-name="Free shape"]'),
+          heldOutOf('marketing/states/free'),
+          readyWhen('[data-drop-ghost]'),
         ),
       ),
     },
