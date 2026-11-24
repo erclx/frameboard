@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.52.0](https://github.com/erclx/frameboard/compare/v0.51.0...v0.52.0) (2026-11-24)
+
+
+### Features
+
+* **access:** offer an edit button in a view-only tab ([#478](https://github.com/erclx/frameboard/issues/478)) ([be129e2](https://github.com/erclx/frameboard/commit/be129e2615ad3deb9b6afbdbf4d67def16a4adba))
+* **canvas:** show a frame's content past its edge with clip off ([#475](https://github.com/erclx/frameboard/issues/475)) ([75c1377](https://github.com/erclx/frameboard/commit/75c1377adb588c32ad2de723768daa0a594a1cfa))
+* **device:** give every body its hardware and each linked width a body ([#474](https://github.com/erclx/frameboard/issues/474)) ([5d5bf72](https://github.com/erclx/frameboard/commit/5d5bf72e81e48c4d904364946c55412287963a01))
+* **layers:** hide and lock an element from its row ([#477](https://github.com/erclx/frameboard/issues/477)) ([25e16de](https://github.com/erclx/frameboard/commit/25e16de386e25e507573f17708613b9078e7e4f5))
+* **place:** move an element dragged onto bare canvas to its own frame ([#479](https://github.com/erclx/frameboard/issues/479)) ([136c37a](https://github.com/erclx/frameboard/commit/136c37ac04b1cc3953516ec352fbe615e50a9ac4))
+* **skill:** name tidy, composite capture, generate, and record verbs ([#481](https://github.com/erclx/frameboard/issues/481)) ([53e1de0](https://github.com/erclx/frameboard/commit/53e1de0c42846c8916588854d953a425351b0c87))
+* **theme:** list a project's fonts in the theme tab and find more ([#483](https://github.com/erclx/frameboard/issues/483)) ([08b8685](https://github.com/erclx/frameboard/commit/08b868592d9e80f1d0708e363920bedfcf161601))
+
+
+### Performance Improvements
+
+* **canvas:** hold the zoom property through a zoom's steps ([#482](https://github.com/erclx/frameboard/issues/482)) ([a972bc4](https://github.com/erclx/frameboard/commit/a972bc4618ddaeb6f6822b9493384ae9ab002565))
+
 ## [0.51.0](https://github.com/erclx/frameboard/compare/v0.50.0...v0.51.0) (2026-11-24)
 
 
