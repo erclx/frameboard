@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 
+import type { MeasuredBox } from '@/shared/frame-bridge/live-element'
 import { pageBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -164,7 +165,7 @@ interface GroupOutlineProps extends ElementOverlayProps {
 function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
   const frame = frames.find((candidate) => candidate.ref === elements[0]?.frame)
   const pending = usePendingBox(frame?.ref ?? '')
-  const measured = useMeasures(container, elements)
+  const measured = useMeasures(container, elements)?.filter(hasBox)
   const shown = pending ?? frame?.box
   const at = shown && pageBox(shown, frame?.device, frame?.turn)
   if (!at || !measured) return null
@@ -238,6 +239,11 @@ function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
   )
 }
 
+/** Whether a measured element takes any room, as one with display none does not. */
+function hasBox({ box }: { box: MeasuredBox }): boolean {
+  return box.width > 0 || box.height > 0
+}
+
 interface ElementOutlineProps extends ElementOverlayProps {
   element: ElementKey | null
 }
@@ -247,7 +253,7 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
   const frame = frames.find((candidate) => candidate.ref === element?.frame)
   const pending = usePendingBox(frame?.ref ?? '')
   const [measure] = useMeasures(container, element ? [element] : []) ?? []
-  const rect = measure?.box ?? null
+  const rect = measure && hasBox(measure) ? measure.box : null
   const held = useStore(heldStore, (state) => state.held)
   const typing = useStore(newTextStore, (state) => state.key)
   const shown = pending ?? frame?.box

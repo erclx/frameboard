@@ -232,6 +232,17 @@ describe('ElementOverlay', () => {
       expect(marks(drawn)).toBe(0)
     })
 
+    it('draws nothing for a hidden element, which holds no box', async () => {
+      const drawn = await selecting('<h1>Hello, world</h1>')
+      const heading = layer
+        ?.querySelector('iframe')
+        ?.contentDocument?.querySelector('h1')
+
+      act(() => heading?.setAttribute('hidden', ''))
+
+      await waitFor(() => expect(outline(drawn)).toBeNull())
+    })
+
     it('names a height text states on itself in px', async () => {
       const drawn = await selecting(
         '<h1 style="height: 30px">Hello, world</h1>',
