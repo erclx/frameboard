@@ -235,30 +235,63 @@ describe('FolderMenu', () => {
     expect(projectStore.getState().openFolder).toBeNull()
   })
 
-  it('keeps the card ringed while the pointer is on its ⋯', async () => {
-    renderHome()
-    const rest = getComputedStyle(folder()).boxShadow
-    const more = screen.getByRole('button', {
-      name: 'Folder actions for Client A',
+  describe('a card whose tab rings', () => {
+    const more = () =>
+      screen.getByRole('button', { name: 'Folder actions for Client A' })
+
+    /** Whether a card draws its ring with its border clear, as its tab draws its own. */
+    const ringed = (card: HTMLElement, rest: string) => {
+      const { boxShadow, borderTopColor } = getComputedStyle(card)
+      return boxShadow !== rest && borderTopColor === 'rgba(0, 0, 0, 0)'
+    }
+
+    it('rings while the pointer is on its ⋯', async () => {
+      renderHome()
+      const card = folder()
+      const rest = getComputedStyle(card).boxShadow
+
+      await pointerOver(more())
+      const hovered = ringed(card, rest)
+      await pointerOff(more())
+
+      expect(hovered).toBe(true)
     })
 
-    await pointerOver(more)
+    it('rings while its ⋯ holds keyboard focus', async () => {
+      renderHome()
+      const card = folder()
+      const rest = getComputedStyle(card).boxShadow
 
-    expect(getComputedStyle(folder()).boxShadow).not.toBe(rest)
-    await pointerOff(more)
-  })
+      await keyboardFocus(more())
 
-  it('clears the card border while the pointer is on its ⋯', async () => {
-    renderHome()
-    const more = screen.getByRole('button', {
-      name: 'Folder actions for Client A',
+      expect(ringed(card, rest)).toBe(true)
     })
 
-    await pointerOver(more)
-    const hovered = getComputedStyle(folder()).borderTopColor
-    await pointerOff(more)
+    it('rings while its ⋯ menu is open', async () => {
+      renderHome()
+      const card = folder()
+      const rest = getComputedStyle(card).boxShadow
 
-    expect(hovered).toBe('rgba(0, 0, 0, 0)')
+      await userEvent.click(more())
+      await screen.findByRole('menu')
+
+      expect(ringed(card, rest)).toBe(true)
+    })
+
+    it('rings while it is renamed in place', async () => {
+      renderHome()
+      const rest = getComputedStyle(folder()).boxShadow
+
+      act(() => folder().focus())
+      await userEvent.keyboard('{F2}')
+      const field = await screen.findByRole('textbox', {
+        name: 'Rename folder Client A',
+      })
+
+      // The card is no button while it holds the field.
+      const card = field.closest<HTMLElement>('.bg-card')
+      expect(card && ringed(card, rest)).toBe(true)
+    })
   })
 
   describe('New project', () => {
