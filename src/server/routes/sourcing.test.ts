@@ -597,6 +597,25 @@ describe('sourcingRoutes', () => {
       })
     })
 
+    it('leaves each font’s frames out on ?frames=false', async () => {
+      const app = await installed()
+
+      const response = await app.request(`${BASE}/installed?frames=false`)
+
+      const { data } = await response.json()
+      expect(data.fonts).toHaveLength(1)
+      expect(data.fonts[0]).not.toHaveProperty('frames')
+    })
+
+    it('refuses a frames value other than true or false as usage', async () => {
+      const app = await installed()
+
+      const response = await app.request(`${BASE}/installed?frames=no`)
+
+      expect(response.status).toBe(400)
+      expect((await response.json()).error.code).toBe('usage')
+    })
+
     it('undoes an install as one step', async () => {
       await installed()
 

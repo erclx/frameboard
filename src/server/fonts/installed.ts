@@ -132,18 +132,24 @@ function weightOf({ min, max }: FontWeights): string {
   return min === max ? `${min}` : `${min} ${max}`
 }
 
-/** A project's installed fonts as `font list` answers them. */
+/**
+ * A project's installed fonts as `font list` answers them. `frames: false`
+ * skips reading every frame and leaves each font's `frames` out.
+ */
 export async function listFonts(
   root: string,
   ref: string | undefined,
+  { frames: withFrames = true }: { frames?: boolean } = {},
 ): Promise<FontList> {
   const project = await resolveProject(root, ref)
   const fonts = await projectFonts(project.path)
-  const frames = await framesByFamily(
-    root,
-    project.name,
-    fonts.map((font) => font.record.family),
-  )
+  const frames = withFrames
+    ? await framesByFamily(
+        root,
+        project.name,
+        fonts.map((font) => font.record.family),
+      )
+    : null
   return {
     version: 1,
     project: project.name,
@@ -162,7 +168,7 @@ export async function listFonts(
       path: `${FONTS_FOLDER}/${id}`,
       files: record.faces.length,
       bundled: isBundled(record.family),
-      frames: frames.get(record.family) ?? [],
+      ...(frames ? { frames: frames.get(record.family) ?? [] } : {}),
     })),
   }
 }

@@ -116,6 +116,9 @@ const fontSaveBodySchema = z.object({
 
 const fontRemoveBodySchema = z.object({ id: z.string().min(1).max(200) })
 
+/** `?frames=false` skips reading every frame for each font's `frames`, which only a removal reads. */
+const framesQuerySchema = z.enum(['true', 'false']).optional()
+
 const generateBodySchema = z.object({
   prompt: z.string().trim().min(1).max(2000),
 })
@@ -282,7 +285,15 @@ export function sourcingRoutes(
 
   app.get(`${base}/fonts/installed`, async (c) => {
     const { name } = projectOf(root, c.req.param('project'))
-    return c.json({ ok: true, data: await listFonts(root, name) })
+    const asked = framesQuerySchema.safeParse(c.req.query('frames'))
+    if (!asked.success) {
+      throw new FrameboardError(
+        'usage',
+        'Send ?frames=false to skip reading frames, or leave it out.',
+      )
+    }
+    const frames = asked.data !== 'false'
+    return c.json({ ok: true, data: await listFonts(root, name, { frames }) })
   })
 
   app.post(`${base}/fonts/save`, authorized, async (c) => {

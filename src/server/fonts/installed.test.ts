@@ -140,6 +140,20 @@ describe('installed fonts', () => {
       })
     })
 
+    it('leaves frames out when asked to skip reading them', async () => {
+      const used = writeBoard({
+        'acme/project.json': '{ "version": 1 }\n',
+        ...installedFontFiles('acme', 'lora', 'Lora'),
+        'acme/home/body.html': TEXT("font-family: 'lora', serif"),
+      })
+
+      const { fonts } = await listFonts(used.root, 'acme', { frames: false })
+      used.cleanup()
+
+      expect(fonts).toHaveLength(1)
+      expect(fonts[0]).not.toHaveProperty('frames')
+    })
+
     it('names the frames drawing text in each family, in any case and through a token', async () => {
       const used = writeBoard({
         'acme/project.json': '{ "version": 1 }\n',
