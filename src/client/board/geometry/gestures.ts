@@ -46,8 +46,9 @@ import { openFindings } from '../findings/open'
 import { reportRefusal } from '../left-panel/page-actions'
 import { type ModeStore, modeStore } from '../mode'
 import { cornerOf, refreshCorners, subscribeCorners } from '../pin-corner'
+import { type DropGhost, overFrame } from '../place/asset-drop'
 import { carriedStore } from '../place/tool'
-import { moveElement } from '../place/write'
+import { elementGhost, extractElement, moveElement } from '../place/write'
 import { endPreview } from '../preview/store'
 import {
   clear,
@@ -124,6 +125,8 @@ export interface GestureStores {
   splitAt: (clientX: number) => void
   /** Moves the selected element into the gap under a canvas point, a drag of it released there. */
   moveElement: typeof moveElement
+  /** Moves the selected element into a frame of its own at a box, a drag of it released over bare canvas. */
+  extractElement: typeof extractElement
   /** How the selected element takes a corner resize, null when it takes none. */
   resizeOf: typeof shownResize
   /** Starts a corner drag of the selected element, null when its frame is held. */
@@ -165,6 +168,7 @@ const STORES: GestureStores = {
   openFindings,
   splitAt,
   moveElement,
+  extractElement,
   resizeOf: shownResize,
   resizeElement: startElementResize,
   placedOffsets,
@@ -232,17 +236,20 @@ type Gesture =
       shift: boolean
       /** The offsets a placed element holds, whose drag moves them rather than carrying it. */
       placed: PlacedOffsets | null
+      /** Where it draws, null while nothing has measured it. */
+      box: Box | null
     }
-  /** A drag of the selected placed element, written as its offsets on release. */
+  /** A drag of the selected placed element, written as its offsets on release inside a frame. */
   | {
       kind: 'placed'
       key: ElementKey
+      box: Box | null
       from: PlacedOffsets
       move: PlacedMove
       to: PlacedOffsets | null
     }
-  /** A drag carrying the selected element, dropped into the gap under release. */
-  | { kind: 'carry'; key: ElementKey }
+  /** A drag carrying the selected element, dropped into the gap under release, or over bare canvas into a frame of its own. */
+  | { kind: 'carry'; key: ElementKey; box: Box | null }
   /** A press on a corner of several selected elements' box, which a drag turns into a scale of them. */
   | { kind: 'group-corner'; corner: Corner }
   /** A drag of several selected elements, each free one moved as far, written as one step on release. */
@@ -343,6 +350,13 @@ export function attachGestures(
     if (on) target.layer.dataset.carrying = ''
     else delete target.layer.dataset.carrying
   }
+  // A free element's outline follows the drag, so it hides where the ghost draws the same box.
+  const showGhost = (ghost: DropGhost | null) => {
+    const out = ghost && gesture.kind === 'placed' ? gesture.key : null
+    carriedStore.setState({ ghost, out })
+    if (out) target.layer.dataset.draggedOut = ''
+    else delete target.layer.dataset.draggedOut
+  }
   const shiftElementOutline = (dx: number, dy: number) => {
     for (const outline of target.layer.querySelectorAll<HTMLElement>(
       '[data-element-selection]',
@@ -413,6 +427,20 @@ export function attachGestures(
   }
   const boxesOf = (frames: readonly FrameRecord[]) =>
     Object.fromEntries(frames.map((frame) => [frame.ref, frame.box]))
+  // A release makes a frame over bare canvas alone, never over a panel hiding it.
+  const frameMadeAt = (
+    event: MouseEvent,
+    { key, box }: { key: ElementKey; box: Box | null },
+  ): DropGhost | null => {
+    // A key's own event has no target, so it reads the pointer's last.
+    if (!box || (event.target ?? last?.target) !== hit) return null
+    const all = withDrawn(target.pageFrames?.() ?? target.frames())
+    const point = toCanvas(event)
+    if (overFrame(all, point) || frameAt(all, point, zoom())) return null
+    const x = box.x + point.x - from.x
+    const y = box.y + point.y - from.y
+    return elementGhost(key, { ...box, x, y }, all)
+  }
   const sectionNamed = (name: string | undefined) =>
     target.sections?.().find((section) => section.name === name)
   const sectionElement = (name: string) =>
@@ -570,18 +598,25 @@ export function attachGestures(
           : frameAt(drawn, point, zoom()),
         shift: event.shiftKey,
         placed: stores.placedOffsets(target.layer, memberKey),
+        box: member.box,
       }
       return
     }
     // The bare space inside several's box is theirs too, as a design tool's selection is.
     const group = several ? selectedGroupBox(target.layer) : null
-    if (element && group && inBox(group.box, point)) {
+    // The last picked that draws, since a hidden one has no outline to drag.
+    const lastDrawn = group
+      ? selectedElementBoxes(target.layer).at(-1)
+      : undefined
+    const lastKey = members.find(({ index }) => index === lastDrawn?.index)
+    if (lastDrawn && lastKey && group && inBox(group.box, point)) {
       gesture = {
         kind: 'element',
-        key: element,
+        key: lastKey,
         frame: frameAt(drawn, point, zoom()),
         shift: event.shiftKey,
         placed: null,
+        box: lastDrawn.box,
       }
       return
     }
@@ -597,6 +632,7 @@ export function attachGestures(
           frame,
           shift: event.shiftKey,
           placed: stores.placedOffsets(target.layer, element),
+          box: outline,
         }
         return
       }
@@ -619,13 +655,14 @@ export function attachGestures(
     // A selected frame's or section's corner over a ghost keeps the press.
     const ghost = ghostAt(target.layer, drawn, point)
     if (ghost) {
-      selectElement(selection, target.page, ghost)
+      selectElement(selection, target.page, ghost.key)
       gesture = {
         kind: 'element',
-        key: ghost,
+        key: ghost.key,
         frame: null,
         shift: event.shiftKey,
-        placed: stores.placedOffsets(target.layer, ghost),
+        placed: stores.placedOffsets(target.layer, ghost.key),
+        box: ghost.box,
       }
       return
     }
@@ -733,6 +770,7 @@ export function attachGestures(
         ? {
             kind: 'placed',
             key: gesture.key,
+            box: gesture.box,
             from: gesture.placed,
             move,
             to: null,
@@ -742,7 +780,7 @@ export function attachGestures(
     }
     if (gesture.kind === 'element') {
       gesture = stores.canWrite()
-        ? { kind: 'carry', key: gesture.key }
+        ? { kind: 'carry', key: gesture.key, box: gesture.box }
         : { kind: 'none' }
       if (gesture.kind === 'carry') {
         carriedStore.setState({ carried: gesture.key })
@@ -924,6 +962,11 @@ export function attachGestures(
         gesture.move.preview(gesture.to)
         shiftElementOutline(ox, oy)
         shiftElementPins(gesture.key, ox, oy)
+        showGhost(frameMadeAt(event, gesture))
+        return
+      }
+      case 'carry': {
+        showGhost(frameMadeAt(event, gesture))
         return
       }
       case 'group': {
@@ -1152,6 +1195,8 @@ export function attachGestures(
       }
     } else if (gesture.kind === 'placed') {
       const { from: start, to, move, key } = gesture
+      const made = frameMadeAt(event, gesture)
+      showGhost(null)
       if (to && (to.left !== start.left || to.top !== start.top)) {
         // Held until the reload measures the element, and a refusal puts it back.
         const outline = selectedElementBox(target.layer)
@@ -1166,21 +1211,40 @@ export function attachGestures(
             read: stores.resizeOf(target.layer, key),
           })
         }
-        void move.commit(to).then((landed) => {
-          if (!landed && heldOutline()?.key === key) holdOutline(null)
-        })
+        const letGo = () => {
+          if (heldOutline()?.key === key) holdOutline(null)
+        }
+        if (made) {
+          void stores
+            .extractElement(target.page, key, made.box)
+            .then((landed) => {
+              if (!landed) move.cancel()
+              letGo()
+            })
+        } else {
+          void move.commit(to).then((landed) => {
+            if (!landed) letGo()
+          })
+        }
       } else {
         move.cancel()
       }
     } else if (gesture.kind === 'carry') {
+      const { key } = gesture
+      const made = frameMadeAt(event, gesture)
       carriedStore.setState({ carried: null })
-      void stores.moveElement(
-        target.layer,
-        target.page,
-        withDrawn(target.frames()),
-        point,
-        gesture.key,
-      )
+      showGhost(null)
+      if (made) {
+        void stores.extractElement(target.page, key, made.box)
+      } else {
+        void stores.moveElement(
+          target.layer,
+          target.page,
+          withDrawn(target.frames()),
+          point,
+          key,
+        )
+      }
     } else if (gesture.kind === 'section-move') {
       writeSection(gesture.section, gesture.boxes)
     } else if (gesture.kind === 'section-resize' && gesture.moved) {
@@ -1259,6 +1323,7 @@ export function attachGestures(
       gesture.move.cancel()
       shiftElementOutline(0, 0)
       shiftElementPins(gesture.key, 0, 0)
+      showGhost(null)
     } else if (gesture.kind === 'element-resize') {
       gesture.resize.cancel()
     } else if (gesture.kind === 'group' || gesture.kind === 'group-resize') {
@@ -1268,6 +1333,7 @@ export function attachGestures(
       placeSection(gesture.section.name, gesture.section.box)
     } else if (gesture.kind === 'carry') {
       carriedStore.setState({ carried: null })
+      showGhost(null)
     } else if (gesture.kind === 'marquee' || gesture.kind === 'inner-marquee') {
       if (root) drawRest(root)
     } else if (
@@ -1372,6 +1438,7 @@ export function attachGestures(
       stopCorners()
       clearTimeout(revealing)
       markCarrying(false)
+      showGhost(null)
       selectionOfHit.on('.drag', null)
       hit.removeEventListener('contextmenu', noMenu)
       removeEventListener('keydown', onEscape, true)

@@ -15,11 +15,12 @@ import { OUTLINE, screen, sizeLabel } from '../geometry/draw'
 import { CHIP, OVERLAY_Z } from '../geometry/overlay'
 import { usePendingBox } from '../geometry/write'
 import { useMode } from '../mode'
+import { carriedStore } from '../place/tool'
 import { usePreview } from '../preview/store'
 import { type ElementKey, useSelection } from '../selection'
 import { groupBounds, type GroupMember, scalesAsGroup } from './group'
 import { heldStore, holdOutline } from './held'
-import { useGhosts, useMeasures } from './measures'
+import { hasBox, useGhosts, useMeasures } from './measures'
 import { useLiveMedia } from './media'
 import { MediaBar } from './media-bar'
 import { drawsOverflow, paintedIndexes, pictureUrl } from './overflow'
@@ -106,23 +107,28 @@ function FrameGhosts({ frame, ghosted, container }: FrameGhostsProps) {
   )
   // The route lays a frame out at its stored width, so a previewed one has no picture.
   const previewed = usePreview(frame.ref) !== undefined
+  const out = useStore(carriedStore, (state) => state.out)
   if (!overflow) return null
   const page = pageBox(pending ?? frame.box, frame.device, frame.turn)
   const painted = paintedIndexes(overflow.ghosts)
-  return overflow.ghosts.map(({ index, box }) => {
+  return overflow.ghosts.map(({ index, box, locked }) => {
     const key = { frame: frame.ref, index, hash: overflow.hash }
     const picture =
       painted.has(index) && !previewed
         ? pictureUrl(key, frame.box, theme, version)
         : null
-    if (!ghosted && !picture) return null
+    // Out over bare canvas, the drop ghost draws its box instead.
+    if (sameKey(key, out)) return null
+    // A lock leaves the picture the frame shows past its edge, and no ghost to press.
+    const pressed = ghosted && !locked
+    if (!pressed && !(picture && frame.showOverflow)) return null
     return (
       <Ghost
         key={index}
         element={key}
         box={box}
         page={page}
-        ghosted={ghosted}
+        ghosted={pressed}
         order={frame.order}
         picture={picture}
       />
@@ -234,16 +240,17 @@ interface GroupOutlineProps extends ElementOverlayProps {
 function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
   const frame = frames.find((candidate) => candidate.ref === elements[0]?.frame)
   const pending = usePendingBox(frame?.ref ?? '')
-  const measured = useMeasures(container, elements)
+  const measured = useMeasures(container, elements)?.filter(hasBox)
   const shown = pending ?? frame?.box
   const at = shown && pageBox(shown, frame?.device, frame?.turn)
   if (!at || !measured) return null
   const members: GroupMember[] = measured.map(
-    ({ index, box, read, placed, nested }) => ({
+    ({ index, box, read, placed, nested, locked }) => ({
       index,
       box,
       placed: placed && !nested ? placed : null,
       read,
+      locked,
     }),
   )
   const bounds = groupBounds(members)
@@ -251,6 +258,7 @@ function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
   const group = (
     <div
       data-element-group
+      data-element-locked={members.some(({ locked }) => locked) || undefined}
       className="pointer-events-none absolute"
       style={{
         left: at.x + bounds.x,
@@ -285,10 +293,11 @@ function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
   return (
     <>
       {group}
-      {measured.map(({ index, box }) => (
+      {measured.map(({ index, box, locked }) => (
         <div
           key={index}
           data-element-selection
+          data-element-locked={locked || undefined}
           data-element-index={index}
           className="pointer-events-none absolute"
           style={{
@@ -314,7 +323,7 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
   const frame = frames.find((candidate) => candidate.ref === element?.frame)
   const pending = usePendingBox(frame?.ref ?? '')
   const [measure] = useMeasures(container, element ? [element] : []) ?? []
-  const rect = measure?.box ?? null
+  const rect = measure && hasBox(measure) ? measure.box : null
   const held = useStore(heldStore, (state) => state.held)
   const typing = useStore(newTextStore, (state) => state.key)
   const shown = pending ?? frame?.box
@@ -335,8 +344,13 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
   const read = holds && !settled ? held.read : (measure?.read ?? null)
   // A placed Text open for typing draws a caret alone, its box kept for a press to read.
   const bare = typing !== null && sameKey(typing, element)
+  const locked = measure?.locked === true
   const marked =
-    !bare && read !== null && box.width >= MARKS_MIN && box.height >= MARKS_MIN
+    !bare &&
+    !locked &&
+    read !== null &&
+    box.width >= MARKS_MIN &&
+    box.height >= MARKS_MIN
   return (
     <>
       <CanvasMediaBar element={element} box={box} container={container} />
@@ -350,6 +364,7 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
       ) : null}
       <div
         data-element-selection
+        data-element-locked={locked || undefined}
         className="pointer-events-none absolute"
         style={{
           left: box.x,

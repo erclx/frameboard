@@ -7,12 +7,16 @@ import {
   type EditChange,
   type EditRefused,
   type ElementAddress,
+  type HiddenChange,
   refuse,
   scopeOf,
 } from './apply'
 import { type ElementSpan, relocate, spanText } from './element-span'
+import { hideElement, type MayShow } from './hide'
 import {
   ensureViewerScript,
+  type ExtractedElement,
+  extractElement,
   type InsertedSpan,
   insertElement,
   type MovedSpan,
@@ -130,7 +134,7 @@ export function editFrameFile(
 /** One element's change in a batch, by its index in the bytes the batch was made from. */
 export interface ElementEdit {
   readonly index: number
-  readonly change: EditChange
+  readonly change: EditChange | HiddenChange
 }
 
 export type FrameFileEdits =
@@ -151,15 +155,16 @@ export type FrameFileEdits =
   | Collided
 
 /**
- * Edits several elements as one write, all or none. One element named twice is
- * refused, since one undo could not put both spans back, except a text beside
- * a style or several attributes, which answer one span over the element.
+ * Edits several elements as one write, all or none. One named twice is refused,
+ * since one undo could not put both spans back, except a text beside a style
+ * or several attributes. A hide with no `mayShow` states the attribute alone.
  */
 export function editFrameFileAll(
   path: string,
   hash: string,
   edits: readonly ElementEdit[],
   sourceAt?: SourceAt,
+  mayShow: MayShow = () => false,
 ): FrameFileEdits {
   const read = readSource(path)
   if (!read.ok) return read
@@ -182,7 +187,11 @@ export function editFrameFileAll(
   let html = source
   const spans: ElementSpan[] = []
   for (const [at, { change }] of edits.entries()) {
-    const applied = applyEdit(html, { index: indexes[at] ?? -1 }, change)
+    const index = indexes[at] ?? -1
+    const applied =
+      change.kind === 'hidden'
+        ? hideElement(html, index, change.value, mayShow)
+        : applyEdit(html, { index }, change)
     if (!applied.ok) return applied
     html = applied.html
     spans.push(applied.span)
@@ -241,7 +250,7 @@ function namedOnceEach(
   indexes: readonly number[],
   edits: readonly ElementEdit[],
 ): boolean {
-  const changes = new Map<number, EditChange[]>()
+  const changes = new Map<number, ElementEdit['change'][]>()
   for (const [at, index] of indexes.entries()) {
     const change = edits[at]?.change
     if (change) changes.set(index, [...(changes.get(index) ?? []), change])
@@ -252,7 +261,7 @@ function namedOnceEach(
   )
 }
 
-function textAndStyle(named: readonly EditChange[]): boolean {
+function textAndStyle(named: readonly ElementEdit['change'][]): boolean {
   return (
     named.length === 2 &&
     named.filter(({ kind }) => kind === 'text').length === 1 &&
@@ -260,7 +269,7 @@ function textAndStyle(named: readonly EditChange[]): boolean {
   )
 }
 
-function separateAttributes(named: readonly EditChange[]): boolean {
+function separateAttributes(named: readonly ElementEdit['change'][]): boolean {
   const names = named.flatMap((change) =>
     change.kind === 'attribute' ? [change.name.toLowerCase()] : [],
   )
@@ -376,6 +385,49 @@ export function removeFrameFile(
     span: removed.span,
     remap: takenOut(index, subtreeSize(read.source, index)),
   }
+}
+
+/** The file an extracted element's frame goes to, or why it cannot be written. */
+export type ExtractTarget =
+  | { readonly ok: true; readonly path: string; readonly html: string }
+  | EditRefused
+
+/**
+ * Takes one element out of a frame file and into a new one `target` names,
+ * writing the new file first and taking it back on any failure before the
+ * source's write, so the element stands in one of the two at every moment.
+ */
+export async function extractFrameFile(
+  path: string,
+  hash: string,
+  index: number,
+  target: (element: ExtractedElement) => ExtractTarget,
+  created: (path: string) => Promise<void>,
+): Promise<FrameFileRemove> {
+  const read = readSource(path)
+  if (!read.ok) return read
+  if (read.hash !== hash) return stale(path)
+  const extracted = extractElement(read.source, index)
+  if (!extracted.ok) return extracted
+  const own = target(extracted)
+  if (!own.ok) return own
+  writeFileSync(own.path, own.html, { flag: 'wx' })
+  try {
+    await created(own.path)
+    if (replaceFile(path, hash, extracted.html)) {
+      return {
+        ok: true,
+        hash: contentHash(extracted.html),
+        span: extracted.span,
+        remap: takenOut(index, subtreeSize(read.source, index)),
+      }
+    }
+  } catch (error) {
+    rmSync(own.path, { force: true })
+    throw error
+  }
+  rmSync(own.path, { force: true })
+  return stale(path)
 }
 
 export type FrameFileRemoveAll =

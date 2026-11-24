@@ -266,6 +266,57 @@ function ellipseHeld(ref: string): (page: Page) => Promise<void> {
 }
 
 /**
+ * Drags the selected element out of `ref` and holds it under the frame's
+ * bottom edge, where a release would make a frame of its own.
+ */
+function heldOutOf(ref: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ owner, granted, frames }) => {
+        if (window !== window.top) return
+        let left = frames
+        const run = () => {
+          const outline = document.querySelector('[data-element-selection]')
+          const frame = document.querySelector(`[data-frame="${owner}"]`)
+          const hit = document.querySelector('[data-hit-layer]')
+          // A drag pressed before the server grants writes never starts.
+          if (!outline || !frame || !hit || !document.querySelector(granted)) {
+            if (--left > 0) requestAnimationFrame(run)
+            else console.error(`No selected element in ${owner} to drag out`)
+            return
+          }
+          const box = outline.getBoundingClientRect()
+          const x = box.left + box.width / 2
+          const from = box.top + box.height / 2
+          const to = frame.getBoundingClientRect().bottom + 60
+          const send = (type: string, y: number) =>
+            hit.dispatchEvent(
+              new MouseEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+                clientX: x,
+                clientY: y,
+              }),
+            )
+          send('mousedown', from)
+          send('mousemove', (from + to) / 2)
+          send('mousemove', to)
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(run),
+        )
+      },
+      {
+        owner: ref,
+        granted: `button[aria-label="Lock ${ref.split('/').at(-1)}"]:not([disabled])`,
+        frames: PRESS_FRAMES,
+      },
+    )
+  }
+}
+
+/**
  * Opens `ref`'s headline and types a second line, holding the write back so
  * the served board keeps its bytes whatever ends the edit.
  */
@@ -786,6 +837,48 @@ async function twoLayersSelected(page: Page): Promise<void> {
 }
 
 /**
+ * Answers hero's tree with the Headline locked and the Caption hidden, the
+ * tracked fixture holding neither, then opens its rows and focuses the
+ * Headline's, which draws the eye a pointer reveals.
+ */
+async function flaggedRows(page: Page): Promise<void> {
+  const flags: Record<string, object> = {
+    Headline: { locked: true },
+    Caption: { hidden: true },
+  }
+  await page.route('**/api/frames/elements?*', async (route) => {
+    const response = await route.fetch()
+    const answer = await response.json()
+    answer.data.elements = answer.data.elements.map(
+      (row: { name: string }) => ({
+        ...row,
+        ...flags[row.name],
+      }),
+    )
+    await route.fulfill({ response, json: answer })
+  })
+  await page.addInitScript((frames) => {
+    let left = frames
+    const run = () => {
+      const closed = document.querySelector<HTMLButtonElement>(
+        'button[aria-expanded="false"]:is([aria-label="Show the elements of hero"], [aria-label="Show what Caption holds"])',
+      )
+      const rows = document.querySelectorAll<HTMLButtonElement>(
+        'ul[aria-label="Elements of hero"] button:not([aria-label])',
+      )
+      if (rows.length === 3) {
+        rows[0]?.focus()
+        return
+      }
+      closed?.click()
+      if (--left > 0) requestAnimationFrame(run)
+      else console.error("hero's element rows never drew")
+    }
+    document.addEventListener('DOMContentLoaded', run)
+  }, ROW_FRAMES)
+}
+
+/**
  * Focuses hero's Layers row once it draws, after a pointer press when
  * `pointer` is set and with no press otherwise, so the shot shows the ring a
  * keyboard reaches and the ringless row a click leaves.
@@ -938,6 +1031,23 @@ export function editingCases(theme: 'light' | 'dark'): CaptureCase[] {
           pressOnLoad('^Shapes$'),
           ellipseHeld('webapp/home/hero'),
           readyWhen('[data-shape-draft]'),
+        ),
+      ),
+    },
+    {
+      // A shape held over bare canvas, wearing the ghost of the frame a release makes.
+      section: 'drop-ghost-element',
+      theme,
+      route: '/p/marketing/states',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          elementInFrame('marketing/states/free', '[data-name="Free shape"]'),
+          heldOutOf('marketing/states/free'),
+          readyWhen('[data-drop-ghost]'),
         ),
       ),
     },
@@ -1313,6 +1423,23 @@ export function editingCases(theme: 'light' | 'dark'): CaptureCase[] {
           twoLayersSelected,
           readyWhen(
             'ul[aria-label="Elements of hero"] li:has([aria-current="true"]) ~ li:has([aria-current="true"])',
+          ),
+        ),
+      ),
+    },
+    {
+      // Hero's Headline locked and focused, its Caption hidden, and the Caption's child dimmed with it.
+      section: 'layers-flags',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          flaggedRows,
+          readyWhen(
+            'ul[aria-label="Elements of hero"] li[aria-label="Command, hidden"]',
           ),
         ),
       ),

@@ -18,9 +18,6 @@ export const MAX_HITS = 200
 const SNIPPET_BEFORE = 20
 const SNIPPET_LENGTH = 80
 
-/** Elements whose text is code rather than copy. */
-const NOT_COPY = new Set(['script', 'style'])
-
 /**
  * Every case-insensitive hit across a project's shown frames, an element named
  * by its text hitting as text alone so it is listed once.
@@ -84,7 +81,7 @@ async function frameHits(
   for (const row of rows) {
     const element = elements[row.index]
     if (!element) continue
-    const text = NOT_COPY.has(row.tag) ? '' : directText(element)
+    const text = directText(element)
     const at = text.toLowerCase().indexOf(needle)
     const namedByText = row.textOnly && !hasDataName(element)
     const address = { ...base, index: row.index, hash, name: row.name }

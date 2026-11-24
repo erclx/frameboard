@@ -33,6 +33,11 @@ function listen(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
+/** Whether the page draws a measured element, as it does not one with display none. */
+export function hasBox({ unboxed }: Pick<MemberMeasure, 'unboxed'>): boolean {
+  return !unboxed
+}
+
 /** The measures held for the named elements, all of one frame at one hash, or null while any is unmeasured. */
 export function heldMeasures(
   keys: readonly ElementKey[],

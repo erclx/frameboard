@@ -2,6 +2,7 @@ import type { DefaultTreeAdapterTypes } from 'parse5'
 
 import { buildCascade, type Cascade } from '@/server/checks/cascade'
 import type { FrameSource, Sheet } from '@/server/checks/frame-source'
+import { LOCKED_ATTRIBUTE, UNRENDERED_TAGS } from '@/shared/element-marks'
 import type { Layout, TreeElement } from '@/shared/records/elements'
 
 import { type Element, hasTag, parseFrame } from './address'
@@ -25,17 +26,21 @@ const PLACE_PROPERTIES: ReadonlySet<string> = new Set([
   'position',
   'width',
   'height',
+  'transform',
+  'translate',
 ])
 
 /**
- * A frame's elements under `body` by `edit` index, refused where the browser
- * builds an unstated element, since every later index would name another.
+ * A frame's elements under `body` by `edit` index, leaving out what renders
+ * nothing while counting it, refused where the browser builds an unstated
+ * element, since every later index would name another.
  */
 export function elementTree(
   source: string,
   layouts: readonly Layout[] = [],
   rounds: readonly boolean[] = [],
   facts: readonly PlaceFacts[] = [],
+  hidden: readonly boolean[] = [],
 ): TreeElement[] | EditRefused {
   const tree = parseFrame(source)
   if (tree.unstated) {
@@ -53,12 +58,17 @@ export function elementTree(
     const parent = element.parentNode
     if (!body || !parent || !hasTag(parent)) continue
     if (parent !== body && !inBody.has(parent)) continue
+    if (UNRENDERED_TAGS.has(element.tagName)) continue
     inBody.add(element)
+    const next = nextElement(element)
+    const unlistedNext =
+      next && UNRENDERED_TAGS.has(next.tagName) ? index.get(next) : undefined
     listed.push({
       index: at,
       parent: parent === body ? null : (index.get(parent) ?? null),
       tag: element.tagName,
       name: elementName(element),
+      ...(statedName(element) ? { named: true as const } : {}),
       // A placed Text opens as an empty paragraph, which reads as text before its first word.
       textOnly:
         ownText(element) !== null ||
@@ -66,6 +76,11 @@ export function elementTree(
       layout: layouts[at] ?? 'block',
       round: (rounds[at] ?? false) && isEmpty(element),
       placed: isPlaced(facts[at]),
+      ...(hidden[at] ? { hidden: true } : {}),
+      ...(attribute(element, LOCKED_ATTRIBUTE) === undefined
+        ? {}
+        : { locked: true }),
+      ...(unlistedNext === undefined ? {} : { unlistedNext }),
     })
   }
   return listed
@@ -116,10 +131,22 @@ export function elementPlaceFacts(
     position: own(element, 'position'),
     width: own(element, 'width') !== null,
     height: own(element, 'height') !== null,
+    ...shiftOf(own(element, 'transform'), own(element, 'translate')),
   }))
 }
 
-function isPlaced(facts: PlaceFacts | undefined): boolean {
+/** The shifts an author rule sets, each left out where none does. */
+function shiftOf(
+  transform: string | null,
+  translate: string | null,
+): Pick<PlaceFacts, 'transform' | 'translate'> {
+  return {
+    ...(transform === null ? {} : { transform }),
+    ...(translate === null ? {} : { translate }),
+  }
+}
+
+export function isPlaced(facts: PlaceFacts | undefined): boolean {
   const position = facts?.position?.trim().toLowerCase()
   return position === 'absolute' || position === 'fixed'
 }
@@ -150,12 +177,17 @@ function words(value: string | undefined): string[] {
  * something to the frame's CSS, scripts, and readers.
  */
 export function elementName(element: Element): string {
-  const named = attribute(element, 'data-name')?.trim()
+  const named = statedName(element)
   if (named) return named
   const text = ownText(element)
   if (text !== null) return text.slice(0, NAME_LENGTH)
   const alt = element.tagName === 'img' ? attribute(element, 'alt')?.trim() : ''
   return alt || element.tagName
+}
+
+/** An element's `data-name`, null when it states none or a blank one. */
+export function statedName(element: Element): string | null {
+  return attribute(element, 'data-name')?.trim() || null
 }
 
 /** The whitespace-collapsed text of an element holding text alone, else null. */
@@ -177,6 +209,11 @@ function isEmpty(element: Element): boolean {
   return element.childNodes.every(
     (node) => isText(node) && node.value.trim() === '',
   )
+}
+
+function nextElement(element: Element): Element | undefined {
+  const siblings = element.parentNode?.childNodes ?? []
+  return siblings.slice(siblings.indexOf(element) + 1).find(hasTag)
 }
 
 function isText(

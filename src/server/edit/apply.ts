@@ -53,6 +53,12 @@ export type EditChange =
       readonly declarations: readonly StyleDeclaration[]
     }
 
+/** Hides an element or shows it again, which a batch alone takes, since what it writes depends on the frame's sheets. */
+export interface HiddenChange {
+  readonly kind: 'hidden'
+  readonly value: boolean
+}
+
 export interface StyleDeclaration {
   readonly property: string
   readonly value: string
@@ -197,7 +203,7 @@ function resolve(tree: FrameTree, index: number): Element | EditRefused {
 }
 
 /** Which bytes of the element a change reads and writes, as `SpanScope` splits them. */
-export function scopeOf(change: EditChange): SpanScope {
+export function scopeOf(change: EditChange | HiddenChange): SpanScope {
   return change.kind === 'text' ? 'element' : 'start-tag'
 }
 

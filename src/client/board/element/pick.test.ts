@@ -155,6 +155,22 @@ describe('pickElement', () => {
     expect(key).toBeNull()
   })
 
+  it('passes over a locked element for what sits behind it', async () => {
+    const container = await mount(
+      1,
+      SOURCE.replace('<h1>', '<h1 data-locked="">'),
+    )
+
+    const key = await pickElement(
+      container,
+      [HERO],
+      { x: HERO.box.x + 20 + 30, y: HERO.box.y + 20 + 10 },
+      () => TREE,
+    )
+
+    expect(key).toEqual({ frame: HERO.ref, index: 3, hash: HASH })
+  })
+
   it("answers null while the frame's tree is not held", async () => {
     const container = await mount(1)
 
@@ -247,6 +263,37 @@ describe('elementsIn', () => {
         box: { x: 100, y: 150, width: 50, height: 50 },
       },
     ])
+  })
+
+  it('leaves out a locked element and what it holds', async () => {
+    const container = await mount(1, BOXES)
+
+    const touching = await elementsIn(container, HERO, {
+      ...BOXES_TREE,
+      elements: BOXES_TREE.elements.map((held) =>
+        held.index === 3 ? { ...held, locked: true } : held,
+      ),
+    })
+
+    expect(
+      touching({ x: 100, y: 50, width: 60, height: 150 }).map(
+        ({ key }) => key.index,
+      ),
+    ).toEqual([5])
+  })
+
+  it('reads a point on a locked element over the body as bare', async () => {
+    const container = await mount(
+      1,
+      BOXES.replace(
+        '<div style="top:0">',
+        '<div data-locked="" style="top:0">',
+      ),
+    )
+
+    await expect(
+      onBareFrame(container, [HERO], { x: 110, y: 60 }, BOXES_TREE),
+    ).resolves.toBe(true)
   })
 
   it('answers nothing while the frame shows other bytes', async () => {

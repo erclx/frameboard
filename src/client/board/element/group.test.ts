@@ -73,6 +73,18 @@ describe('moveMembers', () => {
   })
 })
 
+describe('a locked member', () => {
+  const held = [member({ index: 1 }), member({ index: 2, locked: true })]
+
+  it('stays where it is while the rest move', () => {
+    expect(moveMembers(held, 5, 5).map(({ index }) => index)).toEqual([1])
+  })
+
+  it('keeps a corner drag off the group', () => {
+    expect(scalesAsGroup(held)).toBe(false)
+  })
+})
+
 describe('groupBox', () => {
   const bounds = { x: 100, y: 100, width: 200, height: 100 }
 

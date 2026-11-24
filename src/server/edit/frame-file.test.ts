@@ -15,6 +15,7 @@ import { swapSpan } from './element-span'
 import {
   editFrameFile,
   editFrameFileAll,
+  extractFrameFile,
   insertFrameFile,
   moveFrameFile,
   removeFrameFile,
@@ -515,6 +516,80 @@ describe('insertFrameFile', () => {
 
     expect(result).toMatchObject({ ok: false, reason: 'stale-address' })
     expect(readFileSync(frame, 'utf8')).toBe('<main>Agent</main>')
+    expect(readdirSync(dir)).toEqual(['hero.html'])
+  })
+})
+
+describe('extractFrameFile', () => {
+  const SOURCE =
+    '<!doctype html><html><head></head><body><h1>Hi</h1><p>Text</p></body></html>'
+  const PARAGRAPH = 4
+
+  const own = () => join(dir, 'p.html')
+  const extract = (created: () => Promise<void> = async () => {}) =>
+    extractFrameFile(
+      frame,
+      contentHash(SOURCE),
+      PARAGRAPH,
+      (element) => ({ ok: true, path: own(), html: element.frame }),
+      created,
+    )
+
+  beforeEach(() => {
+    writeFileSync(frame, SOURCE)
+  })
+
+  it('should write the new frame and take the element out of the source', async () => {
+    const result = await extract()
+
+    expect(result).toMatchObject({
+      ok: true,
+      hash: contentHash(readFileSync(frame)),
+    })
+    expect(readFileSync(frame, 'utf8')).toBe(SOURCE.replace('<p>Text</p>', ''))
+    expect(readFileSync(own(), 'utf8')).toContain('<body><p>Text</p></body>')
+  })
+
+  it('should leave neither file changed when the source moved before its write', async () => {
+    const agent = SOURCE.replace('Hi', 'Agent')
+    race.onWrite = (path) => {
+      if (path !== own()) return
+      race.onWrite = undefined
+      writeFileSync(frame, agent)
+    }
+
+    const result = await extract()
+
+    expect(result).toMatchObject({ ok: false, reason: 'stale-address' })
+    expect(readdirSync(dir)).toEqual(['hero.html'])
+    expect(readFileSync(frame, 'utf8')).toBe(agent)
+  })
+
+  it('should take the new frame back out when its record fails', async () => {
+    const extracting = extract(async () => {
+      throw new Error('disk full')
+    })
+
+    await expect(extracting).rejects.toThrow('disk full')
+    expect(readdirSync(dir)).toEqual(['hero.html'])
+    expect(readFileSync(frame, 'utf8')).toBe(SOURCE)
+  })
+
+  it('should leave the source whole when the new file is already there', async () => {
+    writeFileSync(own(), 'agent')
+
+    await expect(extract()).rejects.toThrow('EEXIST')
+
+    expect(readFileSync(frame, 'utf8')).toBe(SOURCE)
+    expect(readFileSync(own(), 'utf8')).toBe('agent')
+  })
+
+  it('should refuse a hash the file no longer has, writing nothing', async () => {
+    writeFileSync(frame, SOURCE.replace('Hi', 'Agent'))
+
+    const result = await extract()
+
+    expect(result).toMatchObject({ ok: false, reason: 'stale-address' })
     expect(readdirSync(dir)).toEqual(['hero.html'])
   })
 })

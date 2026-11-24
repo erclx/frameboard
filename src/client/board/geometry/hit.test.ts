@@ -9,6 +9,9 @@ import {
   framesIn,
   ghostAt,
   onOutline,
+  selectedElementBox,
+  selectedElementBoxes,
+  selectedGroupBox,
 } from './hit'
 
 const BACK = frameOf('back', {
@@ -165,6 +168,36 @@ describe('framesIn', () => {
   })
 })
 
+describe('a locked selection', () => {
+  const layerOf = (markup: string) => {
+    const layer = document.createElement('div')
+    layer.innerHTML = markup
+    return layer
+  }
+  const outline = (index: number, locked = '') =>
+    `<i data-element-selection data-element-index="${index}" ${locked} style="left:0;top:0;width:10px;height:10px"></i>`
+
+  it('takes no press on its outline', () => {
+    const layer = layerOf(outline(4, 'data-element-locked'))
+
+    expect(selectedElementBox(layer)).toBeNull()
+  })
+
+  it('leaves the outlines of those selected beside it', () => {
+    const layer = layerOf(outline(4, 'data-element-locked') + outline(5))
+
+    expect(selectedElementBoxes(layer).map(({ index }) => index)).toEqual([5])
+  })
+
+  it('takes no press on the box around a group holding one', () => {
+    const layer = layerOf(
+      '<i data-element-group data-element-locked style="left:0;top:0;width:10px;height:10px"></i>',
+    )
+
+    expect(selectedGroupBox(layer)).toBeNull()
+  })
+})
+
 describe('ghostAt', () => {
   const HASH = 'a'.repeat(64)
 
@@ -188,11 +221,10 @@ describe('ghostAt', () => {
     return layer
   }
 
-  it('answers the element whose ghost sits under the point, past the frame', () => {
+  it('answers the element whose ghost sits under the point, past the frame, with its box', () => {
     expect(ghostAt(layerWithGhost(), [BACK], { x: 420, y: 40 })).toEqual({
-      frame: BACK.ref,
-      index: 4,
-      hash: HASH,
+      key: { frame: BACK.ref, index: 4, hash: HASH },
+      box: { x: 350, y: 20, width: 100, height: 50 },
     })
   })
 

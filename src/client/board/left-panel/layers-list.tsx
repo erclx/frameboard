@@ -1,12 +1,8 @@
 import {
   ChevronDown,
   ChevronRight,
-  Eye,
-  EyeOff,
   Frame,
   ListChevronsUpDown,
-  Lock,
-  LockOpen,
 } from 'lucide-react'
 import {
   type MouseEvent,
@@ -55,6 +51,7 @@ import { DropLine } from './drop-line'
 import { ElementRows } from './element-rows'
 import { reportRefusal } from './page-actions'
 import { useReorderMonitor, useReorderRow } from './reorder'
+import { HIDDEN_TEXT, RowFlags } from './row-flags'
 import { addsOne, spanTo } from './row-pick'
 import { PanelSection } from './section'
 import { SectionRow } from './section-rows'
@@ -290,24 +287,6 @@ interface FrameRowProps {
   children: ReactNode
 }
 
-/** A 24px target drawing the 20px fill the references draw, through `ROW_FILL`. */
-const ROW_BUTTON =
-  'group/target grid size-6 shrink-0 place-items-center outline-none hover:text-foreground disabled:pointer-events-none'
-
-/**
- * A hidden row's name and glyphs, dimmed yet past 4.5:1 on a hovered row,
- * since a hidden row still renames and restacks.
- */
-const HIDDEN_TEXT =
-  'text-[color-mix(in_srgb,var(--muted-foreground)_70%,var(--foreground))]'
-
-const ROW_FILL =
-  'grid size-5 place-items-center rounded-[5px] group-hover/target:bg-accent group-focus-visible/target:ring-2 group-focus-visible/target:ring-ring/50'
-
-/** Shown on the row's hover or focus alone, for a flag that is off. */
-const ON_HOVER =
-  'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'
-
 /** The flags a row sets, showOverflow being the inspector's. */
 type RowFlag = Exclude<FrameFlag, 'showOverflow'>
 
@@ -441,47 +420,14 @@ function FrameRow({
               ) : unseen ? (
                 <UnseenDot />
               ) : null}
-              <button
-                type="button"
-                aria-label={`${frame.hidden ? 'Show' : 'Hide'} ${frame.name}`}
-                aria-pressed={frame.hidden}
-                disabled={!canWrite}
-                onClick={() => void flag('hidden', !frame.hidden)}
-                className={cn(
-                  ROW_BUTTON,
-                  frame.hidden
-                    ? HIDDEN_TEXT
-                    : cn('text-muted-foreground', ON_HOVER),
-                )}
-              >
-                <span className={ROW_FILL}>
-                  {frame.hidden ? (
-                    <EyeOff aria-hidden className="size-[13px]" />
-                  ) : (
-                    <Eye aria-hidden className="size-[13px]" />
-                  )}
-                </span>
-              </button>
-              <button
-                type="button"
-                aria-label={`${frame.locked ? 'Unlock' : 'Lock'} ${frame.name}`}
-                aria-pressed={frame.locked}
-                disabled={!canWrite}
-                onClick={() => void flag('locked', !frame.locked)}
-                className={cn(
-                  ROW_BUTTON,
-                  'text-muted-foreground',
-                  !frame.locked && ON_HOVER,
-                )}
-              >
-                <span className={ROW_FILL}>
-                  {frame.locked ? (
-                    <Lock aria-hidden className="size-[13px]" />
-                  ) : (
-                    <LockOpen aria-hidden className="size-[13px]" />
-                  )}
-                </span>
-              </button>
+              <RowFlags
+                name={frame.name}
+                hidden={frame.hidden}
+                locked={frame.locked}
+                canWrite={canWrite}
+                onHide={(hidden) => void flag('hidden', hidden)}
+                onLock={(locked) => void flag('locked', locked)}
+              />
             </div>
           }
         />

@@ -73,6 +73,19 @@ describe('elementTree', () => {
     ).toEqual([['p', true]])
   })
 
+  it('marks a name the file states, so it is told apart from one read off its text', () => {
+    const tree = elementTree(
+      '<body><p data-name="Intro">Hi</p><p>Hi</p></body>',
+    )
+
+    expect(
+      Array.isArray(tree) && tree.map((row) => [row.name, row.named]),
+    ).toEqual([
+      ['Intro', true],
+      ['Hi', undefined],
+    ])
+  })
+
   it('reads an empty div or span, or a paragraph holding an element, as no text', () => {
     const tree = elementTree('<body><div></div><span></span><p><br></p></body>')
 
@@ -86,17 +99,58 @@ describe('elementTree', () => {
     ])
   })
 
-  it("skips a template's contents, as the edit index does", () => {
+  it('leaves out what renders nothing and keeps the index of each element after it', () => {
+    const source =
+      '<body><script>a()</script><p>one</p><style>p{}</style><template><li>a</li></template><noscript><p>off</p></noscript><link rel="icon"><meta name="x"><script>b()</script><p>two</p></body>'
+
+    const tree = elementTree(source)
+
+    expect(
+      Array.isArray(tree) && tree.map((row) => [row.index, row.name]),
+    ).toEqual([
+      [4, 'one'],
+      [11, 'two'],
+    ])
+    expect(parseFrame(source).elements[11]?.tagName).toBe('p')
+  })
+
+  it('names the script right after an element, and no listed or missing sibling', () => {
     const tree = elementTree(
-      '<body><template><li>a</li></template><p>b</p></body>',
+      '<body><main></main><script></script><p>one</p><p>two</p></body>',
     )
 
     expect(
-      Array.isArray(tree) && tree.map((row) => [row.index, row.tag]),
+      Array.isArray(tree) && tree.map((row) => [row.tag, row.unlistedNext]),
     ).toEqual([
-      [3, 'template'],
-      [4, 'p'],
+      ['main', 4],
+      ['p', undefined],
+      ['p', undefined],
     ])
+  })
+
+  it('marks an element the read hides and one its attribute locks', () => {
+    const tree = elementTree(
+      '<body><p>a</p><p>b</p><p data-locked>c</p></body>',
+      [],
+      [],
+      [],
+      [false, false, false, true],
+    )
+
+    expect(
+      Array.isArray(tree) &&
+        tree.map(({ name, hidden, locked }) => [name, hidden, locked]),
+    ).toEqual([
+      ['a', true, undefined],
+      ['b', undefined, undefined],
+      ['c', undefined, true],
+    ])
+  })
+
+  it('lists an element a rule hides', () => {
+    const tree = elementTree('<body><p style="display: none">a</p></body>')
+
+    expect(Array.isArray(tree) && tree.map((row) => row.tag)).toEqual(['p'])
   })
 
   it('gives each element the layout read at its index', () => {
@@ -376,6 +430,15 @@ describe('elementPlaceFacts', () => {
     expect(
       factsOf('<div id="t" style="position: absolute; width: 40px"></div>'),
     ).toEqual({ position: 'absolute', width: true, height: false })
+  })
+
+  it('reads a transform a rule sets and a translate the style attribute sets', () => {
+    expect(
+      factsOf(
+        '<p id="t" style="translate: 4px">x</p>',
+        '#t { transform: translateX(-50%) }',
+      ),
+    ).toMatchObject({ transform: 'translateX(-50%)', translate: '4px' })
   })
 
   it('reads no position when only an ancestor sets one', () => {

@@ -360,6 +360,28 @@ describe('a live element', () => {
       ).toEqual([null, { left: 0, top: 0 }])
     })
 
+    it('leaves out a hidden member, whose box and offsets read as no place it draws', async () => {
+      const shown = await mount(
+        '<div style="position: absolute; left: 50%; top: 20px; display: none"></div><div style="position: absolute; left: 100px; top: 5px; width: 10px; height: 10px"></div>',
+      )
+      await measure(shown, [at(3), at(4)])
+
+      expect(
+        shownGroup(shown, [at(3), at(4)])?.map(({ index }) => index),
+      ).toEqual([4])
+    })
+
+    it('keeps a free wrapper whose box is 0 by 0, holding free children alone', async () => {
+      const shown = await mount(
+        '<div style="position: absolute; left: 50px; top: 10px"><div style="position: absolute; left: 0; top: 0; width: 20px; height: 20px"></div></div>',
+      )
+      await measure(shown, [KEY])
+
+      expect(shownGroup(shown, [KEY])).toMatchObject([
+        { index: 3, placed: { left: 50, top: 10 } },
+      ])
+    })
+
     it('answers null for keys read from other bytes', async () => {
       const shown = await mount('<div></div><div></div>')
       const stale = [
@@ -384,6 +406,15 @@ describe('a live element', () => {
       await measure(shown, [KEY])
 
       expect(shownResize(shown, KEY)?.kind).toBe('box')
+    })
+
+    it('reads nothing for a locked element, whose corners draw no marks', async () => {
+      const shown = await mount(
+        '<div data-locked style="width: 40px; height: 40px"></div>',
+      )
+      await measure(shown, [KEY])
+
+      expect(shownResize(shown, KEY)).toBeNull()
     })
 
     it('reads nothing from a frame showing other bytes', async () => {
@@ -412,6 +443,15 @@ describe('a live element', () => {
       await measure(shown, [KEY])
 
       expect(placedOffsets(shown, KEY)).toEqual({ left: 12, top: 34 })
+    })
+
+    it('reads a locked element as holding none for a drag', async () => {
+      const shown = await mount(
+        '<div data-locked style="position: absolute; left: 10px; top: 20px"></div>',
+      )
+      await measure(shown, [KEY])
+
+      expect(placedOffsets(shown, KEY)).toBeNull()
     })
 
     it('reads an element in the flow as unplaced', async () => {

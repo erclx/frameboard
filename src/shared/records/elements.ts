@@ -17,6 +17,8 @@ export const treeElementSchema = z.object({
   tag: z.string(),
   /** `data-name`, else a text-only element's text cut to 40 characters, else an `img`'s `alt`, else the tag. */
   name: z.string(),
+  /** Present when `name` is its `data-name`. */
+  named: z.literal(true).optional(),
   /** True when the element holds text and nothing else. */
   textOnly: z.boolean(),
   /** Its layout, which a culled frame's Layers rows draw from without an iframe. */
@@ -25,14 +27,26 @@ export const treeElementSchema = z.object({
   round: z.boolean(),
   /** True when it is placed out of the flow, as `position: absolute` or `fixed`. */
   placed: z.boolean(),
+  /** True when its `hidden` attribute hides it, false for one that some rule shows anyway. */
+  hidden: z.boolean().optional(),
+  /** True when it carries `data-locked`, which keeps canvas presses off it and what it holds. */
+  locked: z.boolean().optional(),
+  /** The unlisted element right after it, such as a script, which a move to the end of its siblings lands ahead of. */
+  unlistedNext: z.int().min(0).optional(),
 })
 
 export type TreeElement = z.infer<typeof treeElementSchema>
 
-/** What `GET /api/frames/elements` answers: a frame's elements under `body` in index order, and the hash they were read from. */
+/**
+ * What `GET /api/frames/elements` answers: a frame's elements under `body` that
+ * can render, in index order with gaps where one cannot, and the hash they were
+ * read from.
+ */
 export const elementTreeSchema = z.object({
   ref: z.string(),
   hash: z.string().regex(/^[0-9a-f]{64}$/),
+  /** The index of `body`, absent from an older server, whose first row sits right after it. */
+  body: z.int().min(0).optional(),
   elements: z.array(treeElementSchema),
 })
 

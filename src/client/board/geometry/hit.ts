@@ -88,6 +88,9 @@ export function badgeAt(
   )
 }
 
+/** The outlines a press takes, leaving out a locked element's and a group's holding one. */
+const PRESSED = ':not([data-element-locked])'
+
 function drawnBox({ style }: HTMLElement): Box {
   return {
     x: parseFloat(style.left),
@@ -105,7 +108,9 @@ function drawnBox({ style }: HTMLElement): Box {
 export function selectedGroupBox(
   layer: ParentNode,
 ): { box: Box; scales: boolean } | null {
-  const drawn = layer.querySelector<HTMLElement>('[data-element-group]')
+  const drawn = layer.querySelector<HTMLElement>(
+    `[data-element-group]${PRESSED}`,
+  )
   return drawn
     ? {
         box: drawnBox(drawn),
@@ -121,7 +126,9 @@ export function selectedGroupBox(
  */
 export function selectedElementBox(layer: ParentNode): Box | null {
   const drawn = [
-    ...layer.querySelectorAll<HTMLElement>('[data-element-selection]'),
+    ...layer.querySelectorAll<HTMLElement>(
+      `[data-element-selection]${PRESSED}`,
+    ),
   ].at(-1)
   return drawn ? drawnBox(drawn) : null
 }
@@ -146,7 +153,9 @@ export function selectedElementBoxes(
   layer: ParentNode,
 ): { index: number; box: Box }[] {
   return [
-    ...layer.querySelectorAll<HTMLElement>('[data-element-selection]'),
+    ...layer.querySelectorAll<HTMLElement>(
+      `[data-element-selection]${PRESSED}`,
+    ),
   ].flatMap((drawn) => {
     const index = Number(drawn.dataset.elementIndex)
     return Number.isInteger(index) ? [{ index, box: drawnBox(drawn) }] : []
@@ -154,14 +163,14 @@ export function selectedElementBoxes(
 }
 
 /**
- * The element whose ghost draws under a canvas point, leaving a point inside
- * the frame to the frame.
+ * The element whose ghost draws under a canvas point, with the box it draws
+ * at, leaving a point inside the frame to the frame.
  */
 export function ghostAt(
   layer: ParentNode,
   frames: readonly FrameRecord[],
   point: Point,
-): ElementKey | null {
+): { key: ElementKey; box: Box } | null {
   const ghosts = [
     ...layer.querySelectorAll<HTMLElement>('[data-element-ghost]'),
   ].reverse()
@@ -169,15 +178,14 @@ export function ghostAt(
     const { ghostFrame, ghostIndex, ghostHash } = ghost.dataset
     const frame = frames.find(({ ref }) => ref === ghostFrame)
     if (!frame || ghostIndex === undefined || ghostHash === undefined) continue
-    const { left, top, width, height } = ghost.style
-    const box = {
-      x: parseFloat(left),
-      y: parseFloat(top),
-      width: parseFloat(width),
-      height: parseFloat(height),
-    }
+    const box = drawnBox(ghost)
     if (within(box, point) && !within(frame.box, point)) {
-      return { frame: frame.ref, index: Number(ghostIndex), hash: ghostHash }
+      const key = {
+        frame: frame.ref,
+        index: Number(ghostIndex),
+        hash: ghostHash,
+      }
+      return { key, box }
     }
   }
   return null
