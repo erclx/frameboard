@@ -217,17 +217,24 @@ function Toaster({
   children,
   toastManager = toast,
   bodies,
+  held = false,
   ...props
 }: ToastPrimitive.Provider.Props & {
   bodies?: Readonly<Record<string, ToastBody>>
+  /** Hides the stack while its toasts stay open and keep their timers. */
+  held?: boolean
 }) {
   return (
     <ToastProvider toastManager={toastManager} {...props}>
       {children}
       <ToastPortal>
-        <ToastViewport>
-          <ToastList bodies={bodies} />
-        </ToastViewport>
+        {/* Hidden, since an unmounted toast never leaves once closed, and around
+            the viewport, which draws a high priority alert beside itself. */}
+        <div hidden={held}>
+          <ToastViewport>
+            <ToastList bodies={bodies} />
+          </ToastViewport>
+        </div>
       </ToastPortal>
     </ToastProvider>
   )

@@ -9,6 +9,7 @@ import { ShowOfferBody } from './board/changes/show-toast'
 import { CHANGE_TOAST, ChangeToastBody } from './board/changes/toast'
 import { BoardLoading } from './board/loading'
 import { PresenterScreen } from './board/present/presenter/screen'
+import { usePresent } from './board/present/store'
 import { presentationIdOf } from './board/present/sync'
 import { BoardScreen } from './board/screen'
 import { buttonVariants } from './components/ui/button'
@@ -32,10 +33,11 @@ const ICON_STROKE = 1.6
 
 /** The board's routes over the live store, which `main.tsx` connects to the server. */
 export function App() {
+  const presenting = usePresent((state) => state.page !== null)
   return (
     <LucideProvider strokeWidth={ICON_STROKE}>
       <TooltipProvider delay={500}>
-        <Toaster bodies={TOAST_BODIES}>
+        <Toaster bodies={TOAST_BODIES} held={presenting}>
           <Shell />
           <CommandPalette />
           <ShortcutsSheet />

@@ -38,6 +38,7 @@ Owns present mode, a page's frames one at a time over the window on black throug
 - It asks for full screen or the presenter window inside the starting press, since the browser grants either only then and never both, and a refusal presents in the window
 - Tab on the board and the Layers panel keep Layers order, so the two orders differ on one page
 - Leaving returns focus to what opened presenting, or to the Present button once that is gone, with the frame shown selected
+- `app.tsx` holds the toast stack while a page presents, the presenter window's too, so a toast left open shows after and a timed one lapses unseen
 - Reduced motion makes every transition a cut, a step taken before own keyframes arrive cuts, and a transition with no `leave` keeps its leaving slide still
 - The frame walks a slide's steps and hides a group an agent adds at the step it holds, and only present mode hides one, so Edit and a capture show every one
 
