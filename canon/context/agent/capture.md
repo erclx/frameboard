@@ -9,7 +9,7 @@ description: Screenshots of frames, pages, and projects in either theme
 
 Owns what an agent sees of a frame without a screen, being PNGs of one frame, a whole page, or a whole project, in either theme or both. Capture runs in a real browser.
 
-`capture --all-pages` refreshes a project's archive as images alone, where `references sync` fills a `frames.json` folder with HTML too. `--prune` then removes every other image in the captured themes under `<out>/<project>/`. It keeps the other theme, files no capture names, `assets/`, and anything behind a link, and refuses a folder of the board.
+`capture --all-pages` refreshes a project's archive as images alone, where `references sync` fills a `frames.json` folder with HTML too. `--prune` then removes every other image of the call's themes and kind, frame or composite, under `<out>/<project>/`. It keeps `assets/` and anything behind a link, and refuses a folder of the board.
 
 ## Layout
 

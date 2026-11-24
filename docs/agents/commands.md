@@ -21,7 +21,7 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 
 ## Capturing
 
-`capture` writes images of what the board renders. `--all-pages` shoots a whole project in one call, and `--prune` removes every other captured image in the same theme under that project's folder in `--out`. Notes, HTML, the theme you left out, and other projects stay, a refused frame changes nothing, and an `--out` in the board is refused.
+`capture` writes images of what the board renders. `--all-pages` shoots a whole project in one call, and `--prune` removes every other image of the same theme and kind, frame or composite, under that project's folder in `--out`. Every other file stays, a refused frame changes nothing, and an `--out` in the board is refused.
 
 - `capture` writes PNGs of a frame, page, or project in either theme at 1x to 3x with `--scale`, naming a scaled file `<frame>.<theme>@<n>x.png`, and `--scroll <px>` shoots a scroll frame that far down
 - `capture` holds each video on its poster, or on its first frame without one, so two captures match

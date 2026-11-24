@@ -48,18 +48,67 @@ describe('pruneImages', () => {
     'home/my hero.light.png',
     'home/a@b.light.png',
     'old page/gone.light.png',
-    'gone.light.png',
-    'gone.dark@2x.png',
-    'old page.light.png',
-  ])('removes %s, which a capture could have written', async (path) => {
+  ])('removes %s, which a frame capture could have written', async (path) => {
     const kept = write('studio/home/hero.light.png')
     const [stale] = write(`studio/${path}`)
 
-    const removed = await pruneImages(out, 'studio', { themes: THEMES, kept })
+    const removed = await pruneImages(out, 'studio', {
+      kind: 'frame',
+      themes: THEMES,
+      kept,
+    })
 
     expect(removed).toEqual([stale])
     expect(existsSync(join(out, 'studio', path))).toBe(false)
     expect(existsSync(join(out, 'studio/home/hero.light.png'))).toBe(true)
+  })
+
+  it.each(['gone.light.png', 'gone.dark@2x.png', 'old page.light.png'])(
+    'removes %s, which a composite could have written',
+    async (path) => {
+      const kept = write('studio/home.light.png')
+      const [stale] = write(`studio/${path}`)
+
+      const removed = await pruneImages(out, 'studio', {
+        kind: 'composite',
+        themes: THEMES,
+        kept,
+      })
+
+      expect(removed).toEqual([stale])
+      expect(existsSync(join(out, 'studio', path))).toBe(false)
+      expect(existsSync(join(out, 'studio/home.light.png'))).toBe(true)
+    },
+  )
+
+  it('leaves every composite alone when it removes frame images', async () => {
+    const kept = write('studio/home/hero.light.png')
+    const [stale] = write('studio/gone/a.light.png')
+    const composites = write('studio/home.light.png', 'studio/gone.light.png')
+
+    const removed = await pruneImages(out, 'studio', {
+      kind: 'frame',
+      themes: THEMES,
+      kept,
+    })
+
+    expect(removed).toEqual([stale])
+    expect(composites.filter((path) => !existsSync(path))).toEqual([])
+  })
+
+  it('leaves every frame image alone when it removes composites', async () => {
+    const kept = write('studio/home.light.png')
+    const [stale] = write('studio/gone.light.png')
+    const frames = write('studio/home/hero.light.png', 'studio/gone/a.dark.png')
+
+    const removed = await pruneImages(out, 'studio', {
+      kind: 'composite',
+      themes: THEMES,
+      kept,
+    })
+
+    expect(removed).toEqual([stale])
+    expect(frames.filter((path) => !existsSync(path))).toEqual([])
   })
 
   it.each([
@@ -80,9 +129,18 @@ describe('pruneImages', () => {
     const kept = write('studio/home/hero.light.png')
     write(`studio/${path}`)
 
-    const removed = await pruneImages(out, 'studio', { themes: THEMES, kept })
+    const frames = await pruneImages(out, 'studio', {
+      kind: 'frame',
+      themes: THEMES,
+      kept,
+    })
+    const composites = await pruneImages(out, 'studio', {
+      kind: 'composite',
+      themes: THEMES,
+      kept,
+    })
 
-    expect(removed).toEqual([])
+    expect([...frames, ...composites]).toEqual([])
     expect(existsSync(join(out, 'studio', path))).toBe(true)
   })
 
@@ -92,16 +150,15 @@ describe('pruneImages', () => {
       'studio/home/hero.dark.png',
       'studio/home/gone.dark@2x.png',
       'studio/home/gone.light.dark.png',
-      'studio/gone.dark.png',
       'studio/old/a.dark.png',
     )
     const light = write(
-      'studio/gone.light.png',
       'studio/home/gone.dark.light.png',
       'studio/old/a.light@2x.png',
     )
 
     const removed = await pruneImages(out, 'studio', {
+      kind: 'frame',
       themes: ['light'],
       kept,
     })
@@ -114,7 +171,7 @@ describe('pruneImages', () => {
     const kept = write('studio/home/hero.light.png')
     const [other] = write('shop/cart/empty.light.png')
 
-    await pruneImages(out, 'studio', { themes: THEMES, kept })
+    await pruneImages(out, 'studio', { kind: 'frame', themes: THEMES, kept })
 
     expect(existsSync(String(other))).toBe(true)
   })
@@ -123,7 +180,7 @@ describe('pruneImages', () => {
     const kept = write('studio/home/hero.light.png')
     write('studio/old/a.light.png', 'studio/old/a.dark.png')
 
-    await pruneImages(out, 'studio', { themes: THEMES, kept })
+    await pruneImages(out, 'studio', { kind: 'frame', themes: THEMES, kept })
 
     expect(existsSync(join(out, 'studio/old'))).toBe(false)
   })
@@ -132,7 +189,7 @@ describe('pruneImages', () => {
     const kept = write('studio/home/hero.light.png')
     write('studio/old/a.light.png', 'studio/old/notes.md')
 
-    await pruneImages(out, 'studio', { themes: THEMES, kept })
+    await pruneImages(out, 'studio', { kind: 'frame', themes: THEMES, kept })
 
     expect(existsSync(join(out, 'studio/old/a.light.png'))).toBe(false)
     expect(existsSync(join(out, 'studio/old/notes.md'))).toBe(true)
@@ -142,7 +199,7 @@ describe('pruneImages', () => {
     const kept = write('studio/home/hero.light.png')
     mkdirSync(join(out, 'studio/later'))
 
-    await pruneImages(out, 'studio', { themes: THEMES, kept })
+    await pruneImages(out, 'studio', { kind: 'frame', themes: THEMES, kept })
 
     expect(existsSync(join(out, 'studio/later'))).toBe(true)
   })
@@ -154,10 +211,9 @@ describe('pruneImages', () => {
       'studio/home/a.light.png',
     )
 
-    expect(await pruneImages(out, 'studio', { themes: THEMES, kept })).toEqual([
-      first,
-      second,
-    ])
+    expect(
+      await pruneImages(out, 'studio', { kind: 'frame', themes: THEMES, kept }),
+    ).toEqual([first, second])
   })
 
   // Two spellings of one file, as a disk that ignores case gives a renamed frame.
@@ -166,9 +222,9 @@ describe('pruneImages', () => {
     const listed = join(out, 'studio/home/Hero.light.png')
     if (!existsSync(listed)) linkSync(String(kept[0]), listed)
 
-    expect(await pruneImages(out, 'studio', { themes: THEMES, kept })).toEqual(
-      [],
-    )
+    expect(
+      await pruneImages(out, 'studio', { kind: 'frame', themes: THEMES, kept }),
+    ).toEqual([])
     expect(existsSync(listed)).toBe(true)
   })
 
@@ -177,9 +233,9 @@ describe('pruneImages', () => {
     const [outside] = write('elsewhere/gone.light.png')
     symlinkSync(join(out, 'elsewhere'), join(out, 'studio/linked'))
 
-    expect(await pruneImages(out, 'studio', { themes: THEMES, kept })).toEqual(
-      [],
-    )
+    expect(
+      await pruneImages(out, 'studio', { kind: 'frame', themes: THEMES, kept }),
+    ).toEqual([])
     expect(existsSync(String(outside))).toBe(true)
   })
 
@@ -190,6 +246,7 @@ describe('pruneImages', () => {
 
     expect(
       await pruneImages(out, 'studio', {
+        kind: 'frame',
         themes: THEMES,
         kept: [join(out, 'studio/home/hero.light.png')],
       }),

@@ -665,24 +665,49 @@ describe('capture', () => {
 
     it("removes a deleted frame's and a deleted page's images and lists them", async () => {
       board = writeBoard(PROJECT)
-      lay(
-        'studio/home/gone.light.png',
-        'studio/removed/hero.dark.png',
-        'studio/removed.light.png',
-      )
+      lay('studio/home/gone.light.png', 'studio/removed/hero.dark.png')
 
       const run = await capture(['--all-pages', '--prune', '--out', '../shots'])
 
       expect(run.exitCode).toBe(0)
       expect(captureResultSchema.parse(run.json().data).removed).toEqual([
         join(board.root, '../shots/studio/home/gone.light.png'),
-        join(board.root, '../shots/studio/removed.light.png'),
         join(board.root, '../shots/studio/removed/hero.dark.png'),
       ])
       expect(held('studio/home/gone.light.png')).toBe(false)
       expect(held('studio/removed')).toBe(false)
       expect(held('studio/home/hero.light.png')).toBe(true)
       expect(held('studio/basics/type.light.png')).toBe(true)
+    })
+
+    it('leaves the composites alone on a frame call', async () => {
+      board = writeBoard(PROJECT)
+      lay('studio/home.light.png', 'studio/removed.light.png')
+
+      const run = await capture(['--all-pages', '--prune', '--out', '../shots'])
+
+      expect(captureResultSchema.parse(run.json().data).removed).toEqual([])
+      expect(held('studio/home.light.png')).toBe(true)
+      expect(held('studio/removed.light.png')).toBe(true)
+    })
+
+    it("removes a deleted page's composite on a --composite call, leaving frame images", async () => {
+      board = writeBoard(PROJECT)
+      lay('studio/removed.light.png', 'studio/removed/hero.light.png')
+
+      const run = await capture([
+        '--all-pages',
+        '--composite',
+        '--prune',
+        '--out',
+        '../shots',
+      ])
+
+      expect(captureResultSchema.parse(run.json().data).removed).toEqual([
+        join(board.root, '../shots/studio/removed.light.png'),
+      ])
+      expect(held('studio/home.light.png')).toBe(true)
+      expect(held('studio/removed/hero.light.png')).toBe(true)
     })
 
     it('leaves every image of the theme not captured', async () => {

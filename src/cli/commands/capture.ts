@@ -70,7 +70,7 @@ export function registerCapture(
     )
     .option(
       '--prune',
-      "with --all-pages, remove every other image a capture could have written in the same theme under the project's folder in --out, such as a deleted frame's or a composite, leaving every other file. Refused where that folder is part of the board",
+      "with --all-pages, remove every other image a call like this one could have written under the project's folder in --out, such as a deleted frame's, leaving the theme not captured, composites or frame images it did not write, and every other file. Refused where that folder is part of the board",
     )
     .addOption(
       new Option('--theme <theme>', 'the theme to capture')
@@ -212,6 +212,7 @@ export function registerCapture(
       )
       const removed = options.prune
         ? await pruneImages(out, project, {
+            kind: options.composite ? 'composite' : 'frame',
             themes,
             kept: images.map((image) => image.path),
           })

@@ -8,6 +8,14 @@ import type { Theme } from '@/shared/theme'
 
 import { isCompositeImageName, isFrameImageName } from './images'
 
+/** What one call captured, which bounds what its prune may remove. */
+interface Prune {
+  kind: 'frame' | 'composite'
+  themes: readonly Theme[]
+  /** The images the call wrote. */
+  kept: readonly string[]
+}
+
 /**
  * Refuses `usage` where a prune would reach the board's own files, which a
  * frame may link. A dot-named folder of the board holds none, so it passes.
@@ -48,14 +56,14 @@ async function resolvedPath(path: string): Promise<string> {
 }
 
 /**
- * Removes every image in `themes` a capture could have written under
- * `<out>/<project>` but those at `kept`, and each page folder that empties,
- * returning the files removed, sorted. Nothing behind a link goes.
+ * Removes every image of the kind and themes a capture could have written
+ * under `<out>/<project>` but those at `kept`, and each page folder that
+ * empties, returning the files removed, sorted. Nothing behind a link goes.
  */
 export async function pruneImages(
   out: string,
   project: string,
-  { themes, kept }: { themes: readonly Theme[]; kept: readonly string[] },
+  { kind, themes, kept }: Prune,
 ): Promise<string[]> {
   const folder = join(out, project)
   if (!(await lstat(folder)).isDirectory()) return []
@@ -70,22 +78,31 @@ export async function pruneImages(
     return images.filter((_, index) => !keptFiles.has(identities[index] ?? ''))
   }
 
+  if (kind === 'composite') {
+    const composites = await stale(folder, isCompositeImageName)
+    await removeFiles(composites)
+    return composites.sort()
+  }
+
   const pageFolders = (await readdir(folder, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory() && isPageName(entry.name))
     .map((entry) => join(folder, entry.name))
-  const composites = await stale(folder, isCompositeImageName)
   const byPage = await Promise.all(
     pageFolders.map((dir) => stale(dir, isFrameImageName)),
   )
 
-  const removed = [...composites, ...byPage.flat()]
-  await Promise.all(removed.map((path) => rm(path, { force: true })))
+  const removed = byPage.flat()
+  await removeFiles(removed)
   await Promise.all(
     pageFolders
       .filter((_, index) => (byPage[index]?.length ?? 0) > 0)
       .map(removeIfEmpty),
   )
   return removed.sort()
+}
+
+async function removeFiles(paths: readonly string[]): Promise<void> {
+  await Promise.all(paths.map((path) => rm(path, { force: true })))
 }
 
 function isPageName(name: string): boolean {
