@@ -402,6 +402,33 @@ describe('Frame', () => {
       })
     })
 
+    it('stands a scroll tablet’s rail past its volume buttons', async () => {
+      const tablet: FrameRecord = {
+        ...frame('a'),
+        box: { x: 0, y: 0, width: 834, height: 400 },
+        showDevice: true,
+        device: 'tablet',
+        scroll: true,
+      }
+      const { container } = render(<Frame frame={tablet} live version={0} />)
+      const iframe = iframeOf(container, 'a')
+      await bridged(iframe)
+      iframe.contentDocument?.body.insertAdjacentHTML(
+        'beforeend',
+        '<div style="height:2000px"></div>',
+      )
+
+      await expect
+        .poll(() => container.querySelector('[data-rail]'))
+        .not.toBeNull()
+      const rail = container.querySelector('[data-rail]')
+      const volume = container.querySelector('[data-bezel-button="right"]')
+
+      expect(rail?.getBoundingClientRect().left).toBeCloseTo(
+        (volume?.getBoundingClientRect().right ?? 0) + 8,
+      )
+    })
+
     describe('a foldable', () => {
       const inbox: FrameRecord = {
         ...frame('inbox'),
