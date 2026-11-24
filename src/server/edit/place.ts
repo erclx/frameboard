@@ -7,7 +7,7 @@ import {
 } from './apply'
 import { rawAttribute } from './attribute'
 import type { ElementSpan } from './element-span'
-import { ownText } from './elements'
+import { isPlaced, ownText } from './elements'
 import { declaredValues } from './style'
 
 /** Where a placed element sits, in CSS pixels against its containing block. */
@@ -65,8 +65,7 @@ function inFlow(
 ): string {
   const style = rawAttribute(source, element, 'style') ?? ''
   if (declaredValues(style, 'position').length > 0) return ''
-  const position = facts?.position?.trim().toLowerCase()
-  return position === 'absolute' || position === 'fixed' ? 'static' : ''
+  return isPlaced(facts) ? 'static' : ''
 }
 
 /** Whether `element` is anchored above `parent`, with nothing positioned between. */
@@ -180,4 +179,35 @@ export function placeElement(
   if (!written.ok) return written
   spans.push(written.span)
   return { ok: true, html: written.html, spans, sized }
+}
+
+export type Stood = { readonly ok: true; readonly html: string } | EditRefused
+
+/**
+ * Stands a placed element in the flow of a frame it has to itself, where its
+ * offsets would leave it outside a hugging box. It stays positioned, so its
+ * own placed children keep the box they count from.
+ */
+export function standInFlow(
+  source: string,
+  index: number,
+  facts: readonly PlaceFacts[],
+): Stood {
+  if (!isPlaced(facts[index])) return { ok: true, html: source }
+  return applyEdit(
+    source,
+    { index },
+    {
+      kind: 'styles',
+      declarations: [
+        { property: 'position', value: 'relative' },
+        ...['left', 'top', 'right', 'bottom'].map((property) => ({
+          property,
+          value: '',
+        })),
+        // Beats the offsets a rule may place it at.
+        { property: 'inset', value: 'auto' },
+      ],
+    },
+  )
 }

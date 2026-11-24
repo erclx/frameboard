@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { parseFrame } from './address'
-import { placeElement, type PlaceFacts } from './place'
+import { placeElement, type PlaceFacts, standInFlow } from './place'
 
 const NONE: PlaceFacts = { position: null, width: false, height: false }
 
@@ -199,5 +199,51 @@ describe('placeElement', () => {
     )
 
     expect(placed).toMatchObject({ ok: false, reason: 'invalid-address' })
+  })
+})
+
+describe('standInFlow', () => {
+  it('drops the offsets of a placed element and keeps it the box its own count from', () => {
+    const source =
+      '<body><div style="position: absolute; left: 300px; top: 40px; width: 80px"><i></i></div></body>'
+
+    const stood = standInFlow(
+      source,
+      3,
+      factsFor(source, { 3: { position: 'absolute' } }),
+    )
+
+    expect(stood).toMatchObject({
+      ok: true,
+      html: '<body><div style="position: relative; width: 80px; inset: auto"><i></i></div></body>',
+    })
+  })
+
+  it('writes over the offsets a rule places the element at', () => {
+    const source = '<body><div class="toast">x</div></body>'
+
+    const stood = standInFlow(
+      source,
+      3,
+      factsFor(source, { 3: { position: 'fixed' } }),
+    )
+
+    expect(stood).toMatchObject({
+      ok: true,
+      html: '<body><div class="toast" style="position: relative; inset: auto">x</div></body>',
+    })
+  })
+
+  it('leaves an element in the flow as it is', () => {
+    const source =
+      '<body><div style="position: relative; left: 4px">x</div></body>'
+
+    const stood = standInFlow(
+      source,
+      3,
+      factsFor(source, { 3: { position: 'relative' } }),
+    )
+
+    expect(stood).toMatchObject({ ok: true, html: source })
   })
 })

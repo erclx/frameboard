@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  elementFrameName,
   folderName,
   isReservedPageName,
   isValidName,
@@ -152,5 +153,23 @@ describe('titledFolder', () => {
     expect(isValidName(titledFolder('untitled', 'a'.repeat(80), taken))).toBe(
       true,
     )
+  })
+})
+
+describe('elementFrameName', () => {
+  it.each([
+    ['Talk to the assistant', 'button', 'talk-to-the-assistant'],
+    ['hero.png', 'img', 'hero-png'],
+    ['Nút Đăng ký', 'button', 'nut-dang-ky'],
+    ['日本語', 'p', 'p'],
+    [null, 'model-viewer', 'model-viewer'],
+  ])('names the frame %s on a %s makes %s', (name, tagName, frame) => {
+    expect(elementFrameName(name, tagName)).toBe(frame)
+  })
+
+  it('leaves room under the name limit for the suffix a taken name grows', () => {
+    const name = elementFrameName('long '.repeat(30), 'p')
+
+    expect(isValidName(nextFreeName(name, [name]))).toBe(true)
   })
 })

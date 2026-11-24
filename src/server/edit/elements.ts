@@ -119,7 +119,7 @@ export function elementPlaceFacts(
   }))
 }
 
-function isPlaced(facts: PlaceFacts | undefined): boolean {
+export function isPlaced(facts: PlaceFacts | undefined): boolean {
   const position = facts?.position?.trim().toLowerCase()
   return position === 'absolute' || position === 'fixed'
 }
