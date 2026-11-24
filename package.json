@@ -49,6 +49,8 @@
     "prepare": "husky",
     "design:sync": "bun run build && node dist/cli.js references sync canon/design --root \"$(git rev-parse --path-format=absolute --git-common-dir)/../.canon/board\"",
     "check": "bun scripts/verify.ts",
+    "check:changed": "bun scripts/check-changed.ts",
+    "check:shell": "find scripts -name '*.sh' -exec shfmt --diff --indent 2 {} + && find scripts -name '*.sh' -exec shellcheck --severity=warning {} +",
     "check:format": "oxfmt --check .",
     "format": "oxfmt .",
     "lint": "oxlint --max-warnings 0 --disable-nested-config",
