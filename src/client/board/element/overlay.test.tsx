@@ -232,6 +232,14 @@ describe('ElementOverlay', () => {
       expect(marks(drawn)).toBe(0)
     })
 
+    it('outlines a free wrapper whose box is 0 by 0', async () => {
+      const drawn = await selecting(
+        '<div style="position:absolute;left:50px;top:10px"><i style="position:absolute;width:20px;height:20px"></i></div>',
+      )
+
+      expect(outline(drawn)?.style.left).toBe('150px')
+    })
+
     it('draws nothing for a hidden element, which holds no box', async () => {
       const drawn = await selecting('<h1>Hello, world</h1>')
       const heading = layer

@@ -259,7 +259,7 @@ export function startPlacedMove(
 }
 
 /**
- * The selected elements `keys` names that take any room, as a group drag reads them,
+ * The selected elements `keys` names the page draws, as a group drag reads them,
  * each box in its frame's own pixels, off a live frame showing the bytes they
  * were read from, or null while it shows other bytes or misses one.
  */

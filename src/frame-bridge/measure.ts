@@ -204,6 +204,7 @@ function measured(
     ),
     margin: marginsOf(element),
     ...(isLocked(element) ? { locked: true } : {}),
+    ...(element.getClientRects().length === 0 ? { unboxed: true } : {}),
   }))
 }
 

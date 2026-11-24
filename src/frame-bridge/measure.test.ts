@@ -270,6 +270,25 @@ describe('measure', () => {
     ).toEqual([true, true, undefined])
   })
 
+  it('marks a hidden member and not a wrapper whose box is 0 by 0', async () => {
+    const frame = await frameOf(
+      `<p style="display:none">Hidden</p><div style="position:absolute;left:50px;top:10px">${at(0, 0)}</div>`,
+    )
+
+    const asked = await ask(frame, 'measure', { hash: HASH, indexes: [3, 4] })
+    asked.close()
+
+    expect(asked.reply).toMatchObject({
+      value: [
+        { unboxed: true },
+        { box: { width: 0, height: 0 }, placed: { left: 50, top: 10 } },
+      ],
+    })
+    expect(
+      'value' in asked.reply && asked.reply.value?.[1]?.unboxed,
+    ).toBeUndefined()
+  })
+
   it('pushes again once a member changes size', async () => {
     const frame = await frameOf(at(10, 20))
     const asked = await ask(frame, 'measure', { hash: HASH, indexes: [3] })

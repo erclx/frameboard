@@ -35,9 +35,9 @@ function listen(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
-/** Whether a measured element takes any room, as one with display none does not. */
-export function hasBox({ box }: Pick<MemberMeasure, 'box'>): boolean {
-  return box.width > 0 || box.height > 0
+/** Whether the page draws a measured element, as it does not one with display none. */
+export function hasBox({ unboxed }: Pick<MemberMeasure, 'unboxed'>): boolean {
+  return !unboxed
 }
 
 /** The measures held for the named elements, all of one frame at one hash, or null while any is unmeasured. */

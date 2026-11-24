@@ -210,6 +210,8 @@ export interface MemberMeasure {
   margin: { top: number; right: number; bottom: number; left: number }
   /** True when a lock on it or an element holding it keeps canvas presses off it. */
   locked?: boolean
+  /** True when the page gives it no box, as `display: none` does, unlike a wrapper whose box is 0 by 0. */
+  unboxed?: boolean
 }
 
 /** An element past its frame's viewport, by file index, with the offsets a press on its ghost drags. */
@@ -341,6 +343,7 @@ export const memberMeasuresSchema: z.ZodType<MemberMeasure[] | null> = z
       nested: z.boolean(),
       margin: sidesSchema,
       locked: z.boolean().optional(),
+      unboxed: z.boolean().optional(),
     }),
   )
   .nullable()

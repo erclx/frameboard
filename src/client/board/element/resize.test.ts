@@ -371,6 +371,17 @@ describe('a live element', () => {
       ).toEqual([4])
     })
 
+    it('keeps a free wrapper whose box is 0 by 0, holding free children alone', async () => {
+      const shown = await mount(
+        '<div style="position: absolute; left: 50px; top: 10px"><div style="position: absolute; left: 0; top: 0; width: 20px; height: 20px"></div></div>',
+      )
+      await measure(shown, [KEY])
+
+      expect(shownGroup(shown, [KEY])).toMatchObject([
+        { index: 3, placed: { left: 50, top: 10 } },
+      ])
+    })
+
     it('answers null for keys read from other bytes', async () => {
       const shown = await mount('<div></div><div></div>')
       const stale = [
