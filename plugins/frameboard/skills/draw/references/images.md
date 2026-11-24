@@ -20,8 +20,9 @@ Add `--credited` only when no public domain image fits, since a CC BY image owes
 
 ## Generate only when nothing fits
 
-`frameboard image generate` spends on the developer's own key the moment it runs, and it never asks first. On the developer's own ComfyUI server it costs nothing, and `${CLAUDE_SKILL_DIR}/references/generate.md` covers setting that up and running it.
+`frameboard image generate` spends on the developer's own key the moment it runs, and it never asks first. A ComfyUI server the developer runs comes first when one is set and charges nothing, which `${CLAUDE_SKILL_DIR}/references/generate.md` covers.
 
+- Run `frameboard image doctor --json` to see which keys are set before offering to generate
 - Run `frameboard image generate "<prompt>" --dry-run --json` first and tell the developer the provider and `priceUsd` it answers
 - Run it without `--dry-run` only once the developer agrees to that spend, or asked for a generated image in so many words. A `comfyui` answer at `priceUsd` 0 spends nothing, so generate at once.
 - On `no-provider`, tell the developer which key to set and use a found image meanwhile

@@ -44,12 +44,11 @@ A Frameboard board is a folder of projects, pages, and frames, where every frame
 
 ## Tidy the board
 
-When the developer asks to rearrange, hide, or lock something, run the verb for it rather than editing the board's files, and take the arguments from `docs`.
+When the developer asks to rearrange the board, run the verb for it rather than moving files or editing `layout.json`, and take its arguments from `docs`.
 
-- Run `frame hide` to set a frame aside for now, and `frame lock` to keep it as it is. `--off` undoes either, so clear a hide you set yourself, and never clear a lock.
-- Run `frame move`, `frame resize`, `frame fit`, or `frame order` to change where a frame sits, how big it is, or what stacks over what
-- Run `frame rename`, `frame duplicate`, or `frame delete` for a frame's file, and `page rename`, `page move`, `page duplicate`, or `page delete` for a page, since each updates the layout beside the file
-- Run `font find` for a typeface the frame should load, and save it into the project when one fits, since a frame loads nothing over the network
+- Run `frame hide` when they want a frame out of sight for now, and `frame lock` when they want one kept as it is
+- Run `frame move` to place a frame or carry it to another page, `frame order` when one covers another, and `frame rename`, `frame duplicate`, or `frame delete` when they ask for that
+- Run `page move` to reorder pages, and `page rename`, `page duplicate`, or `page delete` when they ask for that, since deleting a page deletes its frames
 
 ## Check it and hand it back
 
@@ -65,7 +64,7 @@ Run these on each frame once it is placed.
    - Only a running server adds clipping, scrollbars, viewport sizing, and minimum font size, and the result's `browser.ran` says whether those rules ran
 4. Capture the frame in both themes with `frameboard capture <page>/<frame> --json` and look at each image before handing back, since a theme you never saw is a theme nobody checked.
    - Capture any motion you wrote at a few moments with `--at` or `--filmstrip`, since a plain capture shows only where it comes to rest
-   - Judge a whole page at once with `capture --page --composite`, which draws each frame at its layout position, and archive a project with `capture --all-pages`
+   - Judge a whole page at once with `capture --page --composite`, and archive a whole project's images with `capture --all-pages`
 5. Run `frameboard show <ref> [<ref>...]` naming every frame you drew, in the order to review them, so the developer's board turns to the first and its toast steps through the rest.
    - A ref is `<page>/<frame>`, or a page ref such as `<page>` standing for every frame on that page
 
@@ -82,7 +81,7 @@ Each feature past the core loop keeps its judgment in its own file. Read the one
 - When an element should lean or turn in 3D, such as a tilted card or a screenshot at an angle, read `${CLAUDE_SKILL_DIR}/references/tilt.md`
 - When a frame plays a video or a sound, read `${CLAUDE_SKILL_DIR}/references/media.md`
 - When a frame shows a 3D model, the developer asks for an object they can turn, or a picture should become a model through `model generate`, read `${CLAUDE_SKILL_DIR}/references/models.md`
-- When the developer asks to set up local image or model generation on their ComfyUI server, or a generation refuses `no-provider`, read `${CLAUDE_SKILL_DIR}/references/generate.md`
+- When the developer asks to set up local image or model generation on their own machine, or a picture or a model should be made on their ComfyUI server, read `${CLAUDE_SKILL_DIR}/references/generate.md`
 - When the project keeps its accepted frames in a tracked folder, or the developer asks for a design record, read `${CLAUDE_SKILL_DIR}/references/record.md`
 
 ## Keep frames in their sections
@@ -94,6 +93,7 @@ The developer draws sections on the board, and `list --json` names each section'
 - Take colors and fonts from the board's token variables through `var()` wherever a token exists, since a token carries both themes.
 - Define the dark theme beside any color you set yourself, through a `[data-theme="dark"]` rule, a `prefers-color-scheme` query, or `light-dark()`.
 - Name a font first in every `font-family`, keeping a generic family as the fallback only.
+- Run `font find` when the developer asks for a typeface the project does not hold, save the one they pick, and name its family in the frame with no link.
 
 ## Claim a frame before you rewrite it
 

@@ -1,19 +1,22 @@
 ---
 title: Record
-description: Keeping the board's accepted frames in a tracked folder as HTML, a PNG per theme, and the assets they load, through references sync
+description: When a project keeps its accepted frames in a tracked folder, how references sync fills that folder and what it removes
 ---
 
 # Record
 
-Read this when the project keeps its accepted designs in a folder the repository tracks, or the developer asks for a design record. Take the flags, the `frames.json` shape, and every refusal from the `references sync` entry of `frameboard docs --json`, since they describe the installed version.
+Read this when a project keeps accepted frames in a folder its repository tracks, or the developer asks for a design record. Take the flags and refusals from the `references sync` entry of `frameboard docs --json`, since they describe the installed version.
 
-## Sync an accepted frame
+## Sync the folder
 
-- Run `frameboard references sync <folder>` after the developer accepts a frame, so the folder holds its HTML, a PNG per theme, and the assets it loads
-- Name the frames to keep in the folder's `frames.json`, and read the `docs` entry for its shape rather than guessing it
-- Expect the run to remove every other file below the folder's first level, so never point it at a folder holding anything else
-- Tell the developer which frames it wrote, since the folder is theirs to commit
+`frameboard references sync <folder>` writes each mapped frame as its HTML, a PNG per theme, and the assets it loads. The folder's own `frames.json` names those frames, under `frames`, as a path in the folder to a `<project>/<page>/<frame>` ref.
 
-## Keep it apart from capture
+1. Read the folder's `frames.json` and add the frame the developer accepted. Never add one they have not accepted.
+2. Look at what the folder holds before the first sync, since the run removes every file it did not write below the folder's first level.
+3. Run the sync, then look at the images it wrote.
 
-`capture --all-pages` writes images alone for judging or archiving. Reach for `references sync` only when the record needs the HTML and assets beside the images.
+Render every PNG again after a token sheet or a kit changes, through the flag `docs` names, since a plain sync keeps the PNG of a frame that held still.
+
+## Reach for capture instead
+
+Use `capture --all-pages` when the developer wants images of a whole project and nothing to keep in step, since it writes images alone.
