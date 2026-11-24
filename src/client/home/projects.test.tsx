@@ -1487,22 +1487,18 @@ describe('folders', () => {
     })
   })
 
-  it('marks a folder card with a folder glyph before its name', () => {
+  it('draws no folder glyph on a folder card', () => {
     renderLive(CLIENT, server().calls)
 
-    expect(
-      folderCard('Client A').querySelector('[data-folder-glyph]'),
-    ).not.toBeNull()
+    expect(folderCard('Client A').querySelector('.lucide-folder')).toBeNull()
   })
 
-  it('draws no folder glyph on a project card', () => {
-    renderLive(CLIENT, server().calls)
+  it('draws the folder glyph on a list row', () => {
+    renderLive(CLIENT, server().calls, 'list')
 
     expect(
-      screen
-        .getByRole('link', { name: /drawings/ })
-        .querySelector('[data-folder-glyph]'),
-    ).toBeNull()
+      folderCard('Client A').querySelector('.lucide-folder'),
+    ).not.toBeNull()
   })
 
   describe.each([

@@ -23,7 +23,7 @@ Owns the home view, every project a card with a thumbnail or a list row, under a
 
 ### `src/client/home/folders/`
 
-Owns folders, filing projects one level deep by the `group` key in `project.json`, so a folder is board state an agent reads in `list --json`. A folder card draws a tab into the row gap and a glyph before its name, and `menu.tsx` offers Open, Rename, Ungroup, and Pin through the `folder.*` actions, and a list row's menu adds New project.
+Owns folders, filing projects one level deep by the `group` key in `project.json`, so a folder is board state an agent reads in `list --json`. A folder card draws a tab into the row gap, and `menu.tsx` offers Open, Rename, Ungroup, and Pin through the `folder.*` actions, and a list row's menu adds New project.
 
 - `entries.ts` stands a folder where its first member would, sorting through that member and rising with the pinned when pinned itself or holding a pinned member
 - Two groups differing only in case or trailing space read as one folder, and a rename refuses a name another folder holds in any case, since writing it would merge the two

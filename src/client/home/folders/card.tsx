@@ -1,4 +1,3 @@
-import { Folder } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
 import { useStore } from 'zustand'
 
@@ -85,22 +84,14 @@ export function FolderCard({
         ))}
       </span>
       <span className="flex flex-col px-3 pt-1.5 pb-3">
-        <span className="flex min-w-0 items-center gap-[5px]">
-          <Folder
-            aria-hidden
-            data-folder-glyph
-            className="size-[13px] shrink-0 text-muted-foreground"
-          />
-          <FolderName
-            folder={folder}
-            calls={panel.calls}
-            type="text-panel"
-            unseen={unseen}
-            pinned={pinned}
-            editing={!open}
-            className="flex-1"
-          />
-        </span>
+        <FolderName
+          folder={folder}
+          calls={panel.calls}
+          type="text-panel"
+          unseen={unseen}
+          pinned={pinned}
+          editing={!open}
+        />
         <span className="truncate text-body text-muted-foreground">
           {countOf(folder)}
         </span>
