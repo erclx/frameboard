@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.51.0](https://github.com/erclx/frameboard/compare/v0.50.0...v0.51.0) (2026-11-24)
+
+
+### Features
+
+* **capture:** refresh a whole project archive in one call ([#473](https://github.com/erclx/frameboard/issues/473)) ([1fc460f](https://github.com/erclx/frameboard/commit/1fc460f2b171045a998d8bb7831391a616963c35))
+* **fonts:** find and install an open font with its license ([#472](https://github.com/erclx/frameboard/issues/472)) ([0c267ee](https://github.com/erclx/frameboard/commit/0c267ee236dc379a08350a0973683efc9535eb46))
+* **inspector:** ask for a slide on the empty Slides tab ([#468](https://github.com/erclx/frameboard/issues/468)) ([b0bbfe8](https://github.com/erclx/frameboard/commit/b0bbfe8a3432d69c5cdfd1b5f44ed98a9147adda))
+* **titles:** fold marked letters into folder names ([#467](https://github.com/erclx/frameboard/issues/467)) ([240a329](https://github.com/erclx/frameboard/commit/240a329eb740af5297b357bd50013af095346b0c))
+* **toast:** hold toasts while presenting and set actions at the right ([#470](https://github.com/erclx/frameboard/issues/470)) ([f3320c7](https://github.com/erclx/frameboard/commit/f3320c7380bea7292edb375f2d69a0226717a827))
+
+
+### Bug Fixes
+
+* **home:** draw one line on a hovered card and drop the folder glyph ([#469](https://github.com/erclx/frameboard/issues/469)) ([86b436b](https://github.com/erclx/frameboard/commit/86b436bfa058b75ca06e547c6121562c5f827527))
+
 ## [0.50.0](https://github.com/erclx/frameboard/compare/v0.49.0...v0.50.0) (2026-11-24)
 
 

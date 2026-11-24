@@ -590,8 +590,9 @@ export function linkedWidths(
 }
 
 /** The x a copy placed beside a frame takes, its own body clear of the frame's device and linked widths. */
-export function pastExtent({ box, widths, device }: Placement): number {
-  const extent = drawnExtent(box, widths, device)
+export function pastExtent(placement: Placement): number {
+  const { box, widths, device } = placement
+  const extent = drawnExtent(box, widths, placement)
   return xPast(extent.x + extent.width, box.width, device)
 }
 

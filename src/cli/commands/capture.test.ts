@@ -1,11 +1,12 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { CapturedImage } from '@/server/capture/images'
+import { FrameboardError } from '@/shared/errors'
 import { captureResultSchema } from '@/shared/records/capture'
 
 import { cli } from '../../../test/support/cli'
@@ -23,6 +24,14 @@ vi.mock('@/server/capture/host', () => ({
 }))
 vi.mock('@/server/capture/images', async (importOriginal) => {
   const real = await importOriginal<typeof import('@/server/capture/images')>()
+  // Files land as the real writer lands them, for a prune to find.
+  function land<T extends { path: string }>(images: T[]): T[] {
+    for (const { path } of images) {
+      mkdirSync(dirname(path), { recursive: true })
+      writeFileSync(path, 'png')
+    }
+    return images
+  }
   return {
     ...real,
     captureFrameImages: async (
@@ -34,17 +43,23 @@ vi.mock('@/server/capture/images', async (importOriginal) => {
         scale,
         scroll,
       }: Parameters<typeof real.captureFrameImages>[1],
-    ) =>
-      frames.flatMap((frame) =>
-        themes.map((theme) => ({
-          ref: frame.ref,
-          theme,
-          path: real.frameImagePath(out, frame, theme, scale, scroll),
-          width: frame.box.width,
-          height: frame.box.height,
-          scale,
-        })),
-      ),
+    ) => {
+      if (frames.some((frame) => frame.name === 'broken')) {
+        throw new FrameboardError('font-missing', 'broken asks for no face.')
+      }
+      return land(
+        frames.flatMap((frame) =>
+          themes.map((theme) => ({
+            ref: frame.ref,
+            theme,
+            path: real.frameImagePath(out, frame, theme, scale, scroll),
+            width: frame.box.width,
+            height: frame.box.height,
+            scale,
+          })),
+        ),
+      )
+    },
     captureMotionImages: async (
       _browser: unknown,
       {
@@ -96,18 +111,27 @@ vi.mock('@/server/capture/images', async (importOriginal) => {
       ),
       motion: { source: 'css' as const, duration: 2000 },
     }),
-    captureComposite: async (
+    captureComposites: async (
       _browser: unknown,
-      { page, themes, out, scale }: Parameters<typeof real.captureComposite>[1],
-    ) =>
-      themes.map((theme) => ({
-        ref: page.ref,
-        theme,
-        path: real.compositeImagePath(out, page, theme, scale),
-        width: 1,
-        height: 1,
+      {
+        pages,
+        themes,
+        out,
         scale,
-      })),
+      }: Parameters<typeof real.captureComposites>[1],
+    ) =>
+      land(
+        pages.flatMap((page) =>
+          themes.map((theme) => ({
+            ref: page.ref,
+            theme,
+            path: real.compositeImagePath(out, page, theme, scale),
+            width: 1,
+            height: 1,
+            scale,
+          })),
+        ),
+      ),
   }
 })
 
@@ -136,6 +160,23 @@ const SCROLL_HERO = {
       hero: { x: 0, y: 0, width: 400, height: 300, order: 0, scroll: true },
     },
   }),
+}
+
+const PROJECT = {
+  ...PAGE,
+  'studio/project.json': JSON.stringify({
+    version: 1,
+    pages: ['home', 'archive', 'empty', 'basics'],
+  }),
+  'studio/archive/old.html': '<p>Old</p>',
+  'studio/archive/layout.json': JSON.stringify({
+    version: 1,
+    frames: {
+      old: { x: 0, y: 0, width: 400, height: 300, order: 0, hidden: true },
+    },
+  }),
+  'studio/empty/layout.json': JSON.stringify({ version: 1, frames: {} }),
+  'studio/basics/type.html': '<p>Type</p>',
 }
 
 const HERO = {
@@ -497,6 +538,309 @@ describe('capture', () => {
 
       expect(run.exitCode).toBe(2)
       expect(run.json().error?.code).toBe('usage')
+    })
+  })
+
+  describe('--all-pages', () => {
+    it('captures every visible frame of every page, in page order', async () => {
+      board = writeBoard(PROJECT)
+
+      const run = await capture(['--all-pages', '--theme', 'light'])
+
+      expect(run.exitCode).toBe(0)
+      expect(
+        captureResultSchema
+          .parse(run.json().data)
+          .images.map((image) => image.ref),
+      ).toEqual(['studio/home/hero', 'studio/home/about', 'studio/basics/type'])
+    })
+
+    it('lands each image where --page writes it', async () => {
+      board = writeBoard(PROJECT)
+
+      const run = await capture([
+        '--all-pages',
+        '--theme',
+        'dark',
+        '--scale',
+        '2',
+        '--out',
+        'shots',
+      ])
+
+      expect(
+        captureResultSchema
+          .parse(run.json().data)
+          .images.map((image) => image.path),
+      ).toEqual([
+        join(board.root, 'shots/studio/home/hero.dark@2x.png'),
+        join(board.root, 'shots/studio/home/about.dark@2x.png'),
+        join(board.root, 'shots/studio/basics/type.dark@2x.png'),
+      ])
+    })
+
+    it('writes one composite per page and theme with --composite', async () => {
+      board = writeBoard(PROJECT)
+
+      const run = await capture([
+        '--all-pages',
+        '--composite',
+        '--out',
+        'shots',
+      ])
+
+      expect(
+        captureResultSchema
+          .parse(run.json().data)
+          .images.map((image) => image.path),
+      ).toEqual([
+        join(board.root, 'shots/studio/home.light.png'),
+        join(board.root, 'shots/studio/home.dark.png'),
+        join(board.root, 'shots/studio/basics.light.png'),
+        join(board.root, 'shots/studio/basics.dark.png'),
+      ])
+    })
+
+    it('takes the project --project names on a board of several', async () => {
+      board = writeBoard({ ...PROJECT, 'shop/cart/empty.html': '<p>Cart</p>' })
+
+      const run = await capture(['--all-pages', '--project', 'shop'])
+
+      expect(
+        captureResultSchema
+          .parse(run.json().data)
+          .images.map((image) => image.ref),
+      ).toEqual(['shop/cart/empty', 'shop/cart/empty'])
+    })
+
+    it('refuses project-required on a board of several with no --project', async () => {
+      board = writeBoard({ ...PROJECT, 'shop/cart/empty.html': '<p>Cart</p>' })
+
+      const run = await capture(['--all-pages'])
+
+      expect(run.json().error?.code).toBe('project-required')
+    })
+
+    it('captures nothing from a project holding only hidden frames', async () => {
+      board = writeBoard({
+        'studio/archive/old.html': PROJECT['studio/archive/old.html'],
+        'studio/archive/layout.json': PROJECT['studio/archive/layout.json'],
+      })
+
+      const run = await capture(['--all-pages'])
+
+      expect(run.exitCode).toBe(0)
+      expect(run.json().data).toEqual({ images: [] })
+    })
+
+    it.each([
+      ['a frame ref', ['home/hero']],
+      ['--page', ['--page', 'home']],
+      ['--scroll', ['--scroll', '1200']],
+      ['--at', ['--at', '500']],
+      ['--filmstrip', ['--filmstrip', '4']],
+    ])('refuses %s beside it as usage', async (_beside, args) => {
+      board = writeBoard(PROJECT)
+
+      const run = await capture(['--all-pages', ...args])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+    })
+  })
+
+  describe('--prune', () => {
+    function lay(...paths: string[]) {
+      for (const path of paths) {
+        mkdirSync(dirname(join(board.root, '../shots', path)), {
+          recursive: true,
+        })
+        writeFileSync(join(board.root, '../shots', path), 'old')
+      }
+    }
+
+    function held(path: string): boolean {
+      return existsSync(join(board.root, '../shots', path))
+    }
+
+    it("removes a deleted frame's and a deleted page's images and lists them", async () => {
+      board = writeBoard(PROJECT)
+      lay('studio/home/gone.light.png', 'studio/removed/hero.dark.png')
+
+      const run = await capture(['--all-pages', '--prune', '--out', '../shots'])
+
+      expect(run.exitCode).toBe(0)
+      expect(captureResultSchema.parse(run.json().data).removed).toEqual([
+        join(board.root, '../shots/studio/home/gone.light.png'),
+        join(board.root, '../shots/studio/removed/hero.dark.png'),
+      ])
+      expect(held('studio/home/gone.light.png')).toBe(false)
+      expect(held('studio/removed')).toBe(false)
+      expect(held('studio/home/hero.light.png')).toBe(true)
+      expect(held('studio/basics/type.light.png')).toBe(true)
+    })
+
+    it('leaves the composites alone on a frame call', async () => {
+      board = writeBoard(PROJECT)
+      lay('studio/home.light.png', 'studio/removed.light.png')
+
+      const run = await capture(['--all-pages', '--prune', '--out', '../shots'])
+
+      expect(captureResultSchema.parse(run.json().data).removed).toEqual([])
+      expect(held('studio/home.light.png')).toBe(true)
+      expect(held('studio/removed.light.png')).toBe(true)
+    })
+
+    it("removes a deleted page's composite on a --composite call, leaving frame images", async () => {
+      board = writeBoard(PROJECT)
+      lay('studio/removed.light.png', 'studio/removed/hero.light.png')
+
+      const run = await capture([
+        '--all-pages',
+        '--composite',
+        '--prune',
+        '--out',
+        '../shots',
+      ])
+
+      expect(captureResultSchema.parse(run.json().data).removed).toEqual([
+        join(board.root, '../shots/studio/removed.light.png'),
+      ])
+      expect(held('studio/home.light.png')).toBe(true)
+      expect(held('studio/removed/hero.light.png')).toBe(true)
+    })
+
+    it('leaves every image of the theme not captured', async () => {
+      board = writeBoard(PROJECT)
+      lay(
+        'studio/home/hero.dark.png',
+        'studio/home/gone.dark.png',
+        'studio/home/gone.light.png',
+      )
+
+      const run = await capture([
+        '--all-pages',
+        '--prune',
+        '--theme',
+        'light',
+        '--out',
+        '../shots',
+      ])
+
+      expect(captureResultSchema.parse(run.json().data).removed).toEqual([
+        join(board.root, '../shots/studio/home/gone.light.png'),
+      ])
+      expect(held('studio/home/hero.dark.png')).toBe(true)
+      expect(held('studio/home/gone.dark.png')).toBe(true)
+    })
+
+    it("removes a hidden frame's images", async () => {
+      board = writeBoard(PROJECT)
+      lay('studio/archive/old.light.png')
+
+      await capture(['--all-pages', '--prune', '--out', '../shots'])
+
+      expect(held('studio/archive')).toBe(false)
+    })
+
+    it("keeps notes, frame HTML, and another project's folder", async () => {
+      board = writeBoard(PROJECT)
+      lay('studio/notes.md', 'studio/home/hero.html', 'shop/cart/a.light.png')
+
+      const run = await capture(['--all-pages', '--prune', '--out', '../shots'])
+
+      expect(captureResultSchema.parse(run.json().data).removed).toEqual([])
+      expect(held('studio/notes.md')).toBe(true)
+      expect(held('studio/home/hero.html')).toBe(true)
+      expect(held('shop/cart/a.light.png')).toBe(true)
+    })
+
+    it('removes nothing with no --prune and lists no removals', async () => {
+      board = writeBoard(PROJECT)
+      lay('studio/home/gone.light.png')
+
+      const run = await capture(['--all-pages', '--out', '../shots'])
+
+      expect(run.json().data).not.toHaveProperty('removed')
+      expect(held('studio/home/gone.light.png')).toBe(true)
+    })
+
+    it('removes and writes nothing when a frame on the last page is refused', async () => {
+      board = writeBoard({
+        ...PROJECT,
+        'studio/basics/broken.html': '<p>Broken</p>',
+      })
+      lay('studio/home/gone.light.png')
+
+      const run = await capture(['--all-pages', '--prune', '--out', '../shots'])
+
+      expect(run.json().error?.code).toBe('font-missing')
+      expect(held('studio/home/gone.light.png')).toBe(true)
+      expect(held('studio/home/hero.light.png')).toBe(false)
+    })
+
+    it('removes nothing from a project holding only hidden frames, and says so', async () => {
+      board = writeBoard({
+        'studio/archive/old.html': PROJECT['studio/archive/old.html'],
+        'studio/archive/layout.json': PROJECT['studio/archive/layout.json'],
+      })
+      lay('studio/archive/old.light.png')
+
+      const run = await capture(['--all-pages', '--prune', '--out', '../shots'])
+      const human = await cli(
+        ['capture', '--all-pages', '--prune', '--out', '../shots'],
+        { cwd: board.root },
+      )
+
+      expect(run.json().data).toEqual({ images: [], removed: [] })
+      expect(human.stdout).toContain('nothing was captured or removed')
+      expect(held('studio/archive/old.light.png')).toBe(true)
+    })
+
+    it("refuses to prune the board's own project folder, writing nothing", async () => {
+      board = writeBoard({
+        ...PROJECT,
+        'studio/home/logo.light.png': 'linked by a frame',
+      })
+
+      const run = await capture(['--all-pages', '--prune', '--out', '.'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+      expect(
+        readFileSync(join(board.root, 'studio/home/logo.light.png'), 'utf8'),
+      ).toBe('linked by a frame')
+      expect(existsSync(join(board.root, 'studio/home/hero.light.png'))).toBe(
+        false,
+      )
+    })
+
+    it('names each removed file in the human output', async () => {
+      board = writeBoard(PROJECT)
+      lay('studio/home/gone.light.png')
+
+      const { stdout } = await cli(
+        ['capture', '--all-pages', '--prune', '--out', '../shots'],
+        { cwd: board.root },
+      )
+
+      expect(stdout.trimEnd().split('\n').at(-1)).toBe(
+        `Removed ${join(board.root, '../shots/studio/home/gone.light.png')}`,
+      )
+    })
+
+    it.each([
+      ['a frame ref', ['home/hero']],
+      ['--page', ['--page', 'home']],
+    ])('refuses %s with no --all-pages as usage', async (_beside, args) => {
+      board = writeBoard(PROJECT)
+      lay('studio/home/gone.light.png')
+
+      const run = await capture([...args, '--prune', '--out', '../shots'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.message).toContain('--all-pages')
+      expect(held('studio/home/gone.light.png')).toBe(true)
     })
   })
 

@@ -5,14 +5,21 @@ import type { Browser } from 'playwright-core'
 
 import { COMPOSITE_MARGIN, filmstripWidth } from '@/shared/capture-limits'
 import { FrameboardError } from '@/shared/errors'
-import { type Device, insetsPage, type Turn } from '@/shared/frame-device'
-import { drawnExtent, linkedBoxes } from '@/shared/frame-widths'
+import {
+  type Device,
+  insetsPage,
+  screenCorners,
+  type Turn,
+} from '@/shared/frame-device'
+import { drawnExtent, linkedBoxes, viewDevice } from '@/shared/frame-widths'
+import { isReservedPageName } from '@/shared/names'
 import type { FrameRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
 
 import type { UnloadedModel } from './model-loads'
 import {
   assertScreenshotFits,
+  bodyHtml,
   LOAD_TIMEOUT_MS,
   MAX_COMPOSITE_SIDE,
   openFrame,
@@ -123,6 +130,28 @@ function imageName(
   return scale === 1 ? `${stem}.${theme}.png` : `${stem}.${theme}@${scale}x.png`
 }
 
+// A scan lists any name opening on no dot, so every suffix `imageName` puts
+// ahead of the theme reads as part of one.
+const IMAGE_NAME = /^(?<name>[^.].*)\.(?<theme>light|dark)(?:@[23]x)?\.png$/
+
+/** Whether a file in a page's folder is named as a capture of some frame in one of `themes` names it. */
+export function isFrameImageName(
+  file: string,
+  themes: readonly Theme[],
+): boolean {
+  const theme = IMAGE_NAME.exec(file)?.groups?.theme
+  return themes.some((each) => each === theme)
+}
+
+/** Whether a file in a project's folder is named as a composite of some page in one of `themes` names it. */
+export function isCompositeImageName(
+  file: string,
+  themes: readonly Theme[],
+): boolean {
+  const page = IMAGE_NAME.exec(file)?.groups?.name ?? ''
+  return isFrameImageName(file, themes) && !isReservedPageName(page)
+}
+
 /** Where one frame's capture in one theme lands under `out`. */
 export function frameImagePath(
   out: string,
@@ -158,11 +187,11 @@ export function compositeImagePath(
 export function compositeBounds(
   page: CompositePage,
   frames: (Pick<FrameRecord, 'box'> &
-    Partial<Pick<FrameRecord, 'widths' | 'device'>>)[],
+    Partial<Pick<FrameRecord, 'widths' | 'device' | 'showDevice'>>)[],
   scale = 1,
 ): { width: number; height: number; dx: number; dy: number } {
-  const extents = frames.map(({ box, widths, device }) =>
-    drawnExtent(box, widths ?? [], device),
+  const extents = frames.map((frame) =>
+    drawnExtent(frame.box, frame.widths ?? [], frame),
   )
   const left = Math.min(...extents.map((box) => box.x))
   const top = Math.min(...extents.map((box) => box.y))
@@ -284,71 +313,93 @@ function viewsOf(
 }
 
 /**
- * Captures one image of a page per theme, every frame at its layout box on
- * the theme's canvas color. Each frame renders as it does alone, font check
- * included, and the composite is written only once every theme rendered.
+ * Captures one image per page and theme, every frame at its layout box in the
+ * device it shows, on the theme's canvas color. Each frame renders as it does
+ * alone, and no composite is written until every page rendered.
  */
-export async function captureComposite(
+export async function captureComposites(
   browser: Browser,
   {
     baseUrl,
-    page,
-    frames,
+    pages,
     themes,
     out,
     scale = 1,
   }: {
     baseUrl: string
-    page: CompositePage
-    frames: FrameRecord[]
+    pages: (CompositePage & { frames: FrameRecord[] })[]
     themes: readonly Theme[]
     out: string
     scale?: number
   },
 ): Promise<CapturedImage[]> {
-  const bounds = compositeBounds(page, frames, scale)
+  // Bounded ahead of the first render, so an oversized last page costs no wait.
+  const bounded = pages.map((page) => ({
+    page,
+    bounds: compositeBounds(page, page.frames, scale),
+  }))
   const rendered: Rendered[] = []
-  for (const theme of themes) {
-    const tiles: string[] = []
-    // A frame's linked widths each open it again, so its videos and models count once.
-    const videos = new Map<string, CapturedVideo>()
-    const models = new Map<string, CapturedModel>()
-    for (const frame of frames) {
-      for (const box of [
-        frame.box,
-        ...linkedBoxes(frame.box, frame.widths, frame.device),
-      ]) {
-        const shot = await renderFrame(
-          browser,
-          baseUrl,
-          frame,
-          box,
-          theme,
-          scale,
-        )
-        for (const video of inFrame(frame.ref, shot.videos)) {
-          videos.set(`${video.ref} ${video.index}`, video)
+  for (const { page, bounds } of bounded) {
+    for (const theme of themes) {
+      const tiles: string[] = []
+      // A frame's linked widths each open it again, so its videos and models count once.
+      const videos = new Map<string, CapturedVideo>()
+      const models = new Map<string, CapturedModel>()
+      for (const frame of page.frames) {
+        for (const box of [
+          frame.box,
+          ...linkedBoxes(frame.box, frame.widths, frame),
+        ]) {
+          const shot = await renderFrame(
+            browser,
+            baseUrl,
+            frame,
+            box,
+            theme,
+            scale,
+          )
+          for (const video of inFrame(frame.ref, shot.videos)) {
+            videos.set(`${video.ref} ${video.index}`, video)
+          }
+          for (const model of inFrame(frame.ref, shot.models)) {
+            models.set(`${model.ref} ${model.index}`, model)
+          }
+          tiles.push(compositeTile(frame, box, bounds, shot.bytes))
         }
-        for (const model of inFrame(frame.ref, shot.models)) {
-          models.set(`${model.ref} ${model.index}`, model)
-        }
-        tiles.push(
-          `<img src="data:image/png;base64,${shot.bytes.toString('base64')}" style="position:absolute;left:${box.x + bounds.dx}px;top:${box.y + bounds.dy}px;width:${box.width}px;height:${box.height}px">`,
-        )
       }
+      rendered.push({
+        ref: page.ref,
+        theme,
+        path: compositeImagePath(out, page, theme, scale),
+        width: bounds.width,
+        height: bounds.height,
+        scale,
+        ...unloadedKeys([...videos.values()], [...models.values()]),
+        bytes: await renderComposite(browser, bounds, theme, tiles, scale),
+      })
     }
-    rendered.push({
-      ref: page.ref,
-      theme,
-      path: compositeImagePath(out, page, theme, scale),
-      width: bounds.width,
-      height: bounds.height,
-      scale,
-      ...unloadedKeys([...videos.values()], [...models.values()]),
-      bytes: await renderComposite(browser, bounds, theme, tiles, scale),
-    })
   }
   return writeImages(rendered)
+}
+
+/** One view in a composite, inside the device it shows or bare, its shot already holding its bar. */
+function compositeTile(
+  frame: FrameRecord,
+  box: { x: number; y: number; width: number; height: number },
+  { dx, dy }: { dx: number; dy: number },
+  bytes: Buffer,
+): string {
+  const { device, turn } = viewDevice(frame, box.width)
+  const src = `data:image/png;base64,${bytes.toString('base64')}`
+  const place = `position:absolute;left:${box.x + dx}px;top:${box.y + dy}px;width:${box.width}px;height:${box.height}px`
+  if (!device) return `<img src="${src}" style="${place}">`
+  const { pose, island } = frame
+  return (
+    `<div style="${place}">` +
+    `<img src="${src}" style="display:block;width:100%;height:100%;border-radius:${screenCorners(device)}">` +
+    bodyHtml(box, { device, pose, island, turn }) +
+    `</div>`
+  )
 }
 
 /**
@@ -389,8 +440,7 @@ export async function captureMotionImages(
           frame: {
             ref: frame.ref,
             box: view,
-            device: viewDevice(frame, view),
-            turn: frame.turn,
+            ...viewDevice(frame, view.width),
           },
           theme,
           scale,
@@ -417,8 +467,7 @@ export async function captureMotionImages(
         baseUrl,
         ref: frame.ref,
         view,
-        device: viewDevice(frame, view),
-        turn: frame.turn,
+        ...viewDevice(frame, view.width),
         theme,
         scale,
         motionTimeoutMs,
@@ -587,17 +636,6 @@ async function holdShots(
   }
 }
 
-/**
- * The device a view draws its page under: the frame's own while the view
- * is the frame's own box, and none at a linked width, which draws no device.
- */
-function viewDevice(
-  frame: FrameRecord,
-  view: { width: number },
-): Device | undefined {
-  return view.width === frame.box.width ? frame.device : undefined
-}
-
 // One frame at a time, so a slow frame never holds several tabs open.
 async function renderFrame(
   browser: Browser,
@@ -610,11 +648,11 @@ async function renderFrame(
 ): Promise<{ bytes: Buffer; scrollY?: number } & Unloaded> {
   const box = { width: view.width, height: view.height }
   assertScreenshotFits(frame.ref, box, scale)
-  const device = viewDevice(frame, view)
+  const { device, turn } = viewDevice(frame, view.width)
   const opened = await openFrame(browser, {
     baseUrl,
     ref: frame.ref,
-    box: pageSize(box, device, frame.turn),
+    box: pageSize(box, device, turn),
     theme,
     scale,
   })
@@ -624,14 +662,14 @@ async function renderFrame(
         ? undefined
         : await opened.page.evaluate(scrollAndSettle, scroll)
     const shot = await opened.page.screenshot(SCREENSHOT)
-    const bytes = insetsPage(device, frame.turn)
+    const bytes = insetsPage(device, turn)
       ? await underPageInsets(
           browser,
           shot,
           box,
           {
             device,
-            turn: frame.turn,
+            turn,
             colors: await readPageColors(opened.page),
             theme,
           },

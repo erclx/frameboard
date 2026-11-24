@@ -11,6 +11,7 @@ import {
 import { FONT_RECORD } from '@/server/fonts/installed'
 import { assetKind, isPlaceableKind } from '@/shared/asset-kinds'
 import { CLAIMS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
+import { linkedBar } from '@/shared/frame-widths'
 import { KIT_ASSETS, PROJECT_KITS } from '@/shared/kits'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
 import { LICENSE_FILE_SUFFIX } from '@/shared/records/sourcing'
@@ -370,8 +371,8 @@ export function placedRefs(
 }
 
 /**
- * Height-hugging frames whose linked widths changed, measured here, since
- * that write reloads nothing.
+ * Height-hugging frames whose linked widths changed, or the bar each draws
+ * over its page, measured here, since that write reloads nothing.
  */
 export function relistedRefs(previous: ListResult, next: ListResult): string[] {
   const before = new Map(
@@ -400,7 +401,9 @@ export function relistedRefs(previous: ListResult, next: ListResult): string[] {
 }
 
 function listed(frame: FrameRecord): string {
-  return frame.widths.map(({ width }) => width).join(',')
+  return frame.widths
+    .map(({ width }) => `${width}+${linkedBar(frame, width)}`)
+    .join(',')
 }
 
 /**

@@ -13,7 +13,7 @@ The home view lists the board's projects and files them in folders.
   - A card's right-click menu opens, renames, duplicates, saves as a kit, pins, or deletes its project
   - Sort orders projects by last edited, created, or name, in either direction
 - A delete happens at once and leaves a toast with Undo, and pinned projects sit under a Pinned label above the rest
-- Drag one project onto another, or pick Move to folder from its menu, to file it in a folder, which its card's tab and folder glyph mark. A folder's menu opens, renames, ungroups, or pins it.
+- Drag one project onto another, or pick Move to folder from its menu, to file it in a folder, which its card's tab or its row's folder glyph marks. A folder's menu opens, renames, ungroups, or pins it.
 - An open folder's header has its own New project button, which adds a project already filed there, and a list row's folder menu offers the same
 - A double click on a folder's name renames it, as does the pen beside the name in an open folder
 - Cmd+F filters home by name, and Archive moves a project into a collapsed Archived section

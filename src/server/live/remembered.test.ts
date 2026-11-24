@@ -303,6 +303,7 @@ describe('createFrameKeys', () => {
     ['its box', { box: { x: 0, y: 0, width: 1440, height: 400 } }],
     ['its linked widths', { widths: [{ width: 390, height: 844 }] }],
     ['its device', { device: 'phone' }],
+    ['its device on, which a linked width draws', { showDevice: true }],
     ['its turn', { turn: 'left' }],
     ['scroll', { scroll: true }],
     ['a hugged height', { hugHeight: true }],

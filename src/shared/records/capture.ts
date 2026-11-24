@@ -4,7 +4,7 @@ import { frameRecordSchema } from './list'
 
 const themeSchema = z.enum(['light', 'dark'])
 
-/** What `capture` returns: every PNG it wrote, one per frame and theme, or one per theme for a composite. */
+/** What `capture` returns: every PNG it wrote, one per frame and theme, or one per page and theme for a composite. */
 export const captureResultSchema = z.object({
   images: z.array(
     z.object({
@@ -52,6 +52,8 @@ export const captureResultSchema = z.object({
         .optional(),
     }),
   ),
+  /** Each older image `--prune` removed, sorted, absent on a call without it. */
+  removed: z.array(z.string()).optional(),
   /** The timeline an `--at` or `--filmstrip` capture seeked, absent on any other. */
   motion: z
     .object({

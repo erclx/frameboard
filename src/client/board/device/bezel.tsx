@@ -4,7 +4,9 @@ import {
   BEZEL_COLORS,
   BEZELS,
   bezelShadow,
+  bodyParts,
   BUTTON_DEPTH,
+  CAMERA,
   type Device,
   FOLDABLE_ISLAND,
   foldBand,
@@ -23,6 +25,7 @@ import {
   SIGNAL_BARS,
   STATUS_BAR,
   STATUS_FONT,
+  TABLET_BUTTON_DEPTH,
   type Turn,
   turnOf,
   WIDE_ISLAND_LEVEL,
@@ -55,7 +58,7 @@ export function Bezel({
   pose?: Pose
   /** The phone's island width, which no other device reads. */
   island?: Island
-  /** How a phone, tablet, or foldable is held, which moves an island, a phone's buttons, and a fold, and gives a turned phone or foldable side strips. */
+  /** How a phone, tablet, or foldable is held, which moves an island, a camera, the buttons, and a fold, and gives a turned phone or foldable side strips. */
   turn?: Turn
   /** The page's fill and text color, which a phone's status bar or a turned phone's or foldable's side strips paint, its theme's own until the page reports them. */
   colors?: PageColors | null
@@ -88,6 +91,7 @@ export function Bezel({
         </>
       ) : null}
       {laptop ? <LaptopBody width={width} height={height} /> : null}
+      <BodyParts device={device} turn={turn} />
       {device === 'foldable' ? (
         <>
           {turned ? (
@@ -414,6 +418,35 @@ function IslandTimer() {
         ))}
       </span>
     </>
+  )
+}
+
+/** A laptop's camera, or a tablet's camera and buttons, drawn on its body. */
+function BodyParts({ device, turn }: { device: Device; turn: Turn }) {
+  return bodyParts(device, turn).map(({ name, edge, place }) =>
+    name === 'camera' ? (
+      <span
+        key={name}
+        data-bezel-camera={edge}
+        className="absolute rounded-full"
+        style={{
+          ...place,
+          background: CAMERA.fill,
+          boxShadow: `0 0 0 ${CAMERA.ring}px ${BEZEL_COLORS.cameraRing}`,
+        }}
+      />
+    ) : (
+      <span
+        key={name}
+        data-bezel-button={edge}
+        className="absolute"
+        style={{
+          ...place,
+          borderRadius: TABLET_BUTTON_DEPTH / 2,
+          background: BEZEL_COLORS.tabletButton,
+        }}
+      />
+    ),
   )
 }
 

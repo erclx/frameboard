@@ -1,4 +1,10 @@
-import { bezelBox, BEZELS, type Device } from './frame-device'
+import {
+  bezelBox,
+  type Device,
+  deviceForWidth,
+  topInset,
+  type Turn,
+} from './frame-device'
 import { FRAME_GAP } from './frame-sizes'
 
 interface Box {
@@ -47,40 +53,80 @@ function isSize(value: unknown): value is number {
 }
 
 /**
- * Where each linked width draws, in a row past the frame, moved out by a
- * laptop base's reach so a taller width never meets it.
+ * What a frame shows of its device: the one around its own box, and whether
+ * its device is on, which each linked width follows with the device it names.
  */
+export interface ShownDevice {
+  device?: Device | null
+  showDevice?: boolean
+}
+
+/** The device a linked width draws inside, the one its own width names while the frame shows its device. */
+export function linkedDevice(
+  { showDevice }: Pick<ShownDevice, 'showDevice'>,
+  width: number,
+): Device | null {
+  return showDevice ? deviceForWidth(width) : null
+}
+
+/**
+ * The device and turn a frame's view at a width draws its page under, its own
+ * at its own width. A linked view stands upright in the device it names.
+ */
+export function viewDevice(
+  frame: ShownDevice & { box: { width: number }; turn?: Turn },
+  width: number,
+): { device: Device | null; turn?: Turn } {
+  return width === frame.box.width
+    ? { device: frame.device ?? null, turn: frame.turn }
+    : { device: linkedDevice(frame, width) }
+}
+
+/** The height a linked width's status bar takes off its box, so a hugging one holds its page and the bar. */
+export function linkedBar(
+  frame: Pick<ShownDevice, 'showDevice'>,
+  width: number,
+): number {
+  return topInset(linkedDevice(frame, width), 'upright')
+}
+
+/** Where each linked width draws, in a row past the frame, each body the gap past the last. */
 export function linkedBoxes(
   box: Box,
   widths: readonly LinkedWidth[],
-  device?: Device | null,
+  shown: ShownDevice = {},
 ): Box[] {
   const boxes: Box[] = []
   // A turned frame shows at no other width, so a frame with widths stands upright.
-  const body = bezelBox(box, device, 'upright')
-  const lid = device ? BEZELS[device].border : 0
-  let x = body.x + body.width - lid
+  let edge = rightOf(bezelBox(box, shown.device, 'upright'))
   for (const { width, height } of widths) {
-    x += FRAME_GAP
-    boxes.push({ x, y: box.y, width, height })
-    x += width
+    const device = linkedDevice(shown, width)
+    const linked = { x: xPast(edge, width, device), y: box.y, width, height }
+    boxes.push(linked)
+    edge = rightOf(bezelBox(linked, device, 'upright'))
   }
   return boxes
 }
 
+function rightOf({ x, width }: Box): number {
+  return x + width
+}
+
 /**
- * The box holding a frame, the device body drawn around it, and every linked
- * width it draws, the frame's own with neither. Linked widths draw no device.
+ * The box holding a frame, every linked width it draws, and the device body
+ * around each, the frame's own with neither.
  */
 export function drawnExtent(
   box: Box,
   widths: readonly LinkedWidth[],
-  device?: Device | null,
+  shown: ShownDevice = {},
 ): Box {
   // Upright, whose buttons reach furthest aside, so a frame placed past a turned one clears it too.
   const boxes = [
-    bezelBox(box, device, 'upright'),
-    ...linkedBoxes(box, widths, device),
+    bezelBox(box, shown.device, 'upright'),
+    ...linkedBoxes(box, widths, shown).map((linked) =>
+      bezelBox(linked, linkedDevice(shown, linked.width), 'upright'),
+    ),
   ]
   const left = Math.min(...boxes.map(({ x }) => x))
   const top = Math.min(...boxes.map(({ y }) => y))

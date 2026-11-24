@@ -21,9 +21,9 @@ The `project`, `page`, and `frame` commands manage the board on disk, and `list`
 
 ## Capturing
 
-`capture` writes images of what the board renders.
+`capture` writes images of what the board renders. `--all-pages` shoots a whole project in one call, and `--prune` removes every other image of the same theme and kind, frame or composite, under that project's folder in `--out`. Every other file stays, a refused frame changes nothing, and an `--out` in the board is refused.
 
-- `capture` writes PNGs of a frame or page in either theme at 1x to 3x with `--scale`, naming a scaled file `<frame>.<theme>@<n>x.png`, and `--scroll <px>` shoots a scroll frame that far down
+- `capture` writes PNGs of a frame, page, or project in either theme at 1x to 3x with `--scale`, naming a scaled file `<frame>.<theme>@<n>x.png`, and `--scroll <px>` shoots a scroll frame that far down
 - `capture` holds each video on its poster, or on its first frame without one, so two captures match
 - `capture` waits for each 3D model to draw, holds its clip at the start, and seeks it with `--at`
 - A video or a model with no picture is listed under its image's `videos` or `models` as `error` or `pending` and never refuses the capture
@@ -53,7 +53,7 @@ A page meant to scroll, such as one with a sticky section, takes `--scroll` on `
 
 A responsive page is one frame file shown at several widths, so every fix to the file lands at all of them.
 
-- `--widths 834,390` on `frame add` or `frame resize` draws the frame again at each width, in a row beside it
+- `--widths 834,390` on `frame add` or `frame resize` draws the frame again at each width, in a row beside it, each inside the device its width names while the frame's device is on
 - Each width hugs its content when the frame does and holds its device height otherwise
 - `capture` names each width's image `<frame>@<width>.<theme>.png`, and a browser finding at a width prints as `<path>@<width>`
 
@@ -62,7 +62,7 @@ A responsive page is one frame file shown at several widths, so every fix to the
 `frame device <frame-ref> on`, or `--device on` on `frame add`, has the board draw the frame inside the device its width names, being a phone from 320 to 479 wide, a tablet from 480 to 1023, and a laptop from 1024 up. The frame file and its size stay as they are, and `off` hides it.
 
 - A phone draws a status bar over the top 54 px of the box and lays the page out under it, so a 390 by 844 frame holds a 390 by 790 page
-- `capture` draws the bar too, and a hugging height counts it
+- `capture` draws the bar too, and a hugging height counts it, and `capture --page <page> --composite` draws the body of every device shown
 - `--island wide` gives the phone its wide island, and `--island compact` takes it back
 - `--turn left` or `--turn right` lays a phone, tablet, or foldable out landscape with no status bar, and `--turn upright` stands it back up. `list --json` reports `turn` while it is turned
 - A turned phone or foldable insets its page 54 px from each side edge, so a phone's 844 by 390 box holds a 736 by 390 page clear of the island
@@ -118,6 +118,6 @@ Generating makes an image nobody licensed, on the developer's own server or key.
 
 ## Design references
 
-`references sync <folder>` fills a folder of design references from the frames its `frames.json` maps, and `--check` exits 14 when the folder has drifted. It needs `oxfmt` installed in that project or beside Frameboard, an optional peer, and prints the install command without it.
+`references sync <folder>` fills a folder of design references from the frames its `frames.json` maps, and `--check` exits 14 when the folder has drifted. It needs `oxfmt` installed in that project or beside Frameboard, an optional peer, and prints the install command without it. For images alone with no map, use `capture --all-pages`.
 
 A sync leaves a held PNG alone while its frame's HTML, assets, and size stay the same, since a fresh render of the same HTML can differ in its fonts. It reads no token sheet or kit, so pass `--rerender` after editing one to redraw every PNG.

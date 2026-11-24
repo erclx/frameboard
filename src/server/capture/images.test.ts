@@ -1,4 +1,10 @@
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import {
+  copyFileSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -6,6 +12,7 @@ import type { Browser } from 'playwright-core'
 import { PNG } from 'pngjs'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
+import { scanPage } from '@/server/board/scan'
 import { FrameboardError } from '@/shared/errors'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -19,6 +26,7 @@ import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { frameOf } from '../../test/board'
 import { startFrameHost } from './host'
 import {
+  captureComposites,
   captureFrameImages,
   captureMotionImages,
   compositeBounds,
@@ -257,6 +265,67 @@ describe.skipIf(shell === null)(
 const WIDE_PAGE = `<!doctype html><html lang="en"><head><title>hero</title><style>body { margin: 0; height: 100vh; background: #00f } @media (max-width: 500px) { body { background: #f00 } }</style></head><body></body></html>`
 
 describe.skipIf(shell === null)(
+  'captureComposites',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    let browser: Browser
+    let board: TempBoard
+    let out: string
+
+    beforeAll(() => {
+      browser = requireShell(shell)
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterEach(() => {
+      board.cleanup()
+      rmSync(out, { recursive: true, force: true })
+    })
+
+    async function shoot(lastFrame: string) {
+      board = writeBoard({
+        'studio/home/hero.html': STICKY_PAGE,
+        'studio/work/grid.html': lastFrame,
+      })
+      out = mkdtempSync(join(tmpdir(), 'frameboard-shots-'))
+      const host = await startFrameHost({ root: board.root, facesDir: out })
+      try {
+        return await captureComposites(browser, {
+          baseUrl: host.url,
+          pages: [
+            await scanPage(board.root, 'studio', 'home', 0),
+            await scanPage(board.root, 'studio', 'work', 1),
+          ],
+          themes: ['light'],
+          out,
+        })
+      } finally {
+        await host.close()
+      }
+    }
+
+    it('writes one image per page in the order given', async () => {
+      const images = await shoot(STICKY_PAGE)
+
+      expect(images.map((image) => image.ref)).toEqual([
+        'studio/home',
+        'studio/work',
+      ])
+      expect(readdirSync(join(out, 'studio')).sort()).toEqual([
+        'home.light.png',
+        'work.light.png',
+      ])
+    })
+
+    it('writes no page when a frame on the last one is refused', async () => {
+      const shot = shoot('<img src="missing.png">')
+
+      await expect(shot).rejects.toMatchObject({ code: 'image-missing' })
+      expect(readdirSync(out)).not.toContain('studio')
+    })
+  },
+)
+
+describe.skipIf(shell === null)(
   'captureFrameImages at linked widths',
   { timeout: SHELL_TEST_TIMEOUT_MS },
   () => {
@@ -430,8 +499,17 @@ describe.skipIf(shell === null)(
       expect(pixel(own.path, 678 - 50, 5)).toBe('#0000ff')
     })
 
-    it('starts a linked width page at its top, since it draws no device', async () => {
+    it("starts a linked phone's page under its status bar, at the linked box's size", async () => {
       const [, linked] = await shoot('phone')
+      if (!linked) throw new Error('no image')
+
+      expect([linked.width, linked.height]).toEqual([320, 500])
+      expect(pixel(linked.path, 160, 50)).toBe('#0000ff')
+      expect(pixel(linked.path, 160, 54 + 5)).toBe('#ff0000')
+    })
+
+    it('starts a linked page at its top with the device off', async () => {
+      const [, linked] = await shoot()
       if (!linked) throw new Error('no image')
 
       expect(pixel(linked.path, 160, 5)).toBe('#ff0000')
@@ -442,6 +520,84 @@ describe.skipIf(shell === null)(
       if (!own) throw new Error('no image')
 
       expect(pixel(own.path, 195, 5)).toBe('#ff0000')
+    })
+  },
+)
+
+describe.skipIf(shell === null)(
+  'captureComposites of a frame with linked widths',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    const BODY = '#17181b'
+    const BUTTON = '#4a4e57'
+    const CANVAS = '#ffffff'
+    const LINE = '#ff0000'
+    let browser: Browser
+    let board: TempBoard
+    let out: string
+
+    beforeAll(() => {
+      browser = requireShell(shell)
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterEach(() => {
+      board.cleanup()
+      rmSync(out, { recursive: true, force: true })
+    })
+
+    /** Answers a reader of one composite pixel, the composite's size beside it. */
+    async function composite(overrides: Partial<FrameRecord>) {
+      board = writeBoard({ 'studio/home/hero.html': EDGE_PAGE })
+      out = mkdtempSync(join(tmpdir(), 'frameboard-shots-'))
+      const host = await startFrameHost({ root: board.root, facesDir: out })
+      try {
+        const [image] = await captureComposites(browser, {
+          baseUrl: host.url,
+          pages: [
+            {
+              ...PAGE,
+              frames: [
+                frameOf('hero', {
+                  box: { x: 0, y: 0, width: 390, height: 600 },
+                  widths: [{ width: 834, height: 400 }],
+                  ...overrides,
+                }),
+              ],
+            },
+          ],
+          themes: ['light'],
+          out,
+        })
+        if (!image) throw new Error('No composite captured.')
+        const { data, width } = PNG.sync.read(readFileSync(image.path))
+        return (x: number, y: number) => {
+          const at = (y * width + x) * 4
+          return `#${[...data.subarray(at, at + 3)].map((byte) => byte.toString(16).padStart(2, '0')).join('')}`
+        }
+      } finally {
+        await host.close()
+      }
+    }
+
+    it("draws the frame's own body and each linked one whole", async () => {
+      const pixel = await composite({ device: 'phone', showDevice: true })
+
+      // The phone's screen lands at 60, 78, its left body and a rounded corner outside it.
+      expect(pixel(52, 378)).toBe(BODY)
+      expect(pixel(74, 92)).toBe(BODY)
+      expect(pixel(255, 78 + 54 + 5)).toBe(LINE)
+      // The tablet's screen lands at 588, 78, its volume button past the right of its body.
+      expect(pixel(572, 278)).toBe(BODY)
+      expect(pixel(1457, 198)).toBe(BUTTON)
+    })
+
+    it('draws every width bare and square with the device off', async () => {
+      const pixel = await composite({})
+
+      expect(pixel(38, 300)).toBe(CANVAS)
+      expect(pixel(40, 40)).toBe(LINE)
+      expect(pixel(508, 200)).toBe(CANVAS)
+      expect(pixel(510, 40)).toBe(LINE)
     })
   },
 )

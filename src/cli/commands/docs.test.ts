@@ -168,6 +168,22 @@ describe('docs', () => {
     )
   })
 
+  it("lists capture's project form, its prune, and the removals its record carries", async () => {
+    const run = await cli(['docs', '--json'], { cwd })
+    const { verbs, records } = run.json().data as {
+      verbs: { name: string; options: { flags: string }[] }[]
+      records: { capture?: { properties?: object; required?: string[] } }
+    }
+
+    expect(
+      verbs
+        .find((verb) => verb.name === 'capture')
+        ?.options.map((option) => option.flags),
+    ).toEqual(expect.arrayContaining(['--all-pages', '--prune']))
+    expect(records.capture?.properties).toHaveProperty('removed')
+    expect(records.capture?.required).toEqual(['images'])
+  })
+
   it('states the default licenses, the provider order, and the license file', async () => {
     const { contentFormat } = await docs()
 
