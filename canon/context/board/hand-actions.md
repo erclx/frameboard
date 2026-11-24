@@ -13,7 +13,7 @@ Owns what the developer does to frames by hand outside the inspector, being sele
 
 ### `src/client/board/element/`
 
-Owns picking, walking, and outlining elements, with the board's `selection.ts`: a click selects the frame, Cmd-click or a double-click the element, Shift-click or a marquee several, and Enter, Esc, and Tab walk the tree. Selecting writes nothing, so addresses stay put, and it draws the media bar, binding links, and overflow ghosts.
+Owns picking, walking, and outlining elements, with the board's `selection.ts`: a click selects the frame, Cmd-click or a double-click the element, Shift-click or a marquee several, and Enter, Esc, and Tab walk the tree. Selecting writes nothing, so addresses stay put, and it draws the media bar, binding links, and pictured overflow ghosts.
 
 - A selection holds the hash the frame rendered, and a reload showing other bytes drops it to the frame unless the board's own edit or undo left those bytes or is still in flight
 - An undo or redo keeps the element only while the tree at the answered hash matches the picked one in each index, parent, tag, and every name but its own
