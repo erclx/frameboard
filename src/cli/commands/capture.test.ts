@@ -145,6 +145,23 @@ const SCROLL_HERO = {
   }),
 }
 
+const PROJECT = {
+  ...PAGE,
+  'studio/project.json': JSON.stringify({
+    version: 1,
+    pages: ['home', 'archive', 'empty', 'basics'],
+  }),
+  'studio/archive/old.html': '<p>Old</p>',
+  'studio/archive/layout.json': JSON.stringify({
+    version: 1,
+    frames: {
+      old: { x: 0, y: 0, width: 400, height: 300, order: 0, hidden: true },
+    },
+  }),
+  'studio/empty/layout.json': JSON.stringify({ version: 1, frames: {} }),
+  'studio/basics/type.html': '<p>Type</p>',
+}
+
 const HERO = {
   'studio/home/hero.html': '<p>Hello</p>',
   'studio/home/layout.json': JSON.stringify({
@@ -501,6 +518,114 @@ describe('capture', () => {
       board = writeBoard(HERO)
 
       const run = await capture(['home/hero', '--filmstrip', '1'])
+
+      expect(run.exitCode).toBe(2)
+      expect(run.json().error?.code).toBe('usage')
+    })
+  })
+
+  describe('--all-pages', () => {
+    it('captures every visible frame of every page, in page order', async () => {
+      board = writeBoard(PROJECT)
+
+      const run = await capture(['--all-pages', '--theme', 'light'])
+
+      expect(run.exitCode).toBe(0)
+      expect(
+        captureResultSchema
+          .parse(run.json().data)
+          .images.map((image) => image.ref),
+      ).toEqual(['studio/home/hero', 'studio/home/about', 'studio/basics/type'])
+    })
+
+    it('lands each image where --page writes it', async () => {
+      board = writeBoard(PROJECT)
+
+      const run = await capture([
+        '--all-pages',
+        '--theme',
+        'dark',
+        '--scale',
+        '2',
+        '--out',
+        'shots',
+      ])
+
+      expect(
+        captureResultSchema
+          .parse(run.json().data)
+          .images.map((image) => image.path),
+      ).toEqual([
+        join(board.root, 'shots/studio/home/hero.dark@2x.png'),
+        join(board.root, 'shots/studio/home/about.dark@2x.png'),
+        join(board.root, 'shots/studio/basics/type.dark@2x.png'),
+      ])
+    })
+
+    it('writes one composite per page and theme with --composite', async () => {
+      board = writeBoard(PROJECT)
+
+      const run = await capture([
+        '--all-pages',
+        '--composite',
+        '--out',
+        'shots',
+      ])
+
+      expect(
+        captureResultSchema
+          .parse(run.json().data)
+          .images.map((image) => image.path),
+      ).toEqual([
+        join(board.root, 'shots/studio/home.light.png'),
+        join(board.root, 'shots/studio/home.dark.png'),
+        join(board.root, 'shots/studio/basics.light.png'),
+        join(board.root, 'shots/studio/basics.dark.png'),
+      ])
+    })
+
+    it('takes the project --project names on a board of several', async () => {
+      board = writeBoard({ ...PROJECT, 'shop/cart/empty.html': '<p>Cart</p>' })
+
+      const run = await capture(['--all-pages', '--project', 'shop'])
+
+      expect(
+        captureResultSchema
+          .parse(run.json().data)
+          .images.map((image) => image.ref),
+      ).toEqual(['shop/cart/empty', 'shop/cart/empty'])
+    })
+
+    it('refuses project-required on a board of several with no --project', async () => {
+      board = writeBoard({ ...PROJECT, 'shop/cart/empty.html': '<p>Cart</p>' })
+
+      const run = await capture(['--all-pages'])
+
+      expect(run.json().error?.code).toBe('project-required')
+    })
+
+    it('captures nothing from a project holding only hidden frames', async () => {
+      board = writeBoard({
+        'studio/archive/old.html': PROJECT['studio/archive/old.html'],
+        'studio/archive/layout.json': PROJECT['studio/archive/layout.json'],
+      })
+
+      const run = await capture(['--all-pages'])
+
+      expect(run.exitCode).toBe(0)
+      expect(run.json().data).toEqual({ images: [] })
+    })
+
+    it.each([
+      ['a frame ref', ['home/hero']],
+      ['--page', ['--page', 'home']],
+      ['--scroll', ['--scroll', '1200']],
+      ['--at', ['--at', '500']],
+      ['--filmstrip', ['--filmstrip', '4']],
+    ])('refuses %s beside it as usage', async (_beside, args) => {
+      board = writeBoard(PROJECT)
+
+      const run = await capture(['--all-pages', ...args])
 
       expect(run.exitCode).toBe(2)
       expect(run.json().error?.code).toBe('usage')
