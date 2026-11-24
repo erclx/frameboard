@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 import { expect, type Page, test } from '@playwright/test'
 
@@ -134,5 +135,68 @@ test.describe('replacing a raw color with a token from Selection colors', () => 
     await undo(page)
 
     await expect.poll(read).toBe(RAW)
+  })
+})
+
+test.describe('installing a font from the Theme tab', () => {
+  // Stands in for Fontsource, answering one family from a bundled face's bytes.
+  const STUB = pathToFileURL(resolve('e2e/support/fontsource-stub.mjs')).href
+  let board: FixtureBoard
+  let server: BoardServer
+
+  test.beforeEach(async () => {
+    board = copyFixtureBoard('basic')
+    server = await serveBoard(board.root, [], {
+      NODE_OPTIONS: `--import ${STUB}`,
+    })
+  })
+
+  test.afterEach(async () => {
+    await server.stop()
+    board.cleanup()
+  })
+
+  test('installs a found family and sets the headline in it', async ({
+    page,
+  }) => {
+    const heroFile = join(board.root, 'webapp/home/hero.html')
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const headline = page.frameLocator(HERO).locator('h1')
+    await expect(headline).toBeVisible()
+    await page.getByRole('tab', { name: 'Theme' }).click()
+
+    await page.getByRole('button', { name: 'Find a font' }).click()
+    await page.getByRole('searchbox').fill('stub')
+    await page.getByRole('button', { name: 'Install Stub Display' }).click()
+
+    await expect(
+      page.getByRole('button', { name: 'Remove Stub Display' }),
+    ).toBeVisible()
+
+    // Retried, since the canvas refits once frames load and moves the headline.
+    await expect(async () => {
+      const box = await headline.boundingBox()
+      if (!box) throw new Error('the headline has no box on screen')
+      await page.keyboard.down('Meta')
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+      await page.keyboard.up('Meta')
+      await expect(
+        page.getByRole('button', { name: 'Font family' }),
+      ).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 10_000 })
+    await page.getByRole('button', { name: 'Font family' }).click()
+    await page.getByRole('menuitemradio', { name: 'Stub Display' }).click()
+
+    await expect
+      .poll(() => readFileSync(heroFile, 'utf8'))
+      .toContain("font-family: 'Stub Display'")
+    await expect
+      .poll(
+        () =>
+          headline.evaluate(() => document.fonts.check("16px 'Stub Display'")),
+        { timeout: 10_000 },
+      )
+      .toBe(true)
   })
 })
