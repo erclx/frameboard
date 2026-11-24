@@ -4,15 +4,16 @@ import { type Command, InvalidArgumentError, Option } from 'commander'
 
 import { ensureRunFolder } from '@/server/address'
 import { readFrame } from '@/server/board/frames'
-import { resolvePageRef } from '@/server/board/refs'
-import { readPageOrder, scanPage } from '@/server/board/scan'
+import { resolvePageRef, resolveProject } from '@/server/board/refs'
+import { readPageOrder, scanPage, scanProject } from '@/server/board/scan'
 import { withFrameHost } from '@/server/capture/host'
 import {
-  captureComposite,
+  captureComposites,
   type CapturedImage,
   captureFrameImages,
   captureMotionImages,
 } from '@/server/capture/images'
+import { assertPrunable, pruneImages } from '@/server/capture/prune'
 import { FrameboardError } from '@/shared/errors'
 import type { CaptureResult } from '@/shared/records/capture'
 import type { PageRecord } from '@/shared/records/list'
@@ -29,7 +30,9 @@ import {
 
 type CaptureOptions = CommonOptions & {
   page?: string
+  allPages?: boolean
   composite?: boolean
+  prune?: boolean
   theme: Theme | 'both'
   scale: number
   scroll?: number
@@ -46,7 +49,7 @@ export function registerCapture(
   const command = addVerb(
     program,
     'capture',
-    'Write PNGs of a frame, or of every visible frame of a page, in light, dark, or both',
+    'Write PNGs of a frame, or of every visible frame of a page or a project, in light, dark, or both',
     { project: true },
   )
     .argument(
@@ -58,8 +61,16 @@ export function registerCapture(
       'capture every visible frame of this page, <page> or <project>/<page>, in place of one frame',
     )
     .option(
+      '--all-pages',
+      "capture every visible frame of every page of the project as images alone, in place of one frame. references sync fills a frames.json folder with a design's HTML and assets instead",
+    )
+    .option(
       '--composite',
-      'with --page, one image of the page with each frame at its layout position',
+      'with --page or --all-pages, one image of each page with each frame at its layout position',
+    )
+    .option(
+      '--prune',
+      "with --all-pages, remove every other frame image in the captured themes under the project's folder in --out, scrolled, timed, and other-scale shots included, or every other composite with --composite, leaving every other file. Refused where that folder is part of the board",
     )
     .addOption(
       new Option('--theme <theme>', 'the theme to capture')
@@ -96,19 +107,33 @@ export function registerCapture(
 
   act<CaptureOptions>(command, context, async ([ref], options) => {
     // A two-part ref is ambiguous, so the page form takes its own flag.
-    if ((ref === undefined) === (options.page === undefined)) {
+    const targets = [ref, options.page, options.allPages].filter(
+      (target) => target !== undefined,
+    )
+    if (targets.length !== 1) {
       throw new FrameboardError(
         'usage',
-        'Pass a frame ref or --page <page-ref>, exactly one of the two.',
+        'Pass a frame ref, --page <page-ref>, or --all-pages, exactly one of the three.',
       )
     }
-    if (options.composite && options.page === undefined) {
-      throw new FrameboardError('usage', '--composite needs --page.')
-    }
-    if (options.scroll !== undefined && options.page !== undefined) {
+    const pageFlag = options.allPages
+      ? '--all-pages'
+      : options.page !== undefined
+        ? '--page'
+        : undefined
+    if (options.composite && pageFlag === undefined) {
       throw new FrameboardError(
         'usage',
-        '--scroll shoots one frame, so pass a frame ref rather than --page.',
+        '--composite needs --page or --all-pages.',
+      )
+    }
+    if (options.prune && !options.allPages) {
+      throw new FrameboardError('usage', '--prune needs --all-pages.')
+    }
+    if (options.scroll !== undefined && pageFlag !== undefined) {
+      throw new FrameboardError(
+        'usage',
+        `--scroll shoots one frame, so pass a frame ref rather than ${pageFlag}.`,
       )
     }
     const timing =
@@ -120,10 +145,10 @@ export function registerCapture(
     if (options.at !== undefined && options.filmstrip !== undefined) {
       throw new FrameboardError('usage', 'Pass --at or --filmstrip, not both.')
     }
-    if (timing !== undefined && options.page !== undefined) {
+    if (timing !== undefined && pageFlag !== undefined) {
       throw new FrameboardError(
         'usage',
-        '--at and --filmstrip seek one frame, so pass a frame ref rather than --page.',
+        `--at and --filmstrip seek one frame, so pass a frame ref rather than ${pageFlag}.`,
       )
     }
     if (timing !== undefined && options.scroll !== undefined) {
@@ -140,40 +165,67 @@ export function registerCapture(
         ? resolve(io.cwd, options.out)
         : join(await ensureRunFolder(root), 'captures')
 
-    if (options.page !== undefined) {
-      const page = await pageOf(root, options.page, refOptions)
-      const frames = page.frames.filter((frame) => !frame.hidden)
-      if (frames.length === 0) {
+    if (pageFlag !== undefined) {
+      const {
+        ref: target,
+        project,
+        pages,
+      } = options.page === undefined
+        ? await projectOf(root, options.project)
+        : await pageOf(root, options.page, refOptions)
+      const shown = pages
+        .map((page) => ({
+          ...page,
+          frames: page.frames.filter((frame) => !frame.hidden),
+        }))
+        .filter((page) => page.frames.length > 0)
+      if (shown.length === 0) {
         return {
-          data: { images: [] } satisfies CaptureResult,
-          human: `${page.ref} holds no visible frame, so nothing was captured.`,
+          data: {
+            images: [],
+            ...(options.prune ? { removed: [] } : {}),
+          } satisfies CaptureResult,
+          human: `${target} holds no visible frame, so nothing was captured${options.prune ? ' or removed' : ''}.`,
         }
       }
       const out = await outOf()
+      if (options.prune) await assertPrunable(root, out, project)
       const images = await withFrameHost(
         { root, facesDir: context.facesDir },
         'capture',
         (browser, baseUrl) =>
           options.composite
-            ? captureComposite(browser, {
+            ? captureComposites(browser, {
                 baseUrl,
-                page: { ref: page.ref, project: page.project, name: page.name },
-                frames,
+                pages: shown,
                 themes,
                 out,
                 scale: options.scale,
               })
             : captureFrameImages(browser, {
                 baseUrl,
-                frames,
+                frames: shown.flatMap((page) => page.frames),
                 themes,
                 out,
                 scale: options.scale,
               }),
       )
+      const removed = options.prune
+        ? await pruneImages(out, project, {
+            kind: options.composite ? 'composite' : 'frame',
+            themes,
+            kept: images.map((image) => image.path),
+          })
+        : undefined
       return {
-        data: { images } satisfies CaptureResult,
-        human: describe(images),
+        data: {
+          images,
+          ...(removed === undefined ? {} : { removed }),
+        } satisfies CaptureResult,
+        human: [
+          describe(images),
+          ...(removed ?? []).map((path) => `Removed ${path}`),
+        ].join('\n'),
       }
     }
 
@@ -250,19 +302,33 @@ function parseMoments(value: string): number[] {
   return [...new Set(moments.map(Number))]
 }
 
+/** The pages one call captures, and the ref naming them. */
+interface PageSet {
+  ref: string
+  project: string
+  pages: PageRecord[]
+}
+
 async function pageOf(
   root: string,
   ref: string,
   options: { project?: string; cwd: string },
-): Promise<PageRecord> {
+): Promise<PageSet> {
   const resolved = await resolvePageRef(root, ref, options)
   const { pages } = await readPageOrder(join(root, resolved.project))
-  return scanPage(
+  const page = await scanPage(
     root,
     resolved.project,
     resolved.page,
     pages.indexOf(resolved.page),
   )
+  return { ref: page.ref, project: resolved.project, pages: [page] }
+}
+
+async function projectOf(root: string, project?: string): Promise<PageSet> {
+  const { name } = await resolveProject(root, project)
+  const { pages } = await scanProject(root, name)
+  return { ref: name, project: name, pages }
 }
 
 /** One line per image written, and under it one per video or model it shows with no picture. */

@@ -12,6 +12,7 @@ import {
   type Turn,
 } from '@/shared/frame-device'
 import { drawnExtent, linkedBoxes, viewDevice } from '@/shared/frame-widths'
+import { isReservedPageName } from '@/shared/names'
 import type { FrameRecord } from '@/shared/records/list'
 import type { Theme } from '@/shared/theme'
 
@@ -127,6 +128,28 @@ function imageName(
         ? `${scrolled}.at-${moment.at}`
         : `${scrolled}.filmstrip-${moment.filmstrip}`
   return scale === 1 ? `${stem}.${theme}.png` : `${stem}.${theme}@${scale}x.png`
+}
+
+// A scan lists any name opening on no dot, so every suffix `imageName` puts
+// ahead of the theme reads as part of one.
+const IMAGE_NAME = /^(?<name>[^.].*)\.(?<theme>light|dark)(?:@[23]x)?\.png$/
+
+/** Whether a file in a page's folder is named as a capture of some frame in one of `themes` names it. */
+export function isFrameImageName(
+  file: string,
+  themes: readonly Theme[],
+): boolean {
+  const theme = IMAGE_NAME.exec(file)?.groups?.theme
+  return themes.some((each) => each === theme)
+}
+
+/** Whether a file in a project's folder is named as a composite of some page in one of `themes` names it. */
+export function isCompositeImageName(
+  file: string,
+  themes: readonly Theme[],
+): boolean {
+  const page = IMAGE_NAME.exec(file)?.groups?.name ?? ''
+  return isFrameImageName(file, themes) && !isReservedPageName(page)
 }
 
 /** Where one frame's capture in one theme lands under `out`. */
@@ -290,67 +313,71 @@ function viewsOf(
 }
 
 /**
- * Captures one image of a page per theme, every frame at its layout box in
- * the device it shows, on the theme's canvas color. Each frame renders as it
- * does alone, and no composite is written until every theme rendered.
+ * Captures one image per page and theme, every frame at its layout box in the
+ * device it shows, on the theme's canvas color. Each frame renders as it does
+ * alone, and no composite is written until every page rendered.
  */
-export async function captureComposite(
+export async function captureComposites(
   browser: Browser,
   {
     baseUrl,
-    page,
-    frames,
+    pages,
     themes,
     out,
     scale = 1,
   }: {
     baseUrl: string
-    page: CompositePage
-    frames: FrameRecord[]
+    pages: (CompositePage & { frames: FrameRecord[] })[]
     themes: readonly Theme[]
     out: string
     scale?: number
   },
 ): Promise<CapturedImage[]> {
-  const bounds = compositeBounds(page, frames, scale)
+  // Bounded ahead of the first render, so an oversized last page costs no wait.
+  const bounded = pages.map((page) => ({
+    page,
+    bounds: compositeBounds(page, page.frames, scale),
+  }))
   const rendered: Rendered[] = []
-  for (const theme of themes) {
-    const tiles: string[] = []
-    // A frame's linked widths each open it again, so its videos and models count once.
-    const videos = new Map<string, CapturedVideo>()
-    const models = new Map<string, CapturedModel>()
-    for (const frame of frames) {
-      for (const box of [
-        frame.box,
-        ...linkedBoxes(frame.box, frame.widths, frame),
-      ]) {
-        const shot = await renderFrame(
-          browser,
-          baseUrl,
-          frame,
-          box,
-          theme,
-          scale,
-        )
-        for (const video of inFrame(frame.ref, shot.videos)) {
-          videos.set(`${video.ref} ${video.index}`, video)
+  for (const { page, bounds } of bounded) {
+    for (const theme of themes) {
+      const tiles: string[] = []
+      // A frame's linked widths each open it again, so its videos and models count once.
+      const videos = new Map<string, CapturedVideo>()
+      const models = new Map<string, CapturedModel>()
+      for (const frame of page.frames) {
+        for (const box of [
+          frame.box,
+          ...linkedBoxes(frame.box, frame.widths, frame),
+        ]) {
+          const shot = await renderFrame(
+            browser,
+            baseUrl,
+            frame,
+            box,
+            theme,
+            scale,
+          )
+          for (const video of inFrame(frame.ref, shot.videos)) {
+            videos.set(`${video.ref} ${video.index}`, video)
+          }
+          for (const model of inFrame(frame.ref, shot.models)) {
+            models.set(`${model.ref} ${model.index}`, model)
+          }
+          tiles.push(compositeTile(frame, box, bounds, shot.bytes))
         }
-        for (const model of inFrame(frame.ref, shot.models)) {
-          models.set(`${model.ref} ${model.index}`, model)
-        }
-        tiles.push(compositeTile(frame, box, bounds, shot.bytes))
       }
+      rendered.push({
+        ref: page.ref,
+        theme,
+        path: compositeImagePath(out, page, theme, scale),
+        width: bounds.width,
+        height: bounds.height,
+        scale,
+        ...unloadedKeys([...videos.values()], [...models.values()]),
+        bytes: await renderComposite(browser, bounds, theme, tiles, scale),
+      })
     }
-    rendered.push({
-      ref: page.ref,
-      theme,
-      path: compositeImagePath(out, page, theme, scale),
-      width: bounds.width,
-      height: bounds.height,
-      scale,
-      ...unloadedKeys([...videos.values()], [...models.values()]),
-      bytes: await renderComposite(browser, bounds, theme, tiles, scale),
-    })
   }
   return writeImages(rendered)
 }

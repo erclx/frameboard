@@ -45,7 +45,7 @@ interface ProjectItemProps {
 
 /** The frame a project card and a folder card share. */
 export const CARD =
-  'block overflow-hidden rounded-xl border border-border bg-card text-card-foreground outline-none hover:ring-2 hover:ring-primary focus-visible:ring-2 focus-visible:ring-primary data-popup-open:ring-2 data-popup-open:ring-primary'
+  'block overflow-hidden rounded-xl border border-border bg-card text-card-foreground outline-none hover:border-transparent hover:ring-2 hover:ring-primary focus-visible:border-transparent focus-visible:ring-2 focus-visible:ring-primary data-popup-open:border-transparent data-popup-open:ring-2 data-popup-open:ring-primary in-data-drop-over:border-transparent'
 
 /** The columns a list row and the list's header share. */
 export const ROW_COLUMNS =
