@@ -238,8 +238,13 @@ describe('standInFlow', () => {
     ['translate(-50%, -50%)', 'none'],
     ['translateX(-50%) rotate(5deg)', 'rotate(5deg)'],
     ['scale(2)translate3d(0, calc(1px + (2px * 3)), 0)', 'scale(2)'],
+    ['rotate(5deg)\ntranslateX(-50%)', 'rotate(5deg)'],
+    [
+      'translateX(-50%)\n\tmatrix(1, 0, 0,\n1, 0, 0)',
+      'matrix(1, 0, 0, 1, 0, 0)',
+    ],
   ])(
-    'clears the shift %s centers an element by, keeping %s',
+    'clears the shift %j centers an element by, keeping %s',
     (transform, kept) => {
       const source = '<body><div class="dialog">x</div></body>'
 

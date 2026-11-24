@@ -190,8 +190,9 @@ export type Stood = { readonly ok: true; readonly html: string } | EditRefused
 
 /** A transform with the translations taken out, `none` when they were all it held. */
 function withoutShift(transform: string): string {
-  // A space after each function, since two may be written with none between.
-  const kept = splitTopLevel(transform.replace(/\)(?=[a-z])/gi, ') '), ' ')
+  // One space after each function, since two may sit on lines or with none between.
+  const spaced = transform.replace(/\s+/g, ' ').replace(/\)(?=[a-z])/gi, ') ')
+  const kept = splitTopLevel(spaced, ' ')
     .filter((part) => !/^translate/i.test(part))
     .join(' ')
     .trim()
