@@ -20,6 +20,8 @@ export interface GroupMember {
   read: ResizeTarget | null
   /** The margins the browser computed for it, absent where nothing measured them, which a wrap reads as none. */
   margin?: Margins
+  /** True when a lock keeps a drag, a nudge, or an align off it. */
+  locked?: boolean
 }
 
 /** The declarations a group drag writes on one member. */
@@ -35,18 +37,20 @@ export function groupBounds(members: readonly GroupMember[]): Box | null {
 
 /**
  * Whether a corner drag scales the group, which takes every member free and
- * each one taking a resize, since a member in the flow or sized by its line
- * has no box to scale.
+ * each one unlocked and taking a resize, since a member in the flow or sized by
+ * its line has no box to scale.
  */
 export function scalesAsGroup(members: readonly GroupMember[]): boolean {
   return (
     members.length > 1 &&
-    members.every(({ placed, read }) => placed !== null && read !== null)
+    members.every(
+      ({ placed, read, locked }) => placed !== null && read !== null && !locked,
+    )
   )
 }
 
 /**
- * The `left` and `top` a move gives each free member, all shifted by the same
+ * The `left` and `top` a move gives each free unlocked member, shifted by the same
  * whole pixels so no offset between them changes.
  */
 export function moveMembers(
@@ -56,8 +60,8 @@ export function moveMembers(
 ): MemberEdit[] {
   const ox = Math.round(dx)
   const oy = Math.round(dy)
-  return members.flatMap(({ index, placed }) =>
-    placed
+  return members.flatMap(({ index, placed, locked }) =>
+    placed && !locked
       ? [
           {
             index,

@@ -235,8 +235,12 @@ export interface BridgeOps {
   }
   /** The color a paint resolves to in the page's own theme, null for a page with no body. */
   paint: { args: { fill: string }; value: string | null; push: never }
-  /** What sits under a frame point, hit-tested as the page draws. */
-  'pick-at': { args: { at: FramePoint }; value: PickAt; push: never }
+  /** What sits under a frame point, hit-tested as the page draws, passing over locked elements when `unlocked`. */
+  'pick-at': {
+    args: { at: FramePoint; unlocked?: boolean }
+    value: PickAt
+    push: never
+  }
   /** The named elements' pin corners, pushed again on every resize or scroll until closed, leaving out one the page holds none at. */
   pins: { args: { indexes: number[] }; value: PinCorner[]; push: PinCorner[] }
   /**
@@ -617,7 +621,7 @@ const SCHEMAS: {
     push: pinCornersSchema,
   },
   'pick-at': {
-    args: z.object({ at: pointSchema }),
+    args: z.object({ at: pointSchema, unlocked: z.boolean().optional() }),
     value: z.object({
       hash: z.string().nullable(),
       chain: z.array(z.object({ index: indexSchema, tag: z.string() })),

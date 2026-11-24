@@ -208,6 +208,8 @@ export interface MemberMeasure {
   nested: boolean
   /** The margins its frame's window computed, 0 where it reads none. */
   margin: { top: number; right: number; bottom: number; left: number }
+  /** True when a lock on it or an element holding it keeps canvas presses off it. */
+  locked?: boolean
 }
 
 /** An element past its frame's viewport, by file index, with the offsets a press on its ghost drags. */
@@ -338,6 +340,7 @@ export const memberMeasuresSchema: z.ZodType<MemberMeasure[] | null> = z
       placed: offsetsSchema.nullable(),
       nested: z.boolean(),
       margin: sidesSchema,
+      locked: z.boolean().optional(),
     }),
   )
   .nullable()

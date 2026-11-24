@@ -230,6 +230,51 @@ describe('gap-at for a carried element', () => {
   })
 })
 
+describe('pick-at', () => {
+  const BEHIND =
+    '<main style="height:200px"><div style="position:absolute;inset:0;height:100px" data-locked=""><b style="display:block">Held</b></div></main>'
+
+  async function chainOf(body: string, unlocked: boolean) {
+    const asked = await ask(await mount(body), 'pick-at', {
+      at: { x: 20, y: 5 },
+      unlocked,
+    })
+    return 'value' in asked.reply
+      ? asked.reply.value?.chain.map(({ tag }) => tag)
+      : undefined
+  }
+
+  it('should pass over a locked element and what it holds for what sits behind it', async () => {
+    expect(
+      await chainOf(
+        '<section style="height:100px"></section><div data-locked="" style="position:absolute;inset:0"><b>Held</b></div>',
+        true,
+      ),
+    ).toEqual(['section'])
+  })
+
+  it('should land on the unlocked parent of a locked child', async () => {
+    expect(await chainOf(BEHIND, true)).toEqual(['main'])
+  })
+
+  it('should answer nothing where a locked element covers the body alone', async () => {
+    expect(await chainOf('<div data-locked="">Held</div>', true)).toEqual([])
+  })
+
+  it('should answer a locked element to a press that asks for any', async () => {
+    expect(await chainOf(BEHIND, false)).toEqual(['b', 'div', 'main'])
+  })
+
+  it('should pass over an element that renders nothing the page draws anyway', async () => {
+    expect(
+      await chainOf(
+        '<style style="display:block;height:40px">p{}</style>',
+        false,
+      ),
+    ).toEqual([])
+  })
+})
+
 describe('paint', () => {
   it("resolves a fill in the page's own theme", async () => {
     const frame = await mount('')

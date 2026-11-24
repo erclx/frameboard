@@ -169,11 +169,12 @@ function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
   const at = shown && pageBox(shown, frame?.device, frame?.turn)
   if (!at || !measured) return null
   const members: GroupMember[] = measured.map(
-    ({ index, box, read, placed, nested }) => ({
+    ({ index, box, read, placed, nested, locked }) => ({
       index,
       box,
       placed: placed && !nested ? placed : null,
       read,
+      locked,
     }),
   )
   const bounds = groupBounds(members)
@@ -181,6 +182,7 @@ function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
   const group = (
     <div
       data-element-group
+      data-element-locked={members.some(({ locked }) => locked) || undefined}
       className="pointer-events-none absolute"
       style={{
         left: at.x + bounds.x,
@@ -215,10 +217,11 @@ function GroupOutline({ elements, frames, container }: GroupOutlineProps) {
   return (
     <>
       {group}
-      {measured.map(({ index, box }) => (
+      {measured.map(({ index, box, locked }) => (
         <div
           key={index}
           data-element-selection
+          data-element-locked={locked || undefined}
           data-element-index={index}
           className="pointer-events-none absolute"
           style={{
@@ -265,8 +268,13 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
   const read = holds && !settled ? held.read : (measure?.read ?? null)
   // A placed Text open for typing draws a caret alone, its box kept for a press to read.
   const bare = typing !== null && sameKey(typing, element)
+  const locked = measure?.locked === true
   const marked =
-    !bare && read !== null && box.width >= MARKS_MIN && box.height >= MARKS_MIN
+    !bare &&
+    !locked &&
+    read !== null &&
+    box.width >= MARKS_MIN &&
+    box.height >= MARKS_MIN
   return (
     <>
       <CanvasMediaBar element={element} box={box} container={container} />
@@ -280,6 +288,7 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
       ) : null}
       <div
         data-element-selection
+        data-element-locked={locked || undefined}
         className="pointer-events-none absolute"
         style={{
           left: box.x,

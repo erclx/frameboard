@@ -42,12 +42,13 @@ export interface FramePick extends NotePick {
 /**
  * The frame under a point and what its live page hit-tests there, the page
  * answering over the bridge. A placeholder frame or a page that never
- * answers takes a frame note.
+ * answers takes a frame note, and `unlocked` passes over locked elements.
  */
 export async function readPick(
   container: ParentNode,
   frames: readonly FrameRecord[],
   at: BoardPoint,
+  { unlocked = false }: { unlocked?: boolean } = {},
 ): Promise<FramePick | null> {
   const frame = frameUnder(frames, at)
   if (!frame) return null
@@ -60,6 +61,7 @@ export async function readPick(
     iframe && shownHashOf(iframe) !== null
       ? await request(iframe, 'pick-at', {
           at: { x: at.x - page.x, y: at.y - page.y },
+          unlocked,
         })
       : null
   // An unloaded iframe names no file, so its click makes a frame note.

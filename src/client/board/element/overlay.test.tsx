@@ -225,6 +225,13 @@ describe('ElementOverlay', () => {
       expect(chip(drawn)).toHaveTextContent(/^248 × Hug$/)
     })
 
+    it('draws the outline alone on a locked element, marked for the gestures', async () => {
+      const drawn = await selecting('<h1 data-locked>Hello, world</h1>')
+
+      expect(outline(drawn)).toHaveAttribute('data-element-locked')
+      expect(marks(drawn)).toBe(0)
+    })
+
     it('names a height text states on itself in px', async () => {
       const drawn = await selecting(
         '<h1 style="height: 30px">Hello, world</h1>',

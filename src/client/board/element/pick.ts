@@ -27,8 +27,9 @@ function statedIn(
 
 /**
  * The deepest element the file states under a point, found as a note pin finds
- * its element, a script's element giving way to its stated ancestor. Null
- * where no held tree vouches for the index.
+ * its element, a script's element giving way to its stated ancestor and a
+ * locked one to what sits behind it. Null where no held tree vouches for the
+ * index.
  */
 export async function pickElement(
   container: ParentNode,
@@ -36,7 +37,7 @@ export async function pickElement(
   at: BoardPoint,
   treeOf: (ref: string) => ElementTree | null,
 ): Promise<ElementKey | null> {
-  const pick = await readPick(container, frames, at)
+  const pick = await readPick(container, frames, at, { unlocked: true })
   if (!pick || pick.element === null) return null
   return statedIn(pick, treeOf(pick.frame.ref))
 }
@@ -52,7 +53,7 @@ export async function pickElementRead(
   at: BoardPoint,
   read: (ref: string) => Promise<ElementTree | null>,
 ): Promise<ElementKey | null> {
-  const pick = await readPick(container, frames, at)
+  const pick = await readPick(container, frames, at, { unlocked: true })
   if (!pick || pick.element === null) return null
   return statedIn(pick, await read(pick.frame.ref))
 }
@@ -62,8 +63,8 @@ export type Touching = (rect: Box) => { key: ElementKey; box: Box }[]
 
 /**
  * Reads the boxes of a frame's elements once, answering which a rectangle
- * touches, outermost first, none while the frame shows bytes the tree does
- * not name.
+ * touches, outermost first, none a lock holds and none while the frame shows
+ * bytes the tree does not name.
  */
 export async function elementsIn(
   container: ParentNode,
@@ -74,15 +75,16 @@ export async function elementsIn(
   const iframe = container.querySelector<HTMLIFrameElement>(
     `[data-frame="${CSS.escape(frame.ref)}"] iframe`,
   )
+  const unlocked = unlockedRows(tree?.elements ?? [])
   const boxes =
     tree && iframe
       ? await request(iframe, 'element-boxes', {
           hash: tree.hash,
-          indexes: tree.elements.map(({ index }) => index),
+          indexes: unlocked.map(({ index }) => index),
         })
       : null
   if (!tree || !boxes) return () => []
-  const byIndex = new Map(tree.elements.map((row) => [row.index, row]))
+  const byIndex = new Map(unlocked.map((row) => [row.index, row]))
   return (rect) => {
     const touched = new Map<number, Box>()
     for (const { index, box } of boxes) {
@@ -99,7 +101,7 @@ export async function elementsIn(
       (touched.has(parent) ||
         (byIndex.has(parent) &&
           insideTouched(byIndex.get(parent) as TreeElement)))
-    return tree.elements.flatMap((row) => {
+    return unlocked.flatMap((row) => {
       const box = touched.get(row.index)
       return box && !insideTouched(row)
         ? [
@@ -124,10 +126,21 @@ export async function onBareFrame(
   tree: ElementTree | null,
 ): Promise<boolean> {
   if (!tree || tree.elements.length === 0) return false
-  const pick = await readPick(container, frames, at)
+  const pick = await readPick(container, frames, at, { unlocked: true })
   return (
     pick !== null && pick.element === null && pick.shown?.hash === tree.hash
   )
+}
+
+/** The rows no lock holds, a locked row taking what it holds with it. */
+function unlockedRows(elements: readonly TreeElement[]): TreeElement[] {
+  const locked = new Set<number>()
+  return elements.filter((row) => {
+    const held =
+      row.locked === true || (row.parent !== null && locked.has(row.parent))
+    if (held) locked.add(row.index)
+    return !held
+  })
 }
 
 function touches(a: Box, b: Box): boolean {

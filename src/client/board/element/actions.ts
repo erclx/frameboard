@@ -263,7 +263,7 @@ export function elementActions(context: ElementContext): Action[] {
       if (!elementSelected() || !context.writable() || !state.page) return null
       const keys = selectedElements(state)
       const members = keys.length >= least ? context.group(keys) : null
-      return members?.every(({ placed }) => placed !== null)
+      return members?.every(({ placed, locked }) => placed !== null && !locked)
         ? { page: state.page, keys, members }
         : null
     }

@@ -1,6 +1,8 @@
 import {
   elementAt,
   elementIndex,
+  isLocked,
+  isUnrendered,
   renderedHash,
 } from '@/shared/frame-bridge/elements'
 import type { Gap, GapLine, ShownGap } from '@/shared/frame-bridge/gap'
@@ -11,14 +13,21 @@ import type { Handlers } from './handler'
 /** The page's root and wrapper elements, a point on which picks no element. */
 const FRAME_LEVEL = new Set(['html', 'body'])
 
-/** The element under a frame point and each ancestor below `body`, empty over the root or wrapper. */
-function chainAt(x: number, y: number): PickedElement[] {
+/**
+ * The element under a frame point and each ancestor below `body`, empty over
+ * the root or wrapper. `unlocked` starts at the topmost element no lock holds.
+ */
+function chainAt({ x, y }: FramePoint, unlocked: boolean): PickedElement[] {
   const chain: PickedElement[] = []
+  const top = document
+    .elementsFromPoint(x, y)
+    .find((element) => !(unlocked && isLocked(element)))
   for (
-    let element = document.elementFromPoint(x, y);
+    let element: Element | null = top ?? null;
     element && !FRAME_LEVEL.has(element.localName);
     element = element.parentElement
   ) {
+    if (isUnrendered(element)) continue
     const index = elementIndex(document, element)
     if (index !== null) chain.push({ index, tag: element.localName })
   }
@@ -277,9 +286,9 @@ function paintOf(fill: string): string | null {
 }
 
 export const gapHandlers: Handlers = {
-  'pick-at': ({ at }) => ({
+  'pick-at': ({ at, unlocked }) => ({
     hash: renderedHash(document),
-    chain: chainAt(at.x, at.y),
+    chain: chainAt(at, unlocked === true),
   }),
   'gap-at': ({ at, carried }): ShownGap | null => {
     const hash = renderedHash(document)

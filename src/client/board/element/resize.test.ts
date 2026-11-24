@@ -386,6 +386,15 @@ describe('a live element', () => {
       expect(shownResize(shown, KEY)?.kind).toBe('box')
     })
 
+    it('reads nothing for a locked element, whose corners draw no marks', async () => {
+      const shown = await mount(
+        '<div data-locked style="width: 40px; height: 40px"></div>',
+      )
+      await measure(shown, [KEY])
+
+      expect(shownResize(shown, KEY)).toBeNull()
+    })
+
     it('reads nothing from a frame showing other bytes', async () => {
       const shown = await mount('<p>Words</p>')
       const stale = { ...KEY, hash: 'f'.repeat(64) }
@@ -412,6 +421,15 @@ describe('a live element', () => {
       await measure(shown, [KEY])
 
       expect(placedOffsets(shown, KEY)).toEqual({ left: 12, top: 34 })
+    })
+
+    it('reads a locked element as holding none for a drag', async () => {
+      const shown = await mount(
+        '<div data-locked style="position: absolute; left: 10px; top: 20px"></div>',
+      )
+      await measure(shown, [KEY])
+
+      expect(placedOffsets(shown, KEY)).toBeNull()
     })
 
     it('reads an element in the flow as unplaced', async () => {

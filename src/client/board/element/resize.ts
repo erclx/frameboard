@@ -33,7 +33,8 @@ function drawsLive(container: ParentNode, ref: string): boolean {
 /**
  * How the element `key` names takes a corner resize, read from what its
  * frame pushed for the selection at the key's bytes, or null for one that
- * takes none, is not measured, or is a placed Text still open for typing.
+ * takes none, is locked or not measured, or is a placed Text still open for
+ * typing.
  */
 export function shownResize(
   container: ParentNode,
@@ -48,7 +49,8 @@ export function shownResize(
     return null
   }
   if (!drawsLive(container, key.frame)) return null
-  return heldMeasures([key])?.[0]?.read ?? null
+  const member = heldMeasures([key])?.[0]
+  return member && !member.locked ? member.read : null
 }
 
 /**
@@ -191,8 +193,8 @@ export type PlacedOffsets = Offsets
 
 /**
  * The offsets a placed element holds, read from what its frame pushed for
- * the selection or its ghost at the key's bytes, or null for one in the
- * flow, whose drag carries it to another gap instead.
+ * the selection or its ghost at the key's bytes, or null for a locked one or
+ * one in the flow, whose drag carries it to another gap instead.
  */
 export function placedOffsets(
   container: ParentNode,
@@ -200,6 +202,7 @@ export function placedOffsets(
 ): PlacedOffsets | null {
   if (!drawsLive(container, key.frame)) return null
   const member = heldMeasures([key])?.[0]
+  if (member?.locked) return null
   return member ? member.placed : (heldGhost(key)?.placed ?? null)
 }
 
@@ -268,13 +271,16 @@ export function shownGroup(
   const [first] = keys
   if (!first || !drawsLive(container, first.frame)) return null
   return (
-    heldMeasures(keys)?.map(({ index, box, placed, nested, read, margin }) => ({
-      index,
-      box,
-      placed: nested ? null : placed,
-      read,
-      margin,
-    })) ?? null
+    heldMeasures(keys)?.map(
+      ({ index, box, placed, nested, read, margin, locked }) => ({
+        index,
+        box,
+        placed: nested ? null : placed,
+        read,
+        margin,
+        locked,
+      }),
+    ) ?? null
   )
 }
 
