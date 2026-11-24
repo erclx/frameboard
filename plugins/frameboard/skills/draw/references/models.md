@@ -26,13 +26,10 @@ A model costs a script of about 1 MB in the project and a wait on every capture,
 
 ## Generate a model from a picture
 
-`frameboard model generate <picture>` turns one picture into a textured `.glb` on the developer's own ComfyUI server, which `FRAMEBOARD_COMFYUI_URL` names. It charges nothing and saves the model into the project's `assets/` with a license naming the picture.
+`frameboard model generate <picture>` turns one picture into a textured `.glb` on the developer's own ComfyUI server, saved into the project's `assets/` with a license naming the picture. `${CLAUDE_SKILL_DIR}/references/generate.md` covers the server and the run.
 
 - Reach for it when Poly Haven has nothing close and the developer wants a real object rather than boxes
 - Give it a clean picture of one object on a plain ground, such as one `image generate` made first, since a busy photo comes out worse
-- Run it with `--dry-run --json` first when unsure the server is set, since an unset address refuses `no-provider` and `image doctor --json` lists the files it lacks
-- Expect about a minute per model with nothing printed until it returns
-- Run `frameboard image free --json` once a batch ends, since the server keeps the model in GPU memory between calls
 
 ## Write the element and its script
 
