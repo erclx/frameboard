@@ -2,6 +2,8 @@ import {
   ArrowDown,
   ArrowUp,
   BringToFront,
+  EyeOff,
+  Lock,
   SendToBack,
   Trash2,
 } from 'lucide-react'
@@ -35,6 +37,7 @@ import {
   type SelectionStore,
   selectionStore,
 } from '../selection'
+import { type ElementFlag, flagElements } from './flags'
 import { arrangeMembers, type GroupMember, moveMembers } from './group'
 import { type GroupEdit, shownGroup, startGroupEdit } from './resize'
 import { requestTree, treeOf, trees } from './tree'
@@ -86,6 +89,13 @@ export interface ElementContext {
     page: string,
     keys: readonly ElementKey[],
     request: WrapRequest,
+  ) => void
+  /** Hides, shows, locks, or unlocks the elements, which `flagElements` does on the board. */
+  flag: (
+    page: string,
+    keys: readonly ElementKey[],
+    flag: ElementFlag,
+    on: boolean,
   ) => void
 }
 
@@ -298,6 +308,32 @@ export function elementActions(context: ElementContext): Action[] {
     const members = context.group(keys)
     return members ? { page: state.page, keys, members } : null
   }
+  // Each flag turns off only once every selected element holds it, as the frames' lock does.
+  const flagged = (flag: ElementFlag) => {
+    const held = () => {
+      const state = selection.getState()
+      if (!elementSelected() || !state.page) return null
+      const keys = selectedElements(state)
+      const tree = keys[0] ? context.treeOf(keys[0].frame) : null
+      if (!tree || tree.hash !== keys[0]?.hash) return null
+      const rows = keys.map(({ index }) =>
+        tree.elements.find((row) => row.index === index),
+      )
+      return {
+        page: state.page,
+        keys,
+        on: rows.every((row) => row?.[flag] === true),
+      }
+    }
+    return {
+      enabled: () => context.writable() && held() !== null,
+      checked: () => held()?.on === true,
+      run: () => {
+        const found = held()
+        if (found) context.flag(found.page, found.keys, flag, !found.on)
+      },
+    }
+  }
   // No palette rows, since these keys need board focus the open palette holds.
   return [
     // Ahead of the frame's nudges, which hold the same keys.
@@ -407,6 +443,23 @@ export function elementActions(context: ElementContext): Action[] {
         if (state.page && keys.length > 0) context.remove(state.page, keys)
       },
     },
+    // Ahead of the frame's own, which hold the same keys.
+    {
+      id: 'element.hide',
+      label: 'Hide',
+      group: 'selection',
+      command: { label: 'Hide or show element', icon: EyeOff },
+      keys: ['$mod+Shift+KeyH'],
+      ...flagged('hidden'),
+    },
+    {
+      id: 'element.lock',
+      label: 'Lock',
+      group: 'selection',
+      command: { label: 'Lock or unlock element', icon: Lock },
+      keys: ['$mod+Shift+KeyL'],
+      ...flagged('locked'),
+    },
     {
       id: 'element.moveUp',
       label: 'Move up among siblings',
@@ -501,6 +554,7 @@ export function useElementActions(page: string): void {
         group: (keys) => shownGroup(document, keys),
         editGroup: startGroupEdit,
         wrap: (at, keys, request) => void wrapSelection(at, keys, request),
+        flag: (at, keys, flag, on) => void flagElements(at, keys, flag, on),
       }),
     )
     // Fetched on selection and on each reload, since the keys walk this tree.

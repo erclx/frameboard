@@ -7,6 +7,7 @@ import { useLive } from '@/client/live/store'
 import type { ElementTree, TreeElement } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { flagElements } from '../element/flags'
 import { useElementTree } from '../element/tree'
 import { writeElement } from '../inspector/element/write'
 import { ElementRowMenu } from '../menus/layers'
@@ -22,6 +23,7 @@ import {
 import { DropLine } from './drop-line'
 import { elementGlyph } from './layer-glyphs'
 import { useReorderMonitor, useReorderRow } from './reorder'
+import { HIDDEN_TEXT, RowFlags } from './row-flags'
 import { addsOne, spanTo } from './row-pick'
 
 /** How far each level of nesting moves a row in, past the frame row's own 8 px. */
@@ -99,6 +101,7 @@ export function ElementRows({
   if (rows.length === 0) return <Notice depth={1}>No elements</Notice>
   const parents = new Set(tree.elements.map((element) => element.parent))
   const places = siblingPlaces(tree.elements)
+  const unseen = unseenIndexes(tree.elements)
   const { hash } = tree
   const keyOf = (index: number) => ({ frame: frame.ref, index, hash })
   const pick = (index: number, event: PickEvent) => {
@@ -132,6 +135,7 @@ export function ElementRows({
           list={siblingList(frame.ref, element.parent)}
           open={isOpen(element.index)}
           holds={parents.has(element.index)}
+          unseen={unseen.has(element.index)}
           toggle={() => toggle(element.index)}
           tint={
             selected.includes(element.index)
@@ -163,6 +167,8 @@ interface ElementRowProps {
   open: boolean
   /** True when it holds elements, which gives it a chevron. */
   holds: boolean
+  /** True when it or an element holding it is hidden, which dims the row. */
+  unseen: boolean
   toggle: () => void
   tint: string
   isSelected: boolean
@@ -181,6 +187,7 @@ function ElementRow({
   list,
   open,
   holds,
+  unseen,
   toggle,
   tint,
   isSelected,
@@ -194,7 +201,13 @@ function ElementRow({
     index: place,
     enabled: canWrite && !renaming,
   })
-  const icon = <RowGlyph icon={elementGlyph(element)} selected={isSelected} />
+  const icon = (
+    <RowGlyph
+      icon={elementGlyph(element)}
+      selected={isSelected}
+      unseen={unseen}
+    />
+  )
   return (
     <ElementRowMenu
       page={page}
@@ -202,8 +215,10 @@ function ElementRow({
       trigger={
         <li
           ref={row}
+          aria-label={unseen ? `${element.name}, hidden` : undefined}
           className={cn(
-            'relative flex h-[26px] items-center gap-1.5 pr-2 text-foreground',
+            'group relative flex h-[26px] items-center gap-1.5 pr-1 text-foreground',
+            unseen && HIDDEN_TEXT,
             tint,
           )}
           style={{ paddingLeft: FRAME_INSET + depth * INDENT }}
@@ -229,20 +244,23 @@ function ElementRow({
           {renaming ? (
             <>
               {icon}
-              <RenameField
-                hug
-                name={element.name}
-                label={`Rename ${element.name}`}
-                onCommit={(name) => {
-                  setRenaming(false)
-                  void writeElement(page, key, {
-                    kind: 'attribute',
-                    name: 'data-name',
-                    value: name,
-                  })
-                }}
-                onCancel={() => setRenaming(false)}
-              />
+              {/* The slot takes the row's free width, so the hugging field leaves the buttons at the edge. */}
+              <span className="flex min-w-0 flex-1">
+                <RenameField
+                  hug
+                  name={element.name}
+                  label={`Rename ${element.name}`}
+                  onCommit={(name) => {
+                    setRenaming(false)
+                    void writeElement(page, key, {
+                      kind: 'attribute',
+                      name: 'data-name',
+                      value: name,
+                    })
+                  }}
+                  onCancel={() => setRenaming(false)}
+                />
+              </span>
             </>
           ) : (
             <button
@@ -267,6 +285,14 @@ function ElementRow({
               </span>
             </button>
           )}
+          <RowFlags
+            name={element.name}
+            hidden={element.hidden === true}
+            locked={element.locked === true}
+            canWrite={canWrite}
+            onHide={(on) => void flagElements(page, [key], 'hidden', on)}
+            onLock={(on) => void flagElements(page, [key], 'locked', on)}
+          />
         </li>
       }
     />
@@ -276,16 +302,22 @@ function ElementRow({
 function RowGlyph({
   icon: Icon,
   selected,
+  unseen,
 }: {
   icon: LucideIcon
   selected: boolean
+  unseen: boolean
 }) {
   return (
     <Icon
       aria-hidden
       className={cn(
         'size-[13px] shrink-0',
-        selected ? 'text-primary' : 'text-muted-foreground',
+        selected
+          ? 'text-primary'
+          : unseen
+            ? HIDDEN_TEXT
+            : 'text-muted-foreground',
       )}
     />
   )
@@ -321,6 +353,15 @@ function siblingPlaces(elements: readonly TreeElement[]): Map<number, number> {
     counts.set(element.parent, place + 1)
   }
   return places
+}
+
+/** The elements drawing nothing for a hide on them or on one holding them. */
+function unseenIndexes(elements: readonly TreeElement[]): Set<number> {
+  const unseen = new Set<number>()
+  for (const { index, parent, hidden } of elements) {
+    if (hidden || (parent !== null && unseen.has(parent))) unseen.add(index)
+  }
+  return unseen
 }
 
 /** The rows an open path shows, in tree order, each with its depth below the frame row. */
