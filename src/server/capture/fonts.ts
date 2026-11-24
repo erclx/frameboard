@@ -112,7 +112,7 @@ export async function assertFontsPresent(
     const family = requestedFamily(element.fontFamily, defaultFamily) ?? key
     throw new FrameboardError(
       'font-missing',
-      `${ref} asks for the font ${family}, first at element ${element.index}, and it neither loads nor is installed. Load it from the project's assets/ or name an installed family.`,
+      `${ref} asks for the font ${family}, first at element ${element.index}, and it neither loads nor is on this machine. Install it with frameboard font find, load it from the project's assets/, or name a family this machine has.`,
       { ref, family, element: element.index },
     )
   }

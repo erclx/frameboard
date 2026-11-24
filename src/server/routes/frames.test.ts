@@ -17,6 +17,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { installedFontFiles } from '../../../test/support/installed-font'
 import { frameRoutes } from './frames'
 
 describe('frameRoutes', () => {
@@ -131,6 +132,82 @@ describe('frameRoutes', () => {
         '/frameboard/tokens.css',
         '/frames/studio/tokens.css',
       ])
+    })
+
+    describe('with installed fonts', () => {
+      function install(): void {
+        const files = installedFontFiles('studio', 'lora', 'Lora')
+        for (const [path, contents] of Object.entries(files)) {
+          mkdirSync(join(board.root, path, '..'), { recursive: true })
+          writeFileSync(join(board.root, path), contents)
+        }
+      }
+
+      it("imports the project's font sheet after the faces and before its tokens", async () => {
+        install()
+        writeFileSync(join(board.root, 'tokens.css'), ':root { --fg: black }')
+
+        const served = await (await get('/frames/studio/home/hero.html')).text()
+
+        expect(importsOf(served).slice(-3)).toEqual([
+          `/frameboard/faces/v${version}/caveat/index.css`,
+          '/frames/studio/fonts.css',
+          '/frameboard/tokens.css',
+        ])
+      })
+
+      it('serves a sheet declaring each installed file where the route serves it', async () => {
+        install()
+
+        const response = await get('/frames/studio/fonts.css')
+        const css = await response.text()
+        const file = /url\("([^"]+)"\)/.exec(css)?.[1]
+        const served = await get(`/frames/studio/${file}`)
+
+        expect(response.headers.get('content-type')).toBe(
+          'text/css; charset=utf-8',
+        )
+        expect(response.headers.get('cache-control')).toBe('no-store')
+        expect(css).toContain('font-family:"Lora"')
+        expect(served.status).toBe(200)
+        expect(served.headers.get('content-type')).toBe('font/woff2')
+      })
+
+      it('imports no font sheet into a frame of a project with none', async () => {
+        const served = await (await get('/frames/studio/home/hero.html')).text()
+
+        expect(importsOf(served)).not.toContain('/frames/studio/fonts.css')
+      })
+
+      it.each([
+        ['a project with no fonts', '/frames/studio/fonts.css'],
+        ['a project that does not exist', '/frames/nope/fonts.css'],
+        ['a dot-named folder', '/frames/.run/fonts.css'],
+      ])('answers 404 for the font sheet of %s', async (_case, path) => {
+        const response = await get(path)
+
+        expect(response.status).toBe(404)
+      })
+
+      it('answers 404 for the font sheet of a project linked from outside the board', async () => {
+        install()
+        const outside = copyFixtureBoard('live')
+        mkdirSync(join(outside.root, 'studio/assets/fonts/lora'), {
+          recursive: true,
+        })
+        writeFileSync(
+          join(outside.root, 'studio/assets/fonts/lora/font.license.json'),
+          installedFontFiles('studio', 'lora', 'Lora')[
+            'studio/assets/fonts/lora/font.license.json'
+          ] ?? '',
+        )
+        symlinkSync(join(outside.root, 'studio'), join(board.root, 'linked'))
+
+        const response = await get('/frames/linked/fonts.css')
+        outside.cleanup()
+
+        expect(response.status).toBe(404)
+      })
     })
 
     describe('with kits', () => {

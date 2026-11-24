@@ -12,6 +12,7 @@ import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../../test/support/fixture-board'
+import { installedFontFiles } from '../../../test/support/installed-font'
 import { previewApp, startPreviewListener } from './listener'
 
 const TOKEN = 'k3P9xQ-token'
@@ -108,6 +109,23 @@ describe('previewApp', () => {
       const response = await request(path)
 
       expect(response.headers.get('referrer-policy')).toBe('no-referrer')
+    })
+
+    it('serves an installed font from under the link, as its frame imports it', async () => {
+      const files = installedFontFiles('studio', 'lora', 'Lora')
+      for (const [path, contents] of Object.entries(files)) {
+        mkdirSync(join(board.root, path, '..'), { recursive: true })
+        writeFileSync(join(board.root, path), contents)
+      }
+      const sheet = `/v/${TOKEN}/frames/studio/fonts.css`
+
+      const frame = await request(`/v/${TOKEN}/frames/studio/home/hero.html`)
+      const css = await (await request(sheet)).text()
+      const url = /url\("([^"]+)"\)/.exec(css)?.[1] ?? ''
+      const font = await request(new URL(url, `http://phone${sheet}`).pathname)
+
+      expect(await frame.text()).toContain(`@import url("${sheet}")`)
+      expect(font.status).toBe(200)
     })
 
     it('answers HEAD for a frame', async () => {
