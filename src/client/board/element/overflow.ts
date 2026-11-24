@@ -5,10 +5,9 @@ import type { Box } from '../geometry/box'
 import type { ElementKey } from '../selection'
 
 /**
- * Whether anything draws past a frame's edge. A scroll frame reaches its
- * overflow by scrolling, and a frame showing its device body is one screen of
- * a page that scrolls, as Present and Play scroll it. A record carries
- * `device` only while the body shows.
+ * Whether anything draws past a frame's edge, which a scroll frame and the one
+ * screen a device body shows reach by scrolling. A record carries `device`
+ * only while the body shows.
  */
 export function drawsOverflow({
   scroll,
