@@ -96,18 +96,25 @@ vi.mock('@/server/capture/images', async (importOriginal) => {
       ),
       motion: { source: 'css' as const, duration: 2000 },
     }),
-    captureComposite: async (
+    captureComposites: async (
       _browser: unknown,
-      { page, themes, out, scale }: Parameters<typeof real.captureComposite>[1],
-    ) =>
-      themes.map((theme) => ({
-        ref: page.ref,
-        theme,
-        path: real.compositeImagePath(out, page, theme, scale),
-        width: 1,
-        height: 1,
+      {
+        pages,
+        themes,
+        out,
         scale,
-      })),
+      }: Parameters<typeof real.captureComposites>[1],
+    ) =>
+      pages.flatMap((page) =>
+        themes.map((theme) => ({
+          ref: page.ref,
+          theme,
+          path: real.compositeImagePath(out, page, theme, scale),
+          width: 1,
+          height: 1,
+          scale,
+        })),
+      ),
   }
 })
 

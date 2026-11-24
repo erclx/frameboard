@@ -8,7 +8,7 @@ import { resolvePageRef } from '@/server/board/refs'
 import { readPageOrder, scanPage } from '@/server/board/scan'
 import { withFrameHost } from '@/server/capture/host'
 import {
-  captureComposite,
+  captureComposites,
   type CapturedImage,
   captureFrameImages,
   captureMotionImages,
@@ -155,10 +155,9 @@ export function registerCapture(
         'capture',
         (browser, baseUrl) =>
           options.composite
-            ? captureComposite(browser, {
+            ? captureComposites(browser, {
                 baseUrl,
-                page: { ref: page.ref, project: page.project, name: page.name },
-                frames,
+                pages: [{ ...page, frames }],
                 themes,
                 out,
                 scale: options.scale,
