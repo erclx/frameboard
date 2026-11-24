@@ -33,14 +33,13 @@ export interface BoardFindings {
   /** Every frame's findings by ref, as a board client's hello receives them. */
   all: () => Record<string, Finding[]>
   /**
-   * Rechecks the frames `paths` changed, or every frame for `'all'`, and drops
-   * refs `board` no longer holds. Returns each rechecked ref's findings, an
+   * Rechecks `refs` and drops those `board` no longer holds. Returns each rechecked ref's findings, an
    * empty list clearing a frame, which is the partial map a batch sends.
    * `keys` names what each was read from, and a result with none is not kept.
    */
   update: (
     board: ListResult,
-    paths: string[] | 'all',
+    refs: readonly string[],
     keys?: ReadonlyMap<string, string>,
   ) => Record<string, Finding[]>
   /**
@@ -129,7 +128,7 @@ export function createBoardFindings(
     },
     changed: (refs) =>
       Object.fromEntries(refs.map((ref) => [ref, on(ref, change.get(ref))])),
-    update: (board, paths, keys) => {
+    update: (board, refs, keys) => {
       const frames = framesOf(board)
       for (const ref of [...held.keys(), ...change.keys(), ...browser.keys()]) {
         if (!frames.has(ref)) {
@@ -138,10 +137,6 @@ export function createBoardFindings(
           browser.delete(ref)
         }
       }
-      const refs =
-        paths === 'all'
-          ? [...frames.keys()]
-          : recheckRefs(root, paths, board, tokens)
       const contexts = new Map<string, ProjectContext>()
       const changed: Record<string, Finding[]> = {}
       for (const ref of refs) {

@@ -200,6 +200,7 @@ export function createRememberedStore(
   held: () => Record<string, RememberedFrame>,
 ): RememberedStore {
   let timer: ReturnType<typeof setTimeout> | undefined
+  let closed = false
   let saving: Promise<void> = Promise.resolve()
 
   const save = () => {
@@ -224,9 +225,10 @@ export function createRememberedStore(
       }
     },
     saveSoon: () => {
-      timer ??= setTimeout(save, SAVE_MS)
+      if (!closed) timer ??= setTimeout(save, SAVE_MS)
     },
     close: () => {
+      closed = true
       if (timer !== undefined) save()
       return saving
     },
