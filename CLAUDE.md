@@ -11,7 +11,7 @@ Frameboard is a local design board that coding agents draw on as plain HTML file
 
 ## Commands
 
-- `bun run check`: the gate to run before committing, which `canon/context/development/local.md` breaks down
+- `bun run check:changed`: the gate to run before committing, which `canon/context/development/local.md` breaks down. It skips a tree it already passed, and CI runs the full suites.
 
 ## Key paths
 

@@ -7,7 +7,7 @@ description: GitHub Actions workflow triggers and checks
 
 ## Overview
 
-Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `main` run the checks and all but macOS must pass, a push to `main` runs the release workflow, Verify, and every check in `frameboard-checks.yml`, and `workflow_dispatch` runs any workflow. The checks call package scripts, covered in `canon/context/development/local.md`.
+Owns the GitHub Actions workflows that gate a merge. A pull request must pass the checks the ruleset requires, a push to `main` runs the release workflow, Verify, and every check in `frameboard-checks.yml`, and `workflow_dispatch` runs any workflow. The checks call package scripts, covered in `canon/context/development/local.md`.
 
 ## Layout
 
@@ -15,17 +15,17 @@ Owns the GitHub Actions workflows that gate a merge. Pull requests targeting `ma
 
 Owns the merge checks, the release, and the landing page deploy. `verify.yml` holds the golden jobs a sync writes and runs on pushes to `main` for the README's Verify badge, and `frameboard-checks.yml` holds the project's own jobs, which a sync leaves alone.
 
-| Check                       | Workflow                | Command                                                                   | What it asserts                                                                                                      |
-| --------------------------- | ----------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| Static Checks               | `verify.yml`            | `bun run typecheck`, `bun run lint`, `bun run check:format`               | tsc, oxlint with zero warnings, and oxfmt are clean                                                                  |
-| Unit Tests                  | `verify.yml`            | `bun run test:coverage`                                                   | the Vitest `node` project passes, with coverage                                                                      |
-| Build                       | `verify.yml`            | `bun run build`                                                           | Vite builds the client and rolldown bundles `dist/cli.js`                                                            |
-| E2E Tests                   | `verify.yml`            | `bun run test:e2e --project=chromium` with `DIST_PREBUILT`                | Playwright passes against the built CLI the Build job uploaded                                                       |
-| Browser Component Tests     | `frameboard-checks.yml` | `bunx vitest run --project browser`                                       | the Vitest `browser` project passes in headless Chromium                                                             |
-| CLI on Node and Bun         | `frameboard-checks.yml` | `node` and `bun` on `dist/cli.js --version`                               | the bundle runs on both runtimes from outside the checkout                                                           |
-| Edit Writer on Node and Bun | `frameboard-checks.yml` | `property.test.ts` under `bunx vitest` and `bun --bun vitest`, then `cmp` | the edit property run passes and writes the same output digest on both runtimes                                      |
-| macOS Unit and CLI Smoke    | `frameboard-checks.yml` | `bunx vitest run --project node`, then `bash scripts/smoke-cli.sh dist`   | the `node` project passes on Apple Silicon, and `serve`, the structure verbs, and `check` run from an outside bundle |
-| Landing Page Gate           | `frameboard-checks.yml` | `bun run check` in `web/`                                                 | the landing page typechecks, lints, formats, passes its unit tests, builds to valid HTML, and embeds no long code    |
+| Check                       | Workflow                | Command                                                                      | What it asserts                                                                                                      |
+| --------------------------- | ----------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Static Checks               | `verify.yml`            | `bun run typecheck`, `bun run lint`, `bun run check:format`                  | tsc, oxlint with zero warnings, and oxfmt are clean                                                                  |
+| Unit Tests                  | `verify.yml`            | `bun run test:coverage`                                                      | the Vitest `node` project passes, with coverage                                                                      |
+| Build                       | `verify.yml`            | `bun run build`                                                              | Vite builds the client and rolldown bundles `dist/cli.js`                                                            |
+| E2E Tests                   | `verify.yml`            | four `bun run test:e2e --project=chromium --shard` jobs with `DIST_PREBUILT` | Playwright passes against the built CLI the Build job uploaded                                                       |
+| Browser Component Tests     | `frameboard-checks.yml` | `bunx vitest run --project browser`                                          | the Vitest `browser` project passes in headless Chromium                                                             |
+| CLI on Node and Bun         | `frameboard-checks.yml` | `node` and `bun` on `dist/cli.js --version`                                  | the bundle runs on both runtimes from outside the checkout                                                           |
+| Edit Writer on Node and Bun | `frameboard-checks.yml` | `property.test.ts` under `bunx vitest` and `bun --bun vitest`, then `cmp`    | the edit property run passes and writes the same output digest on both runtimes                                      |
+| macOS Unit and CLI Smoke    | `frameboard-checks.yml` | `bunx vitest run --project node`, then `bash scripts/smoke-cli.sh dist`      | the `node` project passes on Apple Silicon, and `serve`, the structure verbs, and `check` run from an outside bundle |
+| Landing Page Gate           | `frameboard-checks.yml` | `bun run check` in `web/`                                                    | the landing page typechecks, lints, formats, passes its unit tests, builds to valid HTML, and embeds no long code    |
 
 The workflows the table leaves out own releases, labels, and the landing page.
 
@@ -34,6 +34,14 @@ The workflows the table leaves out own releases, labels, and the landing page.
 - `phase-label-gate.yml` fails a pull request carrying a phase label, board reference, or session link, and `pr-local-preview.yml` owns the evidence preview
 - `canon/config/config.json` records `verify.yml` and `deploy.yml` as customized, so a sync keeps the trigger and the `web/` build, and a push or dispatch run keys its group on `github.run_id`
 - `frameboard-checks.yml` also runs on a push to `main`. Its macOS job runs there and on dispatch only, with no browser or E2E layer, so a macOS-only break shows after the merge
+
+### `.github/workflows/verify.yml`
+
+CI alone runs the full suites, since a push runs only the tests beside its changes.
+
+- The ruleset requires `🎭 E2E Tests` by name and GitHub passes a required job that was skipped, so that job runs on `always()` and fails unless `e2e-shards` reads `success`
+- The shards need `build-verify` alone, so a red unit test never holds them back
+- The ruleset requires neither macOS nor `🌐 Landing Page Gate`, and a push no longer builds `web/`, so a red landing page can merge
 
 ### `canon/config/`
 
