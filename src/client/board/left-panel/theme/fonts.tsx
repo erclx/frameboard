@@ -127,8 +127,7 @@ export function FontsSection({
     }
   }
 
-  // A family the board also serves keeps every frame drawing, so it removes with no frame read.
-  // One read at a time, so a second press cannot swap the dialog to another font.
+  // One read at a time, and none for a family the board also serves, whose frames keep drawing.
   const ask = async (font: InstalledFont) => {
     if (reading.current) return
     if (font.bundled) return run(font)
