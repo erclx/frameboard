@@ -259,6 +259,146 @@ describe('frame', () => {
     expect(result.json().data).toMatchObject({ box: { width, height } })
   })
 
+  describe('add with a -<px> name', () => {
+    it('takes the width from the name, hugs the height, and shows the device', async () => {
+      const run = on('basic')
+
+      const result = await run('frame', 'add', 'webapp/home/pricing-390')
+
+      expect(result.json().data).toMatchObject({
+        box: { width: 390 },
+        hugWidth: false,
+        hugHeight: true,
+        showDevice: true,
+        device: 'phone',
+      })
+    })
+
+    it.each([
+      ['pricing-834', 834, 'tablet'],
+      ['pricing-1440', 1440, 'laptop'],
+    ])('lands %s %i wide in a %s', async (name, width, device) => {
+      const run = on('basic')
+
+      const result = await run('frame', 'add', `webapp/home/${name}`)
+
+      expect(result.json().data).toMatchObject({ box: { width }, device })
+    })
+
+    it('hugs both axes with no device when the suffix names no width', async () => {
+      const run = on('basic')
+
+      const result = await run('frame', 'add', 'webapp/home/pricing-2')
+
+      expect(result.json().data).toMatchObject({
+        hugWidth: true,
+        hugHeight: true,
+      })
+      expect(result.json().data).not.toHaveProperty('showDevice')
+    })
+
+    it.each([
+      [
+        '--size',
+        ['--size', 'tablet'],
+        { box: { width: 834 }, hugWidth: false },
+      ],
+      [
+        '--width',
+        ['--width', '1280'],
+        { box: { width: 1280 }, hugWidth: false },
+      ],
+      [
+        '--height',
+        ['--height', '600'],
+        { box: { width: 1440, height: 600 }, hugWidth: true },
+      ],
+    ])('takes %s over the name', async (_flag, args, landed) => {
+      const run = on('basic')
+
+      const result = await run(
+        'frame',
+        'add',
+        'webapp/home/pricing-390',
+        ...args,
+      )
+
+      expect(result.json().data).toMatchObject(landed)
+      expect(result.json().data).not.toHaveProperty('showDevice')
+    })
+
+    it('keeps the box a reservation holds over the name', async () => {
+      const run = on('basic')
+      await run(
+        'editing',
+        'webapp/home/pricing-390',
+        '--new',
+        '--size',
+        'tablet',
+        '--session',
+        'sess-a',
+      )
+
+      const result = await run('frame', 'add', 'webapp/home/pricing-390')
+
+      expect(result.json().data).toMatchObject({ box: { width: 834 } })
+      expect(result.json().data).not.toHaveProperty('showDevice')
+    })
+
+    it('holds a --scroll frame at the screen height of the named width', async () => {
+      const run = on('basic')
+
+      const result = await run(
+        'frame',
+        'add',
+        'webapp/home/pricing-390',
+        '--scroll',
+      )
+
+      expect(result.json().data).toMatchObject({
+        box: { width: 390, height: 844 },
+        scroll: true,
+        device: 'phone',
+      })
+    })
+
+    it('takes --device beside the name as the same device', async () => {
+      const run = on('basic')
+
+      const result = await run(
+        'frame',
+        'add',
+        'webapp/home/pricing-390',
+        '--device',
+        'phone',
+      )
+
+      expect(result.exitCode).toBe(0)
+      expect(result.json().data).toMatchObject({
+        box: { width: 390 },
+        device: 'phone',
+      })
+    })
+
+    it.each([
+      ['says the size came from the name', [], true],
+      [
+        'says nothing of the name when a flag sized it',
+        ['--width', '390'],
+        false,
+      ],
+    ])('%s', async (_label, args, said) => {
+      on('basic')
+
+      const result = await cli(
+        ['frame', 'add', 'webapp/home/pricing-390', ...args],
+        { cwd: board.root },
+      )
+
+      expect(result.stdout.includes('from its name')).toBe(said)
+    })
+  })
+
   describe('transition', () => {
     it('answers the frame with the override it set', async () => {
       const run = on('basic')

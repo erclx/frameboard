@@ -22,6 +22,7 @@ import {
   FRAME_SIZES,
   type FrameSizeName,
   frameSizeOf,
+  namedWidth,
   referenceHeight,
 } from '@/shared/frame-sizes'
 import {
@@ -108,6 +109,15 @@ export interface DeviceOptions {
   showDevice?: boolean
 }
 
+export interface NamedWidthOptions {
+  /**
+   * Opts in to the width a trailing `-<px>` in the name states, shown in its
+   * device, where no size option and no reserved box gives one. Called with
+   * that width once the frame lands at it.
+   */
+  onNamedWidth?: (width: number) => void
+}
+
 export interface FoldOptions {
   /** True to name the foldable over the width's device, false to hand the pick back to the width, absent to leave it. */
   foldable?: boolean
@@ -139,10 +149,11 @@ export async function addFrame(
     ScrollOptions &
     WidthsOptions &
     DeviceOptions &
+    NamedWidthOptions &
     BodyOptions &
     JournalOptions,
 ): Promise<FrameRecord> {
-  const { journal } = options
+  const { journal, onNamedWidth } = options
   const frame = await resolveFrameRef(root, ref, {
     ...options,
     allowMissing: true,
@@ -156,11 +167,15 @@ export async function addFrame(
     options.size !== undefined ||
     options.width !== undefined ||
     options.height !== undefined
+  const named =
+    onNamedWidth && !reserved && !sized ? namedWidth(frame.name) : undefined
+  const sizing = named === undefined ? options : { width: named }
+  const showDevice = options.showDevice || named !== undefined
   // A reserved frame lands in its box, as the server's landing step puts it.
   const size =
     reserved && !sized
       ? { width: reserved.width, height: reserved.height }
-      : sizeOf(options)
+      : sizeOf(sizing)
   const scroll = options.scroll ?? false
   const hugs = scroll
     ? { hugWidth: false, hugHeight: false }
@@ -169,7 +184,7 @@ export async function addFrame(
           hugWidth: reserved.hugWidth ?? false,
           hugHeight: reserved.hugHeight ?? false,
         }
-      : hugsOf(options)
+      : hugsOf(sizing)
   await withLayouts(
     [page],
     async (layouts) => {
@@ -203,7 +218,7 @@ export async function addFrame(
         stale ??
         placeNext([...placed.values()], {
           width,
-          device: options.showDevice ? deviceForWidth(width) : null,
+          device: showDevice ? deviceForWidth(width) : null,
         })
       // Refused ahead of the skeleton, so a refusal leaves no file behind.
       const widths = linkedWidths(refOf(frame), options.widths, {
@@ -236,12 +251,13 @@ export async function addFrame(
         ...hugs,
         scroll,
         widths,
-        ...(options.showDevice ? { showDevice: true as const } : {}),
+        ...(showDevice ? { showDevice: true as const } : {}),
       })
       layout.renumber()
     },
     journal,
   )
+  if (named !== undefined) onNamedWidth?.(named)
   return frameRecord(root, frame.project, frame.page, frame.name)
 }
 

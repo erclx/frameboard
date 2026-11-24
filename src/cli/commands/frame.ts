@@ -162,7 +162,7 @@ export function registerFrame(
       withSize(
         verb(
           'add',
-          'Place a frame past every frame, as written when its file exists and with a skeleton file only when none does, so write the file first to show no empty box. Each axis no size names hugs its content, so a preset or --width fixes the width and the height hugs.',
+          'Place a frame past every frame, as written when its file exists and with a skeleton file only when none does, so write the file first to show no empty box. Each axis no size names hugs its content, so a preset or --width fixes the width and the height hugs. With no size, a name ending in -<px> for a width a size names, such as overview-390, fixes that width and turns the device on.',
         )
           .option('--scroll', SCROLL_HELP)
           .option('--widths <list>', WIDTHS_HELP, parseWidths)
@@ -172,15 +172,20 @@ export function registerFrame(
       ),
     ),
     context,
-    async ([ref = ''], { device, ...options }) =>
-      done(
-        await addFrame(await boardOf(options, io), ref, {
-          ...options,
-          ...(device ? { showDevice: true } : {}),
-          cwd: io.cwd,
-        }),
-        'Added',
-      ),
+    async ([ref = ''], { device, ...options }) => {
+      let named: number | undefined
+      const data = await addFrame(await boardOf(options, io), ref, {
+        ...options,
+        ...(device ? { showDevice: true } : {}),
+        onNamedWidth: (width) => {
+          named = width
+        },
+        cwd: io.cwd,
+      })
+      const sized =
+        named === undefined ? '' : `, ${named} px wide from its name`
+      return { data, human: `Added ${data.ref}${sized}` }
+    },
   )
 
   act<CommonOptions & { to?: string; name?: string }>(

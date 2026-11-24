@@ -594,6 +594,15 @@ describe('frames', () => {
       })
     })
 
+    it('add leaves a -<px> name alone unless the caller opts in', async () => {
+      const root = open()
+
+      const added = await addFrame(root, 'webapp/home/card-390', { cwd: root })
+
+      expect(added.hugWidth).toBe(true)
+      expect(added).not.toHaveProperty('showDevice')
+    })
+
     it('add with no size keeps the desktop box as its placeholder', async () => {
       const root = open()
 
