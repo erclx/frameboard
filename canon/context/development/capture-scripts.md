@@ -45,7 +45,7 @@ Where the sync reads from, and what moves every reference, follow.
 
 A running `preview` and the drive copy it serves carry these conditions.
 
-- `canon pr drive-copy` rebuilds the copy but leaves its `.run/` alone, since `canon/config/preview.json` keeps that path, so a running `preview` keeps its address file and board key
+- `canon pr drive-copy` rebuilds the copy but leaves its `.run/` alone, which `[preview]` in `canon/config/app.toml` keeps, so a running `preview` keeps its address file and board key
 - The rebuild copies the checkout as it stands, so the seeded pages and the reservation on `webapp/settings` reach the copy through the `seed` key, which runs `scripts/drive-seed.ts`
 - The edit link from `preview` works once, so a late reader or a take opens `/api/access/open`, which a server reused from a bare `serve` answers with 404
 - A claim lives in the ignored `.run/` and lapses after five minutes, so a drive renews it with `bun dist/cli.js editing <frame-ref> --root <copyRoot>/test/fixtures/boards/basic --session drive-review`
