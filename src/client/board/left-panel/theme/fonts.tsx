@@ -9,21 +9,23 @@ import {
   DialogFooter,
   DialogTitle,
 } from '@/client/components/ui/dialog'
+import { toast } from '@/client/components/ui/toast'
 import { useLive } from '@/client/live/store'
 import { BoardWriteError } from '@/client/live/write'
 import { FACES, faceSheetUrl, faceStack } from '@/shared/faces'
 import type { ListResult } from '@/shared/records/list'
 import type {
   FontFind,
-  FontList,
   FontResult,
   InstalledFont,
 } from '@/shared/records/sourcing'
 
 import {
+  fetchFontFrames,
   fetchInstalledFonts,
   findFonts,
   installedFontSheet,
+  type InstalledFontsRead,
   useInstalledFonts,
 } from '../../assets/sourcing'
 import { installFont, removeFont } from './write'
@@ -34,10 +36,45 @@ const NAMED_FRAMES = 5
 interface FontsSectionProps {
   project: string
   /** Reads the project's installed fonts, the API in the app. */
-  load?: (project: string) => Promise<FontList | null>
+  load?: InstalledFontsRead
+  /** Reads the frames drawing text in one font, as a removal asks. */
+  readFrames?: typeof fetchFontFrames
   find?: typeof findFonts
   install?: typeof installFont
   remove?: typeof removeFont
+}
+
+/** A removal waiting on its confirmation, with the frames it leaves falling back. */
+interface Confirming {
+  font: InstalledFont
+  frames: readonly string[]
+}
+
+/**
+ * Shows a refusal inline while `inline` says its place is drawn, and as an
+ * error toast once the section closed or unmounted, so no refusal goes unsaid.
+ */
+function reportTo(
+  inline: { current: boolean },
+  show: (message: string) => void,
+) {
+  return (title: string, error: unknown) => {
+    const description = error instanceof Error ? error.message : String(error)
+    if (inline.current) show(`${title}. ${description}`)
+    else toast.add({ title, description, type: 'error' })
+  }
+}
+
+/** A ref reading true while the component is mounted and `drawn` holds. */
+function useDrawn(drawn = true): { current: boolean } {
+  const ref = useRef(drawn)
+  useEffect(() => {
+    ref.current = drawn
+    return () => {
+      ref.current = false
+    }
+  }, [drawn])
+  return ref
 }
 
 /** How long typing rests before the search runs, so each keystroke sends no request. */
@@ -61,6 +98,7 @@ interface FamilyRow {
 export function FontsSection({
   project,
   load = fetchInstalledFonts,
+  readFrames = fetchFontFrames,
   find = findFonts,
   install = installFont,
   remove = removeFont,
@@ -69,9 +107,10 @@ export function FontsSection({
   const board = useLive((state) => state.board)
   const list = useInstalledFonts(project, load)
   const installed = list?.fonts ?? []
-  const [confirming, setConfirming] = useState<InstalledFont | null>(null)
+  const [confirming, setConfirming] = useState<Confirming | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
+  const report = reportTo(useDrawn(), setProblem)
 
   const rows = familyRows(installed)
 
@@ -81,9 +120,23 @@ export function FontsSection({
     try {
       await remove(project, font.id)
     } catch (error) {
-      setProblem(
-        `Couldn’t remove ${font.family}. ${error instanceof Error ? error.message : String(error)}`,
-      )
+      report(`Couldn’t remove ${font.family}`, error)
+    } finally {
+      setRemoving(null)
+    }
+  }
+
+  // A family the board also serves keeps every frame drawing, so it removes with no frame read.
+  const ask = async (font: InstalledFont) => {
+    if (font.bundled) return run(font)
+    setRemoving(font.id)
+    setProblem(null)
+    try {
+      const frames = await readFrames(project, font.id)
+      if (frames.length > 0) setConfirming({ font, frames })
+      else await run(font)
+    } catch (error) {
+      report(`Couldn’t remove ${font.family}`, error)
     } finally {
       setRemoving(null)
     }
@@ -135,11 +188,7 @@ export function FontsSection({
               <RemoveButton
                 font={row.installed}
                 busy={removing === row.installed.id}
-                onRemove={(font) =>
-                  warnsOn(font).length > 0
-                    ? setConfirming(font)
-                    : void run(font)
-                }
+                onRemove={(font) => void ask(font)}
               />
             ) : null}
           </li>
@@ -170,10 +219,10 @@ export function FontsSection({
       >
         <DialogContent showCloseButton={false} className="gap-3 p-4">
           <DialogTitle className="text-title font-semibold">
-            Remove {confirming?.family}?
+            Remove {confirming?.font.family}?
           </DialogTitle>
           <DialogDescription>
-            {confirming ? fallingBack(warnsOn(confirming), board) : null} Undo
+            {confirming ? fallingBack(confirming.frames, board) : null} Undo
             brings the font back.
           </DialogDescription>
           <DialogFooter>
@@ -183,7 +232,7 @@ export function FontsSection({
             <Button
               variant="destructive"
               onClick={() => {
-                if (confirming) void run(confirming)
+                if (confirming) void run(confirming.font)
                 setConfirming(null)
               }}
             >
@@ -199,7 +248,7 @@ export function FontsSection({
 type Search =
   | { state: 'idle' }
   | { state: 'searching' }
-  | { state: 'found'; find: FontFind }
+  | { state: 'found'; find: FontFind; text: string }
   | { state: 'failed'; message: string }
 
 interface FindFontProps {
@@ -220,7 +269,9 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
   const [installing, setInstalling] = useState<ReadonlySet<string>>(new Set())
   const [problem, setProblem] = useState<string | null>(null)
   const opener = useRef<HTMLButtonElement>(null)
+  const field = useRef<HTMLInputElement>(null)
   const closed = useRef(false)
+  const report = reportTo(useDrawn(open), setProblem)
 
   useEffect(() => {
     if (!open && closed.current) {
@@ -236,7 +287,9 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
     const rest = setTimeout(() => {
       setSearch({ state: 'searching' })
       find(project, typed, abort.signal)
-        .then((found) => setSearch({ state: 'found', find: found }))
+        .then((found) =>
+          setSearch({ state: 'found', find: found, text: typed }),
+        )
         .catch((error: unknown) => {
           if (abort.signal.aborted) return
           setSearch({ state: 'failed', message: searchFailure(error) })
@@ -256,15 +309,17 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
     setProblem(null)
   }
 
-  const run = async (result: FontResult) => {
+  // The query recorded is the one whose answer drew the result, never text typed since.
+  const run = async (result: FontResult, query: string) => {
+    if (installing.has(result.id)) return
     setInstalling((current) => new Set(current).add(result.id))
     setProblem(null)
     try {
-      await install(project, result.id, typed || null)
+      await install(project, result.id, query || null)
+      // The pressed Install unmounts once its row reads Installed, so focus goes back to the field.
+      field.current?.focus()
     } catch (error) {
-      setProblem(
-        `Couldn’t install ${result.family}. ${error instanceof Error ? error.message : String(error)}`,
-      )
+      report(`Couldn’t install ${result.family}`, error)
     } finally {
       setInstalling((current) => {
         const next = new Set(current)
@@ -300,10 +355,11 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
         }
       }}
     >
-      <label className="mt-1 flex h-7 items-center gap-2 rounded-md border border-border bg-background px-2 text-xs text-foreground focus-within:ring-2 focus-within:ring-ring/50">
-        <span className="sr-only">Search Fontsource by name or category</span>
+      <div className="mt-1 flex h-7 items-center gap-2 rounded-md border border-border bg-background px-2 text-xs text-foreground focus-within:ring-2 focus-within:ring-ring/50">
         <input
+          ref={field}
           type="search"
+          aria-label="Search Fontsource by name or category"
           // oxlint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           value={text}
@@ -320,7 +376,7 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
               ? `${found.total} found`
               : null}
         </span>
-      </label>
+      </div>
       {shown.state === 'failed' ? (
         <p role="alert" className="pt-1 leading-[1.45] text-destructive">
           {shown.message}
@@ -328,8 +384,8 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
       ) : null}
       {found && found.results.length === 0 ? (
         <p className="pt-1 leading-[1.45] text-muted-foreground">
-          Nothing matched “{typed}”. Try part of a name, or a category such as
-          serif or monospace.
+          Nothing matched “{shown.state === 'found' ? shown.text : typed}”. Try
+          part of a name, or a category such as serif or monospace.
         </p>
       ) : null}
       {found && found.results.length > 0 ? (
@@ -345,7 +401,9 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
                 result={result}
                 held={heldAs(result, installed)}
                 installing={installing.has(result.id)}
-                onInstall={(picked) => void run(picked)}
+                onInstall={(picked) =>
+                  void run(picked, shown.state === 'found' ? shown.text : typed)
+                }
               />
             ))}
           </ul>
@@ -395,9 +453,10 @@ function ResultRow({
         <button
           type="button"
           aria-label={`Install ${result.family}`}
-          disabled={installing}
+          // Kept focusable while it runs, since disabling the focused button drops focus to the page.
+          aria-disabled={installing || undefined}
           onClick={() => onInstall(result)}
-          className="flex h-6 shrink-0 items-center rounded-[5px] px-1.5 text-xs font-medium text-primary outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40"
+          className="flex h-6 shrink-0 items-center rounded-[5px] px-1.5 text-xs font-medium text-primary outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 aria-disabled:cursor-default aria-disabled:opacity-40"
         >
           Install
         </button>
@@ -503,11 +562,6 @@ function familyRows(installed: readonly InstalledFont[]): FamilyRow[] {
 /** A license's short mark, as `OFL-1.1` reads `OFL`. */
 function licenseMark(license: string): string {
   return license.replace(/-[\d.]+$/, '')
-}
-
-/** The frames a removal leaves falling back, none where the board serves the family too. */
-function warnsOn(font: InstalledFont): readonly string[] {
-  return font.bundled ? [] : font.frames
 }
 
 /** The sentence naming the frames a removal leaves falling back, by frame name. */

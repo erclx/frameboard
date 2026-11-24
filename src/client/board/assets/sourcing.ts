@@ -98,11 +98,32 @@ function isCategory(text: string): text is FontCategory {
   return (FONT_CATEGORIES as readonly string[]).includes(text)
 }
 
-/** The fonts a project installed, null when the read is refused. */
+/**
+ * The fonts a project installed, without the frames naming each, since reading
+ * those parses every frame. Null when the read is refused, and an abort throws.
+ */
 export async function fetchInstalledFonts(
   project: string,
+  signal?: AbortSignal,
 ): Promise<FontList | null> {
-  return read<FontList>(`${base(project)}/fonts/installed`).catch(() => null)
+  try {
+    return await read<FontList>(
+      `${base(project)}/fonts/installed?frames=false`,
+      signal,
+    )
+  } catch (error) {
+    if (signal?.aborted) throw error
+    return null
+  }
+}
+
+/** The frames drawing text in one installed font, read as a removal asks. Refuses as `findImages` does. */
+export async function fetchFontFrames(
+  project: string,
+  id: string,
+): Promise<readonly string[]> {
+  const list = await read<FontList>(`${base(project)}/fonts/installed`)
+  return list.fonts.find((font) => font.id === id)?.frames ?? []
 }
 
 /**
@@ -114,26 +135,31 @@ export function installedFontSheet(list: FontList): string {
   return `/frames/${encodeURIComponent(list.project)}/${FONT_SHEET}?fonts=${encodeURIComponent(held)}`
 }
 
+/** Reads a project's installed fonts, aborting on the signal. */
+export type InstalledFontsRead = (
+  project: string,
+  signal?: AbortSignal,
+) => Promise<FontList | null>
+
 /**
  * The project's installed fonts, read again whenever the live board changes,
- * which a font's install or removal does. Undefined while the first read runs.
+ * which a font's install or removal does, aborting the read a newer one
+ * supersedes. Undefined while the first read runs.
  */
 export function useInstalledFonts(
   project: string,
-  load: (project: string) => Promise<FontList | null> = fetchInstalledFonts,
+  load: InstalledFontsRead = fetchInstalledFonts,
 ): FontList | null | undefined {
   const board = useLive((state) => state.board)
   const [list, setList] = useState<FontList | null | undefined>()
   useEffect(() => {
-    let current = true
-    void load(project)
+    const abort = new AbortController()
+    load(project, abort.signal)
       .catch(() => null)
       .then((next) => {
-        if (current) setList(next)
+        if (!abort.signal.aborted) setList(next)
       })
-    return () => {
-      current = false
-    }
+    return () => abort.abort()
   }, [project, board, load])
   return list
 }

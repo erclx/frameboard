@@ -4,6 +4,7 @@ import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { Toaster } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 import { BoardWriteError } from '@/client/live/write'
 import type {
@@ -108,6 +109,11 @@ async function search(text: string) {
     await screen.findByRole('button', { name: 'Find a font' }),
   )
   await userEvent.type(screen.getByRole('searchbox'), text)
+}
+
+/** A frame read answering these refs for any font. */
+function framesOf(frames: string[]): () => Promise<readonly string[]> {
+  return async () => frames
 }
 
 function listOf(...fonts: InstalledFont[]): () => Promise<FontList> {
@@ -215,6 +221,7 @@ describe('FontsSection', () => {
         <FontsSection
           project="studio"
           load={listOf(installed('Lora'))}
+          readFrames={framesOf([])}
           remove={remove}
         />,
       )
@@ -232,11 +239,8 @@ describe('FontsSection', () => {
       render(
         <FontsSection
           project="studio"
-          load={listOf(
-            installed('Lora', {
-              frames: ['studio/home/hero', 'studio/home/pricing'],
-            }),
-          )}
+          load={listOf(installed('Lora'))}
+          readFrames={framesOf(['studio/home/hero', 'studio/home/pricing'])}
           remove={remove}
         />,
       )
@@ -265,7 +269,8 @@ describe('FontsSection', () => {
       render(
         <FontsSection
           project="studio"
-          load={listOf(installed('Lora', { frames: ['studio/home/hero'] }))}
+          load={listOf(installed('Lora'))}
+          readFrames={framesOf(['studio/home/hero'])}
           remove={remove}
         />,
       )
@@ -287,9 +292,10 @@ describe('FontsSection', () => {
       render(
         <FontsSection
           project="studio"
-          load={listOf(
-            installed('Inter', { bundled: true, frames: ['studio/home/hero'] }),
-          )}
+          load={listOf(installed('Inter', { bundled: true }))}
+          readFrames={async () => {
+            throw new Error('A family the board serves reads no frames.')
+          }}
           remove={remove}
         />,
       )
@@ -307,6 +313,7 @@ describe('FontsSection', () => {
         <FontsSection
           project="studio"
           load={listOf(installed('Lora'))}
+          readFrames={framesOf([])}
           remove={async () => {
             throw new Error('The folder is locked.')
           }}
@@ -320,6 +327,33 @@ describe('FontsSection', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         'Couldn’t remove Lora. The folder is locked.',
       )
+    })
+
+    it('reports a removal refused after the section unmounts as a toast', async () => {
+      let refuse = () => {}
+      render(<Toaster />)
+      const { unmount } = render(
+        <FontsSection
+          project="studio"
+          load={listOf(installed('Lora'))}
+          readFrames={framesOf([])}
+          remove={() =>
+            new Promise((_resolve, reject) => {
+              refuse = () => reject(new Error('The folder is locked.'))
+            })
+          }
+        />,
+      )
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Remove Lora' }),
+      )
+
+      unmount()
+      await act(async () => refuse())
+
+      expect(
+        await screen.findByText('Couldn’t remove Lora'),
+      ).toBeInTheDocument()
     })
   })
 
@@ -469,9 +503,12 @@ describe('FontsSection', () => {
       const button = await screen.findByRole('button', {
         name: 'Install Playfair Display',
       })
-      await userEvent.click(button)
+      button.focus()
+      await userEvent.keyboard('{Enter}')
+      await userEvent.keyboard('{Enter}')
 
-      expect(button).toBeDisabled()
+      expect(button).toHaveAttribute('aria-disabled', 'true')
+      expect(button).toHaveFocus()
       expect(screen.getByText('Installing')).toBeInTheDocument()
 
       fonts = [installed('Playfair Display')]
@@ -487,6 +524,88 @@ describe('FontsSection', () => {
         ),
       ).toBeInTheDocument()
       expect(sent).toEqual([{ id: 'playfair-display', query: 'playfair' }])
+      expect(screen.getByRole('searchbox')).toHaveFocus()
+
+      await userEvent.keyboard('{Escape}')
+
+      expect(screen.queryByRole('searchbox')).toBeNull()
+    })
+
+    it('records the query whose answer drew a result, not text typed since', async () => {
+      const sent: (string | null)[] = []
+      render(
+        <FontsSection
+          project="studio"
+          load={listOf()}
+          find={async (_project, text) =>
+            findOf(text, text === 'play' ? [result('Playfair Display')] : [])
+          }
+          install={async (project, id, query) => {
+            sent.push(query)
+            return savedOf(project, id)
+          }}
+        />,
+      )
+
+      await search('play')
+      const button = await screen.findByRole('button', {
+        name: 'Install Playfair Display',
+      })
+      await userEvent.type(screen.getByRole('searchbox'), 'x')
+      await userEvent.click(button)
+
+      expect(sent).toEqual(['play'])
+    })
+
+    it('keeps the field’s name as the found count changes', async () => {
+      render(
+        <FontsSection
+          project="studio"
+          load={listOf()}
+          find={async (_project, text) =>
+            findOf(text, [result('Playfair Display')])
+          }
+        />,
+      )
+
+      await search('playfair')
+      await screen.findByText('1 found')
+
+      expect(
+        screen.getByRole('searchbox', {
+          name: 'Search Fontsource by name or category',
+        }),
+      ).toBeInTheDocument()
+    })
+
+    it('reports an install refused after the search closed as a toast', async () => {
+      let refuse = () => {}
+      render(<Toaster />)
+      render(
+        <FontsSection
+          project="studio"
+          load={listOf()}
+          find={async (_project, text) =>
+            findOf(text, [result('Playfair Display')])
+          }
+          install={() =>
+            new Promise((_resolve, reject) => {
+              refuse = () => reject(new Error('Fontsource refused the files.'))
+            })
+          }
+        />,
+      )
+
+      await search('playfair')
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Install Playfair Display' }),
+      )
+      await userEvent.keyboard('{Escape}')
+      await act(async () => refuse())
+
+      expect(
+        await screen.findByText('Couldn’t install Playfair Display'),
+      ).toBeInTheDocument()
     })
 
     it('shows a refused install inline', async () => {
