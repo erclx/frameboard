@@ -400,6 +400,21 @@
         background: #2a2c31;
         border-radius: 2px;
       }
+      .btn3 {
+        position: absolute;
+        background: #4a4e57;
+        border-radius: 2px;
+      }
+      .cam {
+        position: absolute;
+        background: radial-gradient(
+          circle at 35% 35%,
+          #5b6170 0 18%,
+          #0a0a0c 22%
+        );
+        border-radius: 50%;
+        box-shadow: 0 0 0 0.5px #4a4e57;
+      }
       .fold {
         position: absolute;
         background: linear-gradient(
@@ -509,8 +524,10 @@
       each pose turned left. The phone and the tablet show Rotate alone under
       the body, and the foldable its poses, a divider, then Rotate. The phone's
       island stands on the left short side, its buttons lie on the long edges,
-      and its status bar is gone. The foldable's island sits where a quarter
-      turn puts it, and its fold runs across the screen.
+      and its status bar is gone. The tablet's camera and power button stand on
+      the left side, and its volume buttons lie along the top. The foldable's
+      island sits where a quarter turn puts it, and its fold runs across the
+      screen.
     </p>
     <div class="stage">
       <div class="col">
@@ -555,12 +572,34 @@
       <div class="col">
         <div
           class="body"
-          style="width: 250px; height: 180px; border-radius: 16px"
+          style="width: 244px; height: 174px; border-radius: 13px"
         >
-          <div class="scr" style="inset: 10px; border-radius: 6px">
+          <div class="scr" style="inset: 7px; border-radius: 6px">
             <b>Inbox</b><i>Design review</i><i>Release 0.42.0</i
             ><i>Invoice 2231</i>
           </div>
+          <div
+            class="cam"
+            style="
+              top: 50%;
+              left: 3.5px;
+              width: 3px;
+              height: 3px;
+              transform: translate(-50%, -50%);
+            "
+          ></div>
+          <div
+            class="btn3"
+            style="left: -2px; top: 19px; width: 2px; height: 15px"
+          ></div>
+          <div
+            class="btn3"
+            style="top: -2px; left: 24px; height: 2px; width: 12px"
+          ></div>
+          <div
+            class="btn3"
+            style="top: -2px; left: 39px; height: 2px; width: 12px"
+          ></div>
         </div>
         <div class="pbar"><span>⟳ Rotate</span></div>
         <small>tablet</small>

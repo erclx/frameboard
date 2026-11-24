@@ -159,7 +159,11 @@ export function createFrameKeys(
           ),
         ]),
       )
-      const drawn = [frame.device ?? null, frame.turn ?? null]
+      const drawn = [
+        frame.device ?? null,
+        frame.showDevice ?? false,
+        frame.turn ?? null,
+      ]
       return {
         outside,
         checks,

@@ -204,9 +204,7 @@ function nextFreeSpot(
   reserved: readonly Box[],
 ): Point {
   const boxes = [
-    ...frames.map(({ box, widths, device }) =>
-      drawnExtent(box, widths, device),
-    ),
+    ...frames.map((frame) => drawnExtent(frame.box, frame.widths, frame)),
     ...reserved,
   ]
   if (boxes.length === 0) return { x: 0, y: 0 }

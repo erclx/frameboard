@@ -397,6 +397,33 @@ describe('createHug', () => {
       await expect.poll(() => heights).toEqual([900, 1194, 844])
     })
 
+    it('measures a shown phone width under its status bar and stores the page and the bar', async () => {
+      board = boardOf({
+        card: { hugHeight: true, showDevice: true, widths: LINKED },
+      })
+      const boxes: { width: number; height: number }[] = []
+      const hug = createHug({
+        root: board.root,
+        measure: async (_frame, box) => {
+          if (box) boxes.push(box)
+          return sized(1440, 1000)
+        },
+      })
+
+      hug.later(await scanBoard(board.root), [CARD])
+
+      await expect
+        .poll(() => entries().card.widths)
+        .toEqual([
+          { width: 834, height: 1000 },
+          { width: 390, height: 1054 },
+        ])
+      expect(boxes).toEqual([
+        { width: 834, height: 1194 },
+        { width: 390, height: 790 },
+      ])
+    })
+
     it('measures no width on a frame holding a fixed height', async () => {
       board = boardOf({ card: { hugWidth: true, widths: LINKED } })
       const boxes: (number | undefined)[] = []

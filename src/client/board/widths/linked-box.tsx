@@ -7,10 +7,19 @@ import {
   useFrameOrigin,
 } from '@/client/live/frame-url'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
-import { linkedBoxes } from '@/shared/frame-widths'
+import {
+  BEZELS,
+  insetsPage,
+  pageCorners,
+  railInset,
+  screenCorners,
+} from '@/shared/frame-device'
+import { linkedBar, linkedBoxes, linkedDevice } from '@/shared/frame-widths'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { Bezel } from '../device/bezel'
+import { usePageColors } from '../device/page-colors'
 import { FINDINGS_MARK, severityOf } from '../findings/level'
 import { FindingsCount } from '../findings/mark'
 import { bindFrameKeys } from '../frame-keys'
@@ -47,7 +56,7 @@ export const LinkedBoxes = memo(function LinkedBoxes({
 }: LinkedBoxesProps) {
   const drawn = useDrawnBox(frame)
   if (frame.widths.length === 0 || frame.hidden) return null
-  return linkedBoxes(drawn, frame.widths, frame.device).map((box) => (
+  return linkedBoxes(drawn, frame.widths, frame).map((box) => (
     <LinkedBox
       key={box.width}
       frame={frame}
@@ -68,7 +77,7 @@ interface LinkedBoxProps {
   findings?: readonly Finding[]
 }
 
-/** One linked width: the frame's page at that width, in the frame's theme, labelled by its width. */
+/** One linked width: the frame's page at that width, in the device it names and the frame's theme, labelled by its width. */
 export function LinkedBox({
   frame,
   box,
@@ -100,7 +109,13 @@ export function LinkedBox({
     [loaded, frameOrigin],
   )
 
+  const device = linkedDevice(frame, box.width)
   useThemeInFrame(iframe, theme, live)
+  const colors = usePageColors(
+    iframe,
+    live && insetsPage(device, 'upright'),
+    theme,
+  )
   useHiddenScrollbar(iframe, live, frame.scroll)
 
   useEffect(() => {
@@ -112,6 +127,15 @@ export function LinkedBox({
   const count = findings?.length ?? 0
   const severity = severityOf(findings ?? [])
   const label = `${frame.name} at ${box.width}`
+  // The label stands past the body, as a frame's own does.
+  const inset = device ? BEZELS[device].border : 0
+  const bar = linkedBar(frame, box.width)
+  const page = device
+    ? {
+        borderRadius: pageCorners(device, 'upright'),
+        ...(bar ? { marginTop: bar, height: `calc(100% - ${bar}px)` } : {}),
+      }
+    : {}
 
   return (
     <div
@@ -130,7 +154,14 @@ export function LinkedBox({
         zIndex: frame.order,
       }}
     >
-      <div className="absolute bottom-full left-0 flex origin-bottom-left items-center gap-1.5 pb-1 text-label font-normal text-muted-foreground [transform:scale(calc(1/var(--zoom,1)))]">
+      <div
+        className="absolute bottom-full left-0 flex origin-bottom-left items-center gap-1.5 pb-1 text-label font-normal text-muted-foreground [transform:scale(calc(1/var(--zoom,1)))]"
+        style={
+          inset
+            ? { bottom: `calc(100% + ${inset}px)`, left: -inset }
+            : undefined
+        }
+      >
         <span className="tabular-nums">{box.width}</span>
         {count > 0 ? (
           <span
@@ -149,19 +180,31 @@ export function LinkedBox({
           title={label}
           src={src ?? undefined}
           allow={FRAME_ALLOW}
-          style={{ colorScheme: theme }}
+          style={{ colorScheme: theme, ...page }}
           className="block size-full border-0 bg-[color:Canvas]"
         />
       ) : (
         <div
           data-placeholder
           className="size-full border border-border bg-card"
+          style={device ? { borderRadius: screenCorners(device) } : undefined}
         />
       )}
+      {device ? (
+        <Bezel
+          device={device}
+          width={box.width}
+          height={box.height}
+          island={frame.island}
+          colors={colors}
+          theme={theme}
+        />
+      ) : null}
       {frame.scroll && live && !playing ? (
         <ScrollRail
           iframe={iframe}
           live={live}
+          inset={railInset(device)}
           // The pointer marks the frame alone, so a view's rail shows while its frame is selected.
           className={selected ? undefined : 'invisible'}
         />

@@ -305,8 +305,8 @@ export function placeNext(
   },
 ): Placement {
   const right = Math.max(
-    ...placed.map(({ box, widths, device }) => {
-      const extent = drawnExtent(box, widths, device)
+    ...placed.map((placement) => {
+      const extent = drawnExtent(placement.box, placement.widths, placement)
       return xPast(extent.x + extent.width, body.width, body.device)
     }),
     0,

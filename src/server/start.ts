@@ -7,6 +7,7 @@ import { join, relative, sep } from 'node:path'
 
 import { serve } from '@hono/node-server'
 
+import { viewDevice } from '@/shared/frame-widths'
 import type { FrameChange } from '@/shared/records/changes'
 import type { Finding } from '@/shared/records/check'
 import type { FrameRecord, ListResult } from '@/shared/records/list'
@@ -429,9 +430,7 @@ async function listen({
             box,
             scroll: frame.scroll,
             hugHeight: frame.hugHeight,
-            // A linked width draws no device, so only the frame's own box has a page under a bar.
-            device: box.width === frame.box.width ? frame.device : undefined,
-            turn: frame.turn,
+            ...viewDevice(frame, box.width),
           },
           config: readConfig(root, frame.project),
         }),

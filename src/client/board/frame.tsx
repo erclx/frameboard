@@ -28,6 +28,7 @@ import {
   BEZELS,
   insetsPage,
   pageCorners,
+  railInset,
   screenCorners,
   scrollsInBox,
   shownBox,
@@ -427,7 +428,7 @@ export const Frame = memo(function Frame({
         <ScrollRail
           iframe={iframe}
           live={live}
-          inset={inset}
+          inset={railInset(frame.device)}
           className="invisible [[data-label-hover]_&]:visible [[data-selected]_&]:visible"
         />
       ) : null}
