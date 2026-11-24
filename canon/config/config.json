@@ -2,8 +2,8 @@
   "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
-      "version": "5.121.0",
-      "syncedAt": "2026-11-24T02:44:23.853Z",
+      "version": "5.122.0",
+      "syncedAt": "2026-11-24T16:48:41.371Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:68babaaeb97ca4283adccc3de4e9d18b6f7f3c46aef36835b28fc550b88de4cd",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -28,7 +28,7 @@
         ".claude/rules/canon/lib/testing-ts.md": "sha256:91df02df06e6e3273497502c6615c195672f7ea1a885c4a908e7bb79a8798ddc",
         ".claude/rules/canon/tooling/ci-workflow.md": "sha256:96f2beaf852bc6634a6523d21acc7b1b05abd9169e4e4523a52f214ef9e83884",
         ".claude/rules/canon/tooling/code-comments.md": "sha256:8f661982be703a632c6e2548b81e871c291462cd2c28c8612d91e3a0b5ed53b6",
-        ".claude/rules/canon/tooling/config-comments.md": "sha256:9f93b35c606b23860dbc67acac2e43a5a1c920d6900cd5bb2cee92205fb508a2",
+        ".claude/rules/canon/tooling/config-comments.md": "sha256:4d1618d7297e6c5ca588e8f55f3f7ba707fd49b27260818ada8d3ac8a305faaf",
         ".claude/rules/canon/tooling/dependencies.md": "sha256:eb4515306f2a8d2edd439493d13306052543827e96d5e9ea224a4477f0e3ba8e",
         ".claude/rules/canon/ui/craft.md": "sha256:166ac910f3e81e0ecad2bf850741992801db4b6eb1055aece5a854ed4d159ba6",
         ".claude/rules/canon/ui/design-reference.md": "sha256:4b60171b4ba050535d4e4d9ea451ae5792a970ce65f460da0071a98c7adba73f",
@@ -37,8 +37,8 @@
       "chain": ["node"]
     },
     "tooling": {
-      "version": "5.121.0",
-      "syncedAt": "2026-11-24T02:44:27.301Z",
+      "version": "5.122.0",
+      "syncedAt": "2026-11-24T16:48:41.662Z",
       "files": {
         ".github/workflows/deploy.yml": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2",
         ".github/workflows/phase-label-gate.yml": "sha256:40abb5f8b078badce41d6e2697ce569f00bb2dcda963b5ea476f84ec02d315fd",
