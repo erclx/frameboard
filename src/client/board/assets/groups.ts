@@ -110,6 +110,26 @@ export function withoutKits(files: readonly AssetFile[]): {
   return { files: kept, kits: kits.size }
 }
 
+/**
+ * The files the Files view lists less each installed family's folder, and how
+ * many families those were. A folder the installed list leaves out was filled
+ * by hand, so its files stay listed.
+ */
+export function withoutFonts(
+  files: readonly AssetFile[],
+  folders: readonly string[],
+): { files: AssetFile[]; fonts: number } {
+  const prefixes = folders.map((folder) => `${folder}/`)
+  const held = new Set<string>()
+  const kept: AssetFile[] = []
+  for (const file of files) {
+    const prefix = prefixes.find((each) => file.path.startsWith(each))
+    if (prefix === undefined) kept.push(file)
+    else held.add(prefix)
+  }
+  return { files: kept, fonts: held.size }
+}
+
 /** The part of a path before its last `/`, empty at the root. */
 export function folderOf(path: string): string {
   const slash = path.lastIndexOf('/')

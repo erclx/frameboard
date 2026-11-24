@@ -336,8 +336,8 @@ export const installedFontSchema = z.object({
   files: z.int(),
   /** Whether the board serves the family too, so its frames keep drawing once it is removed. */
   bundled: z.boolean(),
-  /** The refs of the frames drawing text in the family, in page then frame order. */
-  frames: z.array(z.string()),
+  /** The refs of the frames drawing text in the family, in page then frame order, absent where the read skipped them. */
+  frames: z.array(z.string()).optional(),
 })
 
 export type InstalledFont = z.infer<typeof installedFontSchema>

@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { leftTabStore } from '@/client/board/left-panel/tab-store'
 import { liveStore } from '@/client/live/store'
 import type { AssetAddResult, AssetFile } from '@/shared/records/assets'
+import type { FontList } from '@/shared/records/sourcing'
 import { contrastOnPage } from '@/test/contrast'
 
 import { AssetsTab } from './tab'
@@ -180,6 +181,91 @@ describe('AssetsTab', () => {
       expect(
         screen.queryByRole('button', { name: 'Theme tab' }),
       ).not.toBeInTheDocument()
+    })
+  })
+
+  describe('installed font files', () => {
+    const WITH_FONTS: AssetFile[] = [
+      { path: 'lake.jpg', kind: 'image', size: 2_000 },
+      { path: 'kits/clean/kit.css', kind: 'stylesheet', size: 900 },
+      {
+        path: 'fonts/lora/latin-wght-normal.woff2',
+        kind: 'font',
+        size: 30_000,
+      },
+      { path: 'fonts/lora/LICENSE.txt', kind: 'other', size: 4_000 },
+    ]
+    const loadFonts = async (): Promise<FontList> => ({
+      version: 1,
+      project: 'studio',
+      fonts: [
+        {
+          id: 'lora',
+          family: 'Lora',
+          category: 'serif',
+          license: 'OFL-1.1',
+          licenseUrl: 'https://example.test/lora/license',
+          landingUrl: 'https://fontsource.org/fonts/lora',
+          variable: true,
+          weights: [{ min: 400, max: 700 }],
+          styles: ['normal'],
+          path: 'fonts/lora',
+          files: 2,
+          bundled: false,
+          frames: [],
+        },
+      ],
+    })
+
+    afterEach(() => {
+      leftTabStore.setState({ tab: 'design' })
+    })
+
+    it('draws no file until the font list answers, so no font file shows as a tile first', async () => {
+      let answer = () => {}
+      const fontsAnswered = new Promise<void>((resolve) => (answer = resolve))
+      render(
+        <AssetsTab
+          project="studio"
+          load={listing(WITH_FONTS)}
+          loadFonts={async () => {
+            await fontsAnswered
+            return loadFonts()
+          }}
+        />,
+      )
+
+      await screen.findByRole('tab', { name: 'Files' })
+      expect(screen.queryByText('latin-wght-normal.woff2')).toBeNull()
+      expect(screen.queryByText(/assets\/ ·/)).toBeNull()
+
+      await act(async () => answer())
+
+      expect(await screen.findByText('assets/ · 1 file')).toBeVisible()
+      expect(screen.queryByText('latin-wght-normal.woff2')).toBeNull()
+    })
+
+    it('leaves them out and names them beside the kits on one line to the Theme tab', async () => {
+      const user = userEvent.setup()
+      render(
+        <AssetsTab
+          project="studio"
+          load={listing(WITH_FONTS)}
+          loadFonts={loadFonts}
+        />,
+      )
+
+      expect(
+        await screen.findByText(/1 kit and 1 font are managed in the/),
+      ).toBeVisible()
+      expect(screen.getByText('assets/ · 1 file')).toBeVisible()
+      expect(
+        screen.queryByText('latin-wght-normal.woff2'),
+      ).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: 'Theme tab' }))
+
+      expect(leftTabStore.getState().tab).toBe('theme')
     })
   })
 

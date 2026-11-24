@@ -36,7 +36,7 @@ Frames share one look through a `tokens.css` in the board folder, which a projec
 - `serve --tokens <path>` takes a sheet another tool manages instead, and the Theme tab leaves one outside the board folder read-only
 - `project tokens <project> --accent <preset> --font <face>` writes a starter sheet where no sheet reaches the project, and refuses where one does
 - The server puts the sheets, five faces, and the project's installed fonts ahead of each frame's own styles as it serves the frame, leaving the file as written
-- The five are Geist, Geist Mono, Inter, Source Serif 4, and Caveat, and `font find` installs others
+- The five are Geist, Geist Mono, Inter, Source Serif 4, and Caveat, and `font find` or the Theme tab's Find a font installs others, which the inspector's family picker then lists
 - One toggle switches the board and every frame between light and dark
 
 ## Design kits

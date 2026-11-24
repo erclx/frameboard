@@ -10,6 +10,7 @@ import type { UsedColor } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 import type { TokenRow } from '@/shared/records/tokens'
 
+import { useInstalledFonts } from '../assets/sourcing'
 import { useAuthor, useAuthorSource } from '../chrome/author'
 import { AvatarMenu } from '../chrome/avatar-menu'
 import { ZoomControl } from '../chrome/zoom-control'
@@ -314,6 +315,7 @@ function ElementDesign({ page, element }: ElementProps) {
   const model = useLiveModel(element)
   const styles = useFrameStyles(element.frame, element.index, element.hash)
   const { colors, shadows, fonts } = useProjectTokens(element.frame)
+  const installedFonts = useInstalledFonts(element.frame.split('/')[0] ?? '')
 
   if (!live) return NOT_ON_SCREEN
   const disabled = !canWrite
@@ -369,6 +371,7 @@ function ElementDesign({ page, element }: ElementProps) {
       {live.holdsText ? (
         <TypographySection
           fonts={fonts}
+          installed={installedFonts}
           fontFamily={live.fontFamily}
           fontToken={own?.fontFamily?.token ?? null}
           fontSize={live.fontSize}

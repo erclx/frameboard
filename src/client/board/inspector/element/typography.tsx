@@ -17,8 +17,10 @@ import {
 } from '@/client/components/ui/dropdown-menu'
 import { cn } from '@/client/lib/cn'
 import { FACES, faceSheetUrl } from '@/shared/faces'
+import type { FontList } from '@/shared/records/sourcing'
 import type { TokenRow } from '@/shared/records/tokens'
 
+import { installedFontSheet } from '../../assets/sourcing'
 import { ChromeMenuContent, MENU_ROW } from '../../chrome/menu'
 import { NumberField } from '../number-field'
 import { faceOf, familyIn, familyOptions, firstFamily } from './families'
@@ -45,6 +47,8 @@ const SIZE: Intl.NumberFormatOptions = { maximumFractionDigits: 2 }
 interface TypographySectionProps {
   /** The project's `font` tokens, listed in Family ahead of the served faces. */
   fonts: readonly TokenRow[]
+  /** The families the project installed, listed after the served faces, null before they read. */
+  installed?: FontList | null
   /** The computed stack, whose face picks the weights offered and names a family no token sets. */
   fontFamily: string
   /** The font token the source names, read from the static cascade, null for a raw family or before it reads. */
@@ -74,6 +78,7 @@ const NORMAL_LINE = 1.2
  */
 export function TypographySection({
   fonts,
+  installed = null,
   fontFamily,
   fontToken,
   fontSize,
@@ -87,7 +92,7 @@ export function TypographySection({
   preview,
 }: TypographySectionProps) {
   const weights = weightsOf(faceOf(fontFamily))
-  const families = familyOptions(fonts)
+  const families = familyOptions(fonts, installed?.fonts)
   const family = familyIn(fontFamily, fontToken, families)
   return (
     <section
@@ -100,6 +105,9 @@ export function TypographySection({
       {FACES.map((face) => (
         <link key={face.folder} rel="stylesheet" href={faceSheetUrl(face)} />
       ))}
+      {installed?.fonts.length ? (
+        <link rel="stylesheet" href={installedFontSheet(installed)} />
+      ) : null}
       <div className="grid grid-cols-2 gap-1.5">
         <TypePicker
           label="Font family"

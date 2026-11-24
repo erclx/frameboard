@@ -13,7 +13,7 @@ Owns the board's left side, being the project header, the page list, the layers 
 
 ### `src/client/board/left-panel/`
 
-Owns the left panel, being `project-header.tsx` with the way home, the name, and Hide UI, then Design's searchable pages list over a layers tree, Theme in `theme/`, and Assets, with `page-actions.ts` registering the `page.*` actions. The project name renames on a click, and its chevron opens the project menu.
+Owns the left panel, being `project-header.tsx` with the way home, the name, and Hide UI, then Design's searchable pages list over a layers tree, Theme in `theme/` with kits, fonts, then tokens, and Assets, with `page-actions.ts` registering the `page.*` actions. The project name renames on a click, and its chevron opens the project menu.
 
 - `board/frame-order.ts` holds the section grouping, so the selection chip's count and the Tab step read the order the rows draw
 - A row restacks within its own group, never into or out of a section, landing at the page-wide index beside the frame it drops by
@@ -23,7 +23,7 @@ Owns the left panel, being `project-header.tsx` with the way home, the name, and
 
 ### `src/client/board/assets/`
 
-Owns the Assets tab, whose Files, Find, and Generate row sits in `tab.tsx`. Files in `files.tsx` lists the project's `assets/` files as tiles grouped by folder in `groups.ts`, under a name search and kind chips, and a kit's files under `kits/` show as one line pointing at the Theme tab.
+Owns the Assets tab, whose Files, Find, and Generate row sits in `tab.tsx`. Files in `files.tsx` lists the project's `assets/` files as tiles grouped by folder in `groups.ts`, under a name search and kind chips, and each kit and installed font folds into one line pointing at the Theme tab.
 
 - Root files come first, a folder's group collapses from its heading, a chip with no files hides, and a tile reads `Unused` for a file no frame links
 - A tile click copies `../assets/<path>`, each segment encoded, and the tile's size stays in its accessible name

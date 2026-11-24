@@ -44,6 +44,21 @@ afterEach(() => {
 })
 
 describe('ThemeTab', () => {
+  it('starts the Fonts section over in another project, closing an open search', async () => {
+    act(() => liveStore.setState({ canWrite: true }))
+    const load = async () => table([])
+    const { rerender } = render(<ThemeTab project="studio" load={load} />)
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Find a font' }),
+    )
+
+    rerender(<ThemeTab project="marketing" load={load} />)
+
+    expect(screen.queryByRole('searchbox')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Find a font' })).toBeVisible()
+    act(() => liveStore.setState({ canWrite: false }))
+  })
+
   it('names the board sheet it read', async () => {
     render(<ThemeTab project="studio" load={async () => table([])} />)
 
@@ -215,6 +230,7 @@ describe('ThemeTab', () => {
     const headings = screen.getAllByRole('heading', { level: 3 })
     expect(headings.map((heading) => heading.textContent)).toEqual([
       'Kits',
+      'Fonts',
       'Color',
       'Radius',
       'Font',
@@ -240,7 +256,11 @@ describe('ThemeTab', () => {
     )
 
     expect(await screen.findByText('4px')).toBeInTheDocument()
-    expect(screen.getByText('Geist Mono')).toBeInTheDocument()
+    expect(
+      within(screen.getByRole('region', { name: 'Font' })).getByText(
+        'Geist Mono',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('draws the empty card when the project has no token sheet', async () => {
@@ -456,7 +476,8 @@ describe('ThemeTab', () => {
       )
       await screen.findByText('primary')
 
-      // Add kit and the source note's help mark take the first two stops, above the tokens.
+      // Add kit, Find a font, and the source note's help mark take the first three stops, above the tokens.
+      await userEvent.tab()
       await userEvent.tab()
       await userEvent.tab()
       await userEvent.tab()

@@ -113,7 +113,7 @@ export function registerFont(program: Command, context: ProgramContext): void {
             : list.fonts
                 .map(
                   (each) =>
-                    `${each.id}\t${each.family}\t${each.license}\t${counted(each.frames)}`,
+                    `${each.id}\t${each.family}\t${each.license}\t${counted(each.frames ?? [])}`,
                 )
                 .join('\n'),
       }

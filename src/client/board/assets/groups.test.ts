@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import type { AssetFile } from '@/shared/records/assets'
 
-import { chipCounts, chipOf, groupAssets, withoutKits } from './groups'
+import {
+  chipCounts,
+  chipOf,
+  groupAssets,
+  withoutFonts,
+  withoutKits,
+} from './groups'
 
 function file(path: string, kind: AssetFile['kind'] = 'image'): AssetFile {
   return { path, kind, size: 1 }
@@ -100,6 +106,46 @@ describe('groupAssets', () => {
 
   it('answers no groups when nothing matches', () => {
     expect(groupAssets(FILES, { chip: 'video', search: 'logo' })).toEqual([])
+  })
+})
+
+describe('withoutFonts', () => {
+  it("leaves out each installed family's files and counts the families", () => {
+    const listed = withoutFonts(
+      [
+        file('lake.jpg'),
+        file('fonts/lora/latin-wght-normal.woff2', 'font'),
+        file('fonts/lora/LICENSE.txt', 'other'),
+        file('fonts/playfair-display/latin-400-normal.woff2', 'font'),
+      ],
+      ['fonts/lora', 'fonts/playfair-display'],
+    )
+
+    expect(listed).toEqual({ files: [file('lake.jpg')], fonts: 2 })
+  })
+
+  it('keeps a hand-filled folder under fonts/ the installed list does not name', () => {
+    const listed = withoutFonts(
+      [
+        file('fonts/lora/latin-wght-normal.woff2', 'font'),
+        file('fonts/brand/brand.woff2', 'font'),
+      ],
+      ['fonts/lora'],
+    )
+
+    expect(listed).toEqual({
+      files: [file('fonts/brand/brand.woff2', 'font')],
+      fonts: 1,
+    })
+  })
+
+  it('keeps a folder whose name only opens with an installed one', () => {
+    const listed = withoutFonts(
+      [file('fonts/lora-extra/a.woff2', 'font')],
+      ['fonts/lora'],
+    )
+
+    expect(listed.files).toEqual([file('fonts/lora-extra/a.woff2', 'font')])
   })
 })
 

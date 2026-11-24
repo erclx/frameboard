@@ -1,7 +1,12 @@
+import { useEffect, useState } from 'react'
 import { createStore } from 'zustand/vanilla'
 
+import { useLive } from '@/client/live/store'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
+import { FONT_CATEGORIES, FONT_SHEET, type FontCategory } from '@/shared/fonts'
 import type {
+  FontFind,
+  FontList,
   ImageFind,
   ImageGenerate,
   ImageOffer,
@@ -68,6 +73,95 @@ export function findModels(
 ): Promise<ModelFind> {
   const params = new URLSearchParams({ q: query })
   return read<ModelFind>(`${base(project)}/models?${params}`, signal)
+}
+
+/**
+ * Fontsource's families matching typed text, refusing and aborting as
+ * `findImages` does. Text naming a category asks for it alone, since `serif`
+ * as a name opens a word in dozens of families.
+ */
+export function findFonts(
+  project: string,
+  text: string,
+  signal?: AbortSignal,
+): Promise<FontFind> {
+  const typed = text.trim()
+  const params = new URLSearchParams(
+    isCategory(typed.toLowerCase())
+      ? { category: typed.toLowerCase() }
+      : { q: typed },
+  )
+  return read<FontFind>(`${base(project)}/fonts?${params}`, signal)
+}
+
+function isCategory(text: string): text is FontCategory {
+  return (FONT_CATEGORIES as readonly string[]).includes(text)
+}
+
+/**
+ * The fonts a project installed, without the frames naming each, since reading
+ * those parses every frame. Null when the read is refused, and an abort throws.
+ */
+export async function fetchInstalledFonts(
+  project: string,
+  signal?: AbortSignal,
+): Promise<FontList | null> {
+  try {
+    return await read<FontList>(
+      `${base(project)}/fonts/installed?frames=false`,
+      signal,
+    )
+  } catch (error) {
+    if (signal?.aborted) throw error
+    return null
+  }
+}
+
+/** The frames drawing text in one installed font, read as a removal asks. Refuses as `findImages` does. */
+export async function fetchFontFrames(
+  project: string,
+  id: string,
+): Promise<readonly string[]> {
+  const list = await read<FontList>(`${base(project)}/fonts/installed`)
+  return list.fonts.find((font) => font.id === id)?.frames ?? []
+}
+
+/**
+ * The sheet declaring a project's installed fonts, addressed by what it holds
+ * so the browser reads it again once a family is installed or removed.
+ */
+export function installedFontSheet(list: FontList): string {
+  const held = list.fonts.map((font) => font.id).join(',')
+  return `/frames/${encodeURIComponent(list.project)}/${FONT_SHEET}?fonts=${encodeURIComponent(held)}`
+}
+
+/** Reads a project's installed fonts, aborting on the signal. */
+export type InstalledFontsRead = (
+  project: string,
+  signal?: AbortSignal,
+) => Promise<FontList | null>
+
+/**
+ * The project's installed fonts, read again whenever the live board changes,
+ * which a font's install or removal does, aborting the read a newer one
+ * supersedes. Undefined while the first read runs.
+ */
+export function useInstalledFonts(
+  project: string,
+  load: InstalledFontsRead = fetchInstalledFonts,
+): FontList | null | undefined {
+  const board = useLive((state) => state.board)
+  const [list, setList] = useState<FontList | null | undefined>()
+  useEffect(() => {
+    const abort = new AbortController()
+    load(project, abort.signal)
+      .catch(() => null)
+      .then((next) => {
+        if (!abort.signal.aborted) setList(next)
+      })
+    return () => abort.abort()
+  }, [project, board, load])
+  return list
 }
 
 async function read<T>(url: string, signal?: AbortSignal): Promise<T> {

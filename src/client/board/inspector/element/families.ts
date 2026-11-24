@@ -1,12 +1,13 @@
 import { type Face, FACES } from '@/shared/faces'
+import type { InstalledFont } from '@/shared/records/sourcing'
 import type { TokenRow } from '@/shared/records/tokens'
 
-/** One entry of the Family menu: a project font token, or a served face. */
+/** One entry of the Family menu: a project font token, a served face, or a family the project installed. */
 export interface FamilyOption {
   /** What a pick writes to `font-family`. */
   value: string
   name: string
-  /** The custom property it names, null for a face. */
+  /** The custom property it names, null for a family. */
   token: string | null
   /** The stack it renders in, matched against the computed one and drawn as its preview. */
   stack: string
@@ -24,11 +25,14 @@ export function faceOf(stack: string): Face | null {
 }
 
 /**
- * The project's font tokens holding a family stack, then every served face.
- * A font token holding a size or a weight, such as `--font-size-sm: 12px`,
- * is left out.
+ * The font tokens holding a family stack, then every served face, then each
+ * installed family no face names. A token holding a size or a weight, such
+ * as `--font-size-sm: 12px`, is left out.
  */
-export function familyOptions(fonts: readonly TokenRow[]): FamilyOption[] {
+export function familyOptions(
+  fonts: readonly TokenRow[],
+  installed: readonly Pick<InstalledFont, 'family'>[] = [],
+): FamilyOption[] {
   const tokens = fonts.flatMap((row) => {
     const stack = row.light ?? row.dark
     if (!stack || /^-?[\d.]/.test(stack.trim())) return []
@@ -41,17 +45,23 @@ export function familyOptions(fonts: readonly TokenRow[]): FamilyOption[] {
       },
     ]
   })
-  const faces = FACES.map((face) => {
-    const value = /\s/.test(face.family) ? `'${face.family}'` : face.family
-    return { value, name: face.family, token: null, stack: value }
+  const served = new Set(FACES.map((face) => face.family.toLowerCase()))
+  const families = [
+    ...FACES.map((face) => face.family),
+    ...installed
+      .map((font) => font.family)
+      .filter((family) => !served.has(family.toLowerCase())),
+  ].map((family) => {
+    const value = /\s/.test(family) ? `'${family}'` : family
+    return { value, name: family, token: null, stack: value }
   })
-  return [...tokens, ...faces]
+  return [...tokens, ...families]
 }
 
 /**
- * The option an element shows as, its source's token read from the static
- * cascade since the computed stack never names one, else the stack's first
- * face, else null. An unlisted token still shows by its name.
+ * The option an element shows as: its source's token from the static cascade,
+ * which the computed stack never names, else the stack's first family where
+ * listed, else null. An unlisted token still shows by its name.
  */
 export function familyIn(
   stack: string,
@@ -68,9 +78,10 @@ export function familyIn(
       }
     )
   }
-  const face = faceOf(stack)
+  const family = firstFamily(stack).toLowerCase()
   return (
-    options.find((option) => !option.token && option.name === face?.family) ??
-    null
+    options.find(
+      (option) => !option.token && option.name.toLowerCase() === family,
+    ) ?? null
   )
 }
