@@ -33,7 +33,7 @@ These gate a change, and `bun run check:changed` is the one the pre-push hook ru
 - A test is tied to a change when it changed or sits beside a changed file under its name, and the change is measured from the merge base with `origin/main`
 - Imports are not followed, since a shared module's chain reaches most of the suite, and past 40 tied files the run is left to CI
 - A change under `web/` adds that folder's typecheck, lint, format, and tied tests, and its build stays in CI's Landing Page Gate
-- A pass is kept in the worktree's git directory under the tree and merge base it read, so a push on that content skips and `--force` runs it again
+- A pass is kept in the worktree's git directory under the tree, merge base, and canon version it read, so a push on that content skips and `--force` runs it again
 - `check:shell` needs `shfmt` and `shellcheck` on the machine, and `check` runs it too
 
 Four conditions sit behind those commands.
