@@ -13,7 +13,14 @@ In a folder with no board above it, `serve` creates `.frameboard/` there with on
 
 A tab you open on the board's address yourself only reads, so run `frameboard open` for another that edits. Its link works once, for two minutes or the `--ttl <minutes>` you give it, up to 60.
 
-Start with `serve --edit-button` to give a tab that only reads an Edit button, which asks once and then edits with no terminal. Any program on your machine can then write to the board, send notes to a listening session, and start one under `FRAMEBOARD_DISPATCH`, so it is off by default.
+Start with `serve --edit-button` to give a tab that only reads an Edit button, which asks once and then edits with no terminal. It is off by default, since any program on your machine can then do what a tab that edits does:
+
+- Write to the board
+- Send notes to a listening session, and start one under `FRAMEBOARD_DISPATCH`
+- Generate images on the provider keys in `serve`'s environment, which can cost money
+- Open the phone link, which puts a project's frames on the local network
+
+What a program was granted outlives the flag. Delete `.run/board-key.json` in the board folder and restart `serve` to take it back, and every tab that edits reads until its next link.
 
 ## Board folder
 

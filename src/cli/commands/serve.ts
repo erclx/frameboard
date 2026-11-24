@@ -59,7 +59,7 @@ export function registerServe(
     )
     .option(
       '--edit-button',
-      `offer a view-only tab an Edit button, which lets any program on this machine write to the board, send notes to a listening session, and start one under ${DISPATCH_ENV}. A server already running keeps what it started with`,
+      `offer a view-only tab an Edit button. Any program on this machine can then write to the board, send notes to a listening session, start one under ${DISPATCH_ENV}, generate images on the provider keys in the environment, and open the phone link. What it was granted outlives the flag, until .run/board-key.json is deleted and the server restarts. A server already running keeps what it started with`,
       false,
     )
     // Hidden, since it makes any local browser a writer.

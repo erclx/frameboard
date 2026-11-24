@@ -47,12 +47,12 @@ Owns who may write, apart from the route modules.
 
 ### `src/server/routes/access.ts`
 
-Owns the routes that hand a tab the key. View-only guards against web pages and frames, whose `Origin` the rule refuses, and never against a program that can read `.run/`.
+Owns the routes that hand a tab the key, among them `POST /api/access/edit`, which `serve --edit-button` mounts and the button `editButton` on the `access` message draws in a reading tab posts. View-only guards against web pages and frames, whose `Origin` the rule refuses, and never against a program that can read `.run/`.
 
-- Under `serve --edit-button`, off by default, any program reaching the port can send the headers the grant reads, write, send notes to a listening session, and start one under `FRAMEBOARD_DISPATCH`
-- The flag mounts `POST /api/access/edit`, which sets the key cookie for the board's own page, and `editButton` on the socket's `access` message draws the button in a reading tab
-- The grant takes JSON alone, since a kit page's form or ping carries the board's `Origin` and neither can send JSON
-- The grant's `Origin` has to equal the address asked, since a page on `[::1]` at the board's port sends one reading `localhost`
+- Under the flag, off by default, any program reaching the port can send the headers the grant reads and hold the key, since no check on a request keeps a program out
+- A key holder writes, sends notes to a listening session, starts one under `FRAMEBOARD_DISPATCH`, generates images on the environment's provider keys, and opens the phone link
+- The key outlives the flag and every restart, so taking the flag off revokes nothing. Deleting `.run/board-key.json` and restarting does.
+- The grant takes JSON from an `Origin` equal to the address asked, since a kit page's form carries the board's `Origin` and a page on `[::1]` sends one reading `localhost`
 - The client's HTML answers `frame-ancestors 'none'` under the flag alone, so no page lures the press that grants, and a kit page always answers `form-action 'none'`
 
 ### `src/server/routes/`
