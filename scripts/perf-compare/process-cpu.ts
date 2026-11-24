@@ -59,7 +59,7 @@ export function quietSince(
   return start && last.cpuMs - start.cpuMs <= busyMs ? start : undefined
 }
 
-/** Reads a process's tree until it goes quiet, undefined when the limit comes first. */
+/** Reads a process's tree until it goes quiet, undefined when the limit comes first, throwing once it exits. */
 export async function waitForQuiet(
   pid: number,
   {
@@ -75,7 +75,8 @@ export async function waitForQuiet(
   const readings: Reading[] = []
   const deadline = performance.now() + limitMs
   while (performance.now() < deadline) {
-    const { cpuMs } = readTree(pid)
+    const { pids, cpuMs } = readTree(pid)
+    if (pids.length === 0) throw new Error(`process ${pid} exited`)
     readings.push({ atMs: performance.now() - spawnedAt, cpuMs })
     const quiet = quietSince(readings, rule)
     if (quiet) return quiet
