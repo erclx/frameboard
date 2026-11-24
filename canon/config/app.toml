@@ -19,3 +19,13 @@ page-only = ["web"]
 [painted]
 paths = ["src/client/**/*.ts"]
 exclude = ["src/client/**/fixtures.ts", "src/client/**/*-harness.tsx"]
+
+[device-classes]
+default = ["desktop"]
+why = "The board is a two-dimensional canvas, which WCAG Reflow exempts"
+
+[device-classes.scopes.landing]
+groups = ["landing"]
+paths = ["web/"]
+classes = ["phone", "tablet", "desktop"]
+why = "The landing page is a responsive page, which Reflow covers"
