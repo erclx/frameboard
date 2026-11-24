@@ -85,6 +85,148 @@ describe('receiveBoard', () => {
     ).toEqual(['hero', 'about'])
   })
 
+  it('keeps every equal project, page, and frame record and still sends a new board', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero', 'about'))
+    const before = store.getState().board
+
+    receiveBoard(store, structuredClone(boardWith('hero', 'about')))
+
+    const after = store.getState().board
+    expect([
+      after === before,
+      after?.projects === before?.projects,
+      after?.projects[0]?.pages[0]?.frames[1] ===
+        before?.projects[0]?.pages[0]?.frames[1],
+    ]).toEqual([false, true, true])
+  })
+
+  it('replaces a changed frame, its page, and its project, and keeps its sibling', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero', 'about'))
+    const before = store.getState().board?.projects[0]
+    const next = boardWith('hero', 'about')
+    const moved = next.projects[0]?.pages[0]?.frames[0]
+    if (moved) moved.box = { ...moved.box, x: 40 }
+
+    receiveBoard(store, next)
+
+    const after = store.getState().board?.projects[0]
+    expect([
+      after === before,
+      after?.pages[0] === before?.pages[0],
+      after?.pages[0]?.frames[0] === before?.pages[0]?.frames[0],
+      after?.pages[0]?.frames[0]?.box.x,
+      after?.pages[0]?.frames[1] === before?.pages[0]?.frames[1],
+    ]).toEqual([false, false, false, 40, true])
+  })
+
+  it('keeps the open project whole when another is added ahead of it', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    const before = store.getState().board?.projects[0]
+    const next = boardWith('hero')
+    const other = structuredClone(next.projects[0])
+    if (other) next.projects.unshift({ ...other, name: 'atlas' })
+
+    receiveBoard(store, next)
+
+    const after = store.getState().board
+    expect([after?.projects.length, after?.projects[1] === before]).toEqual([
+      2,
+      true,
+    ])
+  })
+
+  it('replaces a frame when only a key its type does not name changed', () => {
+    const store = createLiveStore()
+    const held = boardWith('hero')
+    Object.assign(held.projects[0]?.pages[0]?.frames[0] ?? {}, { spin: 1 })
+    receiveBoard(store, held)
+    const before = store.getState().board?.projects[0]?.pages[0]?.frames[0]
+    const next = boardWith('hero')
+    Object.assign(next.projects[0]?.pages[0]?.frames[0] ?? {}, { spin: 2 })
+
+    receiveBoard(store, next)
+
+    const after = store.getState().board?.projects[0]?.pages[0]?.frames[0]
+    expect([after === before, after]).toEqual([
+      false,
+      expect.objectContaining({ spin: 2 }),
+    ])
+  })
+
+  it('replaces a frame that lost an optional key', () => {
+    const store = createLiveStore()
+    const held = boardWith('hero')
+    Object.assign(held.projects[0]?.pages[0]?.frames[0] ?? {}, { kit: 'ink' })
+    receiveBoard(store, held)
+
+    receiveBoard(store, boardWith('hero'))
+
+    expect(
+      store.getState().board?.projects[0]?.pages[0]?.frames[0]?.kit,
+    ).toBeUndefined()
+  })
+
+  it('takes the new order of frames that are each unchanged', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero', 'about'))
+
+    receiveBoard(store, boardWith('about', 'hero'))
+
+    expect(
+      store.getState().board?.projects[0]?.pages[0]?.frames.map((f) => f.name),
+    ).toEqual(['about', 'hero'])
+  })
+
+  it('keeps the frames left when one ahead of them is removed', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero', 'about'))
+    const before = store.getState().board?.projects[0]?.pages[0]?.frames[1]
+
+    receiveBoard(store, boardWith('about'))
+
+    const after = store.getState().board?.projects[0]?.pages[0]?.frames
+    expect([after?.length, after?.[0] === before]).toEqual([1, true])
+  })
+
+  it('keeps each keyed map whole when the board drops none of its keys', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero'))
+    receiveReload(store, ['studio/home/hero'], ['studio/home/hero'])
+    receiveFindings(store, { 'studio/home/hero': [] })
+    receiveNotes(store, 'studio/home', [])
+    receiveClaims(store, [
+      {
+        frame: 'studio/home/hero',
+        session: 's-1',
+        agent: 'claude',
+        tag: 'claude · s-1',
+        claimedAt: '2026-10-19T10:00:00.000Z',
+        expiresAt: '2026-10-19T10:05:00.000Z',
+      },
+    ])
+    const before = store.getState()
+
+    receiveBoard(store, boardWith('hero'))
+
+    const after = store.getState()
+    expect({
+      reloads: after.reloads === before.reloads,
+      kept: after.kept === before.kept,
+      findings: after.findings === before.findings,
+      notes: after.notes === before.notes,
+      claims: after.claims === before.claims,
+    }).toEqual({
+      reloads: true,
+      kept: true,
+      findings: true,
+      notes: true,
+      claims: true,
+    })
+  })
+
   it('drops the counter of a frame the board no longer holds', () => {
     const store = createLiveStore()
     receiveBoard(store, boardWith('hero', 'about'))
