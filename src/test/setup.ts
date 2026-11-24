@@ -7,7 +7,10 @@ import { liveStore } from '@/client/live/store'
 
 beforeEach(() => {
   // The test page's own origin stands in, so a test can read into a frame.
-  liveStore.setState({ framePort: Number(location.port) })
+  liveStore.setState({
+    framePort: Number(location.port),
+    frameHost: location.hostname,
+  })
 })
 
 afterEach(() => {

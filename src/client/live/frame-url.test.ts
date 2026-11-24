@@ -1,21 +1,45 @@
 import { describe, expect, it } from 'vitest'
 
-import { onFramePort } from './frame-url'
+import { frameOriginOf, onFramePort, otherLoopback } from './frame-url'
 
-describe('onFramePort', () => {
-  it('names localhost frames for a localhost tab', () => {
-    expect(onFramePort('/frames/a/b/c.html', 47123, 'localhost')).toBe(
-      'http://localhost:47123/frames/a/b/c.html',
+describe('otherLoopback', () => {
+  it('names localhost for a 127.0.0.1 tab', () => {
+    expect(otherLoopback('127.0.0.1')).toBe('localhost')
+  })
+
+  it('names 127.0.0.1 for a localhost tab', () => {
+    expect(otherLoopback('localhost')).toBe('127.0.0.1')
+  })
+
+  it('names no other host for a tab on a LAN address', () => {
+    expect(otherLoopback('192.168.1.20')).toBeNull()
+  })
+
+  it('names no other host for the IPv6 loopback, which the frame port never binds', () => {
+    expect(otherLoopback('[::1]')).toBeNull()
+  })
+})
+
+describe('frameOriginOf', () => {
+  it('joins the host and port the store holds', () => {
+    expect(frameOriginOf({ framePort: 47123, frameHost: '127.0.0.1' })).toBe(
+      'http://127.0.0.1:47123',
     )
   })
 
-  it('names 127.0.0.1 frames for a 127.0.0.1 tab', () => {
+  it('names no origin before the socket hands them over', () => {
+    expect(frameOriginOf({ framePort: null, frameHost: null })).toBeNull()
+  })
+})
+
+describe('onFramePort', () => {
+  it('puts the path on the origin given', () => {
     expect(
-      onFramePort('/frames/a/b/c.html?theme=dark', 47123, '127.0.0.1'),
+      onFramePort('/frames/a/b/c.html?theme=dark', 'http://127.0.0.1:47123'),
     ).toBe('http://127.0.0.1:47123/frames/a/b/c.html?theme=dark')
   })
 
-  it('names no URL before the frame port arrives', () => {
-    expect(onFramePort('/frames/a/b/c.html', null, 'localhost')).toBeNull()
+  it('names no URL before the origin is settled', () => {
+    expect(onFramePort('/frames/a/b/c.html', null)).toBeNull()
   })
 })
