@@ -39,10 +39,10 @@ const SUNSET = frameOf('sunset', {
   box: { x: 460, y: 280, width: 640, height: 180 },
 })
 
-function renderPanel() {
+function renderPanel(open?: string) {
   return render(
     <TooltipProvider>
-      <InspectorPanel />
+      <InspectorPanel open={open} />
     </TooltipProvider>,
   )
 }
@@ -319,6 +319,62 @@ describe('InspectorPanel', () => {
       expect(
         screen.getByText('Open a page to set how its slides present.'),
       ).toBeVisible()
+    })
+
+    describe('slide hint', () => {
+      const HINT = 'Select a slide to set its own transition and steps.'
+
+      beforeEach(() => inspectorTabStore.setState({ tab: 'slides' }))
+
+      it('asks for a slide above the open page’s section while nothing is selected', () => {
+        renderPanel(PAGE)
+
+        expect(
+          screen
+            .getByText(HINT)
+            .compareDocumentPosition(
+              screen.getByRole('region', { name: 'Page' }),
+            ),
+        ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+      })
+
+      it('leaves once a frame is selected', () => {
+        renderPanel(PAGE)
+        expect(screen.getByText(HINT)).toBeVisible()
+
+        act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
+
+        expect(screen.queryByText(HINT)).toBeNull()
+      })
+
+      it('stays off several selected frames', () => {
+        act(() => select(selectionStore, PAGE, [SWATCHES.ref, SUNSET.ref]))
+
+        renderPanel(PAGE)
+
+        expect(screen.queryByText(HINT)).toBeNull()
+      })
+
+      it('stays off with no page open', () => {
+        renderPanel()
+
+        expect(screen.queryByText(HINT)).toBeNull()
+      })
+
+      it('shows in a tab that reads', () => {
+        act(() =>
+          liveStore.setState({
+            connected: true,
+            accessKnown: true,
+            canWrite: false,
+          }),
+        )
+
+        renderPanel(PAGE)
+
+        expect(screen.getByText(HINT)).toBeVisible()
+        act(() => liveStore.setState({ connected: false, accessKnown: false }))
+      })
     })
 
     it('tabs from the strip into the tab’s first control, past the panel', async () => {
