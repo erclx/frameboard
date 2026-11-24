@@ -24,6 +24,8 @@ import { unseenStore } from '@/client/live/unseen'
 import { projectStore } from '@/client/projects/actions'
 import { themeStore } from '@/client/theme/store'
 import type { FrameRecord, ProjectRecord } from '@/shared/records/list'
+import { keyboardFocus } from '@/test/focus-ring'
+import { pointerOff, pointerOver } from '@/test/real-pointer'
 
 import { setHomeFilter } from './filter'
 import { Home } from './home'
@@ -1501,6 +1503,66 @@ describe('folders', () => {
         .getByRole('link', { name: /drawings/ })
         .querySelector('[data-folder-glyph]'),
     ).toBeNull()
+  })
+
+  describe.each([
+    ['folder', () => folderCard('Client A')],
+    ['project', () => screen.getByRole('link', { name: /^drawings/ })],
+  ])('a %s card border', (_kind, card) => {
+    const CLEAR = 'rgba(0, 0, 0, 0)'
+    const border = () => getComputedStyle(card()).borderTopColor
+
+    it('shows at rest', () => {
+      renderLive(CLIENT, server().calls)
+
+      expect(border()).not.toBe(CLEAR)
+    })
+
+    it('goes clear under the pointer and shows again after it', async () => {
+      renderLive(CLIENT, server().calls)
+      const atRest = border()
+
+      await pointerOver(card())
+      const hovered = border()
+      await pointerOff(card())
+
+      expect([hovered, border()]).toEqual([CLEAR, atRest])
+    })
+
+    it('goes clear under keyboard focus', async () => {
+      renderLive(CLIENT, server().calls)
+
+      await keyboardFocus(card())
+
+      expect(border()).toBe(CLEAR)
+    })
+
+    it('goes clear while its menu is open and shows again once dismissed', async () => {
+      renderLive(CLIENT, server().calls)
+      // Held, since an open menu hides the card from a role query.
+      const trigger = card()
+      const color = () => getComputedStyle(trigger).borderTopColor
+      const atRest = color()
+
+      await userEvent.pointer({ keys: '[MouseRight]', target: trigger })
+      await screen.findByRole('menu')
+      const open = color()
+      await userEvent.keyboard('{Escape}')
+      await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
+      // The closed menu hands the card focus, whose ring clears the border too.
+      act(() => trigger.blur())
+
+      expect([open, color()]).toEqual([CLEAR, atRest])
+    })
+
+    it('goes clear while a project is held over it', () => {
+      renderLive(CLIENT, server().calls)
+
+      // Set by hand, since a native drag needs the real pointer e2e drives.
+      card().closest('li')?.setAttribute('data-drop-over', 'true')
+
+      expect(border()).toBe(CLEAR)
+    })
   })
 
   it('shows a folder card naming its count in place of its members', () => {
