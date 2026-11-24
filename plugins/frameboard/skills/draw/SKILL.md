@@ -64,7 +64,7 @@ Run these on each frame once it is placed.
    - Only a running server adds clipping, scrollbars, viewport sizing, and minimum font size, and the result's `browser.ran` says whether those rules ran
 4. Capture the frame in both themes with `frameboard capture <page>/<frame> --json` and look at each image before handing back, since a theme you never saw is a theme nobody checked.
    - Capture any motion you wrote at a few moments with `--at` or `--filmstrip`, since a plain capture shows only where it comes to rest
-   - Judge a whole page at once with `capture --page --composite`, and archive a whole project's images with `capture --all-pages`
+   - Judge a whole page at once with `capture --page --composite`, and run `capture --all-pages` only when the developer asks for a project's images
 5. Run `frameboard show <ref> [<ref>...]` naming every frame you drew, in the order to review them, so the developer's board turns to the first and its toast steps through the rest.
    - A ref is `<page>/<frame>`, or a page ref such as `<page>` standing for every frame on that page
 
