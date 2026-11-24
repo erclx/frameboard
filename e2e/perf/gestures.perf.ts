@@ -29,8 +29,9 @@ const FONT = join(
   '../../test/fixtures/boards/capture/studio/assets/geist.woff2',
 )
 
-/** What the compositor drew and dropped, and what the board's main thread spent, in one traced gesture. */
+/** What each renderer drew and dropped and spent, and which renderer is the board's, in one traced gesture. */
 const TRACE_CATEGORIES = [
+  'disabled-by-default-devtools.timeline',
   'disabled-by-default-devtools.timeline.frame',
   'cc',
   'gpu',
@@ -118,19 +119,37 @@ function frameHtml(font: string, group: number, section: number): string {
 interface TraceEvent {
   name: string
   ph: string
+  pid: number
   dur?: number
+  args?: {
+    data?: { frames?: { parent?: string; processId?: number }[] }
+  }
 }
 
-/** Frames the screen got and lost, and the board's style, layout, and paint time, from one trace. */
+/** The pid of the board's own renderer, since its frames draw in a process apart from it. */
+function boardPid(traceEvents: TraceEvent[]): number {
+  const started = traceEvents.find(
+    (event) => event.name === 'TracingStartedInBrowser',
+  )
+  const board = started?.args?.data?.frames?.find((frame) => !frame.parent)
+  if (board?.processId === undefined) {
+    throw new Error('the trace names no renderer for the board page')
+  }
+  return board.processId
+}
+
+/** Frames the board's renderer drew and dropped, and its style, layout, and paint time, from one trace. */
 function readTrace(buffer: Buffer) {
   const { traceEvents } = JSON.parse(buffer.toString()) as {
     traceEvents: TraceEvent[]
   }
+  const pid = boardPid(traceEvents)
+  const board = traceEvents.filter((event) => event.pid === pid)
   const count = (name: string) =>
-    traceEvents.filter((event) => event.name === name).length
+    board.filter((event) => event.name === name).length
   const spentMs = (name: string) =>
     Math.round(
-      traceEvents
+      board
         .filter((event) => event.name === name && event.ph === 'X')
         .reduce((sum, event) => sum + (event.dur ?? 0), 0) / 1000,
     )
