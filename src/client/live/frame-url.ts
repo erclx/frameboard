@@ -1,7 +1,7 @@
 import { frameUrl } from '@/shared/board-urls'
 import { frameThemeUrl, type Theme } from '@/shared/theme'
 
-import { liveStore, useLive } from './store'
+import { type LiveState, liveStore, useLive } from './store'
 
 /**
  * The features a live frame's iframe delegates, being every one whose default
@@ -25,43 +25,62 @@ export const FRAME_ALLOW = [
 ].join('; ')
 
 /**
- * `path` on the frame port, on the tab's own hostname, since `localhost` and
- * `127.0.0.1` are different sites and a frame on the other would be
- * cross-site. Null before the socket hands the port over.
+ * The loopback name a tab on `hostname` loads frames from, since a browser
+ * counts the two as different sites and gives the other a process of its own.
+ * Null for a tab on neither, which has no second name.
  */
+export function otherLoopback(hostname: string): string | null {
+  if (hostname === 'localhost') return '127.0.0.1'
+  if (hostname === '127.0.0.1') return 'localhost'
+  return null
+}
+
+/** The origin frames load from, null until the socket settles it. */
+export function frameOriginOf({
+  framePort,
+  frameHost,
+}: Pick<LiveState, 'framePort' | 'frameHost'>): string | null {
+  return framePort === null || frameHost === null
+    ? null
+    : `http://${frameHost}:${framePort}`
+}
+
+/** `frameOriginOf` the live store, followed. */
+export function useFrameOrigin(): string | null {
+  return useLive(frameOriginOf)
+}
+
+/** `path` on the frame port's origin, null until that is settled. */
 export function onFramePort(
   path: string,
-  port: number | null,
-  hostname = location.hostname,
+  origin: string | null,
 ): string | null {
-  return port === null ? null : `http://${hostname}:${port}${path}`
+  return origin === null ? null : `${origin}${path}`
 }
 
-/** The frame port the socket last handed over, null until its first hello. */
-export function useFramePort(): number | null {
-  return useLive((state) => state.framePort)
-}
-
-/** A frame's page in one theme on the frame port, null until the port is held. */
+/** A frame's page in one theme on the frame port, null until its origin is settled. */
 export function framePageUrl(
-  port: number | null,
+  origin: string | null,
   ref: string,
   theme: Theme,
   version?: number,
   at?: string,
 ): string | null {
-  return onFramePort(frameThemeUrl(ref, theme, version, at), port)
+  return onFramePort(frameThemeUrl(ref, theme, version, at), origin)
 }
 
-/** A frame's bare page on the frame port, as Open alone links it, null until the port is held. */
-export function frameAloneUrl(port: number | null, ref: string): string | null {
-  return onFramePort(frameUrl(ref), port)
+/** A frame's bare page on the frame port, as Open alone links it, null until its origin is settled. */
+export function frameAloneUrl(
+  origin: string | null,
+  ref: string,
+): string | null {
+  return onFramePort(frameUrl(ref), origin)
 }
 
 /**
  * A path on the frame port as it stands now, for a read outside render. Before
- * the port arrives it stays relative, which the board's port redirects.
+ * the origin settles it stays relative, which the board's port redirects.
  */
 export function heldFramePath(path: string): string {
-  return onFramePort(path, liveStore.getState().framePort) ?? path
+  return onFramePort(path, frameOriginOf(liveStore.getState())) ?? path
 }
