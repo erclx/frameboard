@@ -3,9 +3,11 @@ import { useLive } from '@/client/live/store'
 import { useFrameTheme } from '@/client/theme/store'
 import type { StyleValue } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
+import type { FontList } from '@/shared/records/sourcing'
 import type { TokenRow } from '@/shared/records/tokens'
 import type { Theme } from '@/shared/theme'
 
+import { installedFontSheet, useInstalledFonts } from '../../assets/sourcing'
 import { ActionTooltip } from '../../chrome/action-tooltip'
 import { placeFreeAll } from '../../place/write'
 import { type ElementKey, useSelection } from '../../selection'
@@ -133,6 +135,7 @@ export function SeveralElements({
   const members = useElementMembers(elements)
   const using = useSelection((state) => state.using)
   const table = useTokenTable(frame.ref.split('/')[0] ?? '')
+  const installed = useInstalledFonts(frame.ref.split('/')[0] ?? '')
   const tokens = table?.tokens ?? []
   const colors = tokens.filter(
     (row) => row.group === 'color' && !row.name.startsWith('--shadow'),
@@ -185,6 +188,7 @@ export function SeveralElements({
           <TypePart
             members={members}
             fonts={tokens.filter((row) => row.group === 'font')}
+            installed={installed ?? null}
             disabled={disabled}
             fan={fan}
           />
@@ -447,13 +451,14 @@ function AppearancePart({ members, disabled, fan }: PartProps) {
 function TypePart({
   members,
   fonts,
+  installed,
   disabled,
   fan,
-}: PartProps & { fonts: readonly TokenRow[] }) {
+}: PartProps & { fonts: readonly TokenRow[]; installed: FontList | null }) {
   const holders = members.filter(({ live }) => live.holdsText)
   const [first] = holders
   if (!first) return null
-  const families = familyOptions(fonts)
+  const families = familyOptions(fonts, installed?.fonts)
   const familyOf = ({ live, styles }: ElementMember) =>
     familyIn(
       live.fontFamily,
@@ -474,6 +479,9 @@ function TypePart({
         Typography
         <PartOf count={holders.length} total={members.length} />
       </h2>
+      {installed?.fonts.length ? (
+        <link rel="stylesheet" href={installedFontSheet(installed)} />
+      ) : null}
       <div className="grid grid-cols-2 gap-1.5">
         <TypePicker
           label="Font family"

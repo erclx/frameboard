@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { TooltipProvider } from '@/client/components/ui/tooltip'
 import { liveStore, receiveBoard } from '@/client/live/store'
+import type { FontList } from '@/shared/records/sourcing'
 import type { TokenRow } from '@/shared/records/tokens'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 import { BRIDGE } from '@/test/frame-bridge'
@@ -98,6 +99,29 @@ describe('InspectorPanel with several elements selected', () => {
   const headings = () =>
     screen.getAllByRole('heading').map((heading) => heading.textContent)
 
+  /** Lora installed in the project, which the Typography part's family picker lists. */
+  const INSTALLED: FontList = {
+    version: 1,
+    project: 'studio',
+    fonts: [
+      {
+        id: 'lora',
+        family: 'Lora',
+        category: 'serif',
+        license: 'OFL-1.1',
+        licenseUrl: 'https://example.test/lora/license',
+        landingUrl: 'https://fontsource.org/fonts/lora',
+        variable: true,
+        weights: [{ min: 400, max: 700 }],
+        styles: ['normal'],
+        path: 'fonts/lora',
+        files: 2,
+        bundled: false,
+        frames: [],
+      },
+    ],
+  }
+
   beforeEach(() => {
     sent.length = 0
     receiveBoard(liveStore, boardOf(pageOf([HERO])))
@@ -144,6 +168,9 @@ describe('InspectorPanel with several elements selected', () => {
             },
           })
         }
+        if (url.includes('/fonts/installed')) {
+          return Response.json({ ok: true, data: INSTALLED })
+        }
         if (url.includes('/api/frames/edit')) {
           sent.push(JSON.parse(String(init?.body)))
           return Response.json({
@@ -183,6 +210,21 @@ describe('InspectorPanel with several elements selected', () => {
     expect(screen.getByText('in hero')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Frame' })).toBeNull()
     expect(screen.queryByText(/using/)).toBeNull()
+  })
+
+  it('lists the project’s installed families in the Typography part’s family picker', async () => {
+    await mountAndSelect([3, 4, 5])
+
+    await userEvent.click(
+      within(screen.getByRole('region', { name: /^Typography/ })).getByRole(
+        'button',
+        { name: 'Font family' },
+      ),
+    )
+
+    expect(
+      await screen.findByRole('menuitemradio', { name: 'Lora' }),
+    ).toBeInTheDocument()
   })
 
   it('says why Arrange waits while an element sits in the flow', async () => {
