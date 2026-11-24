@@ -77,7 +77,7 @@ export interface FrameKeys {
 
 export interface KeyMaker {
   /**
-   * The keys of what `frame` is now, null once its file is gone. Read ahead of
+   * The keys of what `frame` is now, null when it does not read. Read ahead of
    * the check they keep, so an input written mid-check costs only a recheck. A
    * start passes the `outside` it stored, which spares a parse.
    */
@@ -136,7 +136,13 @@ export function createFrameKeys(
           readPage(join(root, project, page)),
         ),
       ])
-      const outside = stored ? [...stored] : outsideLoads(root, frame, source)
+      let outside: string[]
+      try {
+        outside = stored ? [...stored] : outsideLoads(root, frame, source)
+      } catch {
+        // A sheet link naming a folder does not read, and only its own frame goes unkept.
+        return null
+      }
       const checks = contentHash(
         JSON.stringify([
           version,

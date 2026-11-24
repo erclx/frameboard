@@ -382,6 +382,17 @@ describe('createFrameKeys', () => {
     expect((await keys.of(frame))?.checks).not.toBe(before?.checks)
   })
 
+  it.each(['./', '.', '?v=2', '../assets'])(
+    'gives a frame whose sheet link names the folder %s no keys',
+    async (href) => {
+      write('site/home/hero.html', `<link rel="stylesheet" href="${href}">`)
+
+      const keys = await createFrameKeys(board.root).of(await frameOf(HERO))
+
+      expect(keys).toBeNull()
+    },
+  )
+
   it('gives a frame whose file is gone no keys', async () => {
     const frame = await frameOf(HERO)
     rmSync(frame.path)

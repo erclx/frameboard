@@ -1475,6 +1475,42 @@ describe('startServer remembered checks', { timeout: 30_000 }, () => {
     expect(Object.keys(findings)).toEqual(['studio/home/mobile'])
   })
 
+  describe('a frame whose sheet link names a folder', () => {
+    const FOLDER_LINK = '<link rel="stylesheet" href="./"><p>hero</p>'
+
+    it('leaves the other frames their findings at start', async () => {
+      write('studio/home/hero.html', FOLDER_LINK)
+      const server = await start()
+      await check(server, REFS)
+
+      const { findings } = await helloFindings(server)
+
+      expect(Object.keys(findings).sort()).toEqual([
+        'studio/home/mobile',
+        'studio/pricing/plans',
+      ])
+    })
+
+    it('leaves a neighbor written beside it its findings', async () => {
+      const server = await start()
+      await check(server, REFS)
+      const messages = await connect(server)
+
+      write('studio/home/hero.html', FOLDER_LINK)
+      write('studio/home/mobile.html', '<p>bare</p>')
+
+      await expect
+        .poll(
+          () =>
+            findingsSent(messages)['studio/home/mobile']?.map(
+              ({ rule }) => rule,
+            ),
+          { timeout: 5000 },
+        )
+        .toEqual(['default-font'])
+    })
+  })
+
   it('checks a frame written mid-sweep against its new bytes, and once', async () => {
     const server = await start({ pause: heldPause() })
     const messages = await connect(server)
