@@ -12,6 +12,7 @@ import { OUTLINE, screen, sizeLabel } from '../geometry/draw'
 import { CHIP, OVERLAY_Z } from '../geometry/overlay'
 import { usePendingBox, usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
+import { carriedStore } from '../place/tool'
 import { type ElementKey, useSelection } from '../selection'
 import { groupBounds, type GroupMember, scalesAsGroup } from './group'
 import { heldStore, holdOutline } from './held'
@@ -86,6 +87,7 @@ function ElementGhosts({ frames, container }: ElementOverlayProps) {
       )
     : []
   const held = useGhosts(container, walked)
+  const out = useStore(carriedStore, (state) => state.out)
   const ghosts = walked.flatMap((ref): Ghost[] => {
     const overflow = held.get(ref)
     return overflow
@@ -97,7 +99,7 @@ function ElementGhosts({ frames, container }: ElementOverlayProps) {
   })
   return ghosts.map(({ key, box }) => {
     const frame = drawn.find(({ ref }) => ref === key.frame)
-    if (!frame) return null
+    if (!frame || sameKey(key, out)) return null
     const page = pageBox(frame.box, frame.device, frame.turn)
     return (
       <div

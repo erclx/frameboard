@@ -98,7 +98,9 @@ export const carriedStore = createStore<{
   carried: ElementKey | null
   /** The frame a release makes of the element, while over bare canvas. */
   ghost: DropGhost | null
-}>()(() => ({ carried: null, ghost: null }))
+  /** The free element out over bare canvas, whose overflow ghost gives way to that one. */
+  out: ElementKey | null
+}>()(() => ({ carried: null, ghost: null, out: null }))
 
 /**
  * A Rectangle, Ellipse, Image, or Frame drag as it ended, where it started, the top

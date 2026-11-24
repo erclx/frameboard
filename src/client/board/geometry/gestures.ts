@@ -352,8 +352,9 @@ export function attachGestures(
   }
   // A free element's outline follows the drag, so it hides where the ghost draws the same box.
   const showGhost = (ghost: DropGhost | null) => {
-    carriedStore.setState({ ghost })
-    if (ghost && gesture.kind === 'placed') target.layer.dataset.draggedOut = ''
+    const out = ghost && gesture.kind === 'placed' ? gesture.key : null
+    carriedStore.setState({ ghost, out })
+    if (out) target.layer.dataset.draggedOut = ''
     else delete target.layer.dataset.draggedOut
   }
   const shiftElementOutline = (dx: number, dy: number) => {

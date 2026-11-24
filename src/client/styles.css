@@ -281,9 +281,8 @@
     will-change: transform;
   }
 
-  /* The drop ghost draws the same box, so the outline, its chip, and the
-     ghost past the frame's edge give way. */
-  [data-dragged-out] :is([data-element-selection], [data-element-ghost]) {
+  /* The drop ghost draws the same box, so the outline and its chip give way. */
+  [data-dragged-out] [data-element-selection] {
     visibility: hidden;
   }
 }

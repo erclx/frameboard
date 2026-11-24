@@ -697,19 +697,23 @@ describe('attachGestures', () => {
       it('hides its outline while the ghost of its frame draws there alone', () => {
         const canvas = setupPlaced()
         const layer = canvas.part('[data-layer]')
+        const read = () => [
+          layer.hasAttribute('data-dragged-out'),
+          carriedStore.getState().out,
+        ]
         act(() => selectElement(selectionStore, PAGE, ELEMENT))
 
         canvas.pointer.down(200, 175)
         canvas.pointer.move(225, 155)
-        const inside = layer.hasAttribute('data-dragged-out')
+        const inside = read()
         canvas.pointer.move(350, 355)
-        const bare = layer.hasAttribute('data-dragged-out')
+        const bare = read()
         canvas.pointer.up(350, 355)
 
-        expect([inside, bare, layer.hasAttribute('data-dragged-out')]).toEqual([
-          false,
-          true,
-          false,
+        expect([inside, bare, read()]).toEqual([
+          [false, null],
+          [true, ELEMENT],
+          [false, null],
         ])
       })
 

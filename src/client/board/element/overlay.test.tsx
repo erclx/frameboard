@@ -10,6 +10,7 @@ import { BRIDGE } from '@/test/frame-bridge'
 import CLIP from '../../../../test/fixtures/boards/basic/marketing/assets/clip.webm?url'
 import { request } from '../bridge/channel'
 import { modeStore } from '../mode'
+import { carriedStore } from '../place/tool'
 import {
   clear,
   select,
@@ -611,7 +612,10 @@ describe('ElementOverlay', () => {
     }
 
     afterEach(() => {
-      act(() => modeStore.setState({ mode: 'edit', tool: 'move' }))
+      act(() => {
+        modeStore.setState({ mode: 'edit', tool: 'move' })
+        carriedStore.setState({ out: null })
+      })
     })
 
     it('draws a ghost at the element box while its frame is selected', async () => {
@@ -631,6 +635,30 @@ describe('ElementOverlay', () => {
         ghost?.style.top,
         ghost?.style.width,
       ]).toEqual(['3', HASH, '450px', '70px', '100px'])
+    })
+
+    it('leaves out the ghost of an element dragged out, keeping its neighbor', async () => {
+      const container = await mountFrame(
+        PAST.replace(
+          '</div>',
+          '</div><div style="position:absolute;left:360px;top:120px;width:100px;height:50px"></div>',
+        ),
+      )
+      act(() => select(selectionStore, 'studio/home', [HERO.ref]))
+      const { container: drawn } = render(
+        <ElementOverlay frames={[HERO]} container={container} />,
+      )
+      await waitFor(() => expect(ghosts(drawn)).toHaveLength(2))
+
+      act(() =>
+        carriedStore.setState({
+          out: { frame: HERO.ref, index: 3, hash: HASH },
+        }),
+      )
+
+      expect(ghosts(drawn).map(({ dataset }) => dataset.ghostIndex)).toEqual([
+        '4',
+      ])
     })
 
     it('reads again as a drag previews the element further out', async () => {
