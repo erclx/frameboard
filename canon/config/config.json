@@ -38,7 +38,7 @@
     },
     "tooling": {
       "version": "5.122.0",
-      "syncedAt": "2026-11-24T16:48:41.662Z",
+      "syncedAt": "2026-11-24T16:50:06.722Z",
       "files": {
         ".github/workflows/deploy.yml": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2",
         ".github/workflows/phase-label-gate.yml": "sha256:40abb5f8b078badce41d6e2697ce569f00bb2dcda963b5ea476f84ec02d315fd",
@@ -50,6 +50,8 @@
         ".husky/pre-commit": "sha256:a7e3ee0be7554bb60837cd7a414e61aa6a51db987390e325a3799cbdc254ddd8",
         ".husky/pre-push": "sha256:e059070389c708b2bcebd7b96f8787f4bdcedc866539c02af1dfd5d98630eb3e",
         ".oxfmtrc.json": "sha256:2c67a0febb5a16c2656a53159bdcb5de7a86332f01630aea57f6d06ade271b5c",
+        "e2e/capture-types.ts": "sha256:cd2139808afdd653fe5c39cf03f5b24956ccebf4ab11727c67db83cfcbdd54c0",
+        "e2e/screenshot.ts": "sha256:952f40ee3e3e78ee7c953b3dd1c6c85b0497f57cab3de6e82804d86a0474175c",
         "scripts/delete-previews.sh": "sha256:bffa40f5391deff970c5c813c7e1ed7c9b3db15925cc6400acfc187b4e50b283",
         "scripts/install-playwright-deps.sh": "sha256:35631184c220c42f510a7c17d6e2a507a4c39468fab8aaf608b9b7a40e0bb86c",
         "scripts/lib/preview-server.sh": "sha256:c138516e8246f87275a8ba0fbd252567d80ed6091c6228fdf0b19c7767fc5a15",
@@ -86,21 +88,13 @@
           "disposition": "customized",
           "base": "sha256:741d826bc2a3d77c1097df6c11808f669737158dd5037caed6edfbb15a6966a0"
         },
-        "e2e/capture-types.ts": {
-          "disposition": "declined",
-          "reason": "Frameboard's own e2e/screenshot.ts reads the case shape from e2e/capture/types.ts"
-        },
-        "e2e/capture/cases.ts": {
-          "disposition": "declined",
-          "reason": "Frameboard's capture cases live in e2e/capture/index.ts and board.ts"
-        },
         "e2e/home.spec.ts": {
           "disposition": "declined",
           "reason": "Frameboard keeps its home spec at e2e/shell/home.spec.ts, grouped by journey"
         },
         "e2e/screenshot.ts": {
           "disposition": "customized",
-          "base": "sha256:18c692151d45977b240d61c185c95fc18939a4e6f3960bb93f9429f5e84c0e53"
+          "base": "sha256:952f40ee3e3e78ee7c953b3dd1c6c85b0497f57cab3de6e82804d86a0474175c"
         },
         "package.json:lint": {
           "disposition": "customized",

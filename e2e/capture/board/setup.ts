@@ -944,7 +944,7 @@ export function themedFor(
 export const AVATAR = '[data-avatar]'
 
 /** A state rather than a layout, so it takes the desktop width alone. */
-export const STATE_ONLY = ['320', '768', '1536']
+export const STATE_ONLY = ['320', '390', '768', '1536']
 
 /**
  * Adds the shipped Sketch and Wireframe kits to `webapp` and sets Sketch on

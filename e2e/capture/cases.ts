@@ -10,4 +10,4 @@ export const EVIDENCE_ROOT =
   process.env.FRAMEBOARD_EVIDENCE_ROOT || 'e2e/evidence'
 
 /** Every surface's cases. A new surface adds its own file here and one spread below. */
-export const CAPTURE_CASES: CaptureCase[] = [...BOARD_CASES]
+export const CASES: CaptureCase[] = [...BOARD_CASES]

@@ -31,7 +31,7 @@ The limit bounds a run that hangs, so a stuck run no longer holds a slot for goo
 
 ### `e2e/`
 
-Owns the Playwright specs by role in `cli/`, `agent-work/`, `hand-edits/`, and `shell/`, none at the root, the helpers in `e2e/support/`, the harness `e2e/screenshot.ts`, its cases in `e2e/capture/board/`, and the baseline in `e2e/evidence/`. A board-route load helper waits for `[data-layer]`, since the loading view's controls are inert.
+Owns the Playwright specs by role in `cli/`, `agent-work/`, `hand-edits/`, and `shell/`, none at the root, the helpers in `e2e/support/`, the harness `e2e/screenshot.ts`, its cases under `e2e/capture/`, and the baseline in `e2e/evidence/`. A board-route load helper waits for `[data-layer]`, since the loading view's controls are inert.
 
 - A spec that writes board files serves its own copy of a fixture through `e2e/support/board-server.ts`, since writing into the committed fixture would leak between specs
 - `playwright-core`, the one runtime dependency, is pinned to the version `@playwright/test` resolves, so bump both together

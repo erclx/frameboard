@@ -42,6 +42,7 @@ Holds the config the ship chain and the toolkit read, beside the sync record in 
 - `pr-labels.toml` maps paths to the labels `git-pr` puts on a pull request, and `canon labels audit` names any surface no row reaches
 - The `[painted]` table of `app.toml` counts `src/client/**/*.ts` as painted, so one changed with no capture or waiver refuses `canon pr lift`, but not test-only `fixtures.ts` and `*-harness.tsx`
 - Its `[preview]` and `[drive]` tables feed the preview copy and the drives, which `canon/context/development/local.md` and `canon/context/development/capture-scripts.md` cover
+- Its `[device-classes]` table holds the board to desktop, so the capture harness shoots 1280 and 1536 with no 320 reflow check, and a `landing` scope keeps all three classes for `web/`
 
 ## Gotchas
 
