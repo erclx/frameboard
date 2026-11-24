@@ -1,3 +1,4 @@
+import { renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { EDITING } from '@/shared/frame-bridge/messages'
@@ -6,10 +7,12 @@ import { frameOf } from '@/test/board'
 import { request } from '../bridge/channel'
 import type { ElementChange } from '../inspector/element/write'
 import { createSelectionStore, selectElement } from '../selection'
+import { heldMeasures, useMeasures } from './measures'
 import {
   editTextInPlace,
   editTextWhenShown,
   newTextStore,
+  overElement,
   pressInEdit,
 } from './text-in-place'
 
@@ -972,5 +975,34 @@ describe('pressInEdit', () => {
     expect(
       pressInEdit(document.createElement('div'), FRAMES, KEY, { x: 0, y: 0 }),
     ).toBeNull()
+  })
+})
+
+describe('overElement', () => {
+  const HERO = frameOf('hero', {
+    box: { x: 100, y: 50, width: 400, height: 300 },
+  })
+
+  /** Whether a double-click in the selected heading edits it, measured as the overlay measures the selection. */
+  async function overHeading(body: string): Promise<boolean> {
+    const shown = await mount(body)
+    const { unmount } = renderHook(() => useMeasures(shown.container, [KEY]))
+    await expect.poll(() => heldMeasures([KEY])).not.toBeNull()
+    const over = await overElement(shown.container, [HERO], KEY, {
+      x: HERO.box.x + 12,
+      y: HERO.box.y + 30,
+    })
+    unmount()
+    return over
+  }
+
+  it('edits the selected element under the point', async () => {
+    expect(await overHeading('<h1 style="height:80px">Old</h1>')).toBe(true)
+  })
+
+  it('opens no edit on a locked one', async () => {
+    expect(
+      await overHeading('<h1 data-locked="" style="height:80px">Old</h1>'),
+    ).toBe(false)
   })
 })
