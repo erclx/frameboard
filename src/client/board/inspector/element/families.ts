@@ -25,10 +25,9 @@ export function faceOf(stack: string): Face | null {
 }
 
 /**
- * The project's font tokens holding a family stack, then every served face,
- * then each family the project installed that no face already names. A font
- * token holding a size or a weight, such as `--font-size-sm: 12px`, is left
- * out.
+ * The font tokens holding a family stack, then every served face, then each
+ * installed family no face names. A token holding a size or a weight, such
+ * as `--font-size-sm: 12px`, is left out.
  */
 export function familyOptions(
   fonts: readonly TokenRow[],
@@ -60,10 +59,9 @@ export function familyOptions(
 }
 
 /**
- * The option an element shows as, its source's token read from the static
- * cascade since the computed stack never names one, else the stack's first
- * family where the menu lists it, else null. An unlisted token still shows by
- * its name.
+ * The option an element shows as: its source's token from the static cascade,
+ * which the computed stack never names, else the stack's first family where
+ * listed, else null. An unlisted token still shows by its name.
  */
 export function familyIn(
   stack: string,

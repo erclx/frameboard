@@ -54,10 +54,9 @@ interface FamilyRow {
 }
 
 /**
- * Every family the project's frames may name, the board's own faces then the
- * ones it installed, each set in its own face. An installed family the board
- * also serves lists once, as installed, since that row is the one removal
- * acts on.
+ * Every family the project's frames may name, built in then installed, each
+ * set in its own face. An installed family the board also serves lists once,
+ * as installed, since that row is the one removal acts on.
  */
 export function FontsSection({
   project,
@@ -211,8 +210,8 @@ interface FindFontProps {
 }
 
 /**
- * Find a font and the search it opens, finding once typing rests. Escape
- * closes the search and hands focus back to Find a font.
+ * Find a font and the search it opens, focused since the press asked to type.
+ * It finds once typing rests, and Escape hands focus back to Find a font.
  */
 function FindFont({ project, installed, find, install }: FindFontProps) {
   const [open, setOpen] = useState(false)
@@ -305,7 +304,6 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
         <span className="sr-only">Search Fontsource by name or category</span>
         <input
           type="search"
-          // The field opens from Find a font, a press asking to type.
           // oxlint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           value={text}

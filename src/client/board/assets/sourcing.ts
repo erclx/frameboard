@@ -76,10 +76,9 @@ export function findModels(
 }
 
 /**
- * Fontsource's families matching typed text through the board's server. Text
- * naming a category, such as `serif`, asks for that category alone, since as
- * a name it opens a word in dozens of families. Refuses and aborts as
- * `findImages` does.
+ * Fontsource's families matching typed text, refusing and aborting as
+ * `findImages` does. Text naming a category asks for it alone, since `serif`
+ * as a name opens a word in dozens of families.
  */
 export function findFonts(
   project: string,

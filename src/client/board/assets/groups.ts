@@ -111,10 +111,9 @@ export function withoutKits(files: readonly AssetFile[]): {
 }
 
 /**
- * The files the Files view lists, leaving out those inside each installed
- * family's folder, which the Theme tab manages, and how many families those
- * were. A folder under `fonts/` the installed list does not name was filled by
- * hand, so its files stay listed.
+ * The files the Files view lists less each installed family's folder, and how
+ * many families those were. A folder the installed list leaves out was filled
+ * by hand, so its files stay listed.
  */
 export function withoutFonts(
   files: readonly AssetFile[],
