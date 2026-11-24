@@ -109,6 +109,7 @@ import {
   type CanvasControls,
   reportHandMove,
   reportZoom,
+  reportZoomWritten,
 } from './view'
 import { isNotch, PAN_EASE_MS, panEase, wheelPixels, wheelZoom } from './wheel'
 import { LinkedBoxes } from './widths/linked-box'
@@ -123,6 +124,14 @@ const FOLD_CHROME_ROOM = POSE_BAR_ROOM + 24
 const PLAY_CLICK_SLOP = 3
 /** How long a gesture has to rest before the view counts as settled and the cull runs. */
 const SETTLE_MS = 150
+/**
+ * How long a zoom holds `--zoom` after writing it. Every step writing it
+ * restyled each label, outline, and device body on the page, so the steps
+ * after a write scale the chrome with the canvas until this passes.
+ */
+const ZOOM_WRITE_MS = 100
+/** The ratio a held `--zoom` may trail the canvas by before it is written early, past which a trackpad zoom seldom steps. */
+const ZOOM_DRIFT = 1.5
 /** How long the view takes to travel to a shown frame. */
 const FOCUS_MS = 400
 
@@ -277,7 +286,38 @@ export function Canvas({
     // Marks the canvas's own moves, since `sourceEvent` is absent on wheel and key pans.
     let travelling = false
 
-    const settle = (view: View) => setSettled({ view, size: sizeOf(viewport) })
+    // Open while a write holds the steps after it, and closed once a hold passes unchanged.
+    let zoomHold: ReturnType<typeof setTimeout> | undefined
+    let written = 0
+    const writeZoom = () => {
+      const { k } = zoomTransform(viewport)
+      if (k === written) return false
+      written = k
+      for (const moved of [layer, notesLayerRef.current]) {
+        moved?.style.setProperty('--zoom', String(k))
+      }
+      reportZoomWritten()
+      return true
+    }
+    const endHold = () => {
+      zoomHold = writeZoom() ? setTimeout(endHold, ZOOM_WRITE_MS) : undefined
+    }
+    const stepZoom = (k: number) => {
+      if (k === written) return
+      if (zoomHold === undefined) {
+        writeZoom()
+        zoomHold = setTimeout(endHold, ZOOM_WRITE_MS)
+      } else if (Math.max(k / written, written / k) > ZOOM_DRIFT) {
+        writeZoom()
+      }
+    }
+
+    const settle = (view: View) => {
+      clearTimeout(zoomHold)
+      zoomHold = undefined
+      writeZoom()
+      setSettled({ view, size: sizeOf(viewport) })
+    }
 
     const zoomer: ZoomBehavior<HTMLDivElement, unknown> = zoom<
       HTMLDivElement,
@@ -304,8 +344,8 @@ export function Canvas({
         for (const moved of [layer, notesLayerRef.current]) {
           if (!moved) continue
           moved.style.transform = `translate(${x}px, ${y}px) scale(${k})`
-          moved.style.setProperty('--zoom', String(k))
         }
+        stepZoom(k)
         markCrowded(layer, roomsRef.current, k)
         pageViews.set(identity, { x, y, k })
         reportZoom(k)
@@ -543,6 +583,7 @@ export function Canvas({
       viewport.removeEventListener('pointerleave', leave)
       controlsRef.current = null
       clearTimeout(timer)
+      clearTimeout(zoomHold)
       cancelAnimationFrame(animation)
       cancelAnimationFrame(glide)
       moveToRef.current = null

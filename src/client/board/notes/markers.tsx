@@ -428,9 +428,11 @@ function Popover({
   useEffect(() => {
     const bump = () => setMoves((count) => count + 1)
     const offZoom = canvasView.onZoom(bump)
+    const offWritten = canvasView.onZoomWritten(bump)
     const offHand = canvasView.onHandMove(bump)
     return () => {
       offZoom()
+      offWritten()
       offHand()
     }
   }, [])
@@ -454,24 +456,31 @@ function Popover({
       notice?.getBoundingClientRect().bottom ?? bounds.top,
     )
     const box = element.getBoundingClientRect()
+    // Screen pixels per card pixel, which `--zoom` trailing a zoom moves off 1.
+    const scale = element.offsetWidth > 0 ? box.width / element.offsetWidth : 1
     const right = shift.flip
-      ? box.right + box.width + 2 * CARD_OFFSET.x
+      ? box.right + box.width + 2 * CARD_OFFSET.x * scale
       : box.right
-    const top = box.top - shift.y
-    const next = {
-      flip: right > bounds.right - EDGE_GAP,
+    const top = box.top - shift.y * scale
+    const onScreen = {
       y:
         top < ceiling + EDGE_GAP
           ? ceiling + EDGE_GAP - top
           : Math.min(0, bottom - EDGE_GAP - (top + box.height)),
-      // Never measured from the card, so the cap and the shift cannot chase each other.
+      // Taken from the canvas rather than the card's height, so the cap and the shift cannot chase each other.
       cap: bottom - ceiling - 2 * EDGE_GAP,
+    }
+    const next = {
+      flip: right > bounds.right - EDGE_GAP,
+      y: onScreen.y / scale,
+      cap: onScreen.cap / scale,
     }
     // A shift moves the card it measured, so it settles once one repeats.
     if (
       next.flip !== shift.flip ||
       Math.abs(next.y - shift.y) > 0.5 ||
-      next.cap !== shift.cap
+      shift.cap === null ||
+      Math.abs(next.cap - shift.cap) > 0.5
     ) {
       setShift(next)
     }

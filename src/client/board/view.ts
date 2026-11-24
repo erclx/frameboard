@@ -27,6 +27,7 @@ let controls: CanvasControls | null = null
 let attachedPage: string | null = null
 let zoom = 1
 const zoomListeners = new Set<Listener>()
+const zoomWrittenListeners = new Set<Listener>()
 const attachListeners = new Set<Listener>()
 const handListeners = new Set<Listener>()
 
@@ -43,6 +44,9 @@ export const canvasView = {
   page: (): string | null => attachedPage,
   /** Called on every zoom change, a gesture's frames included. */
   onZoom: (listener: Listener): (() => void) => listen(zoomListeners, listener),
+  /** Called once the canvas writes the `--zoom` that trails a gesture, for chrome measuring itself on screen. */
+  onZoomWritten: (listener: Listener): (() => void) =>
+    listen(zoomWrittenListeners, listener),
   /** Called when a canvas mounts or unmounts. */
   onAttach: (listener: Listener): (() => void) =>
     listen(attachListeners, listener),
@@ -109,6 +113,11 @@ export function reportZoom(scale: number): void {
   if (scale === zoom) return
   zoom = scale
   notify(zoomListeners)
+}
+
+/** Called by the canvas once it writes `--zoom` on its layers. */
+export function reportZoomWritten(): void {
+  notify(zoomWrittenListeners)
 }
 
 function listen(listeners: Set<Listener>, listener: Listener): () => void {
