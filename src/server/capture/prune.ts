@@ -6,10 +6,9 @@ import { isReservedPageName, isValidName } from '@/shared/names'
 import { isCompositeImageName, isFrameImageName } from './images'
 
 /**
- * Removes every image under one project's folder of `out` that a capture
- * could have written, but the ones at `kept`, and each page folder that
- * leaves empty. Returns the files removed, sorted. Nothing is followed
- * through a link, the project's own folder included.
+ * Removes every image a capture could have written under `<out>/<project>` but
+ * those at `kept`, with each page folder that empties, and returns the files
+ * removed, sorted. Nothing behind a link goes, the project's folder included.
  */
 export async function pruneImages(
   out: string,
