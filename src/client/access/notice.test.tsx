@@ -15,7 +15,7 @@ import { contrastHovered } from '@/test/hover-contrast'
 import { emulateReducedMotion } from '@/test/motion'
 
 import type { EditAccessProps } from './edit-access'
-import { editAccessStore } from './edit-store'
+import { askToEdit, closeEditAccess } from './edit-store'
 import { toastExpired } from './expired-link'
 import { ViewOnlyNotice } from './notice'
 
@@ -42,7 +42,7 @@ afterEach(() => {
       editButton: false,
     })
     modeStore.setState({ mode: 'edit' })
-    editAccessStore.setState({ open: false })
+    closeEditAccess()
   })
 })
 
@@ -273,6 +273,33 @@ describe('the Edit button', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
+  it('drops a refusal that came back after the socket closed it', async () => {
+    let fail = (_error: Error) => {}
+    const send = vi.fn<typeof fetch>(
+      () => new Promise((_resolve, reject) => (fail = reject)),
+    )
+    const confirm = await open({ send })
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Edit' }))
+    live({ connected: false, accessKnown: false, editButton: false })
+    await waitFor(() => expect(confirm).not.toBeInTheDocument())
+    await act(async () => fail(new TypeError('Failed to fetch')))
+    live({ connected: true, accessKnown: true, editButton: true })
+
+    await userEvent.click(button())
+
+    expect(within(await dialog()).queryByRole('alert')).toBeNull()
+  })
+
+  it('stays closed on a reconnect after an ask the socket was down for', async () => {
+    live({ connected: false, accessKnown: false, editButton: false })
+    renderAt('/')
+    act(() => askToEdit())
+
+    live({ connected: true, accessKnown: true, editButton: true })
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
   it('keeps the pill on one line in a narrow tab', () => {
     renderAt('/')
     const { left, right } = pill().getBoundingClientRect()
@@ -340,6 +367,25 @@ describe('the expired link toast', () => {
       await screen.findByRole('dialog', { name: 'Edit this board?' }),
     ).toBeInTheDocument()
     await waitFor(() => expect(raised).not.toBeInTheDocument())
+  })
+
+  it('answers a press the server no longer offers with the command', async () => {
+    raise(true)
+    const raised = await screen.findByRole('dialog', {
+      name: 'This edit link has expired',
+    })
+    live({ connected: false, accessKnown: false, editButton: false })
+
+    await userEvent.click(
+      within(raised).getByRole('button', { name: 'Edit this board' }),
+    )
+
+    expect(
+      await within(raised).findByText(/Run frameboard open for a new one/),
+    ).toBeVisible()
+    expect(
+      within(raised).queryByRole('button', { name: 'Edit this board' }),
+    ).toBeNull()
   })
 
   it('names the command where it does not', async () => {

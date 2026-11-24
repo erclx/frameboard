@@ -34,12 +34,13 @@ export function watchExpiredLink(
   return unsubscribe
 }
 
+const LINK = 'A link works once, for a short time.'
+const RUN_OPEN = `${LINK} Run frameboard open for a new one.`
+
 export function toastExpired(editButton: boolean): void {
   const id = toast.add({
     title: 'This edit link has expired',
-    description: editButton
-      ? 'A link works once, for a short time.'
-      : 'A link works once, for a short time. Run frameboard open for a new one.',
+    description: editButton ? LINK : RUN_OPEN,
     type: 'warning',
     timeout: 0,
     ...(editButton
@@ -47,6 +48,14 @@ export function toastExpired(editButton: boolean): void {
           actionProps: {
             children: 'Edit this board',
             onClick: () => {
+              // The toast outlives the socket, and so the offer it was raised under.
+              if (!liveStore.getState().editButton) {
+                toast.update(id, {
+                  description: RUN_OPEN,
+                  actionProps: undefined,
+                })
+                return
+              }
               toast.close(id)
               askToEdit()
             },

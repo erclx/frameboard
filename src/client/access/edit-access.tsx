@@ -43,25 +43,26 @@ export function EditAccessDialog({
 }: EditAccessProps) {
   const offered = useEditOffered()
   const open = useStore(editAccessStore, (state) => state.open)
+  const refusal = useStore(editAccessStore, (state) => state.refusal)
   const [asking, setAsking] = useState(false)
-  const [refusal, setRefusal] = useState<string | null>(null)
   // A dropped socket takes the dialog with it, so a reconnect never reopens it.
   useEffect(() => {
-    if (!offered) closeEditAccess()
-  }, [offered])
+    if (open && !offered) closeEditAccess()
+  }, [open, offered])
 
   const edit = async () => {
     setAsking(true)
-    setRefusal(null)
+    editAccessStore.setState({ refusal: null })
     try {
       await writeBoard('/api/access/edit', {}, 'POST', send)
       reload()
     } catch (error) {
-      setRefusal(
-        error instanceof BoardWriteError
-          ? error.message
-          : 'The board did not answer.',
-      )
+      editAccessStore.setState({
+        refusal:
+          error instanceof BoardWriteError
+            ? error.message
+            : 'The board did not answer.',
+      })
     } finally {
       setAsking(false)
     }
@@ -71,9 +72,7 @@ export function EditAccessDialog({
     <Dialog
       open={open && offered}
       onOpenChange={(next) => {
-        if (next) return
-        closeEditAccess()
-        setRefusal(null)
+        if (!next) closeEditAccess()
       }}
     >
       <DialogContent showCloseButton={false} className="gap-3 p-4">
