@@ -8,7 +8,7 @@ import {
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import { type BoardServer, serveBoard } from '../support/board-server'
 import { framesLoaded } from '../support/frames'
@@ -106,6 +106,23 @@ async function waitForLiveFrames(page: Page): Promise<void> {
   await expect.poll(() => framesLoaded(page), { timeout: 30_000 }).toBe(true)
 }
 
+/** Where an element in a frame draws on screen, since Playwright drops the canvas scale reading one in another process. */
+async function shownBox(iframe: Locator, element: Locator) {
+  const outer = await iframe.boundingBox()
+  if (!outer) throw new Error('the frame draws no box')
+  const inner = await element.evaluate((el) => {
+    const { left, top, width, height } = el.getBoundingClientRect()
+    return { left, top, width, height, page: window.innerWidth }
+  })
+  const k = outer.width / inner.page
+  return {
+    x: outer.x + inner.left * k,
+    y: outer.y + inner.top * k,
+    width: inner.width * k,
+    height: inner.height * k,
+  }
+}
+
 test.describe('fifty live frames', () => {
   let parent: string
   let server: BoardServer
@@ -181,11 +198,9 @@ test.describe('fifty live frames', () => {
     await page.goto(`${server.url}/p/perf/grid`)
     await waitForLiveFrames(page)
 
-    const element = page
-      .frameLocator('[data-frame="perf/grid/frame-00"] iframe')
-      .locator('[data-name="Box"]')
-    const shown = await element.boundingBox()
-    if (!shown) throw new Error('no box in frame-00')
+    const iframe = page.locator('[data-frame="perf/grid/frame-00"] iframe')
+    const element = iframe.contentFrame().locator('[data-name="Box"]')
+    const shown = await shownBox(iframe, element)
     await page.keyboard.down('Meta')
     await page.mouse.click(
       shown.x + shown.width / 2,
