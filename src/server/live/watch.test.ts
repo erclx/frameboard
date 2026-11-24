@@ -157,6 +157,10 @@ describe('reloadRefs', () => {
       ['a stylesheet', 'studio/assets/shared.css'],
       ['a script', 'studio/assets/menu.js'],
       ['a font', 'studio/assets/brand.woff2'],
+      [
+        "an installed font's record",
+        'studio/assets/fonts/lora/font.license.json',
+      ],
       ["an image inside a kit's folder", 'studio/assets/kits/clean/paper.png'],
     ])('reloads every frame in the project for %s', async (_case, path) => {
       expect(await refsFor(path)).toEqual(PROJECT)

@@ -8,6 +8,7 @@ import {
   FRAME_EXTENSION,
   LAYOUT_FILE,
 } from '@/server/board/scan'
+import { FONT_RECORD } from '@/server/fonts/installed'
 import { assetKind, isPlaceableKind } from '@/shared/asset-kinds'
 import { CLAIMS_FILE, RUN_FOLDER, TOKEN_FILE } from '@/shared/board-files'
 import { KIT_ASSETS, PROJECT_KITS } from '@/shared/kits'
@@ -250,7 +251,8 @@ function reloadCauses(
     if (!project || !folder || rest.length === 0) continue
     if (folder === ASSETS_FOLDER) {
       const name = rest.at(-1) ?? ''
-      if (name.endsWith(LICENSE_FILE_SUFFIX)) continue
+      // A font's record is what its project's font sheet is built from.
+      if (name.endsWith(LICENSE_FILE_SUFFIX) && name !== FONT_RECORD) continue
       // A sheet's url() or the kit the frame route imports reaches a frame unlisted in its own loads.
       const inKit = rest[0] === PROJECT_KITS || rest[0] === KIT_ASSETS
       if (inKit || !isPlaceableKind(assetKind(name))) {

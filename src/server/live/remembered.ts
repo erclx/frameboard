@@ -20,6 +20,7 @@ import {
 import { frameLoads } from '@/server/checks/links'
 import { boardSheetPath } from '@/server/checks/tokens'
 import { contentHash } from '@/server/edit/address'
+import { FONT_RECORD } from '@/server/fonts/installed'
 import { NOTES_FILE } from '@/server/notes/store'
 import {
   ASSETS_FOLDER,
@@ -364,13 +365,13 @@ async function describeFile(path: string): Promise<string> {
   }
 }
 
-/** What the watcher ignores, and the license record beside a sourced file, which no frame renders. */
+/** What the watcher ignores, and a license record no frame renders, which a font's is not. */
 function isLeftOut(name: string): boolean {
   return (
     name.startsWith('.') ||
     name.endsWith(LOCK_SUFFIX) ||
     name.endsWith(TEMP_SUFFIX) ||
-    name.endsWith(LICENSE_FILE_SUFFIX)
+    (name.endsWith(LICENSE_FILE_SUFFIX) && name !== FONT_RECORD)
   )
 }
 
