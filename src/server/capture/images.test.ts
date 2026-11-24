@@ -1,4 +1,10 @@
-import { copyFileSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import {
+  copyFileSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -6,6 +12,7 @@ import type { Browser } from 'playwright-core'
 import { PNG } from 'pngjs'
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
+import { scanPage } from '@/server/board/scan'
 import { FrameboardError } from '@/shared/errors'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -19,6 +26,7 @@ import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { frameOf } from '../../test/board'
 import { startFrameHost } from './host'
 import {
+  captureComposites,
   captureFrameImages,
   captureMotionImages,
   compositeBounds,
@@ -255,6 +263,67 @@ describe.skipIf(shell === null)(
 // A page whose background follows its width, so each shot names the width
 // it was rendered at by its color.
 const WIDE_PAGE = `<!doctype html><html lang="en"><head><title>hero</title><style>body { margin: 0; height: 100vh; background: #00f } @media (max-width: 500px) { body { background: #f00 } }</style></head><body></body></html>`
+
+describe.skipIf(shell === null)(
+  'captureComposites',
+  { timeout: SHELL_TEST_TIMEOUT_MS },
+  () => {
+    let browser: Browser
+    let board: TempBoard
+    let out: string
+
+    beforeAll(() => {
+      browser = requireShell(shell)
+    }, SHELL_HOOK_TIMEOUT_MS)
+
+    afterEach(() => {
+      board.cleanup()
+      rmSync(out, { recursive: true, force: true })
+    })
+
+    async function shoot(lastFrame: string) {
+      board = writeBoard({
+        'studio/home/hero.html': STICKY_PAGE,
+        'studio/work/grid.html': lastFrame,
+      })
+      out = mkdtempSync(join(tmpdir(), 'frameboard-shots-'))
+      const host = await startFrameHost({ root: board.root, facesDir: out })
+      try {
+        return await captureComposites(browser, {
+          baseUrl: host.url,
+          pages: [
+            await scanPage(board.root, 'studio', 'home', 0),
+            await scanPage(board.root, 'studio', 'work', 1),
+          ],
+          themes: ['light'],
+          out,
+        })
+      } finally {
+        await host.close()
+      }
+    }
+
+    it('writes one image per page in the order given', async () => {
+      const images = await shoot(STICKY_PAGE)
+
+      expect(images.map((image) => image.ref)).toEqual([
+        'studio/home',
+        'studio/work',
+      ])
+      expect(readdirSync(join(out, 'studio')).sort()).toEqual([
+        'home.light.png',
+        'work.light.png',
+      ])
+    })
+
+    it('writes no page when a frame on the last one is refused', async () => {
+      const shot = shoot('<img src="missing.png">')
+
+      await expect(shot).rejects.toMatchObject({ code: 'image-missing' })
+      expect(readdirSync(out)).not.toContain('studio')
+    })
+  },
+)
 
 describe.skipIf(shell === null)(
   'captureFrameImages at linked widths',

@@ -1,13 +1,15 @@
 ---
 title: Capture
-description: Screenshots of frames and pages in either theme
+description: Screenshots of frames, pages, and projects in either theme
 ---
 
 # Capture
 
 ## Overview
 
-Owns what an agent sees of a frame without a screen, being PNGs of one frame or a whole page, in either theme or both. Capture runs in a real browser.
+Owns what an agent sees of a frame without a screen, being PNGs of one frame, a whole page, or a whole project, in either theme or both. Capture runs in a real browser.
+
+`capture --all-pages` refreshes a project's archive as images alone, where `references sync` fills a `frames.json` folder with HTML too. `--prune` then removes every other image of the call's themes and kind, frame or composite, under `<out>/<project>/`. It keeps `assets/` and anything behind a link, and refuses a folder of the board.
 
 ## Layout
 
@@ -15,7 +17,7 @@ Owns what an agent sees of a frame without a screen, being PNGs of one frame or 
 
 Owns the capture browser, the frame host, `fit`, and `inspect`, with flags and records in `frameboard docs`. `capture` writes images under `.run/captures/` per theme, width, scroll offset, or moment, and the PNG route and thumbnails share one warm browser, all over a loopback host, so no verb needs a running server.
 
-- A frame opens at layout size from `frameThemeUrl` under an emulated `prefers-color-scheme`, on a host mounting the routes through `servedFrames`, and every image renders before any is written
+- A frame opens at layout size from `frameThemeUrl` under an emulated `prefers-color-scheme`, on a host mounting the routes through `servedFrames`, and a call renders every image before writing any
 - `createWarmBrowser` keeps one browser for the PNG route, the thumbnails, and the browser checker on separate queues, and the route takes no token since it shows only what the frame route serves
 - The warm renderer hides drawn controls through one style marked `data-frameboard`, so an element index still counts the file, while `capture`, `fit`, and `inspect` show them
 - `src/shared/motion.ts` reads `__hf`, then every `__timelines` entry, then `document.getAnimations()`, and `seek.ts` runs it in the page by source text, so it stays self-contained

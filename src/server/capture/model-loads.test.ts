@@ -24,7 +24,7 @@ import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
 import { scanPage } from '../board/scan'
 import { ensureViewer } from '../models/viewer'
 import { type FrameHost, startFrameHost } from './host'
-import { captureComposite, captureFrameImages } from './images'
+import { captureComposites, captureFrameImages } from './images'
 import { openFrame } from './render'
 import { findMotion, seekMotion } from './seek'
 
@@ -343,10 +343,9 @@ describe.skipIf(shell === null)(
         const out = mkdtempSync(join(tmpdir(), 'frameboard-shots-'))
         try {
           const page = await scanPage(board.root, 'studio', 'deck', 0)
-          const [image] = await captureComposite(browser, {
+          const [image] = await captureComposites(browser, {
             baseUrl: host.url,
-            page: { ref: page.ref, project: 'studio', name: 'deck' },
-            frames: page.frames,
+            pages: [page],
             themes: ['light'],
             out,
           })
