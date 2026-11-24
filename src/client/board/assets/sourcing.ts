@@ -3,7 +3,7 @@ import { createStore } from 'zustand/vanilla'
 
 import { useLive } from '@/client/live/store'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
-import { FONT_CATEGORIES, type FontCategory } from '@/shared/fonts'
+import { FONT_CATEGORIES, FONT_SHEET, type FontCategory } from '@/shared/fonts'
 import type {
   FontFind,
   FontList,
@@ -104,6 +104,15 @@ export async function fetchInstalledFonts(
   project: string,
 ): Promise<FontList | null> {
   return read<FontList>(`${base(project)}/fonts/installed`).catch(() => null)
+}
+
+/**
+ * The sheet declaring a project's installed fonts, addressed by what it holds
+ * so the browser reads it again once a family is installed or removed.
+ */
+export function installedFontSheet(list: FontList): string {
+  const held = list.fonts.map((font) => font.id).join(',')
+  return `/frames/${encodeURIComponent(list.project)}/${FONT_SHEET}?fonts=${encodeURIComponent(held)}`
 }
 
 /**

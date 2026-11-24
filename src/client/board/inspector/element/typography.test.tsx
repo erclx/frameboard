@@ -4,6 +4,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
+import type { InstalledFont } from '@/shared/records/sourcing'
 import type { TokenRow } from '@/shared/records/tokens'
 
 import { recorder } from './fixtures'
@@ -12,6 +13,22 @@ import { type WriteElement } from './write'
 
 /** The kit's tooltip popup, apart from a caption carrying the same words. */
 const TOOLTIP = '[data-slot="tooltip-content"]'
+
+const installedFont: InstalledFont = {
+  id: 'playfair-display',
+  family: 'Playfair Display',
+  category: 'serif',
+  license: 'OFL-1.1',
+  licenseUrl: 'https://example.test/playfair-display/license',
+  landingUrl: 'https://fontsource.org/fonts/playfair-display',
+  variable: true,
+  weights: [{ min: 400, max: 900 }],
+  styles: ['normal'],
+  path: 'fonts/playfair-display',
+  files: 2,
+  bundled: false,
+  frames: [],
+}
 
 /** Type details as an element with no decoration, case, truncation, or wrap style computes them. */
 const PLAIN_TYPE = {
@@ -67,6 +84,50 @@ describe('TypographySection', () => {
 
     expect(changes).toEqual([
       { kind: 'style', property: 'font-family', value: 'var(--font-text)' },
+    ])
+  })
+
+  it('lists an installed family after the served faces, drawn in its face, and writes its name', async () => {
+    const { changes, write } = recorder()
+    render(
+      <TypographySection
+        fonts={[]}
+        installed={{
+          version: 1,
+          project: 'studio',
+          fonts: [installedFont],
+        }}
+        fontFamily="Geist, sans-serif"
+        fontToken={null}
+        fontSize={30}
+        fontWeight={700}
+        textAlign="left"
+        details={PLAIN_TYPE}
+        lineHeight={null}
+        letterSpacing={0}
+        disabled={false}
+        write={write}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: 'Font family' }))
+    const items = await screen.findAllByRole('menuitemradio')
+    expect(items.map((item) => item.textContent)).toEqual([
+      'Geist',
+      'Geist Mono',
+      'Inter',
+      'Source Serif 4',
+      'Caveat',
+      'Playfair Display',
+    ])
+    const installed = screen.getByRole('menuitemradio', {
+      name: 'Playfair Display',
+    })
+    expect(installed).toHaveStyle({ fontFamily: '"Playfair Display"' })
+    await userEvent.click(installed)
+
+    expect(changes).toEqual([
+      { kind: 'style', property: 'font-family', value: "'Playfair Display'" },
     ])
   })
 

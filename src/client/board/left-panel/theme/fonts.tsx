@@ -12,7 +12,6 @@ import {
 import { useLive } from '@/client/live/store'
 import { BoardWriteError } from '@/client/live/write'
 import { FACES, faceSheetUrl, faceStack } from '@/shared/faces'
-import { FONT_SHEET } from '@/shared/fonts'
 import type { ListResult } from '@/shared/records/list'
 import type {
   FontFind,
@@ -24,6 +23,7 @@ import type {
 import {
   fetchInstalledFonts,
   findFonts,
+  installedFontSheet,
   useInstalledFonts,
 } from '../../assets/sourcing'
 import { installFont, removeFont } from './write'
@@ -98,8 +98,8 @@ export function FontsSection({
       {FACES.map((face) => (
         <link key={face.folder} rel="stylesheet" href={faceSheetUrl(face)} />
       ))}
-      {installed.length > 0 ? (
-        <link rel="stylesheet" href={projectSheet(project, installed)} />
+      {list?.fonts.length ? (
+        <link rel="stylesheet" href={installedFontSheet(list)} />
       ) : null}
       <div className="flex h-6 items-center justify-between gap-2">
         <h3 id="theme-fonts" className="text-xs font-semibold">
@@ -505,18 +505,6 @@ function familyRows(installed: readonly InstalledFont[]): FamilyRow[] {
 /** A license's short mark, as `OFL-1.1` reads `OFL`. */
 function licenseMark(license: string): string {
   return license.replace(/-[\d.]+$/, '')
-}
-
-/**
- * The project's font sheet, addressed by what it holds so the browser reads
- * it again once a family is installed or removed.
- */
-function projectSheet(
-  project: string,
-  installed: readonly InstalledFont[],
-): string {
-  const held = installed.map((font) => font.id).join(',')
-  return `/frames/${encodeURIComponent(project)}/${FONT_SHEET}?fonts=${encodeURIComponent(held)}`
 }
 
 /** The frames a removal leaves falling back, none where the board serves the family too. */
