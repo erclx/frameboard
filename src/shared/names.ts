@@ -69,3 +69,18 @@ export function folderName(typed: string): string {
     .slice(0, NAME_MAX_LENGTH)
     .replace(/-+$/, '')
 }
+
+/** Leaves room under the name limit for the suffix a taken name grows. */
+const ELEMENT_FRAME_STEM = NAME_MAX_LENGTH - 8
+
+/**
+ * The name a frame made for one element asks for, being its `data-name` in
+ * kebab case, else its tag.
+ */
+export function elementFrameName(name: string | null, tagName: string): string {
+  const kebab = folderName(name ?? '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .slice(0, ELEMENT_FRAME_STEM)
+    .replace(/-+$/, '')
+  return kebab === '' ? tagName : kebab
+}

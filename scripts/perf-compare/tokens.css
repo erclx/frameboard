@@ -1,0 +1,18 @@
+:root {
+  --primary: #4338ca;
+  --accent: #b45309;
+  --surface: #ffffff;
+  --text: #111827;
+  --muted: #4b5563;
+  --radius-md: 8px;
+  --font-text: sans-serif;
+  --space: 16px;
+}
+
+[data-theme='dark'] {
+  --primary: #a5b4fc;
+  --accent: #fbbf24;
+  --surface: #111827;
+  --text: #f9fafb;
+  --muted: #d1d5db;
+}

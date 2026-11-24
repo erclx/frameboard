@@ -15,6 +15,8 @@ import { type ElementSpan, relocate, spanText } from './element-span'
 import { hideElement, type MayShow } from './hide'
 import {
   ensureViewerScript,
+  type ExtractedElement,
+  extractElement,
   type InsertedSpan,
   insertElement,
   type MovedSpan,
@@ -383,6 +385,49 @@ export function removeFrameFile(
     span: removed.span,
     remap: takenOut(index, subtreeSize(read.source, index)),
   }
+}
+
+/** The file an extracted element's frame goes to, or why it cannot be written. */
+export type ExtractTarget =
+  | { readonly ok: true; readonly path: string; readonly html: string }
+  | EditRefused
+
+/**
+ * Takes one element out of a frame file and into a new one `target` names,
+ * writing the new file first and taking it back on any failure before the
+ * source's write, so the element stands in one of the two at every moment.
+ */
+export async function extractFrameFile(
+  path: string,
+  hash: string,
+  index: number,
+  target: (element: ExtractedElement) => ExtractTarget,
+  created: (path: string) => Promise<void>,
+): Promise<FrameFileRemove> {
+  const read = readSource(path)
+  if (!read.ok) return read
+  if (read.hash !== hash) return stale(path)
+  const extracted = extractElement(read.source, index)
+  if (!extracted.ok) return extracted
+  const own = target(extracted)
+  if (!own.ok) return own
+  writeFileSync(own.path, own.html, { flag: 'wx' })
+  try {
+    await created(own.path)
+    if (replaceFile(path, hash, extracted.html)) {
+      return {
+        ok: true,
+        hash: contentHash(extracted.html),
+        span: extracted.span,
+        remap: takenOut(index, subtreeSize(read.source, index)),
+      }
+    }
+  } catch (error) {
+    rmSync(own.path, { force: true })
+    throw error
+  }
+  rmSync(own.path, { force: true })
+  return stale(path)
 }
 
 export type FrameFileRemoveAll =

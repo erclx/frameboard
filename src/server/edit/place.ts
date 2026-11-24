@@ -1,3 +1,5 @@
+import { splitTopLevel } from '@/server/checks/cascade'
+
 import { type Element, hasTag, parseFrame } from './address'
 import {
   applyEdit,
@@ -7,7 +9,7 @@ import {
 } from './apply'
 import { rawAttribute } from './attribute'
 import type { ElementSpan } from './element-span'
-import { ownText } from './elements'
+import { isPlaced, ownText } from './elements'
 import { declaredValues } from './style'
 
 /** Where a placed element sits, in CSS pixels against its containing block. */
@@ -25,6 +27,9 @@ export interface PlaceFacts {
   readonly position: string | null
   readonly width: boolean
   readonly height: boolean
+  /** Its `transform` and `translate` as written, absent when no author rule sets one. */
+  readonly transform?: string
+  readonly translate?: string
 }
 
 /** A size a placement writes where no rule sets one, and back in flow may drop. */
@@ -65,8 +70,7 @@ function inFlow(
 ): string {
   const style = rawAttribute(source, element, 'style') ?? ''
   if (declaredValues(style, 'position').length > 0) return ''
-  const position = facts?.position?.trim().toLowerCase()
-  return position === 'absolute' || position === 'fixed' ? 'static' : ''
+  return isPlaced(facts) ? 'static' : ''
 }
 
 /** Whether `element` is anchored above `parent`, with nothing positioned between. */
@@ -180,4 +184,54 @@ export function placeElement(
   if (!written.ok) return written
   spans.push(written.span)
   return { ok: true, html: written.html, spans, sized }
+}
+
+export type Stood = { readonly ok: true; readonly html: string } | EditRefused
+
+/** A transform with the translations taken out, `none` when they were all it held. */
+function withoutShift(transform: string): string {
+  // One space after each function, since two may sit on lines or with none between.
+  const spaced = transform.replace(/\s+/g, ' ').replace(/\)(?=[a-z])/gi, ') ')
+  const kept = splitTopLevel(spaced, ' ')
+    .filter((part) => !/^translate/i.test(part))
+    .join(' ')
+    .trim()
+  return kept === '' ? 'none' : kept
+}
+
+/**
+ * Stands a placed element in the flow of a frame it has to itself, where its
+ * offsets, and the shift that centers it on them, would draw it outside a
+ * hugging box. It stays positioned, so its own placed children stay put.
+ */
+export function standInFlow(
+  source: string,
+  index: number,
+  facts: readonly PlaceFacts[],
+): Stood {
+  const own = facts[index]
+  if (!isPlaced(own)) return { ok: true, html: source }
+  const transform = own?.transform ?? 'none'
+  return applyEdit(
+    source,
+    { index },
+    {
+      kind: 'styles',
+      declarations: [
+        { property: 'position', value: 'relative' },
+        ...['left', 'top', 'right', 'bottom'].map((property) => ({
+          property,
+          value: '',
+        })),
+        // Beats the offsets a rule may place it at.
+        { property: 'inset', value: 'auto' },
+        ...(/translate/i.test(transform)
+          ? [{ property: 'transform', value: withoutShift(transform) }]
+          : []),
+        ...(own?.translate && own.translate !== 'none'
+          ? [{ property: 'translate', value: 'none' }]
+          : []),
+      ],
+    },
+  )
 }

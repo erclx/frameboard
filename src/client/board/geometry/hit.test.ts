@@ -221,11 +221,10 @@ describe('ghostAt', () => {
     return layer
   }
 
-  it('answers the element whose ghost sits under the point, past the frame', () => {
+  it('answers the element whose ghost sits under the point, past the frame, with its box', () => {
     expect(ghostAt(layerWithGhost(), [BACK], { x: 420, y: 40 })).toEqual({
-      frame: BACK.ref,
-      index: 4,
-      hash: HASH,
+      key: { frame: BACK.ref, index: 4, hash: HASH },
+      box: { x: 350, y: 20, width: 100, height: 50 },
     })
   })
 

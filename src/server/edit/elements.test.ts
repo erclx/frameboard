@@ -73,6 +73,19 @@ describe('elementTree', () => {
     ).toEqual([['p', true]])
   })
 
+  it('marks a name the file states, so it is told apart from one read off its text', () => {
+    const tree = elementTree(
+      '<body><p data-name="Intro">Hi</p><p>Hi</p></body>',
+    )
+
+    expect(
+      Array.isArray(tree) && tree.map((row) => [row.name, row.named]),
+    ).toEqual([
+      ['Intro', true],
+      ['Hi', undefined],
+    ])
+  })
+
   it('reads an empty div or span, or a paragraph holding an element, as no text', () => {
     const tree = elementTree('<body><div></div><span></span><p><br></p></body>')
 
@@ -417,6 +430,15 @@ describe('elementPlaceFacts', () => {
     expect(
       factsOf('<div id="t" style="position: absolute; width: 40px"></div>'),
     ).toEqual({ position: 'absolute', width: true, height: false })
+  })
+
+  it('reads a transform a rule sets and a translate the style attribute sets', () => {
+    expect(
+      factsOf(
+        '<p id="t" style="translate: 4px">x</p>',
+        '#t { transform: translateX(-50%) }',
+      ),
+    ).toMatchObject({ transform: 'translateX(-50%)', translate: '4px' })
   })
 
   it('reads no position when only an ancestor sets one', () => {

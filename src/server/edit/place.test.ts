@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { parseFrame } from './address'
-import { placeElement, type PlaceFacts } from './place'
+import { placeElement, type PlaceFacts, standInFlow } from './place'
 
 const NONE: PlaceFacts = { position: null, width: false, height: false }
 
@@ -199,5 +199,133 @@ describe('placeElement', () => {
     )
 
     expect(placed).toMatchObject({ ok: false, reason: 'invalid-address' })
+  })
+})
+
+describe('standInFlow', () => {
+  it('drops the offsets of a placed element and keeps it the box its own count from', () => {
+    const source =
+      '<body><div style="position: absolute; left: 300px; top: 40px; width: 80px"><i></i></div></body>'
+
+    const stood = standInFlow(
+      source,
+      3,
+      factsFor(source, { 3: { position: 'absolute' } }),
+    )
+
+    expect(stood).toMatchObject({
+      ok: true,
+      html: '<body><div style="position: relative; width: 80px; inset: auto"><i></i></div></body>',
+    })
+  })
+
+  it('writes over the offsets a rule places the element at', () => {
+    const source = '<body><div class="toast">x</div></body>'
+
+    const stood = standInFlow(
+      source,
+      3,
+      factsFor(source, { 3: { position: 'fixed' } }),
+    )
+
+    expect(stood).toMatchObject({
+      ok: true,
+      html: '<body><div class="toast" style="position: relative; inset: auto">x</div></body>',
+    })
+  })
+
+  it.each([
+    ['translate(-50%, -50%)', 'none'],
+    ['translateX(-50%) rotate(5deg)', 'rotate(5deg)'],
+    ['scale(2)translate3d(0, calc(1px + (2px * 3)), 0)', 'scale(2)'],
+    ['rotate(5deg)\ntranslateX(-50%)', 'rotate(5deg)'],
+    [
+      'translateX(-50%)\n\tmatrix(1, 0, 0,\n1, 0, 0)',
+      'matrix(1, 0, 0, 1, 0, 0)',
+    ],
+  ])(
+    'clears the shift %j centers an element by, keeping %s',
+    (transform, kept) => {
+      const source = '<body><div class="dialog">x</div></body>'
+
+      const stood = standInFlow(
+        source,
+        3,
+        factsFor(source, { 3: { position: 'absolute', transform } }),
+      )
+
+      expect(stood).toMatchObject({
+        ok: true,
+        html: `<body><div class="dialog" style="position: relative; inset: auto; transform: ${kept}">x</div></body>`,
+      })
+    },
+  )
+
+  it("rewrites the shift an element's own style states", () => {
+    const source =
+      '<body><div style="position: absolute; left: 50%; transform: translateX(-50%) rotate(5deg)">x</div></body>'
+
+    const stood = standInFlow(
+      source,
+      3,
+      factsFor(source, {
+        3: {
+          position: 'absolute',
+          transform: 'translateX(-50%) rotate(5deg)',
+        },
+      }),
+    )
+
+    expect(stood).toMatchObject({
+      ok: true,
+      html: '<body><div style="position: relative; transform: rotate(5deg); inset: auto">x</div></body>',
+    })
+  })
+
+  it('clears a shift the translate property makes', () => {
+    const source = '<body><div class="dialog">x</div></body>'
+
+    const stood = standInFlow(
+      source,
+      3,
+      factsFor(source, {
+        3: { position: 'fixed', translate: '-50% -50%' },
+      }),
+    )
+
+    expect(stood).toMatchObject({
+      ok: true,
+      html: '<body><div class="dialog" style="position: relative; inset: auto; translate: none">x</div></body>',
+    })
+  })
+
+  it('writes no transform over one that shifts nothing', () => {
+    const source = '<body><div class="tilted">x</div></body>'
+
+    const stood = standInFlow(
+      source,
+      3,
+      factsFor(source, {
+        3: { position: 'absolute', transform: 'rotate(5deg)' },
+      }),
+    )
+
+    expect(stood).toMatchObject({
+      ok: true,
+      html: '<body><div class="tilted" style="position: relative; inset: auto">x</div></body>',
+    })
+  })
+
+  it('leaves an element in the flow as it is', () => {
+    const source =
+      '<body><div style="position: relative; left: 4px">x</div></body>'
+
+    const stood = standInFlow(
+      source,
+      3,
+      factsFor(source, { 3: { position: 'relative' } }),
+    )
+
+    expect(stood).toMatchObject({ ok: true, html: source })
   })
 })

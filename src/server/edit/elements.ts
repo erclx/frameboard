@@ -26,6 +26,8 @@ const PLACE_PROPERTIES: ReadonlySet<string> = new Set([
   'position',
   'width',
   'height',
+  'transform',
+  'translate',
 ])
 
 /**
@@ -66,6 +68,7 @@ export function elementTree(
       parent: parent === body ? null : (index.get(parent) ?? null),
       tag: element.tagName,
       name: elementName(element),
+      ...(statedName(element) ? { named: true as const } : {}),
       // A placed Text opens as an empty paragraph, which reads as text before its first word.
       textOnly:
         ownText(element) !== null ||
@@ -128,10 +131,22 @@ export function elementPlaceFacts(
     position: own(element, 'position'),
     width: own(element, 'width') !== null,
     height: own(element, 'height') !== null,
+    ...shiftOf(own(element, 'transform'), own(element, 'translate')),
   }))
 }
 
-function isPlaced(facts: PlaceFacts | undefined): boolean {
+/** The shifts an author rule sets, each left out where none does. */
+function shiftOf(
+  transform: string | null,
+  translate: string | null,
+): Pick<PlaceFacts, 'transform' | 'translate'> {
+  return {
+    ...(transform === null ? {} : { transform }),
+    ...(translate === null ? {} : { translate }),
+  }
+}
+
+export function isPlaced(facts: PlaceFacts | undefined): boolean {
   const position = facts?.position?.trim().toLowerCase()
   return position === 'absolute' || position === 'fixed'
 }
@@ -162,12 +177,17 @@ function words(value: string | undefined): string[] {
  * something to the frame's CSS, scripts, and readers.
  */
 export function elementName(element: Element): string {
-  const named = attribute(element, 'data-name')?.trim()
+  const named = statedName(element)
   if (named) return named
   const text = ownText(element)
   if (text !== null) return text.slice(0, NAME_LENGTH)
   const alt = element.tagName === 'img' ? attribute(element, 'alt')?.trim() : ''
   return alt || element.tagName
+}
+
+/** An element's `data-name`, null when it states none or a blank one. */
+export function statedName(element: Element): string | null {
+  return attribute(element, 'data-name')?.trim() || null
 }
 
 /** The whitespace-collapsed text of an element holding text alone, else null. */

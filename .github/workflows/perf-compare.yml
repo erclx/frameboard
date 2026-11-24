@@ -1,0 +1,79 @@
+name: Performance Comparison
+
+# Started by hand only. It reports on two commits and gates nothing, so it has
+# no push or pull request trigger and the ruleset never names it.
+on:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Branch, tag, or commit to compare against. Name a commit for a branch behind main.
+        required: true
+        default: main
+        type: string
+      head:
+        description: Branch, tag, or commit to measure, older than this file included.
+        required: true
+        type: string
+      rounds:
+        description: Rounds per side, from 1 to 20.
+        required: true
+        default: '5'
+        type: string
+
+run-name: Compare ${{ inputs.base }} with ${{ inputs.head }}
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    name: 📏 Compare Performance
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      BASE: ${{ inputs.base }}
+      HEAD: ${{ inputs.head }}
+      ROUNDS: ${{ inputs.rounds }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Any commit can be a side, so the whole history comes along.
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Base
+        run: bash scripts/perf-compare/build-side.sh "$BASE" "$RUNNER_TEMP/base"
+
+      - name: Build Head
+        run: bash scripts/perf-compare/build-side.sh "$HEAD" "$RUNNER_TEMP/head"
+
+      # Each side's server launches the Chromium its own Playwright pins.
+      - name: Install Chromium for the Harness
+        timeout-minutes: 5
+        run: bunx playwright install chromium
+
+      - name: Install Chromium for Base
+        timeout-minutes: 5
+        working-directory: ${{ runner.temp }}/base
+        run: bunx playwright install chromium
+
+      - name: Install Chromium for Head
+        timeout-minutes: 5
+        working-directory: ${{ runner.temp }}/head
+        run: bunx playwright install chromium
+
+      - name: Compare
+        run: bun scripts/perf-compare/run.ts "$RUNNER_TEMP/base" "$RUNNER_TEMP/head" "$ROUNDS"

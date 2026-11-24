@@ -52,7 +52,7 @@ Owns the change kinds a step holds and what each restores, which is only what th
 - A hand edit's undo restores its element while the agent left it alone, found by index or else by a unique byte match, and answers the hash it left so the element can stay selected
 - That element span is byte-exact only while every frame writer splices inside the target's start tag or between its tags, which `src/server/edit/property.test.ts` checks, so a new writer keeps to that
 - A placed element's undo takes out the one element its bytes match, and its redo puts it back under its parent, ahead of the sibling it preceded, both found by start tag
-- A deleted element is that change run backwards, its whitespace possibly landing on its other side, while a moved one holds both gaps with the bytes beside each, so its undo is byte for byte
+- A deleted element is that change run backwards, its whitespace possibly landing on its other side, while one moved or dragged out holds the bytes beside its gaps, so its undo is byte for byte
 - A layout entry's undo compares and restores the size on an axis both it and the stored entry hug as whatever is stored, since the server measured that size and the developer never set it
 
 ## Gotchas

@@ -181,7 +181,6 @@ describe('useAssetDrop', () => {
     expect(ghosts).toContainEqual({
       box: { x: 118, y: 42, width: 64, height: 36 },
       name: 'hero-2',
-      hugsHeight: false,
     })
     expect(tileDragStore.getState().ghost).toBeNull()
   })
@@ -418,7 +417,6 @@ describe('useAssetDrop with a found result', () => {
     expect(ghosts).toContainEqual({
       box: { x: 118, y: 36, width: 64, height: 48 },
       name: 'glass-house',
-      hugsHeight: false,
     })
   })
 
