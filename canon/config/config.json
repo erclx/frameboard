@@ -76,6 +76,10 @@
           "disposition": "customized",
           "base": "sha256:8a7c3b12a77cdc3502d09986327dc25a99ec3db79c3fa1c770349d03ab3f4395"
         },
+        ".husky/pre-push": {
+          "disposition": "customized",
+          "base": "sha256:e059070389c708b2bcebd7b96f8787f4bdcedc866539c02af1dfd5d98630eb3e"
+        },
         ".oxlintrc.json": {
           "disposition": "customized",
           "base": "sha256:89fffa9c7742952bdb5500ef24cf7e4132be3f819121e32071dfe58af75133b5"

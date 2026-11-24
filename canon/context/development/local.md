@@ -16,16 +16,25 @@ Owns how the project runs on a developer machine, being the toolchain, the scrip
 
 ### Scripts
 
-These gate a change, and `bun run check` is the one the pre-push hook runs.
+These gate a change, and `bun run check:changed` is the one the pre-push hook runs. CI runs the full suites.
 
 | Command                            | Purpose                                                                                                |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `bun run check:changed`            | Runs typecheck, lint, format, the shell check, `canon gate`, and the tests beside the changed files    |
 | `bun run check`                    | Gates locally and writes nothing, running typecheck, lint, format, unit tests, build, and `canon gate` |
 | `bun run check:full`               | Runs `check`, then `test:e2e`                                                                          |
 | `bun run typecheck`                | Runs `tsc --noEmit` over `src/`, `e2e/`, and the root configs                                          |
 | `bun run lint`, `bun run lint:fix` | Runs oxlint with zero warnings allowed, and auto-fixes its issues                                      |
 | `bun run format`                   | Auto-fixes oxfmt formatting                                                                            |
 | `bun run build`                    | Builds the client into `dist/client/` with Vite, then `dist/cli.js` and `dist/hook.js` with rolldown   |
+
+`scripts/check-changed.ts` decides what a push proves and what it leaves to CI.
+
+- A test is tied to a change when it changed or sits beside a changed file under its name, and the change is measured from the merge base with `origin/main`
+- Imports are not followed, since a shared module's chain reaches most of the suite, and past 40 tied files the run is left to CI
+- A change under `web/` adds that folder's typecheck, lint, format, and tied tests, and its build stays in CI's Landing Page Gate
+- A pass is kept in the worktree's git directory under the tree, merge base, and canon version it read, so a push on that content skips and `--force` runs it again
+- `check:shell` needs `shfmt` and `shellcheck` on the machine, and `check` runs it too
 
 Four conditions sit behind those commands.
 
@@ -67,7 +76,7 @@ Owns the git hooks.
 
 - `pre-commit` runs `lint-staged`, being oxlint and oxfmt on staged code, oxfmt on JSON, CSS, and markdown, and `canon indexes regen` on markdown
 - `commit-msg` runs `commitlint` against the conventional commit format
-- `pre-push` runs `bun run check`, so a push fails on formatting drift until `bun run format` runs, since the hook writes nothing
+- `pre-push` runs `bun run check:changed`, so a push fails on formatting drift until `bun run format` runs, since the hook formats nothing
 
 ### Other folders
 

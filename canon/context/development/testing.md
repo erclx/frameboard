@@ -13,11 +13,11 @@ Owns where the tests and their fixtures live and how a heavy run shares the mach
 
 ### Scripts
 
-`scripts/test-locked.ts` wraps `test:run`, `test:e2e`, and `test:e2e:changed` in a lock of numbered slots across every checkout on the machine, so a heavy run waits while others hold it rather than starving them. The slots are `test.lock` and `test.2.lock` in the user cache folder.
+`scripts/test-locked.ts` wraps `test:run`, `test:e2e`, and `test:e2e:changed` in a lock of numbered slots across every checkout on the machine, so a heavy run waits while others hold it rather than starving them. The first slot is `test.lock` in the user cache folder, and a second is `test.2.lock`.
 
 | Variable                | Purpose                                                                                     |
 | ----------------------- | ------------------------------------------------------------------------------------------- |
-| `FRAMEBOARD_TEST_SLOTS` | How many runs go at once, default 2, where `1` restores one at a time                       |
+| `FRAMEBOARD_TEST_SLOTS` | How many runs go at once, default 1                                                         |
 | `FRAMEBOARD_TEST_LIMIT` | Seconds a run may take from its start, default 900, 0 for none, off under `CI` unless given |
 
 The limit bounds a run that hangs, so a stuck run no longer holds a slot for good.
@@ -57,8 +57,8 @@ Owns the fixture boards under `test/fixtures/boards/` and the helpers under `tes
 
 ## Gotchas
 
-- `scripts/verify.ts` prints a phase's output once the phase exits, so a `check` or `pre-push` waiting on the lock looks hung until its run ends
+- `scripts/verify.ts` prints a phase's output once the phase exits, so a `check` waiting on the lock looks hung until its run ends
 - A slot whose holder exited is taken over on the next poll, so delete a lock file by hand only when the waiting line names a live pid that runs no test
-- A wrapper from before slots takes `test.lock` alone, so a worktree on an older commit can overlap two newer runs until it rebases
+- A worktree on a commit whose default was two slots can overlap a newer run until it rebases
 - A child whose parent exited before the kill's first poll survives it
 - The browser project's 15 second test and 30 second hook timeouts run in the page, so a page that stops running never trips them and only the limit holds
