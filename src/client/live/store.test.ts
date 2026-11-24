@@ -191,6 +191,17 @@ describe('receiveBoard', () => {
     expect([after?.length, after?.[0] === before]).toEqual([1, true])
   })
 
+  it('drops a frame removed from the end of its page', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero', 'about'))
+
+    receiveBoard(store, boardWith('hero'))
+
+    expect(
+      store.getState().board?.projects[0]?.pages[0]?.frames.map((f) => f.name),
+    ).toEqual(['hero'])
+  })
+
   it('keeps each keyed map whole when the board drops none of its keys', () => {
     const store = createLiveStore()
     receiveBoard(store, boardWith('hero'))
