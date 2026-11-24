@@ -12,10 +12,12 @@ git clone https://github.com/erclx/frameboard.git
 cd frameboard
 bun install
 bunx playwright install chromium
-bun run check
+bun run check:changed
 ```
 
-`bun install` also activates the git hooks through husky. `bun run check` runs the same gate as the `pre-push` hook, being typecheck, lint, format check, unit tests, build, and the markdown bans. It writes nothing, so run `bun run format` when it reports formatting drift.
+`bun install` also activates the git hooks through husky. `bun run check:changed` runs the same gate as the `pre-push` hook, being typecheck, lint, format check, shell check, the tests beside the files you changed, and the markdown bans.
+
+The shell check needs `shfmt` and `shellcheck` on your machine. The gate formats nothing, so run `bun run format` when it reports drift.
 
 ## Layout
 
@@ -46,16 +48,16 @@ After changing a manifest, check it. `claude plugin validate .` reads the market
 
 - `bun run test:run` runs Vitest once across two projects. The `node` project covers `src/cli/`, `src/server/`, and `src/shared/`, and the `browser` project runs `src/client/` in headless Chromium.
 - `bun run test:e2e` builds the CLI and runs Playwright against it
-- `bun run check:full` runs the whole gate followed by the end to end suite
+- `bun run check` runs every unit and component test and the build, and `bun run check:full` adds the end to end suite. CI runs all three on a pull request, so neither is owed before a push.
 
 ### The test lock
 
 Heavy runs share the machine through one lock.
 
-- `test:run` and the two e2e runs share a lock across every checkout on the machine, so two runs go at once and a third waits
+- `test:run` and the two e2e runs share a lock across every checkout on the machine, so one run goes at a time and the next waits
 - A waiting run prints a line naming the holders, such as `[test-lock 10:59:15] waiting on pid 3974197 in /repo/other running 'vitest run'`
 - A run still going after 15 minutes is killed with every process it started and exits 124
-- `FRAMEBOARD_TEST_LIMIT` sets the limit in seconds, 0 for none, and `FRAMEBOARD_TEST_SLOTS=1` runs one at a time
+- `FRAMEBOARD_TEST_LIMIT` sets the limit in seconds, 0 for none, and `FRAMEBOARD_TEST_SLOTS` sets how many go at once, 1 unless given
 
 Frameboard ships one CLI that runs on Node and on Bun, so a change to `src/cli/` or `src/server/` should start under both. After `bun run build`, run `node dist/cli.js serve` and `bun dist/cli.js serve` and open the board each time.
 

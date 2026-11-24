@@ -54,6 +54,7 @@ function wrap(settings: Record<string, string>, command: string[]): Run {
 function wrapAsync(
   settings: Record<string, string>,
   command: string[],
+  onStderr: (text: string) => void = () => {},
 ): Promise<Run> {
   const child = spawn(BUN, [WRAPPER, ...command], {
     env: wrapperEnv(settings),
@@ -61,6 +62,7 @@ function wrapAsync(
   let stderr = ''
   child.stderr.on('data', (chunk: Buffer) => {
     stderr += chunk.toString()
+    onStderr(stderr)
   })
   return new Promise((resolve) => {
     child.on('exit', (code) => resolve({ code, stderr }))
@@ -181,6 +183,22 @@ describe('the time limit', { timeout: 20_000 }, () => {
 })
 
 describe('settings', () => {
+  it('should run one at a time when no slot count is set', async () => {
+    tryAcquire(lock, {
+      pid: process.pid,
+      cwd: '/repo/other',
+      command: 'vitest run',
+      startedAt: '2026-11-14T10:00:00.000Z',
+    })
+    // Freed only once the wrapper says it waits, so a slow start still meets it.
+    const run = await wrapAsync({}, ['true'], (text) => {
+      if (text.includes('waiting on pid')) release(lock, process.pid)
+    })
+
+    expect(run.stderr).toContain('waiting on pid')
+    expect(run.code).toBe(0)
+  })
+
   it('should run in slot two while slot one is held', () => {
     tryAcquire(lock, {
       pid: process.pid,
@@ -189,7 +207,11 @@ describe('settings', () => {
       startedAt: '2026-11-14T10:00:00.000Z',
     })
 
-    const run = wrap({}, ['bash', '-c', `test -f '${slotPath(lock, 2)}'`])
+    const run = wrap({ FRAMEBOARD_TEST_SLOTS: '2' }, [
+      'bash',
+      '-c',
+      `test -f '${slotPath(lock, 2)}'`,
+    ])
 
     expect(run.code).toBe(0)
     expect(existsSync(slotPath(lock, 2))).toBe(false)
