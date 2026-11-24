@@ -97,6 +97,8 @@ export interface Placement {
   upright?: UprightSize
   /** The widths a foldable's entry lists and never draws, which un-naming it draws again. */
   keptWidths?: LinkedWidth[]
+  /** Present while the board paints the frame's content past its edge. */
+  showOverflow?: true
   /** Absent for a frame with no override or one holding a value no reader knows. */
   transition?: Transition
   /** Absent for a frame with no note or one holding a value of another type. */
@@ -271,6 +273,7 @@ export function placeFrames(
       ...(islandOf(entry.island) === 'wide' ? { island: 'wide' as const } : {}),
       ...(turn !== 'upright' && foldable ? { turn } : {}),
       ...(turn !== 'upright' && !foldable && upright ? { turn, upright } : {}),
+      ...(entry.showOverflow === true ? { showOverflow: true as const } : {}),
       ...(transition ? { transition } : {}),
       ...(speakerNotes ? { speakerNotes } : {}),
       ...(kit ? { kit } : {}),

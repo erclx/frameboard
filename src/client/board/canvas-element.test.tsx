@@ -257,3 +257,64 @@ describe('double-clicking an element in a frame', () => {
     expect(heading.hasAttribute(EDITING)).toBe(false)
   })
 })
+
+describe('a frame showing its content past the edge', () => {
+  const OPEN = frameOf('open', {
+    box: { x: 0, y: 0, width: 400, height: 300 },
+    showOverflow: true,
+  })
+  const HASH = 'f'.repeat(64)
+  // A badge 20 px below the frame's bottom edge. Indices: html 0, head 1, body 2, div 3.
+  const BADGE =
+    '<div style="position:absolute;left:40px;top:320px;width:200px;height:40px"></div>'
+
+  /** The frame drawn on the canvas with nothing selected, once its badge is painted. */
+  async function renderOpen() {
+    const { container } = renderCanvas(pageOf([OPEN]))
+    const frame = container.querySelector(`[data-frame="${OPEN.ref}"]`)
+    const hit = container.querySelector<HTMLElement>('[data-hit-layer]')
+    if (!frame || !hit) throw new Error('no drawn frame')
+    await expect.poll(() => frame.querySelector('iframe')).not.toBeNull()
+    const iframe = frame.querySelector('iframe')
+    if (!iframe) throw new Error('no live frame')
+    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style><script data-frameboard type="module" src="/src/frame-bridge/main.ts"></script></head><body style="margin:0">${BADGE}</body></html>`
+    await expect.poll(() => container.querySelector('img')).not.toBeNull()
+    const picture = container.querySelector('img')
+    if (!picture) throw new Error('no picture')
+    return { container, frame, hit, picture }
+  }
+
+  it('paints the element below its edge at the canvas scale, unselected', async () => {
+    const { frame, picture } = await renderOpen()
+
+    const box = frame.getBoundingClientRect()
+    const scale = box.width / OPEN.box.width
+    const painted = picture.getBoundingClientRect()
+    expect(painted.left - box.left).toBeCloseTo(40 * scale, 0)
+    expect(painted.top - box.top).toBeCloseTo(320 * scale, 0)
+    expect(painted.width).toBeCloseTo(200 * scale, 0)
+  })
+
+  it('leaves a press on the picture to the canvas under it', async () => {
+    const { hit, picture } = await renderOpen()
+    const { left, top, width, height } = picture.getBoundingClientRect()
+    const press = (type: string) =>
+      new MouseEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+        clientX: left + width / 2,
+        clientY: top + height / 2,
+      })
+
+    act(() => {
+      hit.dispatchEvent(press('mousedown'))
+    })
+    const taken = selectionStore.getState().element ?? null
+    act(() => {
+      window.dispatchEvent(press('mouseup'))
+    })
+
+    expect(taken).toBeNull()
+  })
+})

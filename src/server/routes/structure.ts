@@ -183,7 +183,7 @@ const frameSpeakerNotesSchema = z.object({
 })
 const frameFlagSchema = z.object({
   refs,
-  flag: z.enum(['hidden', 'locked']),
+  flag: z.enum(['hidden', 'locked', 'showOverflow']),
   on: z.boolean(),
 })
 const sectionBox = z.object({

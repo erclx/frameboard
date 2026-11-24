@@ -806,6 +806,26 @@ describe('structureRoutes', () => {
       expect(history.counts().undo).toBe(1)
     })
 
+    it('shows several frames past their edges as one step and undoes it', async () => {
+      const bytes = readFileSync(frameFile('hero'))
+
+      await post('/api/frame/flag', {
+        refs: ['studio/home/hero', 'studio/home/mobile'],
+        flag: 'showOverflow',
+        on: true,
+      })
+      expect(layout()).toMatchObject({
+        hero: { showOverflow: true },
+        mobile: { showOverflow: true },
+      })
+      expect(history.counts().undo).toBe(1)
+      await history.undo()
+
+      expect(layout().hero).not.toHaveProperty('showOverflow')
+      expect(layout().mobile).not.toHaveProperty('showOverflow')
+      expect(readFileSync(frameFile('hero'))).toEqual(bytes)
+    })
+
     it('sets a device on several frames as one step and undoes it', async () => {
       const bytes = readFileSync(frameFile('hero'))
 

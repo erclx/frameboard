@@ -25,6 +25,14 @@ The inspector holds each frame-level setting.
 - The inspector's Height row holds a frame at a fixed height, at its content's height, or at one screen its page scrolls past. A frame taken through Fit and back to Scroll returns to the screen it left.
 - In Edit a scroll frame draws a rail beside it, which a drag or click scrolls while the wheel still pans the board, and the icon ending a frame's label opens it alone in a new tab
 
+### Content past the edge
+
+The inspector's Clip content switch decides whether a frame cuts what runs past its edge.
+
+- With it off, the board paints each element past the right or bottom edge as a still picture at its place, and a selected frame shows those pictures either way
+- An element reaching past the left or top edge takes no picture, and a selected frame ghosts it as before
+- A capture or an export still cuts at the box, and a frame that scrolls or shows its device always does
+
 ### Device
 
 The inspector's Show device switch draws a body around the frame and leaves its file alone.

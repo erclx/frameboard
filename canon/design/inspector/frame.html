@@ -1430,6 +1430,39 @@
         font-weight: 400;
       }
     </style>
+    <style>
+      .swr {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 16px;
+        margin-top: 10px;
+      }
+      .swt {
+        position: relative;
+        display: block;
+        width: 26px;
+        height: 14px;
+        border-radius: 7px;
+        background: var(--raised);
+      }
+      .swt::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 10px;
+        height: 10px;
+        border-radius: 5px;
+        background: #fff;
+      }
+      .swt.on {
+        background: var(--accentfill);
+      }
+      .swt.on::after {
+        left: 14px;
+      }
+    </style>
   </head>
   <body>
     <div class="app floating">
@@ -1871,6 +1904,14 @@
                     d="M12 22v-6M12 8V2M4 12H2M10 12H8M16 12h-2M22 12h-2M15 19l-3-3-3 3M15 5l-3 3-3-3"
                   /></svg></span
             ></label>
+          </div>
+          <div class="swr">
+            <span>Show device<span class="q">?</span></span
+            ><i class="swt"></i>
+          </div>
+          <div class="swr">
+            <span>Clip content<span class="q">?</span></span
+            ><i class="swt on"></i>
           </div>
         </div>
         <div class="isec">
