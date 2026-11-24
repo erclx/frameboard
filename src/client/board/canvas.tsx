@@ -109,6 +109,7 @@ import {
   type CanvasControls,
   reportHandMove,
   reportZoom,
+  reportZoomWritten,
 } from './view'
 import { isNotch, PAN_EASE_MS, panEase, wheelPixels, wheelZoom } from './wheel'
 import { LinkedBoxes } from './widths/linked-box'
@@ -294,6 +295,7 @@ export function Canvas({
       for (const moved of [layer, notesLayerRef.current]) {
         moved?.style.setProperty('--zoom', k)
       }
+      reportZoomWritten()
     }
 
     const settle = (view: View) => {

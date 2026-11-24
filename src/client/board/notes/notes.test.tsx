@@ -19,7 +19,7 @@ import { HANDLE_REACH } from '../geometry/hit'
 import { dropPending, holdBoxes } from '../geometry/write'
 import { modeStore } from '../mode'
 import { endPreview, setPreview } from '../preview/store'
-import { reportZoom } from '../view'
+import { reportZoom, reportZoomWritten } from '../view'
 import { Composer } from './composer'
 import { NotesLayer } from './markers'
 import type { NotePick } from './pick'
@@ -1228,6 +1228,56 @@ describe('NotesLayer', () => {
     )
 
     expect(screen.getByRole('region', { name: 'Note 4' })).toBeInTheDocument()
+  })
+
+  describe('on a canvas whose chrome scale trails its zoom', () => {
+    // The canvas at 100% with `--zoom` still at 40%, as a zoom leaves it until the write.
+    function renderTrailing() {
+      const { container } = render(
+        <div data-canvas className="relative h-[600px] w-[800px]">
+          <div data-notes-layer style={{ ['--zoom' as string]: 0.4 }}>
+            <NotesLayer page="studio/home" frames={[HERO]} container={null} />
+          </div>
+        </div>,
+      )
+      const layer = container.querySelector<HTMLElement>('[data-notes-layer]')
+      if (!layer) throw new Error('no notes layer')
+      return layer
+    }
+    const cardBox = () => {
+      const { left, top } = screen
+        .getByRole('region', { name: 'Note 4' })
+        .getBoundingClientRect()
+      return { left: Math.round(left), top: Math.round(top) }
+    }
+
+    it('opens the card without a render loop', async () => {
+      live({ notes: { 'studio/home': [note({ id: 'n_1', number: 4 })] } })
+      renderTrailing()
+
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Note 4 on hero' }),
+      )
+
+      expect(screen.getByRole('region', { name: 'Note 4' })).toBeVisible()
+    })
+
+    it('moves the card to where a fresh one opens once the scale is written', async () => {
+      live({ notes: { 'studio/home': [note({ id: 'n_1', number: 4 })] } })
+      const layer = renderTrailing()
+      const marker = screen.getByRole('button', { name: 'Note 4 on hero' })
+      await userEvent.click(marker)
+
+      act(() => {
+        layer.style.setProperty('--zoom', '1')
+        reportZoomWritten()
+      })
+      const caught = cardBox()
+      await userEvent.keyboard('{Escape}')
+      await userEvent.click(marker)
+
+      expect(caught).toEqual(cardBox())
+    })
   })
 
   it('closes a thread on a press outside its card', async () => {
