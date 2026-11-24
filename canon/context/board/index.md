@@ -17,7 +17,7 @@ The browser app, split into the shell, commands, agent work, the inspector, the 
 - [Inspector](inspector/index.md): The right panel, its element sections, and the color picker
 - [Left panel](left-panel.md): The left panel's header, its Design, Theme, and Assets tabs, the page and layers lists, find, and the first-run guide
 - [Phone link and clipboard](phone-clipboard.md): The read-only phone listener for one project and the copy of frames onto the OS clipboard
-- [Placing elements](placing.md): The Text, Shape, and Image tools, where a new element lands in a frame, and the drop of an asset tile
+- [Placing elements](placing.md): The Text, Shape, and Image tools, where a new element lands in a frame, and the drop of an asset tile or an element dragged out
 - [Playback](playback.md): A frame's motion held in the board, Play mode, and presenting a page as slides
 - [Board server](server.md): Folder watcher, socket hub, claims record, write access, and the HTTP routes behind the board
 - [Board shell](shell.md): The board screen and canvas, Edit and Play, the panels, sections, and the toolbar

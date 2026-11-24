@@ -15,6 +15,7 @@ import { OUTLINE, screen, sizeLabel } from '../geometry/draw'
 import { CHIP, OVERLAY_Z } from '../geometry/overlay'
 import { usePendingBox } from '../geometry/write'
 import { useMode } from '../mode'
+import { carriedStore } from '../place/tool'
 import { usePreview } from '../preview/store'
 import { type ElementKey, useSelection } from '../selection'
 import { groupBounds, type GroupMember, scalesAsGroup } from './group'
@@ -106,6 +107,7 @@ function FrameGhosts({ frame, ghosted, container }: FrameGhostsProps) {
   )
   // The route lays a frame out at its stored width, so a previewed one has no picture.
   const previewed = usePreview(frame.ref) !== undefined
+  const out = useStore(carriedStore, (state) => state.out)
   if (!overflow) return null
   const page = pageBox(pending ?? frame.box, frame.device, frame.turn)
   const painted = paintedIndexes(overflow.ghosts)
@@ -115,7 +117,8 @@ function FrameGhosts({ frame, ghosted, container }: FrameGhostsProps) {
       painted.has(index) && !previewed
         ? pictureUrl(key, frame.box, theme, version)
         : null
-    if (!ghosted && !picture) return null
+    // Out over bare canvas, the drop ghost draws its box instead.
+    if (sameKey(key, out) || (!ghosted && !picture)) return null
     return (
       <Ghost
         key={index}

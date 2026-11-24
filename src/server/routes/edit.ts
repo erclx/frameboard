@@ -1,10 +1,11 @@
 import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 import { Hono } from 'hono'
 import { z } from 'zod'
 
 import { resolveAsset } from '@/server/board/assets'
+import { layoutAt, withLayouts } from '@/server/board/frames'
 import { resolveFrameRef } from '@/server/board/refs'
 import {
   frameFrom,
@@ -14,12 +15,14 @@ import {
 } from '@/server/checks/frame-source'
 import { frameKit, readSheets } from '@/server/checks/tokens'
 import { refuseClaimed } from '@/server/claims/gate'
+import { readClaims } from '@/server/claims/store'
 import { contentHash } from '@/server/edit/address'
 import { applyEdit } from '@/server/edit/apply'
 import { elementPlaceFacts } from '@/server/edit/elements'
 import {
   editFrameFile,
   editFrameFileAll,
+  extractFrameFile,
   insertFrameFile,
   moveFrameFile,
   placeFrameFile,
@@ -37,15 +40,18 @@ import {
   type InsertKind,
   textFont,
 } from '@/server/edit/insert'
-import { placeElement } from '@/server/edit/place'
+import { placeElement, standInFlow } from '@/server/edit/place'
 import type { History } from '@/server/history/stack'
 import { styleValue } from '@/server/look/colors'
 import { readTokenTable } from '@/server/look/token-table'
 import { ensureViewer } from '@/server/models/viewer'
 import { followEdit, notesPath } from '@/server/notes/store'
+import { FRAME_EXTENSION } from '@/shared/board-files'
 import { VIEWER_TAG } from '@/shared/model-viewer'
+import { elementFrameName, nextFreeName } from '@/shared/names'
 import {
   type EditResult,
+  type ExtractResult,
   type InsertResult,
   type MoveResult,
   placedSizeSchema,
@@ -158,6 +164,14 @@ const removeSchema = z.union([
     hash: z.string().regex(/^[0-9a-f]{64}$/),
   }),
 ])
+
+const extractSchema = z.object({
+  ref: z.string().min(1).max(1024),
+  hash: z.string().regex(/^[0-9a-f]{64}$/),
+  index: z.int().min(0),
+  /** Where the new frame stands, its size holding until the frame is measured. */
+  box: z.object({ x: z.int(), y: z.int(), width: side, height: side }),
+})
 
 const moveSchema = z.object({
   ref: z.string().min(1).max(1024),
@@ -520,6 +534,101 @@ export function editRoutes(
     })
     await follow(frame, body.hash, result.hash, result.remap)
     const data: RemoveResult = { ref, hash: result.hash }
+    return c.json({ ok: true, data })
+  })
+
+  app.post('/api/frames/extract', requireWriter(access), async (c) => {
+    const body = await parseBody(c.req.raw, extractSchema)
+    const frame = await resolveFrameRef(root, body.ref, { cwd: root })
+    const pageRef = `${frame.project}/${frame.page}`
+    const ref = `${pageRef}/${frame.name}`
+    const now = new Date()
+    await refuseClaimed(root, [ref], now)
+    // A name an agent reserved is held, so its later file never overwrites this one.
+    const reserved = (await readClaims(root, now)).flatMap((claim) =>
+      claim.frame.startsWith(`${pageRef}/`)
+        ? [claim.frame.slice(pageRef.length + 1)]
+        : [],
+    )
+    const page = dirname(frame.path)
+    const journal = history.journal()
+    let name = ''
+    const result = await withLayouts(
+      [page],
+      async (layouts) => {
+        const layout = layoutAt(layouts, page)
+        const { kit } = layout.placement(frame.name)
+        const taken = [
+          ...layout.names,
+          ...Object.keys(layout.file.frames),
+          ...reserved,
+        ]
+        const extracted = await extractFrameFile(
+          frame.path,
+          body.hash,
+          body.index,
+          (element) => {
+            name = nextFreeName(
+              elementFrameName(element.name, element.tagName),
+              taken,
+            )
+            const stood = standInFlow(
+              element.frame,
+              element.index,
+              elementPlaceFacts(
+                frameFrom(frame, element.frame),
+                tokenSheets(frame),
+              ),
+            )
+            if (!stood.ok) return stood
+            const path = join(page, `${name}${FRAME_EXTENSION}`)
+            return { ok: true, path, html: stood.html }
+          },
+          (path) => journal.created(path),
+        )
+        if (!extracted.ok) return extracted
+        journal.deletedElement(frame.path, ref, extracted.span)
+        layout.names = [...layout.names, name].sort()
+        layout.set(name, {
+          box: body.box,
+          order: layout.topOrder(),
+          hidden: false,
+          locked: false,
+          hugWidth: true,
+          hugHeight: true,
+          scroll: false,
+          widths: [],
+          placed: true,
+          // The kit's sheets load from the layout, so the copied head alone would drop them.
+          ...(kit ? { kit } : {}),
+        })
+        layout.renumber()
+        return extracted
+      },
+      journal,
+    )
+    if (!result.ok) {
+      return c.json(
+        {
+          ok: false,
+          error: {
+            code: result.reason,
+            message: result.detail,
+            details: { ref, index: body.index },
+          },
+        },
+        409,
+      )
+    }
+    const own = `${pageRef}/${name}`
+    history.record({
+      id: journal.id,
+      changes: journal.changes,
+      page: null,
+      frames: [ref, own],
+    })
+    await follow(frame, body.hash, result.hash, result.remap)
+    const data: ExtractResult = { ref, hash: result.hash, frame: own }
     return c.json({ ok: true, data })
   })
 

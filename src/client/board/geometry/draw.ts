@@ -12,9 +12,9 @@ export const screen = (px: number) => `calc(${px}px / var(--zoom, 1))`
 
 export const OUTLINE = `${screen(1.5)} solid var(--primary)`
 
-/** A box's size for a chip, naming a height that follows its content as `Hug`. */
-export function sizeLabel(box: Box, hugging?: 'height'): string {
-  return `${box.width} × ${hugging === 'height' ? 'Hug' : box.height}`
+/** A box's size for a chip, naming a side that follows its content as `Hug`. */
+export function sizeLabel(box: Box, hugging?: 'height' | 'both'): string {
+  return `${hugging === 'both' ? 'Hug' : box.width} × ${hugging ? 'Hug' : box.height}`
 }
 
 /** A box's left, top, width, and height, relative to `within` when given. */

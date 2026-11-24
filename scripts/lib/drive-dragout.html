@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>assistant</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        background: var(--surface);
+        color: var(--text);
+        font-family: var(--font-text);
+      }
+      .cta {
+        padding: 12px 20px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--primary);
+        color: var(--surface);
+        font: inherit;
+        font-size: 18px;
+      }
+      .card {
+        position: absolute;
+        left: 360px;
+        top: 160px;
+        width: 220px;
+        height: 120px;
+        background: var(--muted);
+      }
+      .badge {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--primary);
+      }
+    </style>
+  </head>
+  <body>
+    <h1 data-name="Title">Thursday 15 May</h1>
+    <button class="cta" data-name="Talk to the assistant">
+      Talk to the assistant
+    </button>
+    <table data-name="Table">
+      <tbody>
+        <tr data-name="Row">
+          <td>One</td>
+          <td>Two</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="card" data-name="Card">
+      <div class="badge" data-name="Badge"></div>
+    </div>
+  </body>
+</html>

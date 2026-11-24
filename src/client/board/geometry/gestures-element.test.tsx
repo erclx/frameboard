@@ -107,6 +107,130 @@ describe('attachGestures', () => {
       expect([carried, canvas.moves, canvas.writes]).toEqual([null, [], []])
     })
 
+    describe('released over bare canvas', () => {
+      const ghost = () => carriedStore.getState().ghost
+
+      it('moves the element into a frame of its own where the drag drew it', () => {
+        const canvas = setupWithElement()
+
+        canvas.pointer.drag([200, 175], [350, 355])
+
+        expect(canvas.extracts).toEqual([
+          {
+            page: PAGE,
+            key: ELEMENT,
+            box: { x: 300, y: 330, width: 100, height: 50 },
+          },
+        ])
+        expect(canvas.moves).toEqual([])
+      })
+
+      it('draws the frame it would make while over bare canvas alone', () => {
+        const canvas = setupWithElement()
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(210, 200)
+        const inside = ghost()
+        canvas.pointer.move(350, 355)
+        const bare = ghost()
+        canvas.pointer.move(500, 200)
+        const over = ghost()
+        canvas.pointer.move(350, 355)
+        canvas.pointer.up(350, 355)
+
+        expect(bare?.box).toEqual({ x: 300, y: 330, width: 100, height: 50 })
+        expect([inside, over, ghost()]).toEqual([null, null, null])
+      })
+
+      it('keeps the outline of a carried element, which stays where it was', () => {
+        const canvas = setupWithElement()
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(350, 355)
+        const bare = canvas
+          .part('[data-layer]')
+          .hasAttribute('data-dragged-out')
+        canvas.pointer.up(350, 355)
+
+        expect(bare).toBe(false)
+      })
+
+      it('makes no frame released over another frame', () => {
+        const canvas = setupWithElement()
+
+        canvas.pointer.drag([200, 175], [500, 200])
+
+        expect(canvas.extracts).toEqual([])
+      })
+
+      it.each([
+        ['a linked width drawn beside its frame', [430, 200]],
+        ['the label strip over a frame', [200, 92]],
+      ] as const)('makes no frame released over %s', (_case, to) => {
+        const canvas = setup(
+          [{ ...LEFT, widths: [{ width: 150, height: 200 }] }],
+          { elementBox: ELEMENT_BOX },
+        )
+        detach = canvas.detach
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.drag([200, 175], [...to])
+
+        expect(canvas.extracts).toEqual([])
+        expect(canvas.moves).toHaveLength(1)
+      })
+
+      it('makes no frame over one the page hides', () => {
+        const hidden = { ...RIGHT, ref: `${PAGE}/hidden`, hidden: true }
+        const canvas = setup([LEFT], {
+          elementBox: ELEMENT_BOX,
+          hidden: [hidden],
+        })
+        detach = canvas.detach
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.drag([200, 175], [500, 200])
+
+        expect(canvas.extracts).toEqual([])
+      })
+
+      it('makes no frame released over a panel, which hides the canvas under it', () => {
+        const canvas = setupWithElement()
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(350, 355)
+        canvas.pointer.up(350, 355, {}, canvas.part('[data-viewport]'))
+
+        expect(canvas.extracts).toEqual([])
+        expect(ghost()).toBeNull()
+      })
+
+      it('makes no frame when Esc cancels the drag', () => {
+        const canvas = setupWithElement()
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(350, 355)
+        pressEscape()
+        const cleared = ghost()
+        canvas.pointer.up(350, 355)
+
+        expect([cleared, canvas.extracts]).toEqual([null, []])
+      })
+
+      it('makes no frame in a tab that may not write', () => {
+        const canvas = setup(undefined, {
+          elementBox: ELEMENT_BOX,
+          canWrite: false,
+        })
+        detach = canvas.detach
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.drag([200, 175], [350, 355])
+
+        expect([canvas.extracts, ghost()]).toEqual([[], null])
+      })
+    })
+
     describe('several elements', () => {
       const FIRST = { frame: LEFT.ref, index: 3, hash: 'a'.repeat(64) }
       const SECOND = { frame: LEFT.ref, index: 4, hash: 'a'.repeat(64) }
@@ -566,6 +690,63 @@ describe('attachGestures', () => {
         expect(canvas.placedMoves[0]?.commits).toEqual([{ left: 65, top: 10 }])
       })
 
+      it('moves into a frame of its own released over bare canvas, writing no offsets', async () => {
+        const canvas = setupPlaced()
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.drag([200, 175], [350, 355])
+
+        expect(canvas.extracts).toEqual([
+          {
+            page: PAGE,
+            key: ELEMENT,
+            box: { x: 300, y: 330, width: 100, height: 50 },
+          },
+        ])
+        expect(canvas.placedMoves[0]?.commits).toEqual([])
+        await answered()
+        expect([canvas.placedMoves[0]?.cancelled, heldOutline()]).toEqual([
+          false,
+          null,
+        ])
+      })
+
+      it('hides its outline while the ghost of its frame draws there alone', () => {
+        const canvas = setupPlaced()
+        const layer = canvas.part('[data-layer]')
+        const read = () => [
+          layer.hasAttribute('data-dragged-out'),
+          carriedStore.getState().out,
+        ]
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.down(200, 175)
+        canvas.pointer.move(225, 155)
+        const inside = read()
+        canvas.pointer.move(350, 355)
+        const bare = read()
+        canvas.pointer.up(350, 355)
+
+        expect([inside, bare, read()]).toEqual([
+          [false, null],
+          [true, ELEMENT],
+          [false, null],
+        ])
+      })
+
+      it('goes back where it was when that move is refused', async () => {
+        const canvas = setupPlaced(undefined, false)
+        act(() => selectElement(selectionStore, PAGE, ELEMENT))
+
+        canvas.pointer.drag([200, 175], [350, 355])
+        await answered()
+
+        expect([canvas.placedMoves[0]?.cancelled, heldOutline()]).toEqual([
+          true,
+          null,
+        ])
+      })
+
       it('holds nothing on a drag released where it started', () => {
         const canvas = setupPlaced()
         act(() => selectElement(selectionStore, PAGE, ELEMENT))
@@ -736,6 +917,21 @@ describe('attachGestures', () => {
           canvas.placedMoves[0]?.commits,
           canvas.writes,
         ]).toEqual([GHOST.key, [{ left: 60, top: 50 }], []])
+      })
+
+      it('moves a ghost dragged on over bare canvas into a frame of its own', () => {
+        const canvas = setup(undefined, {
+          ghost: GHOST,
+          placed: { left: 160, top: 50 },
+        })
+        detach = canvas.detach
+        act(() => select(selectionStore, PAGE, [LEFT.ref]))
+
+        canvas.pointer.drag([320, 170], [350, 370])
+
+        expect(canvas.extracts).toMatchObject([
+          { key: GHOST.key, box: { x: 290, y: 350, width: 80, height: 40 } },
+        ])
       })
 
       it("leaves a press on the selected frame's corner to its resize", () => {

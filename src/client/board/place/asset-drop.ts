@@ -41,12 +41,13 @@ export const tileDragStore = createStore<{
   ghost: DropGhost | null
 }>()(() => ({ at: null, ghost: null }))
 
-/** The frame a tile dropped on bare canvas would make, as the ghost draws it. */
+/** The frame a tile or a carried element dropped on bare canvas would make, as the ghost draws it. */
 export interface DropGhost {
   box: Box
-  name: string
-  /** Whether the frame takes its height from its content, as an audio's does. */
-  hugsHeight: boolean
+  /** Null while the board cannot tell what the frame will be named. */
+  name: string | null
+  /** The sides the frame takes from its content, an audio's height and both of an element's. */
+  hugging?: 'height' | 'both'
 }
 
 interface AssetDropOptions {
@@ -145,7 +146,7 @@ export function useAssetDrop(
                   fileFrameName(path),
                   all.map((frame) => frame.name),
                 ),
-                hugsHeight: file?.kind === 'audio',
+                hugging: file?.kind === 'audio' ? 'height' : undefined,
               }
             : null,
       })
@@ -210,7 +211,10 @@ export function useAssetDrop(
  * Whether a board point sits in any frame's box, a hidden, locked, or still
  * loading one included, since a drop there is over a frame and makes none.
  */
-function overFrame(frames: readonly FrameRecord[], at: BoardPoint): boolean {
+export function overFrame(
+  frames: readonly FrameRecord[],
+  at: BoardPoint,
+): boolean {
   return frames.some(
     ({ box }) =>
       at.x >= box.x &&
