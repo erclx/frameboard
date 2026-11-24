@@ -9,6 +9,7 @@ import { registerCheck } from './commands/check'
 import { registerDocs } from './commands/docs'
 import { registerEdit } from './commands/edit'
 import { registerEditing } from './commands/editing'
+import { registerFont } from './commands/font'
 import { registerFrame } from './commands/frame'
 import { registerImage } from './commands/image'
 import { registerInbox } from './commands/inbox'
@@ -175,6 +176,7 @@ export function createProgram(context: ProgramContext): Command {
   registerKit(program, context)
   registerImage(program, context)
   registerModel(program, context)
+  registerFont(program, context)
   registerPage(program, context)
   registerFrame(program, faced)
   registerEdit(program, context)

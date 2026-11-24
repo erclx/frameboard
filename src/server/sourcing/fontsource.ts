@@ -1,6 +1,7 @@
 import postcss, { type AtRule } from 'postcss'
 import { z } from 'zod'
 
+import type { JournalOptions } from '@/server/board/journal'
 import { FrameboardError } from '@/shared/errors'
 import {
   FONT_LICENSE_TEXT,
@@ -13,9 +14,10 @@ import {
   fontFaceSchema,
   type FontLicenseFile,
   type FontResult,
+  type SavedFont,
 } from '@/shared/records/sourcing'
 
-import { download, DOWNLOAD_LIMIT } from './save'
+import { assertFontFree, download, DOWNLOAD_LIMIT, saveFont } from './save'
 
 const FONTSOURCE_API = 'https://api.fontsource.org/v1/fonts'
 const PACKAGES = 'https://cdn.jsdelivr.net/npm'
@@ -224,6 +226,36 @@ export async function fetchFont(
   }
 }
 
+/** The family an install asks for, `query` null when no search found it. */
+export interface FontInstall {
+  id: string
+  query: string | null
+  weights?: readonly number[]
+  savedAt: Date
+}
+
+/**
+ * Finds one family by id and installs it whole, refusing as `familyById`,
+ * `fetchFont`, and `saveFont` do, a family the project holds ahead of any
+ * download.
+ */
+export async function installFont(
+  project: { name: string; path: string },
+  { id, query, weights, savedAt }: FontInstall,
+  send: typeof fetch,
+  options: JournalOptions = {},
+): Promise<SavedFont> {
+  const family = await familyById(id, send)
+  await assertFontFree(project, family.id)
+  const font = await fetchFont(family, weights, send)
+  return saveFont(
+    project,
+    font,
+    fontLicense(family, query, font, savedAt),
+    options,
+  )
+}
+
 /** The package sheets declaring the faces an install keeps, refusing `usage` for a weight the family lacks. */
 function sheetNames(
   family: FontFamily,
@@ -322,7 +354,7 @@ async function downloadAll(
 }
 
 /** The license record of a fetched family, `query` null when it was saved by id. */
-export function fontLicense(
+function fontLicense(
   family: FontFamily,
   query: string | null,
   font: Pick<FetchedFont, 'faces' | 'url'>,

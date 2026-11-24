@@ -235,8 +235,7 @@ export async function saveFont(
   { journal }: JournalOptions = {},
 ): Promise<SavedFont> {
   const { id } = license
-  const held = matchName(await fontFolders(project.path), id)
-  if (held !== undefined) throw fontTaken(project.name, held)
+  await assertFontFree(project, id)
   const fonts = fontsDir(project.path)
   const fresh = !existsSync(fonts)
   await mkdir(fonts, { recursive: true })
@@ -272,6 +271,15 @@ export async function saveFont(
     licensePath: `${path}/${FONT_RECORD}`,
     license,
   }
+}
+
+/** Refuses `name-taken` for a font folder the project already holds, in any case, whatever filled it. */
+export async function assertFontFree(
+  project: { name: string; path: string },
+  id: string,
+): Promise<void> {
+  const held = matchName(await fontFolders(project.path), id)
+  if (held !== undefined) throw fontTaken(project.name, held)
 }
 
 function fontTaken(project: string, id: string): FrameboardError {
