@@ -1,0 +1,21 @@
+[drive]
+launch = "bun install --frozen-lockfile && bun run build && CANON_PREVIEW_ROOT=. bun scripts/drive-seed.ts && CANON_PREVIEW_ROOT=. PREVIEW_PORT=4530 bun run preview"
+data = "test/fixtures/boards/basic"
+personas = ["a developer in the browser"]
+access = "/api/access/open"
+
+[preview]
+writes = ["test/fixtures/boards/basic"]
+keep = ["test/fixtures/boards/basic/.run"]
+seed = ["bun", "scripts/drive-seed.ts"]
+
+[health]
+# canon pr local probes this path before it posts a preview link.
+paths = ["/api/health"]
+
+# The landing under web/ serves no API, so its server is found on the page alone.
+page-only = ["web"]
+
+[painted]
+paths = ["src/client/**/*.ts"]
+exclude = ["src/client/**/fixtures.ts", "src/client/**/*-harness.tsx"]
