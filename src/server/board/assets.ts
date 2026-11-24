@@ -14,6 +14,7 @@ import {
 import { basename, dirname, join, sep } from 'node:path'
 
 import { type FrameTarget, readFrame } from '@/server/checks/frame-source'
+import { readFont } from '@/server/fonts/installed'
 import {
   assetKind,
   extensionOf,
@@ -24,6 +25,7 @@ import {
 } from '@/shared/asset-kinds'
 import { ASSETS_FOLDER } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
+import { FONTS_FOLDER } from '@/shared/fonts'
 import { PROJECT_KITS } from '@/shared/kits'
 import {
   isValidName,
@@ -175,15 +177,17 @@ async function confinedAsset(
 
 /**
  * A file a hand write may change, refusing `asset-not-found` for one
- * `confinedAsset` refuses, a license file, or a kit's file, which the Theme
- * tab owns.
+ * `confinedAsset` refuses, a license file, a kit's file, or an installed
+ * font's, whose record and license hold only while it stands as served.
  */
 async function writableAsset(
   projectDir: string,
   path: string,
 ): Promise<string> {
   const file =
-    path.split('/')[0] === PROJECT_KITS || path.endsWith(LICENSE_FILE_SUFFIX)
+    path.split('/')[0] === PROJECT_KITS ||
+    path.endsWith(LICENSE_FILE_SUFFIX) ||
+    (await isInstalledFontFile(projectDir, path))
       ? null
       : await confinedAsset(projectDir, path)
   if (file === null) {
@@ -194,6 +198,19 @@ async function writableAsset(
     )
   }
   return file
+}
+
+async function isInstalledFontFile(
+  projectDir: string,
+  path: string,
+): Promise<boolean> {
+  const [folder, id, ...rest] = path.split('/')
+  return (
+    folder === FONTS_FOLDER &&
+    id !== undefined &&
+    rest.length > 0 &&
+    (await readFont(projectDir, id)) !== null
+  )
 }
 
 /** The license file beside an asset, when it has one. */

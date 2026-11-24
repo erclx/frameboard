@@ -27,12 +27,16 @@ import { previewStartSchema, previewStopSchema } from './preview'
 import { referencesCheckSchema, referencesSyncSchema } from './references'
 import { selectionResultSchema } from './selection'
 import {
+  fontFindSchema,
+  fontListSchema,
+  fontRemoveSchema,
   imageDoctorSchema,
   imageFindSchema,
   imageGenerateSchema,
   licenseFileSchema,
   modelFindSchema,
   modelGenerateSchema,
+  savedFontSchema,
   savedImageSchema,
   savedModelSchema,
 } from './sourcing'
@@ -78,4 +82,8 @@ export const RECORDS: Record<string, z.core.$ZodType> = {
   modelFind: modelFindSchema,
   modelGenerate: modelGenerateSchema,
   savedModel: savedModelSchema,
+  fontFind: fontFindSchema,
+  savedFont: savedFontSchema,
+  fontList: fontListSchema,
+  fontRemove: fontRemoveSchema,
 }

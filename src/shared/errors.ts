@@ -104,6 +104,10 @@ export const EXIT_CODES = {
   'asset-not-found': 3,
   // A rename refused, since a frame it would rewrite is held by another session, named in the details.
   'asset-held': 4,
+  // A font under a license a project may not install, named in the details, writing nothing.
+  'license-refused': 15,
+  // A font named that the project has not installed.
+  'font-not-found': 3,
 } as const
 
 export type ErrorCode = keyof typeof EXIT_CODES

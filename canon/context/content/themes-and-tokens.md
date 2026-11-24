@@ -15,11 +15,20 @@ Owns how a frame gets its look from outside itself, being the token stylesheets 
 
 Owns the head spliced into a served frame, the Theme tab's token table, and the static color and flow reads the inspector shows, served through the face, sheet, and token routes in `src/server/routes/`, which `canon/context/board/server.md` owns. `starter.ts` writes a project `tokens.css`, refusing `tokens-exist` where a sheet reaches it.
 
-- One `<style data-frameboard>` goes first in `head`, importing the faces, the board sheet, the project sheet, then the kit sheets `kitSheetFiles` lists, so a frame's own stylesheet still wins
+- One `<style data-frameboard>` goes first in `head`, importing the faces, the project's font sheet, the board sheet, the project sheet, then the frame's kit sheets, so its own stylesheet still wins
 - It lands after a stated `head` start tag, else `html`, else the doctype, else byte 0 past a BOM, in the response alone, and the file on disk never changes
 - The style carries the served bytes' hash as `data-hash`, so a live frame names the exact file an address was read from
 - A self-removing script applies the `?theme=` query through `setFrameTheme`, setting `data-theme`, `color-scheme`, and `.dark` or `.light`, so a live frame keeps only the style
 - The rows of a `--tokens` sheet outside the board folder stay read-only, and an edit's `hash` is the named sheet's, or null for a project with no sheet of its own
+
+### `src/server/fonts/`
+
+Owns the fonts a project installed, read from each `assets/fonts/<id>/font.license.json`, which tells an installed family from a folder filled by hand. The save that writes one is in `canon/context/agent/sourcing.md`.
+
+- The frame route answers `/frames/<project>/fonts.css` from those records on each request, its file addresses relative so they hold behind the phone link's prefix
+- `font-missing` reads what the browser loaded and never a record, so an installed family whose file fails to load still refuses
+- A record is checked in full before it reaches the sheet, since a cloned board may carry one written by hand, and a folder whose record fails reads as not installed
+- `remove.ts` takes the folder out and never touches a frame, and `usage.ts` names the frames whose text resolves to the family first, the one `font-missing` judges
 
 ### `src/server/kits/`
 

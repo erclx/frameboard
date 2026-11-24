@@ -5,6 +5,17 @@ import { type Context, Hono } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { z } from 'zod'
 
+import type { JournalOptions } from '@/server/board/journal'
+import { listFonts } from '@/server/fonts/installed'
+import { removeFont } from '@/server/fonts/remove'
+import type { History } from '@/server/history/stack'
+import {
+  fetchFamilies,
+  FONTSOURCE_SOURCE,
+  installFont,
+  type ListedFamily,
+  searchFamilies,
+} from '@/server/sourcing/fontsource'
 import {
   type Environment,
   generateImage,
@@ -32,12 +43,15 @@ import {
   saveModel,
 } from '@/server/sourcing/save'
 import { type ErrorCode, FrameboardError } from '@/shared/errors'
+import { FONT_CATEGORIES, FONT_LICENSES } from '@/shared/fonts'
 import { isValidName } from '@/shared/names'
 import type {
+  FontFind,
   ImageFind,
   ImageGenerate,
   ImageOffer,
   ModelFind,
+  SavedFont,
   SavedImage,
   SavedModel,
 } from '@/shared/records/sourcing'
@@ -52,10 +66,10 @@ export const FIND_TIMEOUT_MS = 15_000
 export const SAVE_TIMEOUT_MS = 60_000
 
 /**
- * How long each request of a model save may take, longer than an image's,
- * since a model's buffer and textures download before packing.
+ * How long each request of a model or font save may take, longer than an
+ * image's, since a model's textures or a font's subsets download together.
  */
-export const MODEL_SAVE_TIMEOUT_MS = 180_000
+export const PACK_SAVE_TIMEOUT_MS = 180_000
 
 /** How long a provider may take, so a provider that never answers frees the button. */
 export const GENERATE_TIMEOUT_MS = 120_000
@@ -64,10 +78,12 @@ export const GENERATE_TIMEOUT_MS = 120_000
 const GENERATE_SIZE = { width: 1024, height: 1024 }
 
 export interface SourcingRoutesOptions {
-  /** Reaches Openverse, the image hosts, and the providers, the global `fetch` unless given. */
+  /** Reaches the sources, the image hosts, and the providers, the global `fetch` unless given. */
   send?: typeof fetch
   /** Where a provider's key is read, the server's own environment unless given. */
   env?: Environment
+  /** Records a font's install and removal, each as one undo step, absent where nothing undoes. */
+  history?: History
 }
 
 const queryLimit = z.string().trim().min(1).max(200)
@@ -83,6 +99,23 @@ const modelSaveBodySchema = z.object({
   query: queryLimit,
 })
 
+const fontQuerySchema = z
+  .object({
+    query: z.string().trim().max(200),
+    category: z.enum(FONT_CATEGORIES).nullable(),
+  })
+  .refine(({ query, category }) => query !== '' || category !== null)
+
+const fontSaveBodySchema = z.object({
+  id: z.string().min(1).max(200),
+  /** The search that found it, null or absent when it is installed by id alone. */
+  query: queryLimit.nullable().default(null),
+  /** The weights kept of a static family, the usual two when absent. */
+  weights: z.array(z.int().min(1).max(1000)).min(1).max(20).optional(),
+})
+
+const fontRemoveBodySchema = z.object({ id: z.string().min(1).max(200) })
+
 const generateBodySchema = z.object({
   prompt: z.string().trim().min(1).max(2000),
 })
@@ -92,16 +125,19 @@ const STATUS: Partial<Record<ErrorCode, ContentfulStatusCode>> = {
   'invalid-name': 400,
   'project-not-found': 404,
   'result-not-found': 404,
+  'font-not-found': 404,
+  'name-taken': 409,
   'no-provider': 409,
   'asset-type-refused': 422,
+  'license-refused': 422,
   'source-failed': 502,
   'provider-failed': 502,
 }
 
 /**
- * A project's image sourcing under `/api/projects/:project/sourcing`, calling
- * the modules `frameboard image` calls. Finding and the provider's price read
- * only; saving and generating need a writer. No answer carries a key.
+ * A project's sourcing under `/api/projects/:project/sourcing`, calling the
+ * modules the `image`, `model`, and `font` verbs call. Finding, listing, and the
+ * provider's price read only; the rest need a writer. No answer carries a key.
  */
 export function sourcingRoutes(
   root: string,
@@ -109,6 +145,7 @@ export function sourcingRoutes(
   {
     send = (input, init) => fetch(input, init),
     env = process.env,
+    history,
   }: SourcingRoutesOptions = {},
 ): Hono {
   const app = new Hono()
@@ -117,7 +154,34 @@ export function sourcingRoutes(
   // Concurrent saves of one result share one write, so a double press lands one file.
   const saving = new Map<string, Promise<SavedImage>>()
   const savingModel = new Map<string, Promise<SavedModel>>()
+  const savingFont = new Map<string, Promise<SavedFont>>()
+  // Fontsource's one list answers every search, so it is fetched once for the server's life.
+  let families: Promise<ListedFamily[]> | undefined
   let generating = false
+
+  const listed = (): Promise<ListedFamily[]> =>
+    (families ??= fetchFamilies(timed(send, FIND_TIMEOUT_MS)).catch(
+      (error: unknown) => {
+        families = undefined
+        throw error
+      },
+    ))
+
+  /** Runs one font write, recording it as an undo step where the board keeps a history. */
+  const undoable = async <T>(
+    write: (options: JournalOptions) => Promise<T>,
+  ): Promise<T> => {
+    if (history === undefined) return write({})
+    const journal = history.journal()
+    const result = await write({ journal })
+    history.record({
+      id: journal.id,
+      changes: journal.changes,
+      page: null,
+      frames: [],
+    })
+    return result
+  }
 
   app.onError((error, c) => answer(error, c))
 
@@ -185,11 +249,68 @@ export function sourcingRoutes(
       pending = saveFoundModel(
         project,
         body,
-        timed(send, MODEL_SAVE_TIMEOUT_MS),
+        timed(send, PACK_SAVE_TIMEOUT_MS),
       ).finally(() => savingModel.delete(key))
       savingModel.set(key, pending)
     }
     return c.json({ ok: true, data: await pending })
+  })
+
+  app.get(`${base}/fonts`, async (c) => {
+    projectOf(root, c.req.param('project'))
+    const asked = fontQuerySchema.safeParse({
+      query: c.req.query('q') ?? '',
+      category: c.req.query('category') ?? null,
+    })
+    if (!asked.success) {
+      throw new FrameboardError(
+        'usage',
+        `Send ?q=<a family name>, up to 200 characters, or ?category=<one of ${FONT_CATEGORIES.join(', ')}>.`,
+      )
+    }
+    const { query, category } = asked.data
+    const search = { query: query === '' ? null : query, category }
+    const record: FontFind = {
+      version: 1,
+      ...search,
+      licenses: [...FONT_LICENSES],
+      source: { ...FONTSOURCE_SOURCE },
+      ...searchFamilies(await listed(), search),
+    }
+    return c.json({ ok: true, data: record })
+  })
+
+  app.get(`${base}/fonts/installed`, async (c) => {
+    const { name } = projectOf(root, c.req.param('project'))
+    return c.json({ ok: true, data: await listFonts(root, name) })
+  })
+
+  app.post(`${base}/fonts/save`, authorized, async (c) => {
+    const project = projectOf(root, c.req.param('project'))
+    const body = await parseBody(c.req.raw, fontSaveBodySchema)
+    const key = JSON.stringify([project.name, body.id, body.weights])
+    let pending = savingFont.get(key)
+    if (pending === undefined) {
+      pending = undoable((options) =>
+        installFont(
+          project,
+          { ...body, savedAt: new Date() },
+          timed(send, PACK_SAVE_TIMEOUT_MS),
+          options,
+        ),
+      ).finally(() => savingFont.delete(key))
+      savingFont.set(key, pending)
+    }
+    return c.json({ ok: true, data: await pending })
+  })
+
+  app.post(`${base}/fonts/remove`, authorized, async (c) => {
+    const { name } = projectOf(root, c.req.param('project'))
+    const { id } = await parseBody(c.req.raw, fontRemoveBodySchema)
+    const removed = await undoable((options) =>
+      removeFont(root, name, id, options),
+    )
+    return c.json({ ok: true, data: removed })
   })
 
   app.get(`${base}/provider`, (c) => {
