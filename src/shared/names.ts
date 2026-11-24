@@ -53,13 +53,16 @@ export function titledFolder(
 }
 
 /**
- * A typed title as the folder it names, lower case with each run of
- * characters a name may not hold turned into one dash, so `Acme mobile`
- * becomes `acme-mobile`. Empty when the title holds nothing a name may.
+ * A typed title as the folder it names, marked letters folded to base ones and
+ * each run a name may not hold made one dash, so `Đà Nẵng` becomes `da-nang`.
+ * Empty when nothing is left. `đ` is mapped, since no decomposition reaches it.
  */
 export function folderName(typed: string): string {
   return typed
     .trim()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/đ/gi, 'd')
     .toLowerCase()
     .replace(/[^a-z0-9._-]+/g, '-')
     .replace(/^[._-]+/, '')

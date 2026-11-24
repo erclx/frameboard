@@ -171,6 +171,11 @@ export function InspectorPanel({
               {page && frames.length > 0 ? (
                 <SlideSection frames={frames} />
               ) : null}
+              {slidesPage && frames.length === 0 ? (
+                <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
+                  Select a slide to set its own transition and steps.
+                </p>
+              ) : null}
               {slidesPage ? (
                 <PageSection
                   page={slidesPage}

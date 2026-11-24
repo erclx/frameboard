@@ -33,7 +33,7 @@ Owns folders, filing projects one level deep by the `group` key in `project.json
 
 ### `src/client/projects/`
 
-Owns the `project.*` actions, shared by the home view, where they act on the focused card, and the board, where they act on the open project and add `nav.home`. Rename, Duplicate, Pin, and Delete reach the palette only with a project to act on, named through `projectLabel` in `actions.ts`.
+Owns the `project.*` actions, shared by the home view, where they act on the focused card, and the board, where they act on the open project and add `nav.home`. Rename, Duplicate, Pin, and Delete reach the palette only with a project to act on, named through `projectLabel` in `actions.ts`. A title's folder name folds marked letters in `folderName`.
 
 - `nav.home` goes home on Alt+ArrowUp, Windows Explorer's up a level, since Cmd+ArrowUp resizes a frame
 - `project.pin` toggles the pin through `src/client/home/pins.ts`, and the card menu reads Unpin on a pinned project
