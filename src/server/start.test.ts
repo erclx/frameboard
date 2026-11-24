@@ -1391,11 +1391,17 @@ describe('startServer remembered checks', { timeout: 30_000 }, () => {
     const { findings: checked } = await helloFindings(first)
     await first.close()
 
-    const second = await start({ pause: heldPause() })
+    let slices = 0
+    const second = await start({
+      pause: async () => {
+        slices += 1
+      },
+    })
     const { findings } = await helloFindings(second)
 
     expect(Object.keys(checked).sort()).toEqual(REFS)
     expect(findings).toEqual(checked)
+    expect(slices).toBe(0)
   })
 
   it.each([
