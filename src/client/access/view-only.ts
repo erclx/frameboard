@@ -6,3 +6,10 @@ export function useViewOnly(): boolean {
     (state) => state.connected && state.accessKnown && !state.canWrite,
   )
 }
+
+/** True in a tab that reads on a server started with the Edit button. */
+export function useEditOffered(): boolean {
+  const viewOnly = useViewOnly()
+  const offered = useLive((state) => state.editButton)
+  return viewOnly && offered
+}

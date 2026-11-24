@@ -85,6 +85,9 @@ export const layoutEntrySchema = z.looseObject({
   // The phone's island width, `wide` alone, absent for the compact one. A
   // value no reader knows parses as written and reads as compact.
   island: z.unknown().optional(),
+  // Whether the board paints the frame's content past its edge. Only true
+  // shows it, and a value of another kind parses as written.
+  showOverflow: z.unknown().optional(),
   // A quarter turn, `left` or `right`, and the upright size it restores, which
   // a foldable's pose gives instead. Another device's turn with no readable
   // upright, or a value no reader knows, reads as upright.

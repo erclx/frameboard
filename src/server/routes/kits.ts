@@ -24,10 +24,10 @@ const name = z.string().min(1).max(256)
 
 /**
  * The policy on every kit page and SVG, running the theme script alone by
- * hash, since a kit file runs on the board's origin, where a frame could embed
- * one to write as the board, and a sandbox would draw a sample light.
+ * hash and sending no form, since a kit file sits on the board's origin, where
+ * a frame could embed one to write as the board. A sandbox would draw it light.
  */
-const PREVIEW_POLICY = `script-src 'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'`
+const PREVIEW_POLICY = `script-src 'sha256-${createHash('sha256').update(THEME_SCRIPT).digest('base64')}'; form-action 'none'`
 
 const installSchema = z.object({
   project: name,

@@ -1,7 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from 'zustand'
 
+import { cn } from '@/client/lib/cn'
+import { useLive } from '@/client/live/store'
+import { useFrameTheme } from '@/client/theme/store'
 import { pageBox } from '@/shared/frame-device'
 import type { FrameRecord } from '@/shared/records/list'
 
@@ -10,15 +13,17 @@ import { followFrame } from '../bridge/shown'
 import type { Box } from '../geometry/box'
 import { OUTLINE, screen, sizeLabel } from '../geometry/draw'
 import { CHIP, OVERLAY_Z } from '../geometry/overlay'
-import { usePendingBox, usePendingFrames } from '../geometry/write'
+import { usePendingBox } from '../geometry/write'
 import { useMode } from '../mode'
 import { carriedStore } from '../place/tool'
+import { usePreview } from '../preview/store'
 import { type ElementKey, useSelection } from '../selection'
 import { groupBounds, type GroupMember, scalesAsGroup } from './group'
 import { heldStore, holdOutline } from './held'
 import { useGhosts, useMeasures } from './measures'
 import { useLiveMedia } from './media'
 import { MediaBar } from './media-bar'
+import { drawsOverflow, paintedIndexes, pictureUrl } from './overflow'
 import { newTextStore } from './text-in-place'
 import { TurnSurface } from './turn-surface'
 
@@ -38,12 +43,6 @@ const MARKS_MIN = 24
 
 /** A member's outline inside a group's box, thinner so the group reads as one. */
 const MEMBER_OUTLINE = `${screen(1)} solid var(--primary)`
-
-/** An element past its frame's edge, its box in the frame's own pixels. */
-interface Ghost {
-  key: ElementKey
-  box: Box
-}
 
 interface ElementOverlayProps {
   /** The page's shown frames, which the selected element's frame is found among. */
@@ -67,61 +66,133 @@ export function ElementOverlay({ frames, container }: ElementOverlayProps) {
 }
 
 /**
- * A dashed box over each element past its frame's edge, where the iframe
- * cannot paint it, drawn under the Move tool alone, where a press takes it.
+ * What draws past each frame's edge, where the iframe cannot paint: a dashed
+ * ghost a press takes, for a selected frame under the Move tool, and a still
+ * picture of the element, in every ghost and for a frame that shows overflow.
  */
 function ElementGhosts({ frames, container }: ElementOverlayProps) {
   const selected = useSelection((state) => state.frames)
-  const moving = useMode(
-    (state) => state.mode === 'edit' && state.tool === 'move',
-  )
-  const drawn = usePendingFrames(frames)
-  // A scroll frame reaches its overflow by scrolling, and a frame showing its device body is one screen of a page that scrolls, as Present and Play scroll it, so neither draws a ghost. A record carries `device` only while the body shows.
-  const walked = moving
-    ? selected.filter(
-        (ref) =>
-          !frames.some(
-            (frame) =>
-              frame.ref === ref && (frame.scroll || frame.device !== undefined),
-          ),
-      )
-    : []
-  const held = useGhosts(container, walked)
-  const out = useStore(carriedStore, (state) => state.out)
-  const ghosts = walked.flatMap((ref): Ghost[] => {
-    const overflow = held.get(ref)
-    return overflow
-      ? overflow.ghosts.map(({ index, box }) => ({
-          key: { frame: ref, index, hash: overflow.hash },
-          box,
-        }))
-      : []
-  })
-  return ghosts.map(({ key, box }) => {
-    const frame = drawn.find(({ ref }) => ref === key.frame)
-    if (!frame || sameKey(key, out)) return null
-    const page = pageBox(frame.box, frame.device, frame.turn)
+  // Play scrolls an entered page and shows frames as they ship, so it draws neither.
+  const editing = useMode((state) => state.mode === 'edit')
+  const moving = useMode((state) => state.tool === 'move')
+  if (!editing) return null
+  return frames.map((frame) => {
+    const ghosted = moving && selected.includes(frame.ref)
+    if (!drawsOverflow(frame) || !(ghosted || frame.showOverflow)) return null
     return (
-      <div
-        key={`${key.frame}:${key.index}`}
-        data-element-ghost
-        data-ghost-frame={key.frame}
-        data-ghost-index={key.index}
-        data-ghost-hash={key.hash}
-        className="pointer-events-none absolute bg-primary/28"
-        style={{
-          left: page.x + box.x,
-          top: page.y + box.y,
-          width: box.width,
-          height: box.height,
-          outline: `${screen(1.5)} dashed var(--primary)`,
-          outlineOffset: screen(2),
-          clipPath: outsideOf(box, page),
-          zIndex: OVERLAY_Z,
-        }}
+      <FrameGhosts
+        key={frame.ref}
+        frame={frame}
+        ghosted={ghosted}
+        container={container}
       />
     )
   })
+}
+
+interface FrameGhostsProps {
+  frame: FrameRecord
+  /** Whether its elements draw as ghosts, or as pictures alone. */
+  ghosted: boolean
+  container: HTMLElement | null
+}
+
+/** One frame's elements past its edge, each in document order so the topmost ghost draws last. */
+function FrameGhosts({ frame, ghosted, container }: FrameGhostsProps) {
+  const overflow = useGhosts(container, frame.ref)
+  const pending = usePendingBox(frame.ref)
+  const theme = useFrameTheme(frame.ref)
+  const version = useLive(
+    ({ reloads, kept }) => (reloads[frame.ref] ?? 0) - (kept[frame.ref] ?? 0),
+  )
+  // The route lays a frame out at its stored width, so a previewed one has no picture.
+  const previewed = usePreview(frame.ref) !== undefined
+  const out = useStore(carriedStore, (state) => state.out)
+  if (!overflow) return null
+  const page = pageBox(pending ?? frame.box, frame.device, frame.turn)
+  const painted = paintedIndexes(overflow.ghosts)
+  return overflow.ghosts.map(({ index, box }) => {
+    const key = { frame: frame.ref, index, hash: overflow.hash }
+    const picture =
+      painted.has(index) && !previewed
+        ? pictureUrl(key, frame.box, theme, version)
+        : null
+    // Out over bare canvas, the drop ghost draws its box instead.
+    if (sameKey(key, out) || (!ghosted && !picture)) return null
+    return (
+      <Ghost
+        key={index}
+        element={key}
+        box={box}
+        page={page}
+        ghosted={ghosted}
+        order={frame.order}
+        picture={picture}
+      />
+    )
+  })
+}
+
+interface GhostProps {
+  element: ElementKey
+  /** The element's box in the frame's own pixels. */
+  box: Box
+  /** The frame's page on the canvas. */
+  page: Box
+  ghosted: boolean
+  /** The frame's place in the stack, which a picture alone keeps. */
+  order: number
+  picture: string | null
+}
+
+/**
+ * One element past its frame's edge. The ghost's attributes stand only on a
+ * ghosted one, since `ghostAt` takes a press on whatever carries them.
+ */
+function Ghost({ element, box, page, ghosted, order, picture }: GhostProps) {
+  const [loaded, setLoaded] = useState<string | null>(null)
+  return (
+    <div
+      {...(ghosted
+        ? {
+            'data-element-ghost': '',
+            'data-ghost-frame': element.frame,
+            'data-ghost-index': element.index,
+            'data-ghost-hash': element.hash,
+          }
+        : {})}
+      className={cn(
+        'pointer-events-none absolute',
+        ghosted && (picture === null || picture !== loaded) && 'bg-primary/28',
+      )}
+      style={{
+        left: page.x + box.x,
+        top: page.y + box.y,
+        width: box.width,
+        height: box.height,
+        ...(ghosted
+          ? {
+              outline: `${screen(1.5)} dashed var(--primary)`,
+              outlineOffset: screen(2),
+            }
+          : {}),
+        clipPath: outsideOf(box, page),
+        zIndex: ghosted ? OVERLAY_Z : order,
+      }}
+    >
+      {picture ? (
+        // Keyed by its address, so a new one never draws under the old pixels.
+        <img
+          key={picture}
+          src={picture}
+          alt=""
+          draggable={false}
+          className="block size-full max-w-none"
+          onLoad={() => setLoaded(picture)}
+        />
+      ) : null}
+    </div>
+  )
 }
 
 /**

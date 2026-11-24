@@ -121,6 +121,8 @@ export interface StartOptions {
   dispatch?: { command: string; cwd: string; env: NodeJS.ProcessEnv }
   /** Mounts `GET /api/access/open`, which hands any local browser a writing tab. */
   openRoute?: boolean
+  /** Gives a reading tab the Edit button and mounts the grant it posts. */
+  editButton?: boolean
 }
 
 /**
@@ -207,6 +209,7 @@ async function listen({
   pause,
   dispatch,
   openRoute,
+  editButton,
 }: Omit<StartOptions, 'strictPort'>): Promise<RunningServer> {
   const tabs = new BoardTabs()
   const tickets = createTickets()
@@ -386,6 +389,7 @@ async function listen({
     changes: () => inTurn(async () => tracker.log()),
     closeTab: selection.closeTab,
     dispatch: dispatcher !== undefined,
+    editButton,
   })
   const claims = createClaimsPush(root, {
     broadcast: (list) => hub.broadcast({ type: 'claims', claims: list }),
@@ -481,6 +485,7 @@ async function listen({
     framePort: () => frameOrigin.port,
     tickets,
     openRoute,
+    editButton,
     delivery,
     dispatch: dispatcher,
     history,

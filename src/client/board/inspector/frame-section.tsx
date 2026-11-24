@@ -29,6 +29,7 @@ import type { FrameRecord, ProjectKitRecord } from '@/shared/records/list'
 
 import { ActionTooltip } from '../chrome/action-tooltip'
 import { ChromeMenuContent, MENU_ROW } from '../chrome/menu'
+import { drawsOverflow } from '../element/overflow'
 import type { Box } from '../geometry/box'
 import { dropPending, holdBoxes, writeBoxes } from '../geometry/write'
 import { reportRefusal } from '../left-panel/page-actions'
@@ -185,6 +186,11 @@ export function FrameSection({
         calls={calls ?? structure}
       />
       <DeviceRow
+        frames={frames}
+        disabled={!canWrite || locked}
+        calls={calls ?? structure}
+      />
+      <ClipRow
         frames={frames}
         disabled={!canWrite || locked}
         calls={calls ?? structure}
@@ -575,27 +581,13 @@ function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
               {value}
             </span>
           ) : null}
-          <button
+          <Switch
             id={id}
-            type="button"
-            role="switch"
-            aria-checked={shown === true}
-            aria-describedby={value ? `${id}-value ${id}-tip` : `${id}-tip`}
+            on={shown === true}
+            describedBy={value ? `${id}-value ${id}-tip` : `${id}-tip`}
             disabled={disabled}
-            onClick={() => pick(shown !== true)}
-            className={cn(
-              'relative h-3.5 w-[26px] shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40',
-              shown === true ? 'bg-primary' : 'bg-input',
-            )}
-          >
-            <span
-              aria-hidden
-              className={cn(
-                'absolute top-0.5 size-2.5 rounded-full bg-white transition-[left] motion-reduce:transition-none',
-                shown === true ? 'left-[14px]' : 'left-0.5',
-              )}
-            />
-          </button>
+            onTurn={() => pick(shown !== true)}
+          />
         </span>
       </div>
       {pose ? (
@@ -604,6 +596,96 @@ function DeviceRow({ frames, disabled, calls }: HeightRowProps) {
         </p>
       ) : null}
     </>
+  )
+}
+
+const CLIP_TIP =
+  'Off, the board paints what runs past the frame’s edge as a still picture. Capture and export always clip, and so does a frame that scrolls or shows its device.'
+
+/**
+ * Whether the frames cut their content at the edge, `Mixed` turning it on for
+ * all. Where no frame can draw past its edge it stands on and disabled,
+ * whatever the flag says.
+ */
+function ClipRow({ frames, disabled, calls }: HeightRowProps) {
+  const id = 'inspector-clip'
+  const open = frames.filter(drawsOverflow)
+  const fixed = open.length === 0
+  // Read off the frames the flag draws for, and written on all.
+  const { shown, pick } = usePick({
+    frames: open,
+    valueOf: (frame) => !frame.showOverflow,
+    refusal: 'Couldn’t set the clipping',
+    write: (_open, clip) =>
+      calls.flagFrames(
+        frames.map(({ ref }) => ref),
+        'showOverflow',
+        !clip,
+      ),
+  })
+  const mixed = shown === null && !fixed
+  return (
+    <div className="mt-2.5 flex h-4 items-center justify-between gap-2">
+      <LabelTip label="Clip content" tip={CLIP_TIP} tipId={`${id}-tip`}>
+        <label htmlFor={id} className="text-xs">
+          Clip content
+        </label>
+      </LabelTip>
+      <span className="flex min-w-0 items-center gap-2">
+        {mixed ? (
+          <span
+            id={`${id}-value`}
+            className="truncate text-caption text-muted-foreground"
+          >
+            Mixed
+          </span>
+        ) : null}
+        <Switch
+          id={id}
+          on={fixed || shown === true}
+          describedBy={mixed ? `${id}-value ${id}-tip` : `${id}-tip`}
+          disabled={disabled || fixed}
+          onTurn={() => pick(shown !== true)}
+        />
+      </span>
+    </div>
+  )
+}
+
+interface SwitchProps {
+  /** The id its row's label names. */
+  id: string
+  on: boolean
+  /** The ids whose text describes it. */
+  describedBy: string
+  disabled: boolean
+  onTurn: () => void
+}
+
+/** A row's switch, which its label and its tip stand apart from. */
+function Switch({ id, on, describedBy, disabled, onTurn }: SwitchProps) {
+  return (
+    <button
+      id={id}
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-describedby={describedBy}
+      disabled={disabled}
+      onClick={onTurn}
+      className={cn(
+        'relative h-3.5 w-[26px] shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40',
+        on ? 'bg-primary' : 'bg-input',
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'absolute top-0.5 size-2.5 rounded-full bg-white transition-[left] motion-reduce:transition-none',
+          on ? 'left-[14px]' : 'left-0.5',
+        )}
+      />
+    </button>
   )
 }
 

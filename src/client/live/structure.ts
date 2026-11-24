@@ -18,7 +18,7 @@ import type { StarterLook, StarterSheetRecord } from '@/shared/starter-tokens'
 import { writeBoard } from './write'
 
 /** A layout flag the board sets by hand, never written into the frame. */
-export type FrameFlag = 'hidden' | 'locked'
+export type FrameFlag = 'hidden' | 'locked' | 'showOverflow'
 
 /** How a frame holds its height: at a size, at its content's, or at a screen the page scrolls past. */
 export type HeightMode = 'fixed' | 'fit' | 'scroll'

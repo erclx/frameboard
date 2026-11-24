@@ -53,6 +53,8 @@ export const frameRecordSchema = z.object({
    * A turned frame's box is landscape, and a turned phone draws no status bar.
    */
   turn: z.enum(['left', 'right']).optional(),
+  /** Whether the board paints the frame's content past its edge, absent while it clips. A capture or an export clips either way. */
+  showOverflow: z.literal(true).optional(),
   /** The transition the frame arrives with in present mode, over its page's, absent when it holds none. */
   transition: transitionRecordSchema.optional(),
   /** What the presenter means to say over the slide, plain text with its line breaks, absent when it holds none. */
