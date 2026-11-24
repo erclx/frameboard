@@ -13,7 +13,7 @@ import {
   FRAME_ALLOW,
   frameAloneUrl,
   framePageUrl,
-  useFramePort,
+  useFrameOrigin,
 } from '@/client/live/frame-url'
 import { useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
@@ -139,19 +139,19 @@ export const Frame = memo(function Frame({
   if (loaded.version !== version || loaded.live !== live) {
     setLoaded({ ref: frame.ref, version, live })
   }
-  const framePort = useFramePort()
+  const frameOrigin = useFrameOrigin()
   // Not on a theme change, which rewrites the root rather than restart the frame.
   const src = useMemo(
     () =>
       loaded.live
         ? framePageUrl(
-            framePort,
+            frameOrigin,
             loaded.ref,
             frameTheme(loaded.ref),
             loaded.version,
           )
         : null,
-    [loaded, framePort],
+    [loaded, frameOrigin],
   )
 
   useThemeInFrame(iframe, theme, live)
@@ -566,7 +566,7 @@ function OpenAlone({
   /** Board units past the frame's top right, the width of any device body. */
   inset: number
 }) {
-  const href = frameAloneUrl(useFramePort(), frameRef)
+  const href = frameAloneUrl(useFrameOrigin(), frameRef)
   if (href === null) return null
   const label = `Open ${name} alone`
   return (

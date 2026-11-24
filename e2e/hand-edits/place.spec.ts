@@ -508,6 +508,14 @@ test.describe('placing text and shapes into a frame', () => {
       frame.x + (left + 1) * k,
       frame.y + (top + height / 2) * k,
     )
+    // The caret moves by a message, which a key typed at once can beat to the frame.
+    await expect
+      .poll(() =>
+        hero(page)
+          .locator('h1')
+          .evaluate(() => document.getSelection()?.isCollapsed),
+      )
+      .toBe(true)
     await expect(hero(page).locator('h1')).toBeFocused()
     await page.keyboard.type('X')
 

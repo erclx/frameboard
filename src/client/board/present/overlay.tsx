@@ -12,7 +12,7 @@ import { type Action, findAction, isEnabled } from '@/client/actions/registry'
 import {
   FRAME_ALLOW,
   framePageUrl,
-  useFramePort,
+  useFrameOrigin,
 } from '@/client/live/frame-url'
 import { useLive } from '@/client/live/store'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
@@ -664,10 +664,10 @@ function PresentedFrame({
   )
   const version = useLive((state) => state.reloads[frame.ref] ?? 0)
   // Read at load, since a later flip rewrites the root rather than restart the page.
-  const framePort = useFramePort()
+  const frameOrigin = useFrameOrigin()
   const src = useMemo(
-    () => framePageUrl(framePort, frame.ref, frameTheme(frame.ref), version),
-    [frame.ref, version, framePort],
+    () => framePageUrl(frameOrigin, frame.ref, frameTheme(frame.ref), version),
+    [frame.ref, version, frameOrigin],
   )
   useEffect(() => {
     const element = iframe.current

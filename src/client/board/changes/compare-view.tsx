@@ -5,7 +5,7 @@ import { cn } from '@/client/lib/cn'
 import {
   FRAME_ALLOW,
   framePageUrl,
-  useFramePort,
+  useFrameOrigin,
 } from '@/client/live/frame-url'
 import { frameTheme, useFrameTheme } from '@/client/theme/store'
 
@@ -36,11 +36,11 @@ export function CompareView({ frameRef: ref, name, hash }: CompareViewProps) {
   const split = useCompare((state) => state.split)
   const theme = useFrameTheme(ref)
   const iframe = useRef<HTMLIFrameElement>(null)
-  const framePort = useFramePort()
+  const frameOrigin = useFrameOrigin()
   // Read once per version, so a theme switch never reloads the page.
   const src = useMemo(
-    () => framePageUrl(framePort, ref, frameTheme(ref), undefined, hash),
-    [ref, hash, framePort],
+    () => framePageUrl(frameOrigin, ref, frameTheme(ref), undefined, hash),
+    [ref, hash, frameOrigin],
   )
 
   useThemeInFrame(iframe, theme)
