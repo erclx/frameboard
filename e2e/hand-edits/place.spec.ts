@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { expect, type Page, test } from '@playwright/test'
@@ -393,6 +393,56 @@ test.describe('placing text and shapes into a frame', () => {
     await undo(page)
 
     await expect.poll(read).toBe(original)
+  })
+
+  test('a drag of an element out over bare canvas makes a hugging frame of its own that undo takes back', async ({
+    page,
+  }) => {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    const original = read()
+    const layout = () =>
+      JSON.parse(
+        readFileSync(join(board.root, 'webapp/home/layout.json'), 'utf8'),
+      ).frames
+    const placed = layout()
+    const own = join(board.root, 'webapp/home/one.html')
+    const one = await centerOf(page, '[data-name="One"]')
+    const frame = await page.locator(`[data-frame="${HERO}"]`).boundingBox()
+    if (!frame) throw new Error('The hero draws no box')
+
+    await page.keyboard.down('Meta')
+    await page.mouse.click(one.x, one.y)
+    await page.keyboard.up('Meta')
+    await expect(page.locator('[data-element-selection]')).toBeVisible()
+    await page.mouse.move(one.x, one.y)
+    await page.mouse.down()
+    await page.mouse.move(one.x, frame.y + frame.height + 60, { steps: 8 })
+    const ghost = page.locator('[data-drop-ghost]')
+    await expect(ghost).toContainText('New frame · 80 × Hug')
+    await expect(ghost).toContainText('one')
+    await page.mouse.up()
+
+    const ONE =
+      '<div data-name="One" style="width: 80px; height: 40px; background: var(--muted)"></div>'
+    await expect.poll(read).toBe(original.replace(ONE, ''))
+    expect(readFileSync(own, 'utf8')).toContain(`${ONE}</body>`)
+    await expect(
+      page.locator('[data-frame="webapp/home/one"]'),
+    ).toHaveAttribute('data-selected', 'true')
+    await expect(
+      page
+        .frameLocator('[data-frame="webapp/home/one"] iframe')
+        .locator('[data-name="One"]'),
+    ).toBeVisible()
+    expect(layout().one).toMatchObject({ hugWidth: true, hugHeight: true })
+
+    await undo(page)
+
+    await expect.poll(read).toBe(original)
+    await expect(page.locator('[data-frame="webapp/home/one"]')).toHaveCount(0)
+    expect(existsSync(own)).toBe(false)
+    expect(layout()).toEqual(placed)
   })
 
   test('a placed Text opens for typing, and one double-click on a text element edits it the same way', async ({
