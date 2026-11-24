@@ -11,10 +11,9 @@ import {
 import { useEditOffered, useViewOnly } from './view-only'
 
 /**
- * The View only pill in the slot the Reconnecting pill holds, which never
- * shows at the same time since this one waits on a connected socket. Play
- * hides it on the board, where its banner holds that spot and nothing edits,
- * though the inspector's button still opens the dialog there.
+ * The View only pill in the Reconnecting pill's slot, which waits on a connected
+ * socket. Play hides it on the board, where its banner holds that spot, and
+ * leaves the dialog, which the inspector's button also opens.
  */
 export function ViewOnlyNotice(props: EditAccessProps) {
   const viewOnly = useViewOnly()

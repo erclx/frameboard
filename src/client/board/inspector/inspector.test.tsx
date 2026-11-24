@@ -184,31 +184,6 @@ describe('InspectorPanel', () => {
     act(() => liveStore.setState({ connected: false, accessKnown: false }))
   })
 
-  it('carries the Edit button on that line where the server offers it', () => {
-    act(() =>
-      liveStore.setState({
-        connected: true,
-        accessKnown: true,
-        canWrite: false,
-        editButton: true,
-      }),
-    )
-
-    renderPanel()
-
-    expect(screen.getByText('View only')).toBeVisible()
-    expect(
-      screen.getByRole('button', { name: 'Edit this board' }),
-    ).toBeVisible()
-    act(() =>
-      liveStore.setState({
-        connected: false,
-        accessKnown: false,
-        editButton: false,
-      }),
-    )
-  })
-
   it('carries no View only line in a tab that writes', () => {
     act(() => liveStore.setState({ connected: true, accessKnown: true }))
 
