@@ -99,14 +99,14 @@ describe.skipIf(shell === null)(
     beforeAll(async () => {
       faces = mkdtempSync(join(tmpdir(), 'frameboard-faces-'))
       board = writeBoard({
-        ...installedFontFiles('studio', 'playfair-display', 'Playfair Display'),
-        ...installedFontFiles('studio', 'lora', 'Lora'),
+        ...installedFontFiles('studio', 'stub-display', 'Stub Display'),
+        ...installedFontFiles('studio', 'stub-serif', 'Stub Serif'),
         'studio/home/title.html':
-          '<h1 style="font-family: \'Playfair Display\', serif">Hello</h1>',
+          '<h1 style="font-family: \'Stub Display\', serif">Hello</h1>',
         'studio/home/broken.html':
-          '<h1 style="font-family: Lora, serif">Hello</h1>',
+          '<h1 style="font-family: \'Stub Serif\', serif">Hello</h1>',
         'other/home/title.html':
-          '<h1 style="font-family: \'Playfair Display\', serif">Hello</h1>',
+          '<h1 style="font-family: \'Stub Display\', serif">Hello</h1>',
       })
       // A real face stands in for the family's, so the browser can load it.
       copyFileSync(
@@ -115,7 +115,7 @@ describe.skipIf(shell === null)(
         ),
         join(
           board.root,
-          'studio/assets/fonts/playfair-display/playfair-display-latin-wght-normal.woff2',
+          'studio/assets/fonts/stub-display/stub-display-latin-wght-normal.woff2',
         ),
       )
       host = await startFrameHost({ root: board.root, facesDir: faces })
@@ -145,7 +145,7 @@ describe.skipIf(shell === null)(
       )
       await opened.close()
 
-      expect(loaded).toEqual(['Playfair Display'])
+      expect(loaded).toEqual(['Stub Display'])
     })
 
     it.each([
