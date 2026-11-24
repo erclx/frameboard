@@ -110,6 +110,25 @@ describe('siblingGap', () => {
     })
   })
 
+  it('names body by the index given, past a script the tree leaves out', () => {
+    expect(siblingGap(TREE, 10, (at) => at - 1, 4)).toEqual({
+      parent: 4,
+      before: 6,
+    })
+  })
+
+  it('stays ahead of a script closing the parent at the end', () => {
+    const tree = [
+      element(6, null, 'main'),
+      { ...element(7, null, 'footer'), unlistedNext: 8 },
+    ]
+
+    expect(siblingGap(tree, 6, (_at, count) => count - 1)).toEqual({
+      parent: 5,
+      before: 8,
+    })
+  })
+
   it('has nowhere to go above the first child', () => {
     expect(siblingGap(TREE, 7, (at) => at - 1)).toBeUndefined()
   })

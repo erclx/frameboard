@@ -62,9 +62,11 @@ export function elementsRoutes(
     if (!Array.isArray(elements)) {
       throw new FrameboardError(elements.reason, elements.detail, { ref })
     }
+    const body = source.elements.findIndex(({ name }) => name === 'body')
     return {
       ref: `${frame.project}/${frame.page}/${frame.name}`,
       hash: contentHash(bytes),
+      ...(body === -1 ? {} : { body }),
       elements,
     }
   }
