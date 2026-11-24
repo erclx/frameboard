@@ -22,7 +22,7 @@ exclude = ["src/client/**/fixtures.ts", "src/client/**/*-harness.tsx"]
 
 [device-classes]
 default = ["desktop"]
-why = "The board is a two-dimensional canvas, which WCAG Reflow exempts"
+why = "The server answers on 127.0.0.1 alone, so no phone or tablet opens the board or home"
 
 [device-classes.scopes.landing]
 groups = ["landing"]
