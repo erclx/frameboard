@@ -269,7 +269,7 @@ describe('a frame showing its content past the edge', () => {
     '<div style="position:absolute;left:40px;top:320px;width:200px;height:40px"></div>'
 
   /** The frame drawn on the canvas with nothing selected, once its badge is painted. */
-  async function renderOpen() {
+  async function renderOpen(badge = BADGE) {
     const { container } = renderCanvas(pageOf([OPEN]))
     const frame = container.querySelector(`[data-frame="${OPEN.ref}"]`)
     const hit = container.querySelector<HTMLElement>('[data-hit-layer]')
@@ -277,7 +277,7 @@ describe('a frame showing its content past the edge', () => {
     await expect.poll(() => frame.querySelector('iframe')).not.toBeNull()
     const iframe = frame.querySelector('iframe')
     if (!iframe) throw new Error('no live frame')
-    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style><script data-frameboard type="module" src="/src/frame-bridge/main.ts"></script></head><body style="margin:0">${BADGE}</body></html>`
+    iframe.srcdoc = `<!doctype html><html><head><style data-frameboard data-hash="${HASH}"></style><script data-frameboard type="module" src="/src/frame-bridge/main.ts"></script></head><body style="margin:0">${badge}</body></html>`
     await expect.poll(() => container.querySelector('img')).not.toBeNull()
     const picture = container.querySelector('img')
     if (!picture) throw new Error('no picture')
@@ -316,5 +316,26 @@ describe('a frame showing its content past the edge', () => {
     })
 
     expect(taken).toBeNull()
+  })
+  it('keeps the frame’s label over a picture above its top edge', async () => {
+    const { container, frame, picture } = await renderOpen(
+      '<div style="position:absolute;left:0;top:-200px;width:400px;height:190px"></div>',
+    )
+    const label = frame.querySelector(`[title="${OPEN.name}"]`)
+    if (!label) throw new Error('no label')
+    const { left, top, width, height } = label.getBoundingClientRect()
+    // Only what the pointer reaches is read back, and the picture takes none.
+    const style = document.createElement('style')
+    style.textContent = '*{pointer-events:auto!important}'
+    container.append(style)
+
+    const stacked = document.elementsFromPoint(
+      left + width / 2,
+      top + height / 2,
+    )
+
+    expect(stacked).toContain(picture)
+    expect(stacked.indexOf(label)).toBeGreaterThan(-1)
+    expect(stacked.indexOf(label)).toBeLessThan(stacked.indexOf(picture))
   })
 })
