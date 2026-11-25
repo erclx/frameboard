@@ -246,7 +246,11 @@ export function LeftPanel({
               </ResizablePanel>
             </ResizablePanelGroup>
           </TabsContent>
-          <TabsContent value="theme" className="min-h-0 text-xs">
+          <TabsContent
+            value="theme"
+            // Relative so a tip's hidden node scrolls inside it, and filled so its text keeps its subpixel smoothing.
+            className="relative min-h-0 overflow-y-auto bg-sidebar text-xs"
+          >
             {theme}
           </TabsContent>
           <TabsContent value="assets" className="min-h-0 text-xs">
