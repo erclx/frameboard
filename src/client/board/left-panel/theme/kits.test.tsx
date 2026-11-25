@@ -221,7 +221,7 @@ describe('KitsSection', () => {
     )
   })
 
-  it('closes the Theme dialog ahead of the note, handing it the focus', async () => {
+  it('closes the Theme dialog ahead of the note, with nothing to hand the focus back to', async () => {
     act(() => {
       select(selectionStore, 'studio/home', ['studio/home/pricing'])
       openTheme('kits', 'kits')

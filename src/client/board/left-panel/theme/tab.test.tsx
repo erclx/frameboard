@@ -10,6 +10,7 @@ import type { FontList, InstalledFont } from '@/shared/records/sourcing'
 import type { TokenRow, TokenTable } from '@/shared/records/tokens'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 import { contrastOnPage } from '@/test/contrast'
+import { contrastHovered } from '@/test/hover-contrast'
 
 import { closeTheme, themeDialogStore } from './dialog-store'
 import { ThemeTab } from './tab'
@@ -303,13 +304,9 @@ describe('ThemeTab', () => {
       renderTab()
       const kits = await card('Kits')
       const line = within(kits).getByText('None yet')
-      await userEvent.unhover(kits)
-      const rest = contrastOnPage(line)
 
-      await userEvent.hover(kits)
-
-      expect(rest).toBeGreaterThanOrEqual(4.5)
       expect(contrastOnPage(line)).toBeGreaterThanOrEqual(4.5)
+      expect(await contrastHovered(line)).toBeGreaterThanOrEqual(4.5)
     })
   })
 })
