@@ -16,7 +16,11 @@ import { ModelSection } from './model'
 
 const UNSTAGED: ModelReading['staged'] = {
   'camera-orbit': null,
+  'min-camera-orbit': null,
   'max-camera-orbit': null,
+  'camera-target': null,
+  'field-of-view': null,
+  'max-field-of-view': null,
   orientation: null,
   scale: null,
   'animation-name': null,
@@ -29,6 +33,8 @@ function readingOf(over: Partial<ModelReading> = {}): ModelReading {
     loaded: true,
     clips: ['Idle', 'Run'],
     orbit: { theta: 0, phi: 75 },
+    camera: { distance: 3, view: 30 },
+    bounds: { center: { x: 0, y: 0, z: 0 }, size: { x: 1, y: 1, z: 1 } },
     staged: UNSTAGED,
     ...over,
   }

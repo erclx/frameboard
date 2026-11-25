@@ -1,4 +1,8 @@
-import type { ModelReading, ModelStage } from '@/shared/frame-bridge/model'
+import {
+  type ModelReading,
+  type ModelStage,
+  stagedTerms,
+} from '@/shared/frame-bridge/model'
 
 /** The camera's place around a model in degrees, `theta` across and `phi` down from the top. */
 export interface Angle {
@@ -16,24 +20,6 @@ export interface Turn {
 /** The orbit a viewer takes with none stated, from its `DEFAULT_CAMERA_ORBIT`. */
 const DEFAULT_ANGLE: Angle = { theta: 0, phi: 75 }
 
-/** A value's terms, split on the spaces outside any `calc()`. */
-function terms(value: string | null): string[] {
-  const found: string[] = []
-  let depth = 0
-  let term = ''
-  for (const character of value?.trim() ?? '') {
-    if (character === '(') depth += 1
-    if (character === ')') depth -= 1
-    if (/\s/.test(character) && depth === 0) {
-      if (term) found.push(term)
-      term = ''
-    } else {
-      term += character
-    }
-  }
-  return term ? [...found, term] : found
-}
-
 /** A term as degrees, a bare number being radians as the viewer reads one, or null for any other. */
 function degreesOf(term: string | undefined): number | null {
   const read = /^(-?\d*\.?\d+)(deg|rad)?$/.exec(term ?? '')
@@ -47,7 +33,7 @@ function degreesOf(term: string | undefined): number | null {
  * camera's, which also answers an orbit stated as `auto` or a `calc()`.
  */
 export function angleOf({ staged, orbit }: ModelReading): Angle {
-  const [theta, phi] = terms(staged['camera-orbit']).map(degreesOf)
+  const [theta, phi] = stagedTerms(staged['camera-orbit']).map(degreesOf)
   if (typeof theta === 'number' && typeof phi === 'number') {
     return { theta, phi }
   }
@@ -63,8 +49,10 @@ export function orbitStages(
   staged: ModelReading['staged'],
   { theta, phi }: Angle,
 ): ModelStage[] {
-  const radius = terms(staged['camera-orbit'])[2] ?? 'auto'
-  const [maxTheta = 'auto', maxPhi = 'auto'] = terms(staged['max-camera-orbit'])
+  const radius = stagedTerms(staged['camera-orbit'])[2] ?? 'auto'
+  const [maxTheta = 'auto', maxPhi = 'auto'] = stagedTerms(
+    staged['max-camera-orbit'],
+  )
   return [
     { name: 'camera-orbit', value: `${theta}deg ${phi}deg ${radius}` },
     { name: 'max-camera-orbit', value: `${maxTheta} ${maxPhi} ${radius}` },
@@ -73,7 +61,7 @@ export function orbitStages(
 
 /** A stated `orientation` as its turn about each axis, the viewer's roll, pitch, and yaw being Z, X, and Y. */
 export function turnOf(orientation: string | null): Turn {
-  const [roll, pitch, yaw] = terms(orientation).map(degreesOf)
+  const [roll, pitch, yaw] = stagedTerms(orientation).map(degreesOf)
   return { x: pitch ?? 0, y: yaw ?? 0, z: roll ?? 0 }
 }
 
@@ -87,7 +75,7 @@ export function turnStage({ x, y, z }: Turn): ModelStage {
 
 /** A stated `scale` as one number, 1 for none and null for axes that differ. */
 export function scaleOf(scale: string | null): number | null {
-  const [x = 1, y = x, z = x] = terms(scale).map(Number)
+  const [x = 1, y = x, z = x] = stagedTerms(scale).map(Number)
   return x === y && y === z && Number.isFinite(x) ? x : null
 }
 
