@@ -15,17 +15,18 @@ The color picker the paint rows open is in `canon/context/board/inspector/color-
 
 ### `src/client/board/inspector/element/`
 
-Owns an element's sections, from Layout, Size, and Position through type, rotation, the 3D tilt, paint, Video, and Model, each read from the live node and the static cascade and writing the element's own `style`, an attribute, or its text. A write goes through `src/server/routes/edit.ts` as one `POST /api/frames/edit` and one undo step.
+Owns an element's sections, from Layout, Size, and Position through type, rotation, the 3D tilt, paint, Video, and a model's Transform and Camera, each read from the live node and the static cascade and writing the element's own `style`, an attribute, or its text. A write goes through `src/server/routes/edit.ts` as one `POST /api/frames/edit` and one undo step.
 
 - A token pick writes `var(--token)`, so it follows the theme, and over an inline `background` or `border` holding its part a paint longhand rewrites that part
 - Fill opacity below 100 percent writes `color-mix(in srgb, var(--token) N%, transparent)` over a token and an 8-digit hex over a raw hex, so children keep their own opacity
 - Colors and shadows read from the static cascade the checks use, and only a token sheet's name reads as a token, a frame's own reading as its chain's first
+- Transform takes Position's place for a model, and its size and depth go through the bridge's hold, which answers every attribute to write, so `model-number.ts` keeps the reading a gesture began at
 - Family lists no face from a project's `assets/` folder, since nothing reads the `@font-face` rules there
 - Absolute writes `position: relative` on a static parent other than `body` in the same undo step, refusing `reanchors-descendant` when that parent anchors another element above
 
 ## Gotchas
 
-- A hand edit reloads its frame unless it was `previewed`, as a drop, a corner resize, Keep values, a Video file switch, or a Model control is, and the selection follows the hash the write answers
+- A hand edit reloads its frame unless it was `previewed`, as a drop, a corner resize, Keep values, a Video file switch, or a model's staging is, and the selection follows the hash the write answers
 - A field committing on blur drops a browser undo reaching it unfocused, through `stray-history.ts`, since a press falling through the board undoes the last field edited
 - A place reads the parent's position from the static cascade, which misses a sheet a load cannot read, so a miss writes `relative` anyway and one undo restores it
 - An element its `rotate` turns or its transform tilts in 3D takes no corner resize and draws no marks, and a rotation or tilt preview lags the outline until the write reloads the frame

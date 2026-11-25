@@ -19,6 +19,7 @@ Holds the script that runs in each frame's own realm, built to `dist/frame-bridg
 - It answers `window.parent` at a loopback origin on any port or its own, replying to each request's origin and posting `shown` to any, and a frame with no parent never listens
 - `main.ts` checks each request against its op's schema and hands it to one area, such as `measure.ts`, `steps.ts`, or `keys.ts`, whose `focus-keys` lets the pointer mark hear Tab leave a frame
 - It announces its hash in a `shown` message once its body parses, on a restamp, and as its page goes, naming the page by an id, since a page going posts with no window
+- `model-transform` pushes the attributes to write rather than replying with them, since it waits on the viewer, which frames its camera on a load and never on a live scale. It holds only what that framing would not answer.
 - Text in place owns `contenteditable` and the keys, opens only the run at the point beside a child, and keeps the old text until the board says whether the write landed
 
 ### `src/client/board/bridge/`

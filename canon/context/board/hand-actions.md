@@ -19,6 +19,7 @@ Owns picking, walking, and outlining elements, with the board's `selection.ts`: 
 - An undo or redo keeps the element only while the tree at the answered hash matches the picked one in each index, parent, tag, and every name but its own
 - A move key reads the tree inside the frame's turn rather than at the press, and an element edit holds the turn until Layers reads the bytes it answered
 - `held.ts` keeps a released outline at the drop until the frame measures the element at the answered hash, since `ResizeObserver` never fires on a move
+- `model-handles/` draws a selected model's handles in the notes layer, above the press that moves it, each tip taking its own press and Esc putting it back. They hide during any drag beside them and where the box holds no room clear of the corner marks.
 - `focusOnBoard()` gates the walks and exempts a note pin, a note card, a media bar, and any `data-label-control`, so Tab there moves focus natively
 
 ### `src/client/board/menus/`
