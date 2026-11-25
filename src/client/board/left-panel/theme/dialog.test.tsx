@@ -2,7 +2,15 @@ import '../../../styles.css'
 
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from 'vitest'
 
 import { Toaster } from '@/client/components/ui/toast'
 import { markPointerFocus } from '@/client/focus/pointer-mark'
@@ -139,6 +147,39 @@ function themeDialog() {
 
 async function themeClosed() {
   await waitFor(() => expect(themeDialog()).toBeNull())
+}
+
+/**
+ * Holds animation frames from now until the answer is called, so a late frame
+ * is certain. A test that fails first still gives the window's own back.
+ */
+function holdFrames(): () => void {
+  const held = new Map<number, FrameRequestCallback>()
+  // Clear of any id the window itself gave out before the hold.
+  let id = 1_000_000
+  const ask = vi
+    .spyOn(window, 'requestAnimationFrame')
+    .mockImplementation((frame) => {
+      id += 1
+      held.set(id, frame)
+      return id
+    })
+  const drop = vi
+    .spyOn(window, 'cancelAnimationFrame')
+    .mockImplementation((asked) => {
+      held.delete(asked)
+    })
+  const release = () => {
+    ask.mockRestore()
+    drop.mockRestore()
+    const frames = [...held.values()]
+    held.clear()
+    act(() => {
+      for (const frame of frames) frame(performance.now())
+    })
+  }
+  onTestFinished(release)
+  return release
 }
 
 beforeEach(() => {
@@ -352,6 +393,27 @@ describe('ThemeDialog', () => {
         expect(screen.queryByRole('textbox', { name: 'Hex' })).toBeNull(),
       )
       expect(themeDialog()).not.toBeNull()
+      await userEvent.keyboard('{Escape}')
+      await themeClosed()
+    })
+
+    it('closes the color picker alone on an Esc before it takes the focus', async () => {
+      await openOn('color')
+      const swatch = await screen.findByRole('button', {
+        name: 'Light: #4f46e5',
+      })
+      const release = holdFrames()
+      await userEvent.click(swatch)
+      await screen.findByRole('textbox', { name: 'Hex' })
+
+      await userEvent.keyboard('{Escape}')
+      release()
+
+      await waitFor(() =>
+        expect(screen.queryByRole('textbox', { name: 'Hex' })).toBeNull(),
+      )
+      expect(themeDialog()).not.toBeNull()
+      expect(swatch).toHaveFocus()
       await userEvent.keyboard('{Escape}')
       await themeClosed()
     })
