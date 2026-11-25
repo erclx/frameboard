@@ -31,6 +31,7 @@ import { FillSection } from './element/fill'
 import { LayoutSection } from './element/layout'
 import { CameraSection } from './element/model'
 import { PositionSection } from './element/position'
+import { PresentRow } from './element/present-row'
 import { SeveralElements } from './element/several'
 import { ShadowSection } from './element/shadow'
 import { StepSection } from './element/step'
@@ -458,6 +459,7 @@ function ElementDesign({ page, element }: ElementProps) {
         disabled={disabled}
         write={write}
       />
+      <PresentRow step={live.step} />
       <SelectionColors
         key={`colors:${element.frame}\n${element.index}`}
         colors={styles?.colors ?? []}
