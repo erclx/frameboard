@@ -38,10 +38,9 @@ export interface BoardFeed {
 }
 
 /**
- * Holds the board the tabs hold, which every patch starts from. Each verb
- * moves it and sends in one synchronous step, so no other crosses between. A
- * scan a rename overtook is taken again, since the old name in it would read
- * as the rename undone.
+ * Holds the board the tabs hold, which each verb moves and sends in one
+ * synchronous step. A scan a rename overtook is taken again, since the old
+ * name in it would read as the rename undone.
  */
 export function createBoardFeed(
   hub: Pick<LiveHub, 'broadcast' | 'broadcastBoard' | 'broadcastPatch'>,
