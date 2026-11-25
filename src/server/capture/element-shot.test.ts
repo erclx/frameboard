@@ -65,6 +65,18 @@ describe.skipIf(shell === null)(
           '<div id="slid" style="left:20px;top:20px;width:40px;height:20px;translate:-80px"></div>' +
           '<div style="left:-40px;top:20px;width:10px;height:10px;scale:2"><i id="scaled" style="display:block;width:40px;height:20px"></i></div>' +
           '<div id="right" style="left:180px;top:20px;width:90px;height:40px"></div>',
+        'studio/home/fractional.html':
+          '<style>body{margin:0}div,i,svg{position:absolute}</style>' +
+          '<div id="half" style="left:20.5px;top:30.5px;width:40.5px;height:40px"></div>' +
+          '<div id="slid" style="left:20.5px;top:30.5px;width:40.5px;height:40px;transform:translate(.25px)"></div>' +
+          '<div id="doubled" style="left:40.5px;top:30.5px;width:40.5px;height:20px;scale:2"></div>' +
+          '<div id="promoted" style="left:20.5px;top:30px;width:40.5px;height:40px;will-change:transform"></div>' +
+          '<div id="quarter" style="left:20.5px;top:30.5px;width:40.5px;height:40px;rotate:90deg"></div>' +
+          '<div style="left:20.5px;top:10.5px;width:50px;height:40px;scale:2;transform-origin:0 0"><i id="nested" style="left:3.5px;top:4.5px;width:10.5px;height:10px"></i></div>' +
+          '<div id="hairline" style="left:20.25px;top:30px;width:.4px;height:40px"></div>' +
+          '<svg id="icon" style="left:20.5px;top:30.5px;width:40.5px;height:40px"><rect id="shape" x="2.5" y="4" width="10" height="10"/></svg>' +
+          '<div id="leading" style="left:10.25px;top:10px;width:40px;height:20px;transform:translate(-10.2px)"></div>' +
+          '<div id="styled" style="left:20.5px;top:30px;width:40px;height:20px;transform:translate(1.5px) !important;transition:transform 9s;"></div>',
         // Shorter than its frame, where a shifted root anchors each box to 40 px.
         'studio/home/moved.html':
           '<style>html{translate:-10px 5px;transition:translate 9s}body{margin:0;height:40px}</style>' +
@@ -85,12 +97,13 @@ describe.skipIf(shell === null)(
       rmSync(faces, { recursive: true, force: true })
     }, SHELL_HOOK_TIMEOUT_MS)
 
-    function open(name: string) {
+    function open(name: string, scale = 1) {
       return openFrame(browser, {
         baseUrl: host.url,
         ref: `studio/home/${name}`,
         box: BOX,
         theme: 'light',
+        scale,
       })
     }
 
@@ -110,13 +123,14 @@ describe.skipIf(shell === null)(
     }
 
     /** The box answered and what the page shows of each id once one element is isolated. */
-    async function isolated(name: string, index: number) {
-      const opened = await open(name)
+    async function isolated(name: string, index: number, scale = 1) {
+      const opened = await open(name, scale)
       try {
         const box = await isolateElement(
           opened.page,
           `studio/home/${name}`,
           index,
+          scale,
         )
         const shown = await opened.page.evaluate(() => {
           const visibility = (id: string) => {
@@ -130,6 +144,12 @@ describe.skipIf(shell === null)(
             row: visibility('row'),
             ground: getComputedStyle(document.body).backgroundColor,
             shift: getComputedStyle(document.documentElement).translate,
+            style: document
+              .querySelector('[data-frameboard-shot]')
+              ?.getAttribute('style'),
+            moved: document
+              .querySelector('[data-frameboard-shot]')
+              ?.getAnimations().length,
           }
         })
         return { box, ...shown }
@@ -173,6 +193,86 @@ describe.skipIf(shell === null)(
       const { box } = await isolated('tall', index)
 
       expect(box).toEqual({ x: 0, y: 0, width: 50, height: 400 })
+    })
+
+    it('answers a whole-pixel box as it stands at any scale', async () => {
+      const index = await inspectedIndex('card', 'title')
+
+      const { box } = await isolated('card', index, 3)
+
+      expect(box).toEqual({ x: 0, y: 0, width: 80, height: 20 })
+    })
+
+    it.each([
+      ['under no transform', 'half', { x: 21, y: 31, width: 40, height: 40 }],
+      [
+        'under a fractional move, whose space keeps the fraction',
+        'slid',
+        { x: 21, y: 31, width: 40.5, height: 40 },
+      ],
+      [
+        'under a scale, whose space drops the fraction',
+        'doubled',
+        { x: 20.5, y: 21, width: 82.5, height: 40 },
+      ],
+      [
+        'under a hint that it will move, whose space drops the fraction',
+        'promoted',
+        { x: 21, y: 30, width: 41, height: 40 },
+      ],
+      [
+        'under a quarter turn',
+        'quarter',
+        { x: 21, y: 30.5, width: 40.5, height: 41.5 },
+      ],
+      [
+        'inside a scaled parent',
+        'nested',
+        { x: 29, y: 21, width: 20, height: 20 },
+      ],
+      [
+        'under a pixel wide',
+        'hairline',
+        { x: 20, y: 30, width: 1, height: 40 },
+      ],
+    ])(
+      'answers the painted box of an element %s',
+      async (_name, id, expected) => {
+        const index = await inspectedIndex('fractional', id)
+
+        const { box } = await isolated('fractional', index, 2)
+
+        expect(box).toEqual(expected)
+      },
+    )
+
+    it('moves a shape with the snap of the SVG around it and takes none of its own', async () => {
+      const index = await inspectedIndex('fractional', 'shape')
+
+      const { box } = await isolated('fractional', index, 1)
+
+      // The SVG snaps from 20.5 to 21, so the shape runs from 23.5 to 33.5.
+      expect(box).toEqual({ x: 23, y: 35, width: 11, height: 10 })
+    })
+
+    it('shifts an element whose paint alone runs past the left edge', async () => {
+      const index = await inspectedIndex('fractional', 'leading')
+
+      const { box, shift } = await isolated('fractional', index)
+
+      expect(shift).toBe('1px')
+      expect(box.x).toBeGreaterThanOrEqual(0)
+    })
+
+    it('leaves the styles of an element under a transform as they were', async () => {
+      const index = await inspectedIndex('fractional', 'styled')
+
+      const { style, moved } = await isolated('fractional', index)
+
+      expect(style).toBe(
+        'left:20.5px;top:30px;width:40px;height:20px;transform:translate(1.5px) !important;transition:transform 9s;',
+      )
+      expect(moved).toBe(0)
     })
 
     it.each([
@@ -232,7 +332,7 @@ describe.skipIf(shell === null)(
       const opened = await open('card')
       try {
         await expect(
-          isolateElement(opened.page, 'studio/home/card', 99),
+          isolateElement(opened.page, 'studio/home/card', 99, 1),
         ).rejects.toMatchObject({ code: 'invalid-address' })
       } finally {
         await opened.close()
@@ -244,7 +344,7 @@ describe.skipIf(shell === null)(
       const opened = await open('empty')
       try {
         await expect(
-          isolateElement(opened.page, 'studio/home/empty', index),
+          isolateElement(opened.page, 'studio/home/empty', index, 1),
         ).rejects.toMatchObject({ code: 'invalid-address' })
       } finally {
         await opened.close()
@@ -261,7 +361,7 @@ describe.skipIf(shell === null)(
         )
 
         await expect(
-          isolateElement(opened.page, 'studio/home/unboxed', index),
+          isolateElement(opened.page, 'studio/home/unboxed', index, 1),
         ).rejects.toMatchObject({ code: 'invalid-address' })
       } finally {
         await opened.close()
