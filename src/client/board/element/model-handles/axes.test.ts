@@ -63,7 +63,8 @@ describe('handlesOf', () => {
   it.each([
     [90, { x: -50, y: 0 }],
     [180, { x: 29, y: -20 }],
-    [-90, { x: 50, y: 0 }],
+    // Over X, so it draws short of X's tip.
+    [-90, { x: 24, y: 0 }],
   ])("draws the scene's depth as a camera at %d sees it", (theta, seen) => {
     expect(tip(handle('move', 'z', reading(theta)))).toEqual(seen)
   })
@@ -111,6 +112,44 @@ describe('handlesOf', () => {
       }
     }
   })
+})
+
+describe('handlesOf, at every angle', () => {
+  const around = Array.from({ length: 73 }, (_, step) => step * 5 - 180)
+  const heights = [15, 45, 75, 90, 105, 150]
+  const turns = [
+    null,
+    '0deg 90deg 0deg',
+    '0deg -90deg 0deg',
+    '30deg 60deg -120deg',
+    '0deg 0deg 35deg',
+  ]
+
+  it.each(['move', 'turn', 'size'] as const)(
+    'keeps no two %s tips within one press',
+    (mode) => {
+      const nearest = around.flatMap((theta) =>
+        heights.flatMap((phi) =>
+          turns.map((orientation) => {
+            const from = reading(theta, orientation)
+            const tips = handlesOf(
+              mode,
+              { ...from, orbit: { theta, phi } },
+              true,
+            ).map((found) => found.tip)
+            const gaps = tips.flatMap((one, at) =>
+              tips
+                .slice(at + 1)
+                .map((other) => Math.hypot(one.x - other.x, one.y - other.y)),
+            )
+            return Math.min(...gaps)
+          }),
+        ),
+      )
+
+      expect(Math.min(...nearest)).toBeGreaterThanOrEqual(24)
+    },
+  )
 })
 
 describe('turnOfDrag', () => {
@@ -165,6 +204,12 @@ describe('depthOfDrag', () => {
     const side = handle('move', 'z', reading(90))
 
     expect(depthOfDrag(side, { x: -50, y: 0 }, camera, 100)).toBe(1)
+  })
+
+  it('follows the pointer as far on a handle drawn short', () => {
+    const short = handle('move', 'z', reading(-90))
+
+    expect(depthOfDrag(short, { x: 50, y: 0 }, camera, 100)).toBe(1)
   })
 
   it('comes nearer for a drag along the handle and away for one back', () => {

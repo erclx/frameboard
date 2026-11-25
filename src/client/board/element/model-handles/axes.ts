@@ -29,7 +29,7 @@ export interface Handle {
   axis: Axis
   /** From the gizmo's center, in screen pixels. */
   tip: Vector
-  /** How much of the axis's own length the handle shows, 1 for one across the page. */
+  /** How much of the axis's own length the camera shows, 1 across the page and below zero drawn from its other end. */
   shown: number
   /** The direction a drag turns the model about the axis, one pixel long. */
   turning: Vector
@@ -68,7 +68,7 @@ function handleOf(axis: Axis, { x, y, z }: Axes): Handle {
 }
 
 /** The axes each of the Rotation fields turns the model about, the viewer turning Y, then X, then Z. */
-function turnAxes({ x, y }: Turn): Axes[] {
+function turnAxes({ x, y }: Turn): [Axes, Axes, Axes] {
   const [sx, cx] = [Math.sin(x * RADIANS), Math.cos(x * RADIANS)]
   const [sy, cy] = [Math.sin(y * RADIANS), Math.cos(y * RADIANS)]
   return [
@@ -79,7 +79,7 @@ function turnAxes({ x, y }: Turn): Axes[] {
 }
 
 /** The turned model's own axes, which a size is along. */
-function ownAxes(turn: Turn): Axes[] {
+function ownAxes(turn: Turn): [Axes, Axes, Axes] {
   const [, , z] = turnAxes(turn)
   const [sx, cx] = [Math.sin(turn.x * RADIANS), Math.cos(turn.x * RADIANS)]
   const [sy, cy] = [Math.sin(turn.y * RADIANS), Math.cos(turn.y * RADIANS)]
@@ -87,8 +87,40 @@ function ownAxes(turn: Turn): Axes[] {
   return [
     { x: cz * cy + sz * sx * sy, y: sz * cx, z: -cz * sy + sz * sx * cy },
     { x: -sz * cy + cz * sx * sy, y: cz * cx, z: sz * sy + cz * sx * cy },
-    z ?? { x: 0, y: 0, z: 1 },
+    z,
   ]
+}
+
+/** A handle at each length it may draw at, its own first, then the shorter and longer, then its other end. */
+function lengthsOf(handle: Handle): Handle[] {
+  const along = unit(handle.tip)
+  const lengths = [Math.hypot(handle.tip.x, handle.tip.y), SHORTEST, HANDLE]
+  return [...lengths, ...lengths.map((length) => -length)].map((length) => ({
+    ...handle,
+    tip: { x: along.x * length, y: along.y * length },
+    shown: length < 0 ? -handle.shown : handle.shown,
+  }))
+}
+
+/**
+ * The handles with no tip within another's press, or null where none clear.
+ * Axes the camera sees along one line would otherwise share a tip.
+ */
+function apart(
+  handles: readonly Handle[],
+  drawn: readonly Handle[] = [],
+): Handle[] | null {
+  const [next, ...rest] = handles
+  if (!next) return [...drawn]
+  for (const tried of lengthsOf(next)) {
+    const clear = drawn.every(
+      ({ tip }) =>
+        Math.hypot(tried.tip.x - tip.x, tried.tip.y - tip.y) >= TIP_REACH * 2,
+    )
+    const placed = clear ? apart(rest, [...drawn, tried]) : null
+    if (placed) return placed
+  }
+  return null
 }
 
 /** Move's X and Y are the page's own and a placed model's alone, its Z the scene's, and the rest the model's. */
@@ -99,20 +131,21 @@ export function handlesOf(
 ): Handle[] {
   const angle = angleOf(reading)
   const turn = turnOf(reading.staged.orientation)
+  const seenFrom = (axis: Axis, direction: Axes) =>
+    handleOf(axis, seen(direction, angle))
   if (mode === 'move') {
-    const depth = handleOf('z', seen({ x: 0, y: 0, z: 1 }, angle))
-    return placed
+    const page = placed
       ? [
           handleOf('x', { x: 1, y: 0, z: 0 }),
           handleOf('y', { x: 0, y: 1, z: 0 }),
-          depth,
         ]
-      : [depth]
+      : []
+    const handles = [...page, seenFrom('z', { x: 0, y: 0, z: 1 })]
+    return apart(handles) ?? handles
   }
-  const axes = mode === 'turn' ? turnAxes(turn) : ownAxes(turn)
-  return (['x', 'y', 'z'] as const).map((axis, order) =>
-    handleOf(axis, seen(axes[order] ?? { x: 0, y: 0, z: 0 }, angle)),
-  )
+  const [x, y, z] = mode === 'turn' ? turnAxes(turn) : ownAxes(turn)
+  const handles = [seenFrom('x', x), seenFrom('y', y), seenFrom('z', z)]
+  return apart(handles) ?? handles
 }
 
 function alongOf({ tip }: Handle, drag: Vector): number {
