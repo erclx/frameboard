@@ -23,7 +23,7 @@ Before writing new frames, an agent reserves them with `editing --new`, one call
 - Renewing any frame in the set keeps the whole set, so it lapses together five minutes after the agent's last `editing`
 - Adding or renaming a frame onto a reserved name waits for the reservation to end, since the agent's file would replace yours
 
-Two ways end a reservation before its file lands.
+Two ways end a reservation early.
 
 - An agent drops several at once by naming them in one `editing --release`, where one wrong name drops none
 - Right-click a box and choose Release reservation to free the space for a frame of your own
