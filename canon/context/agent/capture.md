@@ -22,6 +22,7 @@ Owns the capture browser, the frame host, `fit`, and `inspect`, with flags and r
 - The warm renderer hides drawn controls through one style marked `data-frameboard`, so an element index still counts the file, while `capture`, `fit`, and `inspect` show them
 - `src/shared/motion.ts` reads `__hf`, then every `__timelines` entry, then `document.getAnimations()`, and `seek.ts` runs it in the page by source text, so it stays self-contained
 - An element shot answers 409 `stale-address` when the hash moved and 422 `invalid-address` for a missing or empty box, and refuses `filmstrip` or `device` beside it as `usage`
+- An element past the frame's left or top edge is shot by shifting the root with the element's used size held, since a shifted root re-anchors absolute and fixed boxes, so a descendant anchored past it can still move
 
 ## Gotchas
 
