@@ -33,6 +33,8 @@ export interface Handle {
   shown: number
   /** The direction a drag turns the model about the axis, one pixel long. */
   turning: Vector
+  /** The axis as its camera sees it, which each end of the handle turns by. */
+  seen: Axes
 }
 
 const dot = (a: Axes, b: Axes) => a.x * b.x + a.y * b.y + a.z * b.z
@@ -53,18 +55,20 @@ function seen(direction: Axes, { theta, phi }: Angle): Axes {
   }
 }
 
-function handleOf(axis: Axis, { x, y, z }: Axes): Handle {
+/** The face nearest the viewer moves across the axis, and one pointed at the viewer turns round its drawn tip. */
+function turningAt({ x, y, z }: Axes, along: Vector): Vector {
+  return unit({ x: y + z * along.y, y: x - z * along.x })
+}
+
+function handleOf(axis: Axis, seen: Axes): Handle {
+  const { x, y, z } = seen
   const drawn = { x: x + z * TOWARD.x, y: -y + z * TOWARD.y }
   const length = Math.hypot(drawn.x, drawn.y)
   const along = length < 0.01 ? unit(TOWARD) : unit(drawn)
   const pixels = Math.max(SHORTEST, length * HANDLE)
   const tip = { x: along.x * pixels, y: along.y * pixels }
-  // The face nearest the viewer moves across the axis, and one pointed at the viewer turns round its own tip.
-  const turning = unit({
-    x: y + z * along.y,
-    y: x - z * along.x,
-  })
-  return { axis, tip, shown: pixels / HANDLE, turning }
+  const turning = turningAt(seen, along)
+  return { axis, tip, shown: pixels / HANDLE, turning, seen }
 }
 
 /** The axes each of the Rotation fields turns the model about, the viewer turning Y, then X, then Z. */
@@ -99,6 +103,10 @@ function lengthsOf(handle: Handle): Handle[] {
     ...handle,
     tip: { x: along.x * length, y: along.y * length },
     shown: length < 0 ? -handle.shown : handle.shown,
+    turning:
+      length < 0
+        ? turningAt(handle.seen, { x: -along.x, y: -along.y })
+        : handle.turning,
   }))
 }
 

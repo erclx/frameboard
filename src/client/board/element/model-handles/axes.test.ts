@@ -169,6 +169,15 @@ describe('turnOfDrag', () => {
     expect(turnOfDrag(handle('turn', 'x', behind), { x: 0, y: 60 })).toBe(-30)
   })
 
+  it('turns with the pointer about a handle drawn from its other end', () => {
+    const from = { ...reading(150), orbit: { theta: 150, phi: 75 } }
+    const below = handle('turn', 'z', from)
+
+    expect(below.tip.y).toBeGreaterThan(0)
+    // The axis points away, so clockwise on screen, which under the center is to the left.
+    expect(turnOfDrag(below, { x: -60, y: 0 })).toBeGreaterThan(0)
+  })
+
   it('turns round the tip of an axis pointing at the viewer', () => {
     // Counterclockwise at the lower left is down and to the right.
     expect(turnOfDrag(handle('turn', 'z'), { x: 30, y: 30 })).toBeGreaterThan(0)
