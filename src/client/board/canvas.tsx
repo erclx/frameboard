@@ -10,12 +10,13 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 import { useCharacterKeysOn } from '@/client/actions/character-keys'
 import { findAction, isEnabled } from '@/client/actions/registry'
 import { cn } from '@/client/lib/cn'
 import { TAB_ID } from '@/client/live/socket'
-import { identityOf, liveStore, useLive } from '@/client/live/store'
+import { identityOf, liveStore, under, useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
 import { writeBoard } from '@/client/live/write'
@@ -237,7 +238,7 @@ export function Canvas({
   useEffect(() => followSpacePan(window), [])
   useNoteTool()
   usePlaceTools()
-  const unseen = useUnseen((state) => state.unseen)
+  const unseen = useUnseen(useShallow((state) => under(state.unseen, page.ref)))
   const [settled, setSettled] = useState<{ view: View; size: Size } | null>(
     null,
   )

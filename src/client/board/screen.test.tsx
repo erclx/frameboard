@@ -8,12 +8,30 @@ import { memoryLocation } from 'wouter/memory-location'
 
 import { IS_MAC } from '@/client/actions/keys'
 import { bindKeys, findAction } from '@/client/actions/registry'
+import { App } from '@/client/app'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
-import { liveStore, receiveBoard } from '@/client/live/store'
+import {
+  liveStore,
+  receiveBoard,
+  receiveClaims,
+  receiveFindings,
+  receiveReload,
+  receiveRename,
+} from '@/client/live/store'
+import {
+  createUnseenStore,
+  receiveChanges,
+  unseenStore,
+} from '@/client/live/unseen'
+import { applyPatch, patchBetween } from '@/shared/board-sync/patch'
 import type { ListResult, PageRecord } from '@/shared/records/list'
 
+import { Canvas } from './canvas'
 import { modeStore } from './mode'
 import { BoardScreen } from './screen'
+
+// Spied rather than replaced, so the rendered canvas is the real one.
+vi.mock('./canvas', { spy: true })
 
 const BOARD: ListResult = {
   root: '/board',
@@ -285,5 +303,190 @@ describe('switching pages', () => {
     rerender(boardAt('home'))
 
     await waitFor(() => expect(about?.isConnected).toBe(false))
+  })
+})
+
+describe('what a message renders', () => {
+  /** A project of two pages, each holding one frame named after it. */
+  function projectOf(name: string) {
+    const [project] = BOARD.projects
+    if (!project) throw new Error('no project')
+    return {
+      ...project,
+      name,
+      path: `/board/${name}`,
+      pages: ['home', 'about'].map((page, at) => {
+        const record = framedPage(page, at)
+        return {
+          ...record,
+          ref: `${name}/${page}`,
+          project: name,
+          frames: record.frames.map((frame) => ({
+            ...frame,
+            ref: `${name}/${page}/${page}`,
+            project: name,
+          })),
+        }
+      }),
+    }
+  }
+
+  const TWO: ListResult = {
+    root: '/board',
+    projects: [projectOf('studio'), projectOf('other')],
+  }
+
+  /** Moves one frame as a batch does, through a patch against the board held. */
+  function patchFrame(ref: string) {
+    const held = liveStore.getState().board
+    if (!held) throw new Error('no board')
+    const next = structuredClone(held)
+    for (const project of next.projects) {
+      for (const page of project.pages) {
+        for (const frame of page.frames) {
+          if (frame.ref === ref) frame.modifiedAt = '2026-11-25T00:00:00.000Z'
+        }
+      }
+    }
+    const patched = applyPatch(held, patchBetween(held, next))
+    if (!patched) throw new Error('the patch does not apply')
+    receiveBoard(liveStore, patched)
+  }
+
+  const MESSAGES: [string, (ref: string) => void][] = [
+    ['a patch', patchFrame],
+    ['a reload', (ref) => receiveReload(liveStore, [ref])],
+    ['a kept reload', (ref) => receiveReload(liveStore, [ref], [ref])],
+    [
+      'findings',
+      (ref) =>
+        receiveFindings(liveStore, {
+          [ref]: [
+            {
+              rule: 'theme',
+              severity: 'error',
+              frame: ref,
+              path: `${ref}.html`,
+              message: 'One theme alone.',
+              location: null,
+            },
+          ],
+        }),
+    ],
+    [
+      'a claim',
+      (ref) =>
+        receiveClaims(liveStore, [
+          {
+            frame: ref,
+            session: 's-1',
+            agent: 'claude',
+            tag: 'claude · s-1',
+            claimedAt: '2026-10-19T10:00:00.000Z',
+            expiresAt: '2026-10-19T10:05:00.000Z',
+          },
+        ]),
+    ],
+    [
+      'an unseen change',
+      (ref) =>
+        receiveChanges(unseenStore, [
+          {
+            id: 'c1',
+            frame: ref,
+            at: '2026-10-19T12:00:00.000Z',
+            hash: 'h1',
+            author: null,
+            elements: [],
+            removed: 0,
+            whole: true,
+            created: true,
+          },
+        ]),
+    ],
+  ]
+
+  /** The canvas's renders a message costs, with the board already at rest. */
+  function rendersOf(message: () => void): number {
+    vi.mocked(Canvas).mockClear()
+    act(message)
+    return vi.mocked(Canvas).mock.calls.length
+  }
+
+  function openHome() {
+    const location = memoryLocation({ path: '/p/studio/home', record: true })
+    render(
+      <Router hook={location.hook}>
+        <App />
+      </Router>,
+    )
+    return location
+  }
+
+  beforeEach(() => {
+    receiveBoard(liveStore, TWO)
+  })
+
+  afterEach(() => {
+    unseenStore.setState(createUnseenStore(null).getState(), true)
+    liveStore.setState({ reloads: {}, kept: {}, findings: {}, claims: {} })
+  })
+
+  it.each(MESSAGES)(
+    'renders no canvas for %s in another project',
+    (_, send) => {
+      openHome()
+
+      expect(rendersOf(() => send('other/home/home'))).toBe(0)
+    },
+  )
+
+  it.each(MESSAGES)('renders the canvas for %s on the open page', (_, send) => {
+    openHome()
+
+    expect(rendersOf(() => send('studio/home/home'))).toBeGreaterThan(0)
+  })
+
+  it.each(MESSAGES.filter(([name]) => name !== 'an unseen change'))(
+    'renders the canvas for %s on another page of the project, which it may hold',
+    (_, send) => {
+      openHome()
+
+      expect(rendersOf(() => send('studio/about/about'))).toBeGreaterThan(0)
+    },
+  )
+
+  it('keeps a frame its reload count through a rename of the open project', () => {
+    const location = openHome()
+    act(() => receiveReload(liveStore, ['studio/home/home']))
+
+    act(() => receiveRename(liveStore, 'studio', 'atelier'))
+
+    expect(location.history.at(-1)).toBe('/p/atelier/home')
+    expect(vi.mocked(Canvas).mock.lastCall?.[0].reloads).toEqual({
+      'atelier/home/home': 1,
+    })
+  })
+
+  it('counts an unseen change of another project in the tab title', () => {
+    openHome()
+
+    act(() =>
+      receiveChanges(unseenStore, [
+        {
+          id: 'c1',
+          frame: 'other/home/home',
+          at: '2026-10-19T12:00:00.000Z',
+          hash: 'h1',
+          author: null,
+          elements: [],
+          removed: 0,
+          whole: true,
+          created: true,
+        },
+      ]),
+    )
+
+    expect(document.title).toBe('(1) studio · Frameboard')
   })
 })

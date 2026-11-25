@@ -176,6 +176,17 @@ function isUnder(ref: string, prefix: string): boolean {
 }
 
 /**
+ * The entries of `byRef` on a project or page, or on what it holds. Read it
+ * through `useShallow`, since a call can answer a new object each time.
+ */
+export function under<T>(
+  byRef: Readonly<Record<string, T>>,
+  ref: string,
+): Readonly<Record<string, T>> {
+  return keepKeys(byRef, (key) => isUnder(key, ref))
+}
+
+/**
  * The aliases still naming an identity nothing else holds. One whose first
  * name the board now holds again, such as a page added under a name renamed
  * away, is dropped, so the two never share a canvas or a frame.
