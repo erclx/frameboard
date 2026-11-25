@@ -38,7 +38,8 @@ function lastOf(value) {
   return /^-?[\d.]+(m|deg)$/.test(last) ? parseFloat(last) : null
 }
 
-const clamp = (value, low, high) => Math.min(high, Math.max(low, value))
+// The viewer's nearest limit wins over its farthest one.
+const clamp = (value, low, high) => Math.max(low, Math.min(high, value))
 
 class StubViewer extends HTMLElement {
   static observedAttributes = Object.keys(PROPERTIES)

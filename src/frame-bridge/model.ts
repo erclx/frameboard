@@ -140,7 +140,7 @@ async function reframe(viewer: Viewer): Promise<void> {
   await settle(viewer)
 }
 
-/** Shows one staging attribute as a fresh load of the written file would. */
+/** Shows one staging attribute as a fresh load would, short of the framing a load redoes for a turned model. */
 function stage(
   viewer: Viewer,
   name: StagedAttribute,
@@ -179,18 +179,41 @@ function stateLast(viewer: Viewer, name: StagedAttribute, last: string): void {
   state(viewer, name, resting ? null : stated)
 }
 
-/** States the camera's distance and opens the reach around it, or leaves both to the viewer on null. */
-function stateDistance(viewer: Viewer, meters: number | null): void {
-  const radius = meters === null ? 'auto' : `${measured(meters)}m`
-  const [theta, phi] = three(viewer, 'camera-orbit')
-  if (meters !== null && theta === 'auto' && phi === 'auto') {
+/** Leaves the camera's distance to the viewer, with each limit a hold stated and none the file states itself. */
+function releaseDistance(viewer: Viewer): void {
+  const [, , radius] = three(viewer, 'camera-orbit')
+  const [, , farthest] = three(viewer, 'max-camera-orbit')
+  const [, , nearest] = three(viewer, 'min-camera-orbit')
+  stateLast(viewer, 'camera-orbit', 'auto')
+  // A hold states its reach at the orbit's own distance, as a typed angle does.
+  if (farthest === radius) stateLast(viewer, 'max-camera-orbit', 'auto')
+  if (nearest === '0m') stateLast(viewer, 'min-camera-orbit', 'auto')
+}
+
+/** States the camera's distance, and moves a limit only where it would hold the camera off it. */
+async function holdDistance(viewer: Viewer, meters: number): Promise<void> {
+  const radius = `${measured(meters)}m`
+  const [theta, phi, farthest] = [
+    ...three(viewer, 'camera-orbit').slice(0, 2),
+    three(viewer, 'max-camera-orbit')[2],
+  ]
+  if (theta === 'auto' && phi === 'auto') {
     viewer.setAttribute('camera-orbit', `0deg 75deg ${radius}`)
   } else {
     stateLast(viewer, 'camera-orbit', radius)
   }
-  stateLast(viewer, 'max-camera-orbit', radius)
+  if (farthest === 'auto') stateLast(viewer, 'max-camera-orbit', radius)
+  await settle(viewer)
+  const stands = () => viewer.getCameraOrbit?.().radius ?? meters
+  if (stands() < meters && !near(stands(), meters)) {
+    stateLast(viewer, 'max-camera-orbit', radius)
+    await settle(viewer)
+  }
   // The viewer keeps its camera outside the model's framed size, which a larger model passes.
-  stateLast(viewer, 'min-camera-orbit', meters === null ? 'auto' : '0m')
+  if (stands() > meters && !near(stands(), meters)) {
+    stateLast(viewer, 'min-camera-orbit', '0m')
+    await settle(viewer)
+  }
 }
 
 /** The widest view a viewer takes with none stated, in degrees. */
@@ -278,12 +301,11 @@ async function holdTransform(
   const distance = viewer.getCameraOrbit?.().radius ?? 0
   const view = viewer.getFieldOfView?.() ?? WIDEST
   await showTransform(viewer, transform)
-  stateDistance(viewer, null)
+  releaseDistance(viewer)
   stateView(viewer, null)
   await reframe(viewer)
   if (!near(viewer.getCameraOrbit?.().radius ?? 0, distance)) {
-    stateDistance(viewer, distance)
-    await settle(viewer)
+    await holdDistance(viewer, distance)
   }
   if (!near(viewer.getFieldOfView?.() ?? 0, view)) await holdView(viewer, view)
   return HELD.map((name) => ({ name, value: viewer.getAttribute(name) }))

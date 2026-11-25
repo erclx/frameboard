@@ -330,6 +330,40 @@ describe('model-transform', () => {
     close()
   })
 
+  it.each([
+    ['a size', { scale: even(1.2), depth: 0 }],
+    ['a smaller size', { scale: even(0.8), depth: 0 }],
+    ['a size within its tolerance', { scale: even(1.001), depth: 0 }],
+    ['a depth', { scale: even(1), depth: 0.2 }],
+  ])(
+    'keeps the limits a file states through %s and back at rest',
+    async (_name, sized) => {
+      const limits =
+        'camera-orbit="0deg 75deg 3m" min-camera-orbit="auto auto 2m" max-camera-orbit="auto auto 10m"'
+      const { frame, close } = await drawn(limits)
+
+      const held = await transform(frame, sized)
+      const rested = await transform(frame, { scale: even(1), depth: 0 })
+
+      expect(stated(held)).toContain(
+        'min-camera-orbit="auto auto 2m" max-camera-orbit="auto auto 10m"',
+      )
+      expect(stated(rested)).toBe(limits)
+      close()
+    },
+  )
+
+  it('drops the limit it added once a file with its own distance is back at rest', async () => {
+    const own = 'camera-orbit="0deg 75deg 3m" max-camera-orbit="auto auto 3m"'
+    const { frame, close } = await drawn(own)
+    await transform(frame, { scale: even(2), depth: 0 })
+
+    const rested = await transform(frame, { scale: even(1), depth: 0 })
+
+    expect(stated(rested)).toBe(own)
+    close()
+  })
+
   it('counts a depth from the center its scale moves', async () => {
     const { frame, close } = await drawn()
 
