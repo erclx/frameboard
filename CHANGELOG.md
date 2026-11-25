@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.55.0](https://github.com/erclx/frameboard/compare/v0.54.0...v0.55.0) (2026-11-25)
+
+
+### Features
+
+* **assets:** open find and generate in a wide dialog with a preview ([#497](https://github.com/erclx/frameboard/issues/497)) ([79a254f](https://github.com/erclx/frameboard/commit/79a254f8a60a2c7ce9011db43213cdc93ab842c7))
+* **canvas:** walk the frame stepper in canvas order ([#500](https://github.com/erclx/frameboard/issues/500)) ([4c25713](https://github.com/erclx/frameboard/commit/4c257137090b5bb53436563c21dacdb2894f53f7))
+* **model:** move, turn, and size a 3D model along each axis ([#499](https://github.com/erclx/frameboard/issues/499)) ([47c39b8](https://github.com/erclx/frameboard/commit/47c39b826ef23ad9982a3bd91954f30f38546e66))
+* **present:** tune a slide's steps by hand ([#502](https://github.com/erclx/frameboard/issues/502)) ([948a455](https://github.com/erclx/frameboard/commit/948a4552ee96185829e1bdf7084c4dabcf2d5971))
+* **theme:** open the theme in a wide dialog from summary cards ([#501](https://github.com/erclx/frameboard/issues/501)) ([b0930c2](https://github.com/erclx/frameboard/commit/b0930c2b445f90d1a8747dd8fe004bd1d53aa66c))
+
 ## [0.54.0](https://github.com/erclx/frameboard/compare/v0.53.0...v0.54.0) (2026-11-25)
 
 
