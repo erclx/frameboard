@@ -12,6 +12,14 @@ function claimOf(result: CliRun): Claim {
   return (result.json().data as { claim: Claim }).claim
 }
 
+function claimsOf(result: CliRun): Claim[] {
+  return (result.json().data as { claims: Claim[] }).claims
+}
+
+function framesOf(claims: Claim[]): string[] {
+  return claims.map((each) => each.frame)
+}
+
 describe('editing', () => {
   let board: FixtureBoard
 
@@ -112,11 +120,82 @@ describe('editing', () => {
     expect(result.json().error?.code).toBe('frame-not-found')
   })
 
-  describe('--new', () => {
-    function claimsOf(result: CliRun): Claim[] {
-      return (result.json().data as { claims: Claim[] }).claims
+  describe('--release of several frames', () => {
+    function releasedOf(result: CliRun): string[] {
+      return framesOf((result.json().data as { released: Claim[] }).released)
     }
 
+    function release(refs: string[], session = 'sess-a') {
+      return editing([...refs, '--release', '--session', session])
+    }
+
+    async function held(): Promise<string[]> {
+      return framesOf(claimsOf(await editing([])))
+    }
+
+    beforeEach(async () => {
+      await editing([
+        'webapp/home/one',
+        'webapp/home/two',
+        'webapp/home/three',
+        '--new',
+        '--session',
+        'sess-a',
+      ])
+    })
+
+    it('drops each frame named, written or reserved, and keeps the rest', async () => {
+      await editing(['webapp/home/hero', '--session', 'sess-a'])
+
+      const result = await release(['webapp/home/one', 'webapp/home/hero'])
+
+      expect(result.exitCode).toBe(0)
+      expect(releasedOf(result)).toEqual([
+        'webapp/home/one',
+        'webapp/home/hero',
+      ])
+      expect(await held()).toEqual(['webapp/home/two', 'webapp/home/three'])
+    })
+
+    it('refuses every wrong name at once as frame-not-found, exit 3, dropping none', async () => {
+      const result = await release([
+        'webapp/home/one',
+        'webapp/home/missing',
+        'home/gone',
+        '--project',
+        'webapp',
+      ])
+
+      expect(result.exitCode).toBe(3)
+      expect(result.json().error).toMatchObject({
+        code: 'frame-not-found',
+        details: { refs: ['webapp/home/missing', 'webapp/home/gone'] },
+      })
+      expect(await held()).toEqual([
+        'webapp/home/one',
+        'webapp/home/two',
+        'webapp/home/three',
+      ])
+    })
+
+    it('leaves a claim another session holds, answering the ones it dropped', async () => {
+      await editing(['webapp/home/hero', '--session', 'sess-b'])
+
+      const result = await release(['webapp/home/one', 'webapp/home/hero'])
+
+      expect(result.exitCode).toBe(0)
+      expect(releasedOf(result)).toEqual(['webapp/home/one'])
+      expect(await held()).toContain('webapp/home/hero')
+    })
+
+    it('answers one claim for a frame named twice', async () => {
+      const result = await release(['webapp/home/one', 'webapp/home/one'])
+
+      expect(releasedOf(result)).toEqual(['webapp/home/one'])
+    })
+  })
+
+  describe('--new', () => {
     it('reserves each frame in one row past every placed frame, answering { claims }', async () => {
       const result = await editing([
         'webapp/home/one',

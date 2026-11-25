@@ -56,11 +56,11 @@ export function registerEditing(
   )
     .argument(
       '[frame-refs...]',
-      'the frame to claim or release, or with --new every frame to reserve',
+      'the frame to claim, or every frame to release with --release or reserve with --new',
     )
     .option(
       '--release',
-      "drop this session's claim on the frame, or every claim it holds",
+      "drop this session's claim on each frame named, or every claim it holds",
     )
     .option(
       '--new',
@@ -112,21 +112,16 @@ export function registerEditing(
       }
     }
 
-    if (refs.length > 1) {
-      throw new FrameboardError(
-        'usage',
-        `editing claims one frame at a time. Pass --new to reserve ${refs.length} frames not written yet.`,
-        { refs },
-      )
-    }
-    const [ref] = refs
-
     if (options.release) {
       const session = sessionOf(options.session)
-      const frame = ref
-        ? await claimable(root, ref, resolving(options, io.cwd), now)
-        : undefined
-      const released = await release(root, session, frame, now)
+      const frames = await targetsOf(root, refs, options, io.cwd)
+      await assertClaimable(root, refs, frames, now)
+      const released = await release(
+        root,
+        session,
+        refs.length > 0 ? frames.map(refOf) : undefined,
+        now,
+      )
       return {
         data: { released },
         human:
@@ -136,9 +131,20 @@ export function registerEditing(
       }
     }
 
+    if (refs.length > 1) {
+      throw new FrameboardError(
+        'usage',
+        `editing claims one frame at a time. Pass --new to reserve ${refs.length} frames not written yet, or --release to drop ${refs.length} claims.`,
+        { refs },
+      )
+    }
+
+    const [ref] = refs
     if (ref) {
       const session = sessionOf(options.session)
-      const frame = await claimable(root, ref, resolving(options, io.cwd), now)
+      const target = await targetOf(root, ref, options, io.cwd)
+      await assertClaimable(root, refs, [target], now)
+      const frame = refOf(target)
       const held = await claim(
         root,
         {
@@ -160,35 +166,59 @@ export function registerEditing(
   })
 }
 
-function resolving(options: EditingOptions, cwd: string) {
-  return { project: options.project, cwd }
+/** The frame a ref names, whether or not its file is written. */
+function targetOf(
+  root: string,
+  ref: string,
+  options: EditingOptions,
+  cwd: string,
+): Promise<ResolvedRef> {
+  return resolveFrameRef(root, ref, {
+    project: options.project,
+    cwd,
+    allowMissing: true,
+  })
+}
+
+function targetsOf(
+  root: string,
+  refs: string[],
+  options: EditingOptions,
+  cwd: string,
+): Promise<ResolvedRef[]> {
+  return Promise.all(refs.map((ref) => targetOf(root, ref, options, cwd)))
 }
 
 /**
- * The ref a plain claim names: an existing frame, or one a live reservation
- * holds before its file is written, which the agent claims as it turns to
- * draw it. Any other missing frame refuses `frame-not-found` as before.
+ * Refuses the whole call as `frame-not-found`, naming every frame with no
+ * file and no live reservation, which an agent claims as it turns to draw it.
  */
-async function claimable(
+async function assertClaimable(
   root: string,
-  ref: string,
-  options: { project?: string; cwd: string },
+  refs: string[],
+  frames: ResolvedRef[],
   now: Date,
-): Promise<string> {
-  const frame = await resolveFrameRef(root, ref, {
-    ...options,
-    allowMissing: true,
-  })
-  const canonical = refOf(frame)
-  if (existsSync(frame.path)) return canonical
-  const reserved = (await readClaims(root, now)).some(
-    (each) => each.frame === canonical && each.box,
+): Promise<void> {
+  const unwritten = frames.filter((frame) => !existsSync(frame.path))
+  const live = unwritten.length > 0 ? await readClaims(root, now) : []
+  const reserved = new Set(
+    live.filter((each) => each.box).map((each) => each.frame),
   )
-  if (reserved) return canonical
+  const missing = unwritten.filter((frame) => !reserved.has(refOf(frame)))
+  const [first] = missing
+  if (!first) return
+  if (refs.length === 1) {
+    throw new FrameboardError(
+      'frame-not-found',
+      `No frame ${first.name} in ${first.project}/${first.page}.`,
+      { ref: refs[0] },
+    )
+  }
+  const named = missing.map(refOf)
   throw new FrameboardError(
     'frame-not-found',
-    `No frame ${frame.name} in ${frame.project}/${frame.page}.`,
-    { ref },
+    `No frame or reservation ${named.join(', ')}, so nothing was released.`,
+    { refs: named },
   )
 }
 
@@ -214,14 +244,7 @@ async function reservationsOf(
       'Name at least one frame to reserve with --new.',
     )
   }
-  const frames = await Promise.all(
-    refs.map((ref) =>
-      resolveFrameRef(root, ref, {
-        ...resolving(options, cwd),
-        allowMissing: true,
-      }),
-    ),
-  )
+  const frames = await targetsOf(root, refs, options, cwd)
   const existing = frames.filter((frame) => existsSync(frame.path))
   if (existing.length > 0) {
     throw new FrameboardError(
