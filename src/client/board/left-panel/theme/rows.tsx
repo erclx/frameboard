@@ -255,8 +255,7 @@ function SwatchPicker({
         aria-label={`${title}: ${value ?? 'not set'}`}
         title={value ?? `Not set in ${side}`}
         onClick={open}
-        // The open picker takes the focus a frame late, so an Esc before then
-        // lands here, and the dialog around the swatch would close on it.
+        // The picker takes the focus a frame late, so an Esc before then lands here.
         onKeyDown={(event) => {
           if (!picking || event.key !== 'Escape') return
           event.stopPropagation()
