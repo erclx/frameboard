@@ -88,6 +88,12 @@ function themeDialog(section: string): (page: Page) => Promise<void> {
     : both(themeTab, pointerPressOnLoad(card))
 }
 
+/**
+ * Opens the Theme dialog on Fonts by a bare click, which marks no pointer, so
+ * a control focused in it rings as it does for a key.
+ */
+const fontsByKey = both(themeTab, pressOnLoad('^Fonts ·'))
+
 /** A drawn row of the token group the Theme dialog shows. */
 const TOKEN_ROW = 'section[aria-labelledby^="tokens-"] li'
 
@@ -1057,7 +1063,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
-      // A board sheet outside the board folder at a long path, which the help mark holds.
+      // A board sheet outside the board folder at a long path, which wraps in the open help mark.
       section: 'theme-tab-long-path',
       theme,
       route: '/p/webapp/home',
@@ -1068,7 +1074,8 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           longBoardSheet,
           themeDialog('color'),
-          readyWhen(`${TOKEN_ROW}:last-child`),
+          focusOnLoad('[role="dialog"] [aria-label="About token source"]'),
+          readyWhen('[data-slot="tooltip-content"]'),
         ),
       ),
     },
@@ -1162,10 +1169,12 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           asWriter,
           installedLora(['webapp/home/hero']),
-          themeDialog('fonts'),
+          fontsByKey,
           actWhen(REMOVE_LORA, 'Remove Lora', 'click'),
           focusOnLoad(CONFIRM_REMOVE),
-          readyWhen(`${CONFIRM_REMOVE}:focus-visible`),
+          readyWhen(
+            `${CONFIRM_REMOVE}:focus-visible:not([data-pointer-focus])`,
+          ),
         ),
       ),
     },
