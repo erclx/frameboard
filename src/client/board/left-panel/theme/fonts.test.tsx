@@ -2,6 +2,7 @@ import '../../../styles.css'
 
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { Toaster } from '@/client/components/ui/toast'
@@ -17,6 +18,10 @@ import type {
 } from '@/shared/records/sourcing'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
+import {
+  type InstalledFontsRead,
+  useInstalledFonts,
+} from '../../assets/sourcing'
 import { FontsSection } from './fonts'
 
 function installed(
@@ -130,6 +135,18 @@ function recordingRemove() {
   return { removed, remove }
 }
 
+/** The section over its own read of the installed fonts, as the tab wires it. */
+function Fonts({
+  load,
+  ...props
+}: Omit<ComponentProps<typeof FontsSection>, 'list'> & {
+  load: InstalledFontsRead
+}) {
+  return (
+    <FontsSection {...props} list={useInstalledFonts(props.project, load)} />
+  )
+}
+
 function liveBoard(canWrite = true) {
   const board = boardOf(pageOf([frameOf('hero'), frameOf('pricing')]))
   act(() => liveStore.setState({ board, canWrite }))
@@ -139,7 +156,14 @@ function rowNames(): string[] {
   const list = screen.getByRole('list', { name: 'Fonts frames can use' })
   return within(list)
     .getAllByRole('listitem')
-    .map((item) => item.textContent ?? '')
+    .map((item) => (item.textContent ?? '').replace(/^Aa/, ''))
+}
+
+/** The specimen letters of a family's tile. */
+function specimenOf(family: string): HTMLElement {
+  const tile = screen.getByText(family).closest('li')
+  if (!tile) throw new Error(`No tile for ${family}`)
+  return within(tile).getByText('Aa')
 }
 
 beforeEach(() => {
@@ -153,12 +177,9 @@ afterEach(() => {
 describe('FontsSection', () => {
   describe('the list', () => {
     it('lists the built-in faces then each installed family with its license', async () => {
-      render(<FontsSection project="studio" load={listOf(installed('Lora'))} />)
+      render(<Fonts project="studio" load={listOf(installed('Lora'))} />)
 
       expect(await screen.findByText('Lora')).toBeInTheDocument()
-      expect(
-        within(screen.getByRole('region', { name: 'Fonts' })).getByText('6'),
-      ).toBeInTheDocument()
       expect(rowNames()).toEqual([
         'GeistBuilt in',
         'Geist MonoBuilt in',
@@ -170,7 +191,7 @@ describe('FontsSection', () => {
     })
 
     it('lists the built-in faces alone, with no empty message, before anything is installed', async () => {
-      render(<FontsSection project="studio" load={listOf()} />)
+      render(<Fonts project="studio" load={listOf()} />)
 
       expect(await screen.findByText('Caveat')).toBeInTheDocument()
       expect(rowNames()).toHaveLength(5)
@@ -179,7 +200,7 @@ describe('FontsSection', () => {
 
     it('lists an installed family the board also serves once, as installed', async () => {
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf(installed('Inter', { bundled: true }))}
         />,
@@ -191,19 +212,53 @@ describe('FontsSection', () => {
       ])
     })
 
-    it('sets each row in its own face', async () => {
-      render(<FontsSection project="studio" load={listOf(installed('Lora'))} />)
+    it('sets each specimen in its own face', async () => {
+      render(<Fonts project="studio" load={listOf(installed('Lora'))} />)
 
-      expect(await screen.findByText('Lora')).toHaveStyle({
+      await screen.findByText('Lora')
+      expect(specimenOf('Lora')).toHaveStyle({
         fontFamily: "'Lora', sans-serif",
       })
-      expect(screen.getByText('Geist Mono')).toHaveStyle({
+      expect(specimenOf('Geist Mono')).toHaveStyle({
         fontFamily: "'Geist Mono', monospace",
       })
     })
 
+    it('draws thirty fonts as a grid with no scroll of its own', async () => {
+      const families = Array.from({ length: 25 }, (_, at) => `Family ${at}`)
+      render(
+        <div className="w-[748px]">
+          <Fonts
+            project="studio"
+            load={listOf(...families.map((family) => installed(family)))}
+          />
+        </div>,
+      )
+
+      await screen.findByText('Family 24')
+      const list = screen.getByRole('list', { name: 'Fonts frames can use' })
+      expect(within(list).getAllByRole('listitem')).toHaveLength(30)
+      expect(list.scrollHeight).toBeLessThanOrEqual(list.clientHeight)
+      const tops = within(list)
+        .getAllByRole('listitem')
+        .map((item) => item.getBoundingClientRect().top)
+      expect(tops.filter((top) => top === tops[0])).toHaveLength(4)
+    })
+
+    it('shows a forty character family whole inside its tile', async () => {
+      const family = 'Supercalifragilisticexpialidociousserifs'
+      render(
+        <div className="w-[320px]">
+          <Fonts project="studio" load={listOf(installed(family))} />
+        </div>,
+      )
+
+      const shown = await screen.findByText(family)
+      expect(shown.scrollWidth).toBeLessThanOrEqual(shown.clientWidth)
+    })
+
     it('says the installed list did not load and still lists the built-in faces', async () => {
-      render(<FontsSection project="studio" load={async () => null} />)
+      render(<Fonts project="studio" load={async () => null} />)
 
       expect(
         await screen.findByText(
@@ -218,7 +273,7 @@ describe('FontsSection', () => {
     it('removes a family no frame uses without asking', async () => {
       const { removed, remove } = recordingRemove()
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf(installed('Lora'))}
           readFrames={framesOf([])}
@@ -237,7 +292,7 @@ describe('FontsSection', () => {
     it('asks first, naming the frames a removal leaves falling back', async () => {
       const { removed, remove } = recordingRemove()
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf(installed('Lora'))}
           readFrames={framesOf(['studio/home/hero', 'studio/home/pricing'])}
@@ -267,7 +322,7 @@ describe('FontsSection', () => {
     it('keeps the font when the confirmation is cancelled', async () => {
       const { removed, remove } = recordingRemove()
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf(installed('Lora'))}
           readFrames={framesOf(['studio/home/hero'])}
@@ -289,7 +344,7 @@ describe('FontsSection', () => {
 
     it('hands focus back to Remove when the confirmation is cancelled by keyboard', async () => {
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf(installed('Lora'))}
           readFrames={framesOf(['studio/home/hero'])}
@@ -310,7 +365,7 @@ describe('FontsSection', () => {
       const asked: string[] = []
       let answer = () => {}
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf(installed('Lora'), installed('Playfair Display'))}
           readFrames={(_project, id) => {
@@ -340,7 +395,7 @@ describe('FontsSection', () => {
     it('removes a family the board also serves without asking, since its frames keep drawing', async () => {
       const { removed, remove } = recordingRemove()
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf(installed('Inter', { bundled: true }))}
           readFrames={async () => {
@@ -360,7 +415,7 @@ describe('FontsSection', () => {
 
     it('shows a refused removal inline', async () => {
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf(installed('Lora'))}
           readFrames={framesOf([])}
@@ -383,7 +438,7 @@ describe('FontsSection', () => {
       let refuse = () => {}
       render(<Toaster />)
       const { unmount } = render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf(installed('Lora'))}
           readFrames={framesOf([])}
@@ -411,7 +466,7 @@ describe('FontsSection', () => {
     it('opens an empty search on Find a font, with nothing found yet', async () => {
       const asked: string[] = []
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf()}
           find={async (_project, text) => {
@@ -436,7 +491,7 @@ describe('FontsSection', () => {
 
     it('lists what a search found, each set in its sample, with Install named for its family', async () => {
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf(installed('Lora'))}
           find={async (_project, text) =>
@@ -457,12 +512,13 @@ describe('FontsSection', () => {
           .getAllByRole('listitem')
           .map((item) => item.textContent),
       ).toEqual([
-        'LoraInstalled',
-        'Playfair DisplayOFLInstall',
-        'Source Serif 4Built in',
+        'AaLoraInstalled',
+        'AaPlayfair DisplayOFLInstall',
+        'AaSource Serif 4Built in',
       ])
+      const tile = within(found).getByText('Playfair Display').closest('li')
       expect(
-        getComputedStyle(within(found).getByText('Playfair Display'))
+        getComputedStyle(within(tile as HTMLElement).getByText('Aa'))
           .fontFamily,
       ).toMatch(/^"?frameboard-sample-playfair-display"?,/)
       expect(
@@ -473,7 +529,7 @@ describe('FontsSection', () => {
 
     it('counts the matches past the ones shown', async () => {
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf()}
           find={async (_project, text) => ({
@@ -494,7 +550,7 @@ describe('FontsSection', () => {
 
     it('says nothing matched and how to widen the search', async () => {
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf()}
           find={async (_project, text) => findOf(text, [])}
@@ -512,7 +568,7 @@ describe('FontsSection', () => {
 
     it('names the source when it does not answer, and keeps the installed list', async () => {
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf(installed('Lora'))}
           find={async () => {
@@ -534,7 +590,7 @@ describe('FontsSection', () => {
       let land = () => {}
       let fonts: InstalledFont[] = []
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={async () => ({ version: 1, project: 'studio', fonts })}
           find={async (_project, text) =>
@@ -585,7 +641,7 @@ describe('FontsSection', () => {
       let land = () => {}
       render(
         <>
-          <FontsSection
+          <Fonts
             project="studio"
             load={listOf()}
             find={async (_project, text) =>
@@ -615,7 +671,7 @@ describe('FontsSection', () => {
     it('records the query whose answer drew a result, not text typed since', async () => {
       const sent: (string | null)[] = []
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf()}
           find={async (_project, text) =>
@@ -640,7 +696,7 @@ describe('FontsSection', () => {
 
     it('keeps the field’s name as the found count changes', async () => {
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf()}
           find={async (_project, text) =>
@@ -663,7 +719,7 @@ describe('FontsSection', () => {
       let refuse = () => {}
       render(<Toaster />)
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf()}
           find={async (_project, text) =>
@@ -691,7 +747,7 @@ describe('FontsSection', () => {
 
     it('shows a refused install inline', async () => {
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf()}
           find={async (_project, text) =>
@@ -718,7 +774,7 @@ describe('FontsSection', () => {
 
     it('closes the search on Escape and returns focus to Find a font', async () => {
       render(
-        <FontsSection
+        <Fonts
           project="studio"
           load={listOf()}
           find={async (_project, text) => findOf(text, [])}
@@ -736,7 +792,7 @@ describe('FontsSection', () => {
   describe('a view-only tab', () => {
     it('lists the fonts with no remove, saying why', async () => {
       liveBoard(false)
-      render(<FontsSection project="studio" load={listOf(installed('Lora'))} />)
+      render(<Fonts project="studio" load={listOf(installed('Lora'))} />)
 
       expect(await screen.findByText('Lora')).toBeInTheDocument()
       expect(

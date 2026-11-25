@@ -195,7 +195,14 @@ export function NumberField({
     if (event.key === 'Escape') {
       cancel()
       cancelled.current = true
-      event.currentTarget.blur()
+      const input = event.currentTarget
+      const dialog = input.closest<HTMLElement>('[data-slot="dialog-content"]')
+      input.blur()
+      // A dialog closes on an Esc that reaches it, and focus left on the page escapes it.
+      if (dialog) {
+        event.stopPropagation()
+        dialog.focus()
+      }
     }
   }
 

@@ -1,5 +1,5 @@
 import { RotateCcw } from 'lucide-react'
-import { type RefObject, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 
 import { Popover, PopoverContent } from '@/client/components/ui/popover'
 import { cn } from '@/client/lib/cn'
@@ -16,10 +16,7 @@ import {
 } from '../../inspector/element/color-picker/space'
 import { colorCss, SWATCH_RING } from '../../inspector/element/values'
 import { NumberField } from '../../inspector/number-field'
-import type { TokenChange } from './write'
-
-/** Sends one edit of the row's token, answering whether it landed. */
-export type WriteRow = (change: TokenChange) => Promise<boolean>
+import type { WriteRow } from './token-writer'
 
 interface RowProps {
   row: TokenRow
@@ -30,18 +27,24 @@ interface RowProps {
   onWrite: WriteRow
 }
 
-const ROW = 'mx-1.5 grid h-7 items-center gap-1.5 rounded-md px-1.5'
+const ROW =
+  'grid min-h-8 items-center gap-x-3 gap-y-1 border-b border-border py-1 last:border-b-0'
 
-/** A color token: its name, tag, and reset, then a light and a dark swatch, each opening the picker. */
+/** A color token: its name, tag, and reset, then its value in light and in dark, each opening the picker. */
 export function ColorRow({ row, fromProject, editable, onWrite }: RowProps) {
-  const item = useRef<HTMLLIElement>(null)
   return (
-    <li ref={item} className={cn(ROW, 'grid-cols-[1fr_18px_18px]')}>
+    <li
+      className={cn(
+        ROW,
+        'grid-cols-2 @md:grid-cols-[minmax(0,1fr)_10rem_10rem]',
+      )}
+    >
       <RowHead
         row={row}
         fromProject={fromProject}
         editable={editable}
         onWrite={onWrite}
+        className="col-span-2 @md:col-span-1"
       />
       {(['light', 'dark'] as const).map((side) =>
         editable ? (
@@ -50,11 +53,13 @@ export function ColorRow({ row, fromProject, editable, onWrite }: RowProps) {
             name={row.name}
             side={side}
             value={row[side]}
-            row={item}
             onWrite={onWrite}
           />
         ) : (
-          <Swatch key={side} side={side} value={row[side]} />
+          <span key={side} className={VALUE}>
+            <Swatch side={side} value={row[side]} />
+            <SwatchValue value={row[side]} />
+          </span>
         ),
       )}
     </li>
@@ -65,8 +70,14 @@ export function ColorRow({ row, fromProject, editable, onWrite }: RowProps) {
 export function ValueRow({ row, fromProject, editable, onWrite }: RowProps) {
   const value = row.light ?? row.dark ?? ''
   const number = NUMBER.exec(value.trim())
+  const face = row.group === 'font' ? faceOf(value) : undefined
   return (
-    <li className={cn(ROW, 'grid-cols-[1fr_auto]')}>
+    <li
+      className={cn(
+        ROW,
+        'grid-cols-1 @md:grid-cols-[minmax(0,1fr)_minmax(0,auto)]',
+      )}
+    >
       <RowHead
         row={row}
         fromProject={fromProject}
@@ -75,8 +86,9 @@ export function ValueRow({ row, fromProject, editable, onWrite }: RowProps) {
       />
       {!editable ? (
         <span
-          className="max-w-32 truncate text-muted-foreground"
-          title={shownValue(row)}
+          className="max-w-80 min-w-0 [overflow-wrap:anywhere] text-muted-foreground"
+          style={{ fontFamily: face }}
+          title={value}
         >
           {shownValue(row)}
         </span>
@@ -92,6 +104,7 @@ export function ValueRow({ row, fromProject, editable, onWrite }: RowProps) {
           name={row.name}
           value={value}
           shown={shownValue(row)}
+          face={face}
           onWrite={onWrite}
         />
       )}
@@ -102,10 +115,20 @@ export function ValueRow({ row, fromProject, editable, onWrite }: RowProps) {
 // A plain number with an optional unit, such as `4px`, `1.5`, or `-2rem`.
 const NUMBER = /^(-?\d*\.?\d+)([a-z%]*)$/i
 
-function RowHead({ row, fromProject, editable, onWrite }: RowProps) {
+// A value and its swatch, at one size whether it opens the picker or not.
+const VALUE =
+  'flex min-h-6 min-w-0 items-center gap-2 rounded-md px-1 text-left'
+
+function RowHead({
+  row,
+  fromProject,
+  editable,
+  onWrite,
+  className,
+}: RowProps & { className?: string }) {
   return (
-    <span className="flex min-w-0 items-center gap-1.5">
-      <span className="min-w-0 flex-1 truncate" title={row.name}>
+    <span className={cn('flex min-w-0 items-center gap-1.5', className)}>
+      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
         <span className="text-faint">--</span>
         {row.name.replace(/^--/, '')}
       </span>
@@ -125,17 +148,31 @@ function RowHead({ row, fromProject, editable, onWrite }: RowProps) {
           aria-label={`Reset ${row.name.replace(/^--/, '')} to the board value`}
           title="Reset to the board value"
           onClick={() => void onWrite({ name: row.name, reset: true })}
-          // A left margin alone, since a negative right one reaches the light swatch's target.
-          className="-ml-1 grid size-6 shrink-0 place-items-center rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="grid size-6 shrink-0 place-items-center rounded-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
           <RotateCcw aria-hidden className="size-3" />
         </button>
-      ) : null}
+      ) : (
+        // Holds the reset's place, so every row's tag lines up.
+        <span aria-hidden className="size-6 shrink-0" />
+      )}
     </span>
   )
 }
 
 const TITLES = { light: 'Light', dark: 'Dark' } as const
+
+/** A value in words, beside its swatch. */
+function SwatchValue({ value }: { value: string | null }) {
+  return (
+    <span
+      aria-hidden
+      className="min-w-0 flex-1 [overflow-wrap:anywhere] text-muted-foreground group-hover:text-foreground"
+    >
+      {value ?? 'Not set'}
+    </span>
+  )
+}
 
 function Swatch({
   side,
@@ -150,7 +187,7 @@ function Swatch({
         role="img"
         aria-label={`${TITLES[side]}: not set`}
         title={`Not set in ${side}`}
-        className="size-4 rounded-[4px] border border-dashed border-faint"
+        className="size-4 shrink-0 rounded-[4px] border border-dashed border-faint"
       />
     )
   }
@@ -159,7 +196,7 @@ function Swatch({
       role="img"
       aria-label={`${TITLES[side]}: ${value}`}
       title={value}
-      className={cn('size-4 rounded-[4px]', SWATCH_RING)}
+      className={cn('size-4 shrink-0 rounded-[4px]', SWATCH_RING)}
       style={{ background: value }}
     />
   )
@@ -184,14 +221,11 @@ function SwatchPicker({
   name,
   side,
   value,
-  row,
   onWrite,
 }: {
   name: string
   side: 'light' | 'dark'
   value: string | null
-  /** The row the picker opens beside, so it clears both swatches. */
-  row: RefObject<HTMLLIElement | null>
   onWrite: WriteRow
 }) {
   const anchor = useRef<HTMLButtonElement>(null)
@@ -216,23 +250,26 @@ function SwatchPicker({
 
   return (
     <>
-      {/* A 24px target around the 16px swatch, spilling into the column gap. */}
       <button
         ref={anchor}
         type="button"
         aria-label={`${title}: ${value ?? 'not set'}`}
         title={value ?? `Not set in ${side}`}
         onClick={open}
-        className="-m-[3px] grid size-6 place-items-center rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className={cn(
+          VALUE,
+          'group outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring',
+        )}
       >
         <span
           aria-hidden
           className={cn(
-            'size-4 rounded-[4px]',
+            'size-4 shrink-0 rounded-[4px]',
             shown === null ? 'border border-dashed border-faint' : SWATCH_RING,
           )}
           style={shown === null ? undefined : { background: shown }}
         />
+        <SwatchValue value={shown} />
       </button>
       <Popover
         open={picking !== null}
@@ -241,10 +278,11 @@ function SwatchPicker({
         }}
       >
         <PopoverContent
-          anchor={row}
-          side="right"
+          anchor={anchor}
+          // Its own value stays in sight, since the row runs the dialog's width.
+          side="left"
           align="start"
-          sideOffset={16}
+          sideOffset={8}
           aria-label={`${name.replace(/^--/, '')} ${side} color`}
           className="w-[248px] gap-0 rounded-xl p-2.5 text-xs shadow-[0_14px_40px_rgba(0,0,0,.28)]"
         >
@@ -313,11 +351,14 @@ function TextValue({
   name,
   value,
   shown,
+  face,
   onWrite,
 }: {
   name: string
   value: string
   shown: string
+  /** The family the value shows in, for a font. */
+  face: string | undefined
   onWrite: WriteRow
 }) {
   const [draft, setDraft] = useState<string | null>(null)
@@ -353,7 +394,8 @@ function TextValue({
           ended.current = false
           setDraft(value)
         }}
-        className="max-w-32 truncate rounded-sm px-1 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        style={{ fontFamily: face }}
+        className="min-h-6 max-w-80 min-w-0 justify-self-start rounded-sm px-1 text-left [overflow-wrap:anywhere] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring @md:justify-self-end @md:text-right"
       >
         {shown}
       </button>
@@ -375,10 +417,12 @@ function TextValue({
           finish(true, true)
         } else if (event.key === 'Escape') {
           event.preventDefault()
+          // The dialog around the field closes on an Esc that reaches it.
+          event.stopPropagation()
           finish(false, true)
         }
       }}
-      className="h-5 w-32 rounded-sm bg-input px-1 text-right outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      className="h-6 w-80 max-w-full rounded-sm bg-input px-1 outline-none focus-visible:ring-2 focus-visible:ring-ring @md:text-right"
     />
   )
 }
@@ -393,4 +437,9 @@ function shownValue(row: TokenRow): string {
       ?.trim()
       .replace(/^["']|["']$/g, '') ?? value
   )
+}
+
+/** The family a font value draws in, undefined for one naming another token, which the chrome would resolve to its own. */
+function faceOf(value: string): string | undefined {
+  return value.includes('var(') ? undefined : value
 }

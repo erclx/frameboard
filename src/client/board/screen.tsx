@@ -45,7 +45,7 @@ import { useFindActions } from './find/actions'
 import { InspectorPanel } from './inspector/panel'
 import { usePageActions } from './left-panel/page-actions'
 import { LeftPanel } from './left-panel/panel'
-import { useAddKitAction } from './left-panel/theme/add-kit'
+import { useThemeActions } from './left-panel/theme/actions'
 import { ThemeTab } from './left-panel/theme/tab'
 import { useMode } from './mode'
 import { LAYOUT_ID, PANEL, panelStorage } from './panels'
@@ -146,7 +146,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   useNewProjectAction(undefined, goHome)
   useBoardActions()
   usePageActions(project, page)
-  useAddKitAction()
+  useThemeActions(project)
   useSourcingActions(project)
   useStructureActions(current?.ref ?? '', current?.frames ?? NO_FRAMES)
   useFrameTool()
