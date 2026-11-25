@@ -95,9 +95,9 @@ export type ServerMessage =
   /** How many steps the board can undo and redo, after each hello's access and every change. */
   | { type: 'history'; undo: number; redo: number }
   /**
-   * A project, page, or frame the board's own write, undo, or redo renamed,
+   * A rename by the board's own write, undo, or redo, or of a project on disk,
    * as a project name, page ref, or frame ref on each side, sent ahead of the
-   * batch's board or patch so a tab keeps the frames it shows and their state.
+   * board or patch carrying it so a tab keeps its frames and their state.
    */
   | { type: 'renamed'; before: string; after: string }
   /** The live claims, after each hello's history, on every change, and as one expires. */
