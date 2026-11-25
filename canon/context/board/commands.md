@@ -31,7 +31,9 @@ Owns Cmd+K's command palette and the `?` shortcuts sheet, mounted once over both
 - `palette.open`, `help.shortcuts`, and `help.characterKeys` register at the app level in `main.tsx`, and `overlay.ts` holds which overlay is open
 - The sheet reads each key from the registry and greys an unregistered row, and it sits outside the routes, so a test rendering it needs a `Router` on the path it means
 
-`assets.find` and `assets.generate` show the UI and the Assets tab, close find, and open the dialog Find and Generate share, in a read-only tab too.
+### `src/client/board/assets/open-dialog.ts`
+
+Owns `assets.find` and `assets.generate`, the palette's Find media and Generate media, which show the UI and the Assets tab, close find, then open the dialog the two share, in a read-only tab too.
 
 ### `src/client/history/`
 

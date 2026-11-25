@@ -31,9 +31,10 @@ Owns the Assets tab, whose `Find…` and `Generate…` buttons sit in `tab.tsx` 
 - A tile's menu opens from a right-click or a writing tab's ⋯, offering Place on canvas through `placeAtCenter` and Show frames using it, and Copy path alone when read-only
 - Rename edits the stem in `RenameField`, Replace file… bumps the tile's `?v=` so its thumbnail reloads, and Delete asks first only for a file some frame links
 
-The dialog those buttons open sits in three files beside the tab.
+### `src/client/board/assets/sourcing-dialog.tsx`
 
-- `sourcing-dialog.tsx` is the one dialog both buttons open, its shell one component, and `open-dialog.ts` holds whether it is open, on which view, and the two palette commands
+Owns the one dialog both buttons open, its shell one component, while `open-dialog.ts` holds whether it is open, on which view, and the two palette commands.
+
 - `preview.tsx` shows the picked result with Save and Insert, landing in the one selected frame while part of it is in view, else the canvas, as `src/client/board/place/write.ts` lands it
 - An insert holds the dialog open until it lands, a refusal shows beside its buttons, and a project switch closes the dialog at once, so a refusal after that toasts
 
