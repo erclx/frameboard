@@ -2,8 +2,8 @@
   "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
-      "version": "5.122.0",
-      "syncedAt": "2026-11-24T16:48:41.371Z",
+      "version": "5.128.0",
+      "syncedAt": "2026-11-25T05:15:25.879Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:68babaaeb97ca4283adccc3de4e9d18b6f7f3c46aef36835b28fc550b88de4cd",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -20,12 +20,12 @@
         ".claude/rules/canon/framework/react.md": "sha256:3687c622d09895472d21deb509fa113cb1400307acbd3fbfb9e3d52e5a4ca374",
         ".claude/rules/canon/framework/shadcn.md": "sha256:7023434a916714b739b187f25549b8a3ca2c40cb2f69af07e10afe6e35def6e2",
         ".claude/rules/canon/framework/tailwind.md": "sha256:dc7663818d2c93946159f1c09a9e11d5dccb5af148a5cda78965dc434b9fb765",
-        ".claude/rules/canon/lang/typescript.md": "sha256:5c2729d919f8e25ef30e8ec3e3ec7154837d036bd21b3cf39da0100a7e236835",
+        ".claude/rules/canon/lang/typescript.md": "sha256:171f36ef653f7c19f2020fa368e58e20470989041c57eaba9fb5aa6b78913ee4",
         ".claude/rules/canon/lib/e2e-reliability.md": "sha256:bd6f049c79d0afd59d678ca663d146fc0641ade7c08f0f91cf0d7b133c440290",
         ".claude/rules/canon/lib/security-server.md": "sha256:c7c8f4c7360a90030d0efb832d67bc72b9d3d09b3a1fcf58e3d423bcffb49c8b",
         ".claude/rules/canon/lib/security-web.md": "sha256:2a02b9a4136c1efbd66eec3ffcfacb0f4d08c5910f186d45397c594c195924f8",
-        ".claude/rules/canon/lib/test-scope.md": "sha256:39044ef65a02671f5230f3df3fd39f7ee964ab249c08cd21111f8528278fabb5",
-        ".claude/rules/canon/lib/testing-ts.md": "sha256:91df02df06e6e3273497502c6615c195672f7ea1a885c4a908e7bb79a8798ddc",
+        ".claude/rules/canon/lib/test-scope.md": "sha256:558dc0328f766e81e0eb7c1335de7f483c0231a534b6909d2158d6f7655dd6d0",
+        ".claude/rules/canon/lib/testing-ts.md": "sha256:625d1a4bd0169e960beff9c3932633ac2117af55433d8614b39709e8521b01c4",
         ".claude/rules/canon/tooling/ci-workflow.md": "sha256:96f2beaf852bc6634a6523d21acc7b1b05abd9169e4e4523a52f214ef9e83884",
         ".claude/rules/canon/tooling/code-comments.md": "sha256:8f661982be703a632c6e2548b81e871c291462cd2c28c8612d91e3a0b5ed53b6",
         ".claude/rules/canon/tooling/config-comments.md": "sha256:4d1618d7297e6c5ca588e8f55f3f7ba707fd49b27260818ada8d3ac8a305faaf",
