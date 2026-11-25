@@ -434,6 +434,29 @@ describe('a playing step', () => {
     return iframe
   }
 
+  /** Holds every timer the frame sets, answering the waits still held and the call that runs them. */
+  function holdTimers() {
+    const view = frame().contentWindow as (Window & typeof globalThis) | null
+    if (!view) throw new Error('The iframe holds no window')
+    const held = new Map<number, { run: () => void; ms: number }>()
+    let next = 1
+    const set = (run: () => void, ms = 0) => {
+      held.set(next, { run, ms })
+      return next++
+    }
+    view.setTimeout = set as unknown as typeof view.setTimeout
+    view.clearTimeout = ((id: number) => {
+      held.delete(id)
+    }) as typeof view.clearTimeout
+    return {
+      waits: () => [...held.values()].map(({ ms }) => ms),
+      runAll: () => {
+        for (const { run } of held.values()) run()
+        held.clear()
+      },
+    }
+  }
+
   /** Opens a walk on the page and answers the call that shows it at a step. */
   async function walk(plays?: boolean, shown = 0) {
     const { id } = await ask(frame(), 'steps', {
@@ -497,13 +520,14 @@ describe('a playing step', () => {
 
   it('waits its delay before its clip', async () => {
     const clip = await clipOn(video('data-step-delay="300"'))
+    const timers = holdTimers()
     const show = await walk(true)
 
     await show(1, 0)
-    const before = clip.paused
+    const during = [timers.waits(), clip.paused]
+    timers.runAll()
 
-    expect(before).toBe(true)
-    await expect.poll(() => clip.paused).toBe(false)
+    expect([during, clip.paused]).toEqual([[[300], true], false])
   })
 
   it('starts its clip at once when the next press comes during its delay', async () => {
@@ -520,13 +544,15 @@ describe('a playing step', () => {
 
   it('leaves nothing to start once stepped back during its delay', async () => {
     const clip = await clipOn(video('data-step-delay="200"'))
+    const timers = holdTimers()
     const show = await walk(true)
     await show(1, 0)
+    const during = timers.waits()
 
     await show(0, null)
-    await new Promise((resolve) => setTimeout(resolve, 400))
+    timers.runAll()
 
-    expect(clip.paused).toBe(true)
+    expect([during, clip.paused]).toEqual([[200], true])
   })
 
   it('rests a running model at its start on a step back', async () => {
