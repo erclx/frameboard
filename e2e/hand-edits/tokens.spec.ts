@@ -25,7 +25,7 @@ function tokenIn(page: Page, frame: string, name: string) {
     )
 }
 
-test.describe('editing a board token on the Theme tab', () => {
+test.describe('editing a board token in the Theme dialog', () => {
   let board: FixtureBoard
   let server: BoardServer
 
@@ -50,10 +50,13 @@ test.describe('editing a board token on the Theme tab', () => {
     await page.goto(`${server.url}/p/webapp/home`)
     await expect(page.frameLocator(HERO).locator('h1')).toBeVisible()
     await page.getByRole('tab', { name: 'Theme' }).click()
+    await page.getByRole('button', { name: /^Radius, type, other/ }).click()
+    await page.getByRole('tab', { name: /^Other/ }).click()
 
     const space = page.getByRole('textbox', { name: 'space value' })
     await space.fill('24')
     await space.press('Enter')
+    await page.getByRole('button', { name: 'Close' }).click()
 
     await expect(page.frameLocator(HERO).locator('body')).toHaveCSS(
       'padding-top',
@@ -138,7 +141,7 @@ test.describe('replacing a raw color with a token from Selection colors', () => 
   })
 })
 
-test.describe('installing a font from the Theme tab', () => {
+test.describe('installing a font from the Theme dialog', () => {
   // Stands in for Fontsource, answering one family from a bundled face's bytes.
   const STUB = pathToFileURL(resolve('e2e/support/fontsource-stub.mjs')).href
   let board: FixtureBoard
@@ -165,6 +168,7 @@ test.describe('installing a font from the Theme tab', () => {
     const headline = page.frameLocator(HERO).locator('h1')
     await expect(headline).toBeVisible()
     await page.getByRole('tab', { name: 'Theme' }).click()
+    await page.getByRole('button', { name: /^Fonts/ }).click()
 
     await page.getByRole('button', { name: 'Find a font' }).click()
     await page.getByRole('searchbox').fill('stub')
@@ -173,6 +177,8 @@ test.describe('installing a font from the Theme tab', () => {
     await expect(
       page.getByRole('button', { name: 'Remove Stub Display' }),
     ).toBeVisible()
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
 
     // Retried, since the canvas refits once frames load and moves the headline.
     await expect(async () => {
