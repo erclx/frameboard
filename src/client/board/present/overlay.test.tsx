@@ -850,6 +850,19 @@ describe('steps inside a slide', () => {
     ).toBe('frameboard-step-fade')
   })
 
+  it('starts a playing step’s clip as its press reveals it', async () => {
+    present(framesOf('first'))
+    const doc = await fill(
+      'first',
+      '<video id="clip" muted data-step="1" data-step-play></video>',
+    )
+    await dots('Step 0 of 1')
+
+    await userEvent.keyboard('{ArrowRight}')
+
+    await expect.poll(() => doc.querySelector('video')?.paused).toBe(false)
+  })
+
   it('hides the last revealed step on a press back', async () => {
     present(framesOf('first'))
     const doc = await fill('first', STEPPED)

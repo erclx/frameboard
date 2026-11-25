@@ -1,7 +1,11 @@
 import { z } from 'zod'
 
 import type { PageColors } from '@/shared/frame-device'
-import { STEP_EFFECTS, type StepEffect } from '@/shared/present-transition'
+import {
+  STEP_DURATION_MS,
+  STEP_EFFECTS,
+  type StepEffect,
+} from '@/shared/present-transition'
 import type { Theme } from '@/shared/theme'
 
 import {
@@ -292,18 +296,26 @@ export interface BridgeOps {
   /**
    * Reads the page's steps and shows the first `shown`, answering how many
    * presses it holds, and on an agent's write reads them again, showing the
-   * step it holds and pushing the new count, until closed.
+   * step it holds and pushing the new count, until closed. `plays` has an
+   * entering step start its clip, which no walk does unasked.
    */
-  steps: { args: { shown: number }; value: number; push: number }
+  steps: {
+    args: { shown: number; plays?: boolean }
+    value: number
+    push: number
+  }
   /** Shows a `steps` subscription's page at a step, by its request id, answering whether it held one. */
   'steps-show': {
     args: StepsShown & { steps: string }
     value: boolean
     push: never
   }
-  /** Plays a step's entrance once on the element at an index, checking no hash, until it ends or is closed. */
+  /**
+   * Plays a step's entrance once on the element at an index, for `ms` or the
+   * default length, checking no hash, until it ends or is closed.
+   */
   'step-preview': {
-    args: { index: number; effect: StepEffect }
+    args: { index: number; effect: StepEffect; ms?: number }
     value: boolean
     push: never
   }
@@ -698,7 +710,7 @@ const SCHEMAS: {
     value: z.null(),
   },
   steps: {
-    args: z.object({ shown: countSchema }),
+    args: z.object({ shown: countSchema, plays: z.boolean().optional() }),
     value: countSchema,
     push: countSchema,
   },
@@ -711,7 +723,15 @@ const SCHEMAS: {
     value: z.boolean(),
   },
   'step-preview': {
-    args: z.object({ index: indexSchema, effect: z.enum(STEP_EFFECTS) }),
+    args: z.object({
+      index: indexSchema,
+      effect: z.enum(STEP_EFFECTS),
+      ms: z
+        .int()
+        .min(STEP_DURATION_MS.min)
+        .max(STEP_DURATION_MS.max)
+        .optional(),
+    }),
     value: z.boolean(),
   },
   'hold-animations': { args: noArgsSchema, value: z.boolean() },
