@@ -31,7 +31,7 @@ A board folder holds projects, a project holds pages, and a page holds frames.
 
 ## Tokens and themes
 
-Frames share one look through a `tokens.css` in the board folder, which a project's own `tokens.css` overrides. The board's Theme tab sums up the look in cards, each opening the Theme dialog on its section.
+Frames share one look through a `tokens.css` in the board folder, which a project's own `tokens.css` overrides. The board's Theme tab sums up the look in cards, each opening the Theme dialog on its section, and Edit theme in the palette opens it too.
 
 The dialog tags each token Board or Project and edits a value in place into the sheet its tag names, as one undo step. A Board edit changes every project that does not override the token.
 
