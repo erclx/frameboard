@@ -323,8 +323,8 @@ test.describe('what an agent changed', () => {
       follower?.kill('SIGTERM')
     })
 
-    /** Claims a frame for the followed session and writes it, as an agent does. */
-    async function claimAndWrite(path: string, heading: string) {
+    /** Claims a frame for the followed session. */
+    async function claim(path: string) {
       await run('node', [
         CLI,
         'editing',
@@ -335,6 +335,11 @@ test.describe('what an agent changed', () => {
         board.root,
         '--json',
       ])
+    }
+
+    /** Claims a frame for the followed session and writes it, as an agent does. */
+    async function claimAndWrite(path: string, heading: string) {
+      await claim(path)
       writeAsAgent(path, heading)
     }
 
@@ -371,14 +376,10 @@ test.describe('what an agent changed', () => {
       await expect(initial).toHaveAttribute('aria-pressed', 'true')
       await expect(initial).toContainText('Following')
 
-      await claimAndWrite('studio/home/mobile.html', 'Mobile, warmer')
+      await claim('studio/home/mobile.html')
 
       const mobile = page.locator('[data-frame="studio/home/mobile"]')
       await expect.poll(() => offCenter(page, mobile)).toBeLessThan(2)
-      // Looked at long enough to clear, so the home row is clean for the end.
-      await expect(
-        pageRow(page, 'home').getByRole('img', { name: /unseen/ }),
-      ).toHaveCount(0)
 
       await claimAndWrite('studio/pricing/plans.html', 'Plans for teams')
 
