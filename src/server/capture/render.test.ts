@@ -260,6 +260,12 @@ describe.skipIf(shell === null)(
         'studio/home/zoomed.html':
           '<style>html{zoom:.5}body{margin:0}</style>' +
           '<div style="position:absolute;left:-420px;top:-60px;width:40px;height:30px;background:rgb(0,0,255)"></div>',
+        // Element 4 hugs a child whose percentage height is auto, over a blue foot.
+        'studio/home/hugging.html':
+          '<!doctype html><style>body{margin:0}</style>' +
+          '<div style="position:absolute;left:-40px;top:10px;width:100px;overflow:hidden;background:red">' +
+          '<div style="height:20px;background:rgb(0,0,255)"></div><div style="height:100%"><div style="height:30px"></div></div>' +
+          '<div style="height:10px;background:rgb(0,0,255)"></div></div>',
         // Element 4 is a stage filling the frame that crops element 5 at its left edge.
         ...Object.fromEntries(
           Object.entries(STAGES).map(([name, stage]) => [
@@ -831,6 +837,7 @@ describe.skipIf(shell === null)(
         4,
         [40, 30],
       ],
+      ['hugging a child of auto percentage height', 'hugging', 4, [200, 120]],
     ])(
       'shoots an element %s whole, to each corner',
       async (_name, frame, element, [width = 0, height = 0]) => {

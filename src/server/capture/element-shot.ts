@@ -84,8 +84,8 @@ function hideAllBut(index: number): Isolated {
 }
 
 // Runs in the page and moves the root, so an ancestor's crop moves along. A
-// moved root anchors absolute and fixed boxes, so the used size of the element
-// and all around it is held, and the box takes the pixels its edges paint on.
+// moved root anchors absolute and fixed boxes, so a box that resizes is held
+// at its used size, and no other, which would turn an auto height definite.
 function shiftIntoView(): ElementBox {
   const root = document.documentElement
   const target = document.querySelector<HTMLElement>('[data-frameboard-shot]')
@@ -107,28 +107,29 @@ function shiftIntoView(): ElementBox {
       element.style.setProperty(name, value, 'important')
     }
   }
-  const used = []
+  const chain: { element: HTMLElement; width: string; height: string }[] = []
   for (
     let element: HTMLElement | null = target;
     element && element !== root;
     element = element.parentElement
   ) {
     const { width, height } = getComputedStyle(element)
-    used.push({ element, width, height })
+    chain.unshift({ element, width, height })
   }
-  for (const { element, width, height } of used) {
-    hold(element, {
-      transition: 'none',
-      width,
-      'min-width': width,
-      'max-width': width,
-      height,
-      'min-height': height,
-      'max-height': height,
-    })
-  }
-  // Anchored first, since a box the root newly anchors can move.
+  // Anchored first, since a box the root newly anchors can move and resize.
   hold(root, { transition: 'none', translate: '0px' })
+  for (const { element, ...used } of chain) {
+    for (const side of ['width', 'height'] as const) {
+      const size = used[side]
+      if (getComputedStyle(element)[side] === size) continue
+      hold(element, {
+        transition: 'none',
+        [side]: size,
+        [`min-${side}`]: size,
+        [`max-${side}`]: size,
+      })
+    }
+  }
   const { x, y } = painted()
   // A zoomed root scales its own translate.
   const shift = (at: number) => `${Math.max(0, -at) / root.currentCSSZoom}px`
