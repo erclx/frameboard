@@ -72,7 +72,7 @@ function ToastContent({ className, ...props }: ToastPrimitive.Content.Props) {
     <ToastPrimitive.Content
       data-slot="toast-content"
       className={cn(
-        'flex h-full items-start gap-2.5 overflow-hidden px-3.5 py-3 text-xs group-has-data-[slot=toast-close]/toast:pr-[33px]',
+        'flex h-full items-start gap-2.5 overflow-hidden px-3.5 py-3 text-xs group-has-data-[slot=toast-close]/toast:pr-8.5',
         className,
       )}
       {...props}
