@@ -4,11 +4,24 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { contrastOnPage } from '@/test/contrast'
+import { contrastOnPage, ringContrastOnPage } from '@/test/contrast'
+import { keyboardFocus } from '@/test/focus-ring'
 import { contrastHovered } from '@/test/hover-contrast'
 
 import { Button } from './components/ui/button'
 import { cn } from './lib/cn'
+
+const VARIANTS = [
+  'default',
+  'outline',
+  'secondary',
+  'ghost',
+  'destructive',
+  'link',
+] as const
+
+/** The grounds the chrome draws a button on, as a page, card, muted, and accent fill. */
+const GROUNDS = ['bg-background', 'bg-card', 'bg-muted', 'bg-accent']
 
 describe('Button', () => {
   afterEach(() => {
@@ -53,7 +66,46 @@ describe('Button', () => {
         await contrastHovered(screen.getByRole('button')),
       ).toBeGreaterThanOrEqual(4.5)
     })
+
+    describe.each(GROUNDS)('on %s', (ground) => {
+      it.each(VARIANTS)(
+        'should ring a focused %s button at 3:1 or better',
+        async (variant) => {
+          render(
+            <div className={cn(ground, 'p-4')}>
+              <Button variant={variant}>New board</Button>
+            </div>,
+          )
+          const button = screen.getByRole('button')
+
+          await keyboardFocus(button)
+
+          // The ring fades in, so a reading straight after focus is part way.
+          await expect
+            .poll(() => ringContrastOnPage(button))
+            .toBeGreaterThanOrEqual(3)
+        },
+      )
+    })
   })
+
+  it.each([
+    ['light', 'rgb(47, 123, 240)'],
+    ['dark', 'rgb(78, 146, 246)'],
+  ])(
+    'should border a focused destructive button in the %s ring blue',
+    async (theme, blue) => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+      render(<Button variant="destructive">Delete</Button>)
+      const button = screen.getByRole('button')
+
+      await keyboardFocus(button)
+
+      await expect
+        .poll(() => getComputedStyle(button).borderTopColor)
+        .toBe(blue)
+    },
+  )
 })
 
 describe('styles.css', () => {

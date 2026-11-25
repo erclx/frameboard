@@ -9,6 +9,7 @@ import type { Claim } from '@/shared/records/claims'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import type { Box } from '../geometry/box'
+import { presentStore } from '../present/store'
 import {
   attachCanvas,
   type CanvasControls,
@@ -50,10 +51,19 @@ function claim(frame: string, session: string): Claim {
   }
 }
 
+function presentHome() {
+  presentStore.setState({ page: 'studio/home', frame: 'studio/home/a' })
+}
+
+function stopPresenting() {
+  presentStore.setState({ page: null, frame: null })
+}
+
 const cleanups: (() => void)[] = []
 
 afterEach(() => {
   stopFollow()
+  stopPresenting()
   for (const cleanup of cleanups.splice(0)) cleanup()
 })
 
@@ -243,6 +253,100 @@ describe('follow', () => {
     })
 
     expect(followStore.getState().session).toBeNull()
+  })
+})
+
+describe('follow while a page presents', () => {
+  it('stays on the page for a claim on another page', () => {
+    const { live, visited } = setup()
+    presentHome()
+
+    live.setState({
+      claims: { 'studio/about/b': claim('studio/about/b', 's-1') },
+    })
+
+    expect(visited).toEqual([])
+    expect(followStore.getState().session).toBe('s-1')
+  })
+
+  it('stays on the page for a change on another page', () => {
+    const { unseen, visited } = setup()
+    presentHome()
+
+    receiveChanges(unseen, [change('studio/about/b', 's-1')])
+
+    expect(visited).toEqual([])
+    expect(followStore.getState().session).toBe('s-1')
+  })
+
+  it('centers nothing for a change on the presented page', () => {
+    const { unseen, centered } = setup()
+    presentHome()
+
+    receiveChanges(unseen, [change('studio/home/a', 's-1')])
+
+    expect(centered).toEqual([])
+    expect(followStore.getState().session).toBe('s-1')
+  })
+
+  it('replays no move on leaving', () => {
+    const { live, unseen, visited, centered } = setup()
+    presentHome()
+    receiveChanges(unseen, [change('studio/home/a', 's-1')])
+    live.setState({
+      claims: { 'studio/about/b': claim('studio/about/b', 's-1') },
+    })
+
+    stopPresenting()
+    live.setState({ board: structuredClone(live.getState().board) })
+
+    expect(visited).toEqual([])
+    expect(centered).toEqual([])
+  })
+
+  it('travels to the next claim after leaving', () => {
+    const { live, visited } = setup()
+    presentHome()
+    live.setState({
+      claims: { 'studio/home/a': claim('studio/home/a', 's-1') },
+    })
+
+    stopPresenting()
+    live.setState({
+      claims: { 'studio/about/b': claim('studio/about/b', 's-1') },
+    })
+
+    expect(visited).toEqual(['/p/studio/about'])
+  })
+
+  it('drops a frame still waiting for its board when presenting starts', () => {
+    const { live, unseen, centered } = setup()
+    const board = live.getState().board
+    live.setState({ board: null })
+    receiveChanges(unseen, [change('studio/home/a', 's-1')])
+
+    presentHome()
+    live.setState({ board })
+    stopPresenting()
+    live.setState({ board: structuredClone(board) })
+
+    expect(centered).toEqual([])
+    expect(followStore.getState().session).toBe('s-1')
+  })
+
+  it('drops the zoom carried toward a page still mounting', () => {
+    const { unseen, scales, canvasOn, detach } = setup()
+    reportZoom(0.5)
+    cleanups.push(() => reportZoom(1))
+    receiveChanges(unseen, [change('studio/about/b', 's-1')])
+
+    presentHome()
+    detach()
+    canvasOn('studio/about')
+    stopPresenting()
+    receiveChanges(unseen, [change('studio/about/b', 's-1', { id: 'c-2' })])
+
+    expect(scales).toEqual([undefined])
   })
 })
 
