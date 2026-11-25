@@ -36,7 +36,7 @@ Owns the Assets tab, whose `Find…` and `Generate…` buttons sit in `tab.tsx` 
 - Root files come first, a folder's group collapses from its heading, a chip with no files hides, and a tile reads `Unused` for a file no frame links
 - A tile click copies `../assets/<path>`, each segment encoded, and the tile's size stays in its accessible name
 - A drop or the header's `+` picker posts through `writeBoard`, refusals show inline under the drop hint, and a read-only tab says why and adds nothing
-- A tile's menu opens from a right-click or a writing tab's ⋯, offering Place on canvas through `placeAtCenter` and Show frames using it, and Copy path alone when read-only
+- A tile's menu opens from a right-click or a writing tab's ⋯, which returns focus if nothing it opened took it, and offers `placeAtCenter` and Show frames using it, or Copy path alone when read-only
 - Rename edits the stem in `RenameField`, Replace file… bumps the tile's `?v=` so its thumbnail reloads, and Delete asks first only for a file some frame links
 
 ### `src/client/board/assets/sourcing-dialog.tsx`
