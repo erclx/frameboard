@@ -66,6 +66,25 @@ describe('InspectorPanel', () => {
       modeStore.setState({ tool: 'frame', mode: 'edit' })
     })
 
+    it('scrolls the presets in the panel’s body, never the panel with its header', () => {
+      render(
+        <TooltipProvider>
+          <div style={{ height: 300 }}>
+            <InspectorPanel />
+          </div>
+        </TooltipProvider>,
+      )
+      const panel = screen.getByRole('complementary', { name: 'Inspector' })
+
+      screen.getAllByRole('radio').at(-1)?.scrollIntoView()
+
+      expect(panel.scrollHeight).toBe(panel.clientHeight)
+      expect(panel.scrollTop).toBe(0)
+      expect(
+        screen.getAllByRole('radio').at(-1)?.getBoundingClientRect().bottom,
+      ).toBeLessThanOrEqual(panel.getBoundingClientRect().bottom)
+    })
+
     it('lists the presets with desktop chosen', () => {
       renderPanel()
 

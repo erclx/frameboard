@@ -48,7 +48,7 @@ export function InspectorTabs({
         const picked = INSPECTOR_TABS.find((one) => one === value)
         if (picked) inspectorTabStore.setState({ tab: picked })
       }}
-      className="gap-0"
+      className="min-h-0 flex-1 gap-0"
     >
       <TabsList className="m-2 h-7 w-auto shrink-0 rounded-[7px] p-0.5">
         {INSPECTOR_TABS.map((one) => (
@@ -59,8 +59,14 @@ export function InspectorTabs({
       </TabsList>
       {head}
       {INSPECTOR_TABS.map((one) => (
-        // Unfocusable, so Tab lands on the first control rather than an unringed panel.
-        <TabsContent key={one} value={one} tabIndex={-1} className="text-body">
+        <TabsContent
+          key={one}
+          value={one}
+          // Unfocusable, so Tab lands on the first control rather than an unringed panel.
+          tabIndex={-1}
+          // Relative, so a tip's hidden node scrolls with the tab rather than stretching the panel.
+          className="relative min-h-0 overflow-y-auto text-body"
+        >
           {bodies[one]}
         </TabsContent>
       ))}

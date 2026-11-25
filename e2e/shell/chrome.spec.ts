@@ -138,6 +138,28 @@ test.describe('a side panel taller than the window', () => {
     await panel.getByRole('tab', { name: 'Design' }).click()
     await expect(panel.getByRole('region', { name: 'Layers' })).toBeVisible()
   })
+
+  test('scrolls the inspector under its header and the tabs, with the panel filling the window', async ({
+    page,
+  }) => {
+    await page.goto(BOARD)
+    await leftPanel(page).getByRole('button', { name: 'Select hero' }).click()
+    const panel = page.getByRole('complementary', { name: 'Inspector' })
+    const colors = panel
+      .getByRole('region', { name: /^Selection colors/ })
+      .getByRole('button')
+    await expect(colors).not.toHaveCount(0)
+
+    await wheelTo(page, panel, colors.last())
+
+    expect(await panel.boundingBox()).toMatchObject({ y: 0, height: 300 })
+    expect(await slack(panel)).toBe(0)
+    await expect(panel.getByRole('tab', { name: 'Design' })).toBeInViewport({
+      ratio: 1,
+    })
+    await panel.getByRole('tab', { name: 'Export' }).click()
+    await expect(panel.getByRole('region', { name: 'Export' })).toBeVisible()
+  })
 })
 
 test.describe('the command palette', () => {

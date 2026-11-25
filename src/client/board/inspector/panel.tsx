@@ -104,7 +104,7 @@ export function InspectorPanel({
     <aside
       aria-label="Inspector"
       data-inspector
-      className="flex h-full min-w-0 flex-col overflow-y-auto bg-sidebar text-body text-sidebar-foreground"
+      className="flex h-full min-w-0 flex-col bg-sidebar text-body text-sidebar-foreground"
     >
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-sidebar-border px-3">
         <span className="flex items-center">
@@ -132,12 +132,20 @@ export function InspectorPanel({
           )}
         </p>
       ) : null}
-      {framing ? (
-        <PresetSection />
-      ) : playing ? (
-        <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
-          Playing. Nothing selects in Play.
-        </p>
+      {framing || playing ? (
+        <div
+          // Unfocusable, since Firefox puts a scroll body in the Tab order.
+          tabIndex={-1}
+          className="relative min-h-0 flex-1 overflow-y-auto outline-none"
+        >
+          {framing ? (
+            <PresetSection />
+          ) : (
+            <p className="px-3 pt-2.5 pb-3 text-muted-foreground">
+              Playing. Nothing selects in Play.
+            </p>
+          )}
+        </div>
       ) : (
         <InspectorTabs
           head={
