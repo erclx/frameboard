@@ -47,14 +47,12 @@ export function readingOrder(frames: readonly FrameRecord[]): FrameRecord[] {
   return rows.flatMap((row) => row.sort((a, b) => a.box.x - b.box.x))
 }
 
-/** The frames a step walks, in Layers order, leaving out the hidden ones, which cannot select. */
-export function stepOrder(
-  frames: readonly FrameRecord[],
-  sections: readonly SectionRecord[],
-): FrameRecord[] {
-  return groupsOf(frames, sections)
-    .flatMap((group) => group.rows)
-    .filter((frame) => !frame.hidden)
+/**
+ * The frames a step walks, in canvas order without the hidden ones, which
+ * cannot select. Pass the hidden frames too, since one can hold a row together.
+ */
+export function stepOrder(frames: readonly FrameRecord[]): FrameRecord[] {
+  return readingOrder(frames).filter((frame) => !frame.hidden)
 }
 
 /**

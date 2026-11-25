@@ -1,18 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import type { FrameRecord, SectionRecord } from '@/shared/records/list'
+import type { FrameRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 
 import { readingOrder, stepFrom, stepOrder } from './frame-order'
-
-function sectionOf(name: string, frames: string[], order = 0): SectionRecord {
-  return {
-    name,
-    box: { x: 0, y: 0, width: 1000, height: 1000 },
-    order,
-    frames,
-  }
-}
 
 function at(
   name: string,
@@ -90,32 +81,35 @@ describe('readingOrder', () => {
 })
 
 describe('stepOrder', () => {
-  it('runs top of the stack first with no sections', () => {
-    const frames = [frameOf('a'), frameOf('b'), frameOf('c')]
-
-    expect(names(stepOrder(frames, []))).toEqual(['c', 'b', 'a'])
-  })
-
-  it('runs the sections top first, then the frames in none', () => {
-    const frames = ['a', 'b', 'c', 'd', 'e'].map((name) => frameOf(name))
-    const sections = [
-      sectionOf('lower', ['a', 'c'], 0),
-      sectionOf('upper', ['d'], 1),
-    ]
-
-    expect(names(stepOrder(frames, sections))).toEqual([
-      'd',
-      'c',
-      'a',
-      'e',
-      'b',
+  it('reads rows left to right, then top to bottom, whatever the stacking', () => {
+    const order = stepOrder([
+      at('four', 500, 1000),
+      at('two', 500, 0),
+      at('three', 0, 1000),
+      at('one', 0, 0),
     ])
+
+    expect(names(order)).toEqual(['one', 'two', 'three', 'four'])
   })
 
   it('leaves out a hidden frame', () => {
-    const frames = [frameOf('a'), frameOf('b', { hidden: true }), frameOf('c')]
+    const order = stepOrder([
+      at('three', 1000, 0),
+      { ...at('two', 500, 0), hidden: true },
+      at('one', 0, 0),
+    ])
 
-    expect(names(stepOrder(frames, []))).toEqual(['c', 'a'])
+    expect(names(order)).toEqual(['one', 'three'])
+  })
+
+  it('keeps a row a hidden frame holds together, as presenting does', () => {
+    const order = stepOrder([
+      { ...at('tall', 0, 0, 390, 1000), hidden: true },
+      at('right', 1000, 300, 390, 264),
+      at('left', 500, 460, 390, 264),
+    ])
+
+    expect(names(order)).toEqual(['left', 'right'])
   })
 })
 

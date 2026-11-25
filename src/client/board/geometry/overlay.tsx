@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { keyLabel } from '@/client/actions/keys'
 import { findAction } from '@/client/actions/registry'
 import { bezelBox } from '@/shared/frame-device'
-import type { FrameRecord, SectionRecord } from '@/shared/records/list'
+import type { FrameRecord } from '@/shared/records/list'
 
 import { POSE_BAR_ROOM } from '../device/poses'
 import { showsDeviceBar } from '../device/turn'
@@ -23,8 +23,6 @@ const PARENT_OUTLINE = `${screen(1)} dashed var(--primary)`
 /** Set apart from the frames, so the line never reads as a frame's edge across an unselected one between. */
 const GROUP_OUTLINE = `${screen(1)} dashed color-mix(in srgb, var(--primary) 65%, transparent)`
 
-const NO_SECTIONS: readonly SectionRecord[] = []
-
 /** Above every frame, whose z-index is its stacking order. */
 export const OVERLAY_Z = 1_000_000
 
@@ -32,23 +30,20 @@ export const CHIP =
   'absolute top-full left-1/2 origin-top-left rounded-[4px] bg-primary-fill px-1.5 py-0.5 text-[10px] leading-[14px] whitespace-nowrap text-primary-foreground tabular-nums [transform:scale(calc(1/var(--zoom,1)))_translate(-50%,6px)]'
 
 interface OverlayProps {
-  /** The page's shown frames, which the selection is drawn from. */
+  /** The page's frames, hidden ones too, since one can hold a counted row together. */
   frames: readonly FrameRecord[]
-  /** The page's sections, bottom first, which order the chip's count as Layers does. */
-  sections?: readonly SectionRecord[]
 }
 
 /**
  * The selection overlay, drawn by React at rest and written by a gesture
  * through `draw.ts`, so a drag renders nothing.
  */
-export function SelectionOverlay({
-  frames,
-  sections = NO_SECTIONS,
-}: OverlayProps) {
+export function SelectionOverlay({ frames }: OverlayProps) {
   const selected = useSelection((state) => state.frames)
   const inside = useSelection((state) => Boolean(state.element))
-  const chosen = frames.filter((frame) => selected.includes(frame.ref))
+  const chosen = frames.filter(
+    (frame) => !frame.hidden && selected.includes(frame.ref),
+  )
   const shown = useDrawnFrames(chosen)
   const bounds = boundsOf(shown.map((frame) => frame.box))
   return (
@@ -61,7 +56,7 @@ export function SelectionOverlay({
         <Selection
           frames={shown}
           bounds={bounds}
-          order={stepOrder(frames, sections)}
+          order={stepOrder(frames)}
           inside={inside}
         />
       ) : null}
@@ -173,7 +168,7 @@ function Selection({
 }
 
 /**
- * One selected frame's name and place in Layers order, with the controls
+ * One selected frame's name and place in canvas order, with the controls
  * that step to the previous and next frame and zoom to it. The chip takes no
  * pointer, so the gestures click a control through `data-label-control`.
  */

@@ -4,7 +4,6 @@ import { act, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { registerActions } from '@/client/actions/registry'
-import type { SectionRecord } from '@/shared/records/list'
 import { frameOf } from '@/test/board'
 import { contrastOnPage } from '@/test/contrast'
 import { ringFocused } from '@/test/focus-ring'
@@ -49,32 +48,52 @@ describe('SelectionOverlay', () => {
     expect(container.querySelectorAll('[data-handle]')).toHaveLength(4)
   })
 
-  // The page sends LEFT then RIGHT, bottom first, so Layers lists RIGHT first.
-  it('names one frame and its place in Layers order', () => {
-    act(() => select(selectionStore, PAGE, [LEFT.ref]))
+  it('names one frame and its place in canvas order, whatever the stacking', () => {
+    const before = frameOf('before', {
+      box: { x: 0, y: 0, width: 300, height: 200 },
+    })
+    const after = frameOf('after', {
+      box: { x: 400, y: 0, width: 300, height: 200 },
+    })
+    act(() => select(selectionStore, PAGE, [before.ref]))
 
-    const { container } = render(<SelectionOverlay frames={[LEFT, RIGHT]} />)
+    const { container } = render(<SelectionOverlay frames={[before, after]} />)
 
     expect(container.querySelector('[data-chip]')).toHaveTextContent(
-      /^left · 2 of 2$/,
+      /^before · 1 of 2$/,
     )
   })
 
-  it('counts through sections top first, then the frames in none', () => {
-    const section: SectionRecord = {
-      name: 'flow',
-      box: { x: 0, y: 0, width: 1000, height: 400 },
-      order: 0,
-      frames: [LEFT.name],
-    }
-    act(() => select(selectionStore, PAGE, [LEFT.ref]))
+  it('leaves a hidden frame out of the count and keeps the row it holds', () => {
+    const hidden = frameOf('hidden', {
+      box: { x: 0, y: 0, width: 300, height: 1000 },
+      hidden: true,
+    })
+    const right = frameOf('right', {
+      box: { x: 800, y: 300, width: 300, height: 200 },
+    })
+    const left = frameOf('left', {
+      box: { x: 400, y: 460, width: 300, height: 200 },
+    })
+    act(() => select(selectionStore, PAGE, [left.ref]))
 
     const { container } = render(
-      <SelectionOverlay frames={[LEFT, RIGHT]} sections={[section]} />,
+      <SelectionOverlay frames={[hidden, left, right]} />,
     )
 
     expect(container.querySelector('[data-chip]')).toHaveTextContent(
       /^left · 1 of 2$/,
+    )
+  })
+
+  it('outlines no hidden frame the selection still holds', () => {
+    const hidden = frameOf('hidden', { hidden: true })
+    act(() => select(selectionStore, PAGE, [LEFT.ref, hidden.ref]))
+
+    const { container } = render(<SelectionOverlay frames={[LEFT, hidden]} />)
+
+    expect(container.querySelector('[data-chip]')).toHaveTextContent(
+      /^left · 1 of 1$/,
     )
   })
 
@@ -315,7 +334,7 @@ describe('SelectionOverlay', () => {
         container.querySelector<HTMLElement>('[data-selection]')?.style.width,
       ).toBe('390px')
       expect(container.querySelector('[data-chip]')).toHaveTextContent(
-        /^left · 2 of 2$/,
+        /^left · 1 of 2$/,
       )
     })
   })

@@ -427,20 +427,63 @@ describe('useBoardActions', () => {
     },
   )
 
-  // The page sends HERO then ABOUT, bottom first, so Layers lists ABOUT then HERO.
+  // The page sends these bottom first, so Layers walks them in the opposite direction.
   describe('stepping frames', () => {
-    it('selects the next frame in Layers order and centers it', () => {
+    const CONTACT = frameOf('contact', {
+      box: { x: 800, y: 20, width: 300, height: 200 },
+    })
+
+    beforeEach(() => {
+      receiveBoard(liveStore, boardOf(pageOf([HERO, ABOUT, CONTACT])))
+    })
+
+    it('selects the next frame in canvas order and centers it', () => {
       const board = setup()
       done = board.done
-      select(selectionStore, 'studio/home', [ABOUT.ref])
+      select(selectionStore, 'studio/home', [HERO.ref])
+
+      board.action('frame.next').run()
+
+      expect(selectionStore.getState().frames).toEqual([ABOUT.ref])
+      expect(board.centers).toEqual([ABOUT.box])
+    })
+
+    it('selects the previous frame in canvas order', () => {
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [CONTACT.ref])
+
+      board.action('frame.previous').run()
+
+      expect(selectionStore.getState().frames).toEqual([ABOUT.ref])
+    })
+
+    it('wraps from the last frame to the first', () => {
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [CONTACT.ref])
 
       board.action('frame.next').run()
 
       expect(selectionStore.getState().frames).toEqual([HERO.ref])
-      expect(board.centers).toEqual([HERO.box])
     })
 
-    it('wraps from the last frame to the first', () => {
+    it('wraps from the first frame back to the last', () => {
+      const board = setup()
+      done = board.done
+      select(selectionStore, 'studio/home', [HERO.ref])
+
+      board.action('frame.previous').run()
+
+      expect(selectionStore.getState().frames).toEqual([CONTACT.ref])
+    })
+
+    it('skips a hidden frame', () => {
+      const hidden = frameOf('hidden', {
+        box: { x: 350, y: 20, width: 40, height: 200 },
+        hidden: true,
+      })
+      receiveBoard(liveStore, boardOf(pageOf([HERO, ABOUT, hidden, CONTACT])))
       const board = setup()
       done = board.done
       select(selectionStore, 'studio/home', [HERO.ref])
@@ -450,28 +493,6 @@ describe('useBoardActions', () => {
       expect(selectionStore.getState().frames).toEqual([ABOUT.ref])
     })
 
-    it('wraps from the first frame back to the last', () => {
-      const board = setup()
-      done = board.done
-      select(selectionStore, 'studio/home', [ABOUT.ref])
-
-      board.action('frame.previous').run()
-
-      expect(selectionStore.getState().frames).toEqual([HERO.ref])
-    })
-
-    it('skips a hidden frame', () => {
-      const hidden = frameOf('hidden', { hidden: true })
-      receiveBoard(liveStore, boardOf(pageOf([HERO, hidden, ABOUT])))
-      const board = setup()
-      done = board.done
-      select(selectionStore, 'studio/home', [ABOUT.ref])
-
-      board.action('frame.next').run()
-
-      expect(selectionStore.getState().frames).toEqual([HERO.ref])
-    })
-
     it('steps on Tab and Shift+Tab with focus on the board', async () => {
       const board = setup()
       const unbind = bindKeys(window)
@@ -479,14 +500,14 @@ describe('useBoardActions', () => {
         unbind()
         board.done()
       }
-      select(selectionStore, 'studio/home', [ABOUT.ref])
+      select(selectionStore, 'studio/home', [HERO.ref])
 
       await userEvent.keyboard('{Tab}')
       const stepped = selectionStore.getState().frames
       await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
 
-      expect(stepped).toEqual([HERO.ref])
-      expect(selectionStore.getState().frames).toEqual([ABOUT.ref])
+      expect(stepped).toEqual([ABOUT.ref])
+      expect(selectionStore.getState().frames).toEqual([HERO.ref])
     })
 
     it('stands aside on a page of one frame, so Tab moves focus', () => {
