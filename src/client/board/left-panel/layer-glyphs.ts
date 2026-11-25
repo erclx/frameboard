@@ -5,6 +5,7 @@ import {
   Image,
   type LucideIcon,
   Minus,
+  Music,
   Type,
 } from 'lucide-react'
 
@@ -50,11 +51,12 @@ const LAYOUT_GLYPHS: Record<TreeElement['layout'], LucideIcon> = {
 }
 
 /**
- * The glyph a Layers row draws for an element: text, then media, then a
- * placed element, then the divider and ellipse the Shapes menu draws, then
- * its layout.
+ * The glyph a Layers row draws for an element: audio, whose fallback text
+ * never renders, then text, then other media, then a placed element, then the
+ * divider and ellipse the Shapes menu draws, then its layout.
  */
 export function elementGlyph(element: TreeElement): LucideIcon {
+  if (element.tag === 'audio') return Music
   if (element.textOnly) return Type
   if (element.tag === 'img' || element.tag === 'video') return Image
   if (element.tag === VIEWER_TAG) return Box
