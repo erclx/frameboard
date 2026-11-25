@@ -1,29 +1,33 @@
 import { ChevronDown, Search } from 'lucide-react'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import { useStore } from 'zustand'
 
 import { ChromeMenuContent, MENU_ROW } from '@/client/board/chrome/menu'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/client/components/ui/dropdown-menu'
 import { Skeleton } from '@/client/components/ui/skeleton'
-import { useLive } from '@/client/live/store'
 import { BoardWriteError } from '@/client/live/write'
+import { assetKind, isPlaceableKind } from '@/shared/asset-kinds'
 
+import type { PlaceableFile } from '../drag'
+import { Preview, PreviewSkeleton } from '../preview'
 import {
   findImages,
   findModels,
+  type ImageResult,
+  type ModelResult,
   type ResultKind,
   saveKey,
+  type SaveRequest,
   saveResult,
   saveStore,
 } from '../sourcing'
-import { ModelTile, ResultTile } from './result-tile'
+import { ImagePicture, ModelPicture } from './picture'
+import { ResultTile } from './result-tile'
 import {
   EMPTY_SEARCH,
   type FindSearch,
@@ -36,32 +40,27 @@ import {
 } from './search-store'
 
 const CODE = 'font-mono text-label font-normal text-foreground'
-const LINE_BOX = 'mx-3 my-1.5 text-label font-normal leading-[1.45]'
+const LINE_BOX = 'text-label font-normal leading-[1.45]'
 const LINE = `${LINE_BOX} text-muted-foreground`
 const ALERT = `${LINE_BOX} text-destructive`
-const FOOT =
-  'mx-3 mt-1.5 mb-0.5 text-[10px] leading-[1.4] text-muted-foreground'
+const FOOT = 'mt-2.5 text-caption leading-[1.4] text-muted-foreground'
 const LINK =
   'rounded-sm text-foreground underline underline-offset-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+const GRID = 'grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-2.5'
 
 /** How many grey tiles hold the grid's shape while a search runs. */
-const PLACEHOLDERS = ['a', 'b', 'c', 'd']
+const PLACEHOLDERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 
-const KIND: Record<
-  Kind,
-  { label: string; source: string; field: string; result: ResultKind }
-> = {
+const KIND: Record<Kind, { label: string; source: string; field: string }> = {
   images: {
     label: 'Images',
     source: 'Openverse',
     field: 'Search free images',
-    result: 'image',
   },
   models: {
     label: 'Models',
     source: 'Poly Haven',
     field: 'Search free models',
-    result: 'model',
   },
 }
 
@@ -71,13 +70,14 @@ interface FindViewProps {
   find?: typeof findImages
   /** Runs one model search, the board's route in the app. */
   findModels?: typeof findModels
-  /** Saves one result, shared with a drag of it, the board's route in the app. */
+  /** Saves one result, the board's route in the app. */
   save?: typeof saveResult
 }
 
 /**
- * Find in the Assets tab, searching Openverse's images or Poly Haven's CC0
- * models. The search lives in the project's store entry, so it outlives the tab and keeps landing after the tab closes.
+ * Find in the dialog, searching Openverse's images or Poly Haven's CC0 models
+ * into a grid beside the picked result's preview. The search lives in the
+ * project's store entry, so it outlives the dialog and lands after it closes.
  */
 export function FindView({
   project,
@@ -85,8 +85,7 @@ export function FindView({
   findModels: findModel = findModels,
   save = saveResult,
 }: FindViewProps) {
-  const canWrite = useLive((state) => state.canWrite)
-  const { text, kind, credited, search } = useStore(
+  const { text, kind, credited, search, picked } = useStore(
     searchStore,
     (state) => state[project] ?? EMPTY_SEARCH,
   )
@@ -96,7 +95,7 @@ export function FindView({
     const trimmed = query.trim()
     if (trimmed === '') return
     const signal = nextSearch(project)
-    update({ search: { state: 'searching', query: trimmed } })
+    update({ search: { state: 'searching', query: trimmed }, picked: null })
     try {
       const next: SearchState =
         on === 'models'
@@ -108,7 +107,8 @@ export function FindView({
               state: 'done',
               find: await find(project, trimmed, wide, signal),
             }
-      if (!signal.aborted) update({ search: next })
+      if (signal.aborted) return
+      update({ search: next, picked: next.find.results[0]?.id ?? null })
     } catch (error) {
       if (signal.aborted) return
       const status =
@@ -126,104 +126,207 @@ export function FindView({
   }
 
   function widen(next: boolean) {
+    if (next === credited) return
     update({ credited: next })
     const last = lastQuery(search)
     if (last !== null) void run(last, next, kind)
   }
 
-  function pick(next: Kind) {
+  function pickKind(next: Kind) {
     if (next === kind) return
     update({ kind: next })
     const typed = text.trim() === '' ? lastQuery(search) : text
     if (typed === null) {
       stopSearch(project)
-      update({ search: { state: 'idle' } })
+      update({ search: { state: 'idle' }, picked: null })
       return
     }
     void run(typed, credited, next)
   }
 
+  const found = foundOf(search)
+  const shown = found.find((item) => item.id === picked)
+  const saves = useStore(saveStore)
+  const saveOf = (item: Found) => saves[saveKey(project, item.id, item.kind)]
+  const requestOf = (item: Found): SaveRequest => ({
+    project,
+    result: { id: item.id },
+    query: lastQuery(search) ?? '',
+    credited: item.kind === 'model' ? false : credited,
+    kind: item.kind,
+  })
+
   return (
     <div
       aria-busy={search.state === 'searching'}
-      className="flex h-full flex-col overflow-y-auto pb-2"
+      className="@container flex min-h-0 flex-1 flex-col"
     >
       <form
         role="search"
         onSubmit={submit}
-        className="mx-2 mt-1 mb-1.5 flex h-[26px] shrink-0 items-center gap-1.5 rounded-md bg-muted px-2 focus-within:ring-[1.5px] focus-within:ring-primary"
+        className="flex shrink-0 flex-wrap gap-2 border-b border-border px-4 py-3"
       >
-        <Search
-          aria-hidden
-          className="size-[13px] shrink-0 text-muted-foreground"
-        />
-        <input
-          type="search"
-          aria-label={KIND[kind].field}
-          placeholder={KIND[kind].field}
-          value={text}
-          spellCheck={false}
-          onChange={(event) => update({ text: event.target.value })}
-          className="min-w-0 flex-1 bg-transparent text-label font-normal outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
-        />
-        <FilterMenu
-          kind={kind}
-          onKind={pick}
+        <div className="flex h-[26px] min-w-48 flex-1 items-center gap-1.5 rounded-md bg-input px-2 focus-within:ring-[1.5px] focus-within:ring-primary">
+          <Search
+            aria-hidden
+            className="size-[13px] shrink-0 text-muted-foreground"
+          />
+          <input
+            type="search"
+            aria-label={KIND[kind].field}
+            placeholder={KIND[kind].field}
+            value={text}
+            spellCheck={false}
+            onChange={(event) => update({ text: event.target.value })}
+            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+          />
+        </div>
+        <KindMenu kind={kind} onKind={pickKind} />
+        <LicenseMenu
+          models={kind === 'models'}
           credited={credited}
           onCredited={widen}
         />
       </form>
-      <Body
-        project={project}
-        kind={kind}
-        search={search}
-        credited={credited}
-        canWrite={canWrite}
-        onWiden={() => widen(true)}
-        onRetry={() => {
-          const last = lastQuery(search)
-          if (last !== null) void run(last, credited, kind)
-        }}
-        onSave={(id, query, result) =>
-          void save({
-            project,
-            result: { id },
-            query,
-            credited: result === 'model' ? false : credited,
-            kind: result,
-          }).catch(() => undefined)
-        }
-      />
+      <div className="flex min-h-0 flex-1 flex-col @min-[640px]:flex-row">
+        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-4 py-3">
+          <Body
+            kind={kind}
+            search={search}
+            credited={credited}
+            onWiden={() => widen(true)}
+            onRetry={() => {
+              const last = lastQuery(search)
+              if (last !== null) void run(last, credited, kind)
+            }}
+          >
+            <ul aria-label="Results" className={GRID}>
+              {found.map((item) => (
+                <ResultTile
+                  key={item.id}
+                  picture={item.picture('cover')}
+                  title={item.title}
+                  meta={item.meta}
+                  picked={item.id === picked}
+                  save={saveOf(item)}
+                  onPick={() => update({ picked: item.id })}
+                />
+              ))}
+            </ul>
+          </Body>
+        </div>
+        {search.state === 'searching' ? <PreviewSkeleton /> : null}
+        {shown ? (
+          <Preview
+            key={`${shown.kind} ${shown.id}`}
+            picture={shown.picture('contain')}
+            title={shown.title}
+            lines={[`${shown.meta} · ${KIND[kind].source}`]}
+            save={{
+              state: saveOf(shown),
+              // A refusal shows from the save's own state.
+              run: () => void save(requestOf(shown)).catch(() => undefined),
+            }}
+            file={async () =>
+              placeable(project, (await save(requestOf(shown))).path)
+            }
+            primary
+          />
+        ) : null}
+      </div>
     </div>
   )
 }
 
-/**
- * The kind and the license choice in one control at the field's end. The
- * license choice greys out under Models rather than leaving, so the rows hold still.
- */
-function FilterMenu({
+/** A found image or model as the grid and the preview draw it. */
+interface Found {
+  id: string
+  kind: ResultKind
+  title: string
+  /** Its size and license, the size left out where the source reports none. */
+  meta: string
+  picture: (fit: 'cover' | 'contain') => ReactNode
+}
+
+function foundOf(search: SearchState): Found[] {
+  if (search.state === 'done') return search.find.results.map(foundImage)
+  if (search.state === 'models') return search.find.results.map(foundModel)
+  return []
+}
+
+function foundImage(result: ImageResult): Found {
+  return {
+    id: result.id,
+    kind: 'image',
+    title: result.title?.trim() || 'Untitled image',
+    meta: metaLine(sizeOf(result), result.license),
+    picture: (fit) => <ImagePicture result={result} fit={fit} />,
+  }
+}
+
+function foundModel(result: ModelResult): Found {
+  return {
+    id: result.id,
+    kind: 'model',
+    title: result.name,
+    meta: metaLine(trianglesOf(result.polycount), result.license),
+    picture: (fit) => <ModelPicture result={result} fit={fit} />,
+  }
+}
+
+function metaLine(size: string | null, license: string): string {
+  return [size, license.toUpperCase()].filter(Boolean).join(' · ')
+}
+
+function sizeOf({
+  width,
+  height,
+}: Pick<ImageResult, 'width' | 'height'>): string | null {
+  return width === null || height === null ? null : `${width} × ${height}`
+}
+
+/** A polycount as a short count of triangles, such as `2.7k tris`, null when Poly Haven gives none. */
+function trianglesOf(polycount: number | null): string | null {
+  if (polycount === null) return null
+  if (polycount < 1000) return `${polycount} tris`
+  const thousands = polycount / 1000
+  const shown =
+    thousands < 10
+      ? String(Math.round(thousands * 10) / 10)
+      : String(Math.round(thousands))
+  return `${shown}k tris`
+}
+
+/** A saved file as a placement takes it, refusing one no frame shows. */
+function placeable(project: string, path: string): PlaceableFile {
+  const kind = assetKind(path)
+  if (!isPlaceableKind(kind)) {
+    throw new Error(`assets/${path} is saved, but a frame cannot show it.`)
+  }
+  return { project, path, kind }
+}
+
+const MENU_TRIGGER =
+  'flex h-[26px] shrink-0 items-center gap-1 rounded-md bg-input px-2 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50'
+
+/** Whether Find searches images or models. */
+function KindMenu({
   kind,
   onKind,
-  credited,
-  onCredited,
 }: {
   kind: Kind
   onKind: (next: Kind) => void
-  credited: boolean
-  onCredited: (next: boolean) => void
 }) {
-  const models = kind === 'models'
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        aria-label={`Filter: ${KIND[kind].label}`}
-        className="-mr-1 flex h-5 shrink-0 items-center gap-0.5 rounded-[5px] px-1 text-label font-normal text-foreground outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50"
+        aria-label={`Kind: ${KIND[kind].label}`}
+        className={MENU_TRIGGER}
       >
         {KIND[kind].label}
         <ChevronDown aria-hidden className="size-2.5 text-muted-foreground" />
       </DropdownMenuTrigger>
-      <ChromeMenuContent align="end" sideOffset={6} className="w-[200px]">
+      <ChromeMenuContent align="end" sideOffset={6} className="w-[160px]">
         <DropdownMenuRadioGroup
           value={kind}
           onValueChange={(next: Kind) => onKind(next)}
@@ -235,20 +338,58 @@ function FilterMenu({
             Models
           </DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuCheckboxItem
-          checked={!models && credited}
-          disabled={models}
-          aria-describedby={models ? 'find-models-cc0' : undefined}
-          onCheckedChange={onCredited}
-          className={MENU_ROW}
+      </ChromeMenuContent>
+    </DropdownMenu>
+  )
+}
+
+const FREE = 'Free licenses only'
+const CREDITED = 'Include credited licenses'
+
+/**
+ * Whether a search takes licenses owing a credit. The choice greys out under
+ * Models with its reason rather than leaving, so the row holds still.
+ */
+function LicenseMenu({
+  models,
+  credited,
+  onCredited,
+}: {
+  models: boolean
+  credited: boolean
+  onCredited: (next: boolean) => void
+}) {
+  const wide = credited && !models
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label={`Licenses: ${wide ? CREDITED : FREE}`}
+        className={MENU_TRIGGER}
+      >
+        {wide ? CREDITED : FREE}
+        <ChevronDown aria-hidden className="size-2.5 text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <ChromeMenuContent align="end" sideOffset={6} className="w-[220px]">
+        <DropdownMenuRadioGroup
+          value={wide ? 'credited' : 'free'}
+          onValueChange={(next: string) => onCredited(next === 'credited')}
         >
-          Include credited licenses
-        </DropdownMenuCheckboxItem>
+          <DropdownMenuRadioItem value="free" className={MENU_ROW}>
+            {FREE}
+          </DropdownMenuRadioItem>
+          <DropdownMenuRadioItem
+            value="credited"
+            disabled={models}
+            aria-describedby={models ? 'find-models-cc0' : undefined}
+            className={MENU_ROW}
+          >
+            {CREDITED}
+          </DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
         {models ? (
           <p
             id="find-models-cc0"
-            className="px-2 pb-1 text-[10px] leading-[1.4] text-muted-foreground"
+            className="px-2 pb-1 text-caption leading-[1.4] text-muted-foreground"
           >
             Every Poly Haven model is CC0.
           </p>
@@ -259,37 +400,28 @@ function FilterMenu({
 }
 
 interface BodyProps {
-  project: string
   kind: Kind
   search: SearchState
   credited: boolean
-  canWrite: boolean
   onWiden: () => void
   onRetry: () => void
-  onSave: (id: string, query: string, kind: ResultKind) => void
+  /** The results grid, drawn once a search found some. */
+  children: ReactNode
 }
 
 /** What sits under the controls, one block per state of the search. */
 function Body({
-  project,
   kind,
   search,
   credited,
-  canWrite,
   onWiden,
   onRetry,
-  onSave,
+  children,
 }: BodyProps) {
   const { source } = KIND[kind]
   const sourceLine = (
     <p className={FOOT}>
       {kind === 'models' ? 'Models' : 'Images'} from {source}
-    </p>
-  )
-  const readOnly = canWrite ? null : (
-    <p className={LINE}>
-      This tab is read-only, so results cannot be saved. Run{' '}
-      <code className={CODE}>frameboard open</code> for a tab that can.
     </p>
   )
   switch (search.state) {
@@ -309,14 +441,11 @@ function Body({
     case 'searching':
       return (
         <>
-          <ul
-            aria-label="Searching"
-            className="grid grid-cols-2 gap-2 px-2 py-1"
-          >
+          <ul aria-label="Searching" className={GRID}>
             {PLACEHOLDERS.map((id) => (
-              <li key={id} className="overflow-hidden rounded-lg bg-muted">
-                <span className="block h-[72px]" />
-                <span className="block h-[38px] px-[7px] py-[5px]">
+              <li key={id} className="overflow-hidden rounded-md bg-muted">
+                <span className="block h-24 bg-accent" />
+                <span className="block h-[38px] px-1.5 py-[5px]">
                   <Skeleton className="my-[3px] h-2 w-[70%] rounded-[3px] bg-foreground/10" />
                   <Skeleton className="my-[3px] h-2 w-[45%] rounded-[3px] bg-foreground/10" />
                 </span>
@@ -342,8 +471,8 @@ function Body({
         </>
       )
     case 'models': {
-      const { results, query } = search.find
-      if (results.length === 0) {
+      const count = search.find.results.length
+      if (count === 0) {
         return (
           <>
             <p className={LINE}>
@@ -357,33 +486,16 @@ function Body({
       }
       return (
         <>
-          <ul aria-label="Results" className="grid grid-cols-2 gap-2 px-2 py-1">
-            {results.map((result) => (
-              <ModelTile
-                key={result.id}
-                project={project}
-                result={result}
-                query={query}
-                onSave={() => onSave(result.id, query, 'model')}
-              />
-            ))}
-          </ul>
-          <SaveFailures
-            project={project}
-            kind="model"
-            results={results.map(({ id, name }) => ({ id, label: name }))}
-          />
-          {readOnly}
+          {children}
           <p className={FOOT}>
-            {results.length} {results.length === 1 ? 'model' : 'models'} from{' '}
-            {source}
+            {count} {count === 1 ? 'model' : 'models'} from {source}
           </p>
         </>
       )
     }
     case 'done': {
-      const { results, query } = search.find
-      if (results.length === 0) {
+      const count = search.find.results.length
+      if (count === 0) {
         return (
           <>
             <p className={LINE}>
@@ -411,70 +523,18 @@ function Body({
       }
       return (
         <>
-          <ul aria-label="Results" className="grid grid-cols-2 gap-2 px-2 py-1">
-            {results.map((result) => (
-              <ResultTile
-                key={result.id}
-                project={project}
-                result={result}
-                query={query}
-                credited={credited}
-                onSave={() => onSave(result.id, query, 'image')}
-              />
-            ))}
-          </ul>
-          <SaveFailures
-            project={project}
-            kind="image"
-            results={results.map(({ id, title }) => ({
-              id,
-              label: title ?? id,
-            }))}
-          />
-          {readOnly}
-          {credited ? (
-            <p className={LINE}>
-              A credited image must be credited where you use it. The credit is
-              saved in its license file.
-            </p>
-          ) : null}
+          {children}
           <p className={FOOT}>
-            {results.length} {credited ? '' : 'public domain '}
-            {results.length === 1 ? 'image' : 'images'} from {source}
+            {count} {credited ? '' : 'public domain '}
+            {count === 1 ? 'image' : 'images'} from {source}
+            {credited
+              ? '. A credited image must be credited where you use it. The credit is saved in its license file.'
+              : ''}
           </p>
         </>
       )
     }
   }
-}
-
-/** A line per result whose save failed, naming it and the reason. */
-function SaveFailures({
-  project,
-  kind,
-  results,
-}: {
-  project: string
-  kind: ResultKind
-  results: { id: string; label: string }[]
-}) {
-  const saves = useStore(saveStore)
-  const failed = results.flatMap((result) => {
-    const save = saves[saveKey(project, result.id, kind)]
-    return save?.state === 'failed'
-      ? [{ id: result.id, text: `${result.label}: ${save.message}` }]
-      : []
-  })
-  if (failed.length === 0) return null
-  return (
-    <ul role="alert" className="mx-3 text-label font-normal text-destructive">
-      {failed.map((entry) => (
-        <li key={entry.id} className="leading-[1.45]">
-          {entry.text}
-        </li>
-      ))}
-    </ul>
-  )
 }
 
 function lastQuery(search: SearchState): string | null {
