@@ -9,6 +9,7 @@ description: "The left panel's Theme and Assets tabs, and the dialogs they open"
 
 - `src/client/board/left-panel/theme/`
 - `src/client/board/assets/`
+- `src/client/board/chrome/wide-dialog.tsx`
 
 ## States
 
