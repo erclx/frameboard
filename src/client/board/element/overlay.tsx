@@ -52,25 +52,11 @@ interface ElementOverlayProps {
 }
 
 /**
- * The selected element's outline, chip, and corner marks over the overflow
- * ghosts, drawn from the live box and nothing while the frame shows other
- * bytes. The marks take no pointer, since the gestures find them by position.
+ * What draws past each frame's edge: a dashed ghost a press takes, for a
+ * selected frame under the Move tool, and a still picture in every ghost and on
+ * a frame showing overflow. Mounted before the frames, so labels draw over it.
  */
-export function ElementOverlay({ frames, container }: ElementOverlayProps) {
-  return (
-    <>
-      <ElementGhosts frames={frames} container={container} />
-      <ElementOutlines frames={frames} container={container} />
-    </>
-  )
-}
-
-/**
- * What draws past each frame's edge, where the iframe cannot paint: a dashed
- * ghost a press takes, for a selected frame under the Move tool, and a still
- * picture of the element, in every ghost and for a frame that shows overflow.
- */
-function ElementGhosts({ frames, container }: ElementOverlayProps) {
+export function ElementGhosts({ frames, container }: ElementOverlayProps) {
   const selected = useSelection((state) => state.frames)
   // Play scrolls an entered page and shows frames as they ship, so it draws neither.
   const editing = useMode((state) => state.mode === 'edit')
@@ -214,8 +200,12 @@ function outsideOf(box: Box, frame: Box): string {
   return `polygon(evenodd, ${near} ${near}, ${far} ${near}, ${far} ${far}, ${near} ${far}, ${near} ${near}, ${x0} ${y0}, ${x0} ${y1}, ${x1} ${y1}, ${x1} ${y0}, ${x0} ${y0})`
 }
 
-/** The selected element's outline, or several's group box around their outlines. */
-function ElementOutlines({ frames, container }: ElementOverlayProps) {
+/**
+ * The selected element's outline, chip, and corner marks, or several's group
+ * box, drawn from the live box and nothing while the frame shows other bytes.
+ * The marks take no pointer, since the gestures find them by position.
+ */
+export function ElementOverlay({ frames, container }: ElementOverlayProps) {
   const element = useSelection((state) => state.element ?? null)
   const members = useSelection((state) => state.elements)
   const several = (members?.length ?? 0) > 1 ? members : undefined

@@ -14,6 +14,9 @@ const MOBILE = '[data-frame="studio/home/mobile"]'
 // Wholly below the 844 px tall frame's edge.
 const BADGE =
   '<div style="position: absolute; left: 40px; top: 864px; width: 200px; height: 40px; background: rgb(37 99 235)"></div>'
+// Wholly past both the left and the top edge.
+const CORNER =
+  '<div style="position: absolute; left: -80px; top: -70px; width: 60px; height: 40px; background: rgb(37 99 235)"></div>'
 
 async function boxOf(locator: Locator) {
   const box = await locator.boundingBox()
@@ -21,7 +24,7 @@ async function boxOf(locator: Locator) {
   return box
 }
 
-/** How many of the picture's pixels are the badge's own fill, and how many it has. */
+/** How many of the picture's pixels are the element's own fill, and how many it has. */
 async function filled(picture: Locator) {
   return picture.evaluate((image: HTMLImageElement) => {
     const canvas = document.createElement('canvas')
@@ -50,17 +53,17 @@ test.describe('a frame showing its content past the edge', () => {
       readFileSync(join(board.root, 'studio/home/layout.json'), 'utf8'),
     ).frames.mobile as Record<string, unknown>
 
-  test.beforeEach(async ({ page }) => {
+  async function open(page: Page, element: string) {
     board = copyFixtureBoard('live')
     const file = join(board.root, 'studio/home/mobile.html')
     writeFileSync(
       file,
-      readFileSync(file, 'utf8').replace('</body>', `${BADGE}</body>`),
+      readFileSync(file, 'utf8').replace('</body>', `${element}</body>`),
     )
     server = await serveBoard(board.root)
     await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/studio/home`)
-  })
+  }
 
   test.afterEach(async () => {
     await server.stop()
@@ -78,6 +81,7 @@ test.describe('a frame showing its content past the edge', () => {
   test('turning clip off paints the element below the edge at its box, and an undo takes it away', async ({
     page,
   }) => {
+    await open(page, BADGE)
     const asked: string[] = []
     page.on('request', (request) => {
       if (request.url().includes('/api/frames/png')) asked.push(request.url())
@@ -109,5 +113,49 @@ test.describe('a frame showing its content past the edge', () => {
 
     await expect.poll(entry).not.toHaveProperty('showOverflow')
     await expect(picture).toHaveCount(0)
+  })
+  test('an element past the top left corner paints at its box, and Export saves it whole', async ({
+    page,
+  }) => {
+    await open(page, CORNER)
+    const picture = page.locator('img[src^="/api/frames/png"]')
+    await selectMobile(page)
+
+    await page.getByRole('switch', { name: 'Clip content' }).click()
+    await expect.poll(entry).toMatchObject({ showOverflow: true })
+    await page.keyboard.press('Escape')
+
+    await expect(page.locator('[data-element-ghost]')).toHaveCount(0)
+    await expect
+      .poll(() =>
+        picture.evaluate((image: HTMLImageElement) => image.naturalWidth),
+      )
+      .toBe(120)
+    const frame = await boxOf(page.locator(MOBILE))
+    const scale = frame.width / 390
+    const painted = await boxOf(picture)
+    expect(painted.x - frame.x).toBeCloseTo(-80 * scale, 0)
+    expect(painted.y - frame.y).toBeCloseTo(-70 * scale, 0)
+    expect(painted.width).toBeCloseTo(60 * scale, 0)
+    expect(await filled(picture)).toEqual({ blue: 120 * 80, all: 120 * 80 })
+
+    await selectMobile(page)
+    const ghost = await boxOf(page.locator('[data-element-ghost]'))
+    await page.mouse.click(
+      ghost.x + ghost.width / 2,
+      ghost.y + ghost.height / 2,
+    )
+    await expect(page.locator('[data-element-selection]')).toBeVisible()
+    await page.getByRole('tab', { name: 'Export' }).click()
+    await page.getByRole('button', { name: 'Export theme' }).click()
+    await page.getByRole('menuitemradio', { name: 'Light' }).click()
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Export 1 file' }).click()
+    const download = await downloading
+
+    expect(download.suggestedFilename()).toContain('@2x.png')
+    const bytes = readFileSync(await download.path())
+    // A PNG's IHDR chunk holds its width and height at bytes 16 and 20.
+    expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([120, 80])
   })
 })

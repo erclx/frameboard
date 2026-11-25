@@ -42,7 +42,7 @@ import { POSE_BAR_ROOM } from './device/poses'
 import { showsDeviceBar } from './device/turn'
 import { useElementActions } from './element/actions'
 import { BindingLinks } from './element/binding-links'
-import { ElementOverlay } from './element/overlay'
+import { ElementGhosts, ElementOverlay } from './element/overlay'
 import { pickElementRead } from './element/pick'
 import { followReports } from './element/report'
 import {
@@ -923,6 +923,7 @@ export function Canvas({
           <>
             <SectionBoxes page={page.ref} sections={page.sections} />
             <ReservedBoxes page={page.ref} frames={page.frames} />
+            <ElementGhosts frames={frames} container={layer} />
             {frames.map((frame) => {
               const identity = identityOf(aliases, frame.ref)
               const live = liveIdentities?.has(identity) ?? false
