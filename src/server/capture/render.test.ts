@@ -241,6 +241,14 @@ describe.skipIf(shell === null)(
         'studio/home/badge.html':
           '<style>body{margin:0;background:red}</style>' +
           '<span style="display:block;width:60px;height:40px;border-radius:20px;background:blue"></span>',
+        // Element 4 stands wholly past the top left, 5 crosses the left edge at
+        // a fraction, and 7 is a blue box its red parent crops on the left.
+        'studio/home/past.html':
+          '<style>body{margin:0;background:red;overflow:hidden}div{position:absolute;background:rgb(0,0,255)}</style>' +
+          '<div style="left:-200px;top:-100px;width:80px;height:50px"></div>' +
+          '<div style="left:-20.3px;top:10px;width:60.7px;height:40px"></div>' +
+          '<div style="left:-10px;top:60px;width:40px;height:30px;overflow:hidden;background:red">' +
+          '<div style="left:-20px;top:0;width:50px;height:30px"></div></div>',
         // The controls' column would draw blue right of the green photo.
         'studio/home/tuner.html':
           '<style>body{margin:0;background:#fff;display:flex}#photo{width:100px;height:100px;background:#0a0}.controls{width:100px;height:100px;background:#00f}</style>' +
@@ -793,6 +801,68 @@ describe.skipIf(shell === null)(
       )
 
       expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([60, 40])
+    })
+
+    it.each([
+      ['wholly past the top left', 4, [160, 100]],
+      ['crossing the left edge at a fractional place', 5, [120, 80]],
+    ])(
+      'shoots an element %s whole, to each corner',
+      async (_name, element, [width = 0, height = 0]) => {
+        const render = createWarmRenderer({
+          baseUrl: () => host.url,
+          browser: createWarmBrowser(async () => requireShell(shell)),
+          scale: 2,
+        })
+
+        const bytes = await render(
+          {
+            ref: 'studio/home/past',
+            box: { width: 200, height: 100 },
+            element,
+          },
+          'light',
+        )
+        const corners = await Promise.all(
+          [
+            [0, 0],
+            [width - 1, 0],
+            [0, height - 1],
+            [width - 1, height - 1],
+          ].map(([x = 0, y = 0]) => pixelAt(requireShell(shell), bytes, x, y)),
+        )
+
+        expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+          width,
+          height,
+        ])
+        expect(corners).toEqual(Array(4).fill([0, 0, 255, 255]))
+      },
+    )
+
+    it('keeps the crop of an ancestor over an element past the left edge', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/past',
+          box: { width: 200, height: 100 },
+          element: 7,
+        },
+        'light',
+      )
+
+      expect(bytes.readUInt32BE(16)).toBe(50)
+      expect(await pixelAt(requireShell(shell), bytes, 19, 15)).toEqual([
+        0, 0, 0, 0,
+      ])
+      expect(await pixelAt(requireShell(shell), bytes, 20, 15)).toEqual([
+        0, 0, 255, 255,
+      ])
     })
 
     it('refuses an element index naming none as invalid-address', async () => {

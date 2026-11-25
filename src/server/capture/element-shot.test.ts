@@ -55,6 +55,26 @@ describe.skipIf(shell === null)(
         'studio/home/unboxed.html':
           '<p>Shown</p><p id="gone" style="display:none">Gone</p>',
         'studio/home/empty.html': '<p>Shown</p><div id="flat"></div>',
+        'studio/home/past.html':
+          '<style>body{margin:0}div{position:absolute}</style>' +
+          '<div id="left" style="left:-60px;top:20px;width:100px;height:40px"></div>' +
+          '<div id="top" style="left:30px;top:-70px;width:50px;height:30px"></div>' +
+          '<div id="both" style="left:-200px;top:-100px;width:80px;height:50px"></div>' +
+          '<div id="fraction" style="left:-20.5px;top:10px;width:40px;height:30px"></div>' +
+          '<div id="turned" style="left:-60px;top:20px;width:40px;height:20px;rotate:90deg"></div>' +
+          '<div id="slid" style="left:20px;top:20px;width:40px;height:20px;translate:-80px"></div>' +
+          '<div style="left:-40px;top:20px;width:10px;height:10px;scale:2"><i id="scaled" style="display:block;width:40px;height:20px"></i></div>' +
+          '<div id="right" style="left:180px;top:20px;width:90px;height:40px"></div>',
+        // Shorter than its frame, where a shifted root anchors each box to 40 px.
+        'studio/home/moved.html':
+          '<style>html{translate:-10px 5px;transition:translate 9s}body{margin:0;height:40px}</style>' +
+          '<div id="moved" style="position:absolute;left:-30px;top:0;width:60px;height:20px"></div>',
+        'studio/home/stretched.html':
+          '<style>body{margin:0;height:40px}' +
+          'div{position:absolute}#tall{left:-30px;top:-20px;bottom:20px;width:60px}' +
+          '#least{left:-30px;top:0;width:60px;height:10px;min-height:90%!important}</style>' +
+          '<div id="tall"></div><div id="least"></div>' +
+          '<div style="left:-50px;top:0;width:80px;height:90%;display:flex"><p id="item" style="margin:0;flex:1 0 50%"></p></div>',
       })
       host = await startFrameHost({ root: board.root, facesDir: faces })
     }, SHELL_HOOK_TIMEOUT_MS)
@@ -109,6 +129,7 @@ describe.skipIf(shell === null)(
             other: visibility('other'),
             row: visibility('row'),
             ground: getComputedStyle(document.body).backgroundColor,
+            shift: getComputedStyle(document.documentElement).translate,
           }
         })
         return { box, ...shown }
@@ -153,6 +174,59 @@ describe.skipIf(shell === null)(
 
       expect(box).toEqual({ x: 0, y: 0, width: 50, height: 400 })
     })
+
+    it.each([
+      ['left', { x: 0, y: 20, width: 100, height: 40 }],
+      ['top', { x: 30, y: 0, width: 50, height: 30 }],
+      ['both', { x: 0, y: 0, width: 80, height: 50 }],
+      ['fraction', { x: 0, y: 10, width: 40, height: 30 }],
+      ['turned', { x: 0, y: 10, width: 20, height: 40 }],
+      ['slid', { x: 0, y: 20, width: 40, height: 20 }],
+      ['scaled', { x: 0, y: 15, width: 80, height: 40 }],
+    ])(
+      'shifts the %s element into view at its own size',
+      async (id, expected) => {
+        const index = await inspectedIndex('past', id)
+
+        const { box } = await isolated('past', index)
+
+        expect(box).toEqual(expected)
+      },
+    )
+
+    it('leaves the page where it was for an element past the right edge alone', async () => {
+      const index = await inspectedIndex('past', 'right')
+
+      const { box, shift } = await isolated('past', index)
+
+      expect(box).toEqual({ x: 180, y: 20, width: 90, height: 40 })
+      expect(shift).toBe('none')
+    })
+
+    it('shifts an element past the edge of a page that moves its own root', async () => {
+      const index = await inspectedIndex('moved', 'moved')
+
+      const { box } = await isolated('moved', index)
+
+      expect(box).toEqual({ x: 0, y: 0, width: 60, height: 20 })
+    })
+
+    it.each([
+      ['stretched by its insets', 'tall', { width: 60, height: 100 }],
+      ['at a percentage minimum', 'least', { width: 60, height: 90 }],
+      ['stretched by a flex parent', 'item', { width: 80, height: 90 }],
+    ])(
+      'holds the size of an element %s past the edge',
+      async (_name, id, size) => {
+        const index = await inspectedIndex('stretched', id)
+
+        const { box } = await isolated('stretched', index)
+
+        expect(box).toMatchObject(size)
+        expect(box.x).toBeGreaterThanOrEqual(0)
+        expect(box.y).toBeGreaterThanOrEqual(0)
+      },
+    )
 
     it('refuses an index past the last element as invalid-address', async () => {
       const opened = await open('card')

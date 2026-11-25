@@ -16,7 +16,8 @@ type Isolated =
 
 /**
  * Leaves one element showing alone on a transparent ground, answering its box,
- * which can run past the frame's, so the page is shot once and closed.
+ * which can run past the frame's and starts inside the page whatever its own
+ * place, so the page is shot once and closed.
  */
 export async function isolateElement(
   page: Page,
@@ -38,7 +39,9 @@ export async function isolateElement(
       { ref, index },
     )
   }
-  return isolated.box
+  const { box } = isolated
+  if (box.x >= 0 && box.y >= 0) return box
+  return page.evaluate(shiftIntoView)
 }
 
 // Runs in the page, counting as `readLiveElements` does, and hides by
@@ -78,4 +81,46 @@ function hideAllBut(index: number): Isolated {
       height: rect.height,
     },
   }
+}
+
+// Runs in the page and moves the root, so an ancestor's crop moves along. A
+// moved root anchors absolute and fixed boxes, so the element's used size is
+// held, and the box takes the whole pixels its edges paint on.
+function shiftIntoView(): ElementBox {
+  const root = document.documentElement
+  const target = document.querySelector<HTMLElement>('[data-frameboard-shot]')
+  if (!target) throw new Error('No element is isolated.')
+  const painted = (): ElementBox => {
+    const { left, top, right, bottom } = target.getBoundingClientRect()
+    const x = Math.round(left + window.scrollX)
+    const y = Math.round(top + window.scrollY)
+    return {
+      x,
+      y,
+      width: Math.max(1, Math.round(right + window.scrollX) - x),
+      height: Math.max(1, Math.round(bottom + window.scrollY) - y),
+    }
+  }
+  const hold = (element: HTMLElement, styles: Record<string, string>) => {
+    for (const [name, value] of Object.entries(styles)) {
+      element.style.setProperty(name, value, 'important')
+    }
+  }
+  const { width, height } = getComputedStyle(target)
+  hold(target, {
+    transition: 'none',
+    width,
+    'min-width': width,
+    'max-width': width,
+    height,
+    'min-height': height,
+    'max-height': height,
+  })
+  // Anchored first, since a box the root newly anchors can move.
+  hold(root, { transition: 'none', translate: '0px' })
+  const { x, y } = painted()
+  hold(root, { translate: `${Math.max(0, -x)}px ${Math.max(0, -y)}px` })
+  const box = painted()
+  // A clip refuses a place under zero, which a page scaling its root leaves.
+  return { ...box, x: Math.max(0, box.x), y: Math.max(0, box.y) }
 }
