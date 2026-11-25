@@ -2,8 +2,8 @@
   "covers": ["governance", "tooling"],
   "domains": {
     "governance": {
-      "version": "5.122.0",
-      "syncedAt": "2026-11-24T16:48:41.371Z",
+      "version": "5.128.0",
+      "syncedAt": "2026-11-25T05:15:25.879Z",
       "files": {
         ".claude/rules/canon/canon/context.md": "sha256:68babaaeb97ca4283adccc3de4e9d18b6f7f3c46aef36835b28fc550b88de4cd",
         ".claude/rules/canon/canon/git.md": "sha256:532887bc26378315c749365235cc0354ca5a4ee777fd4bcee9769a9203ef90d3",
@@ -20,12 +20,12 @@
         ".claude/rules/canon/framework/react.md": "sha256:3687c622d09895472d21deb509fa113cb1400307acbd3fbfb9e3d52e5a4ca374",
         ".claude/rules/canon/framework/shadcn.md": "sha256:7023434a916714b739b187f25549b8a3ca2c40cb2f69af07e10afe6e35def6e2",
         ".claude/rules/canon/framework/tailwind.md": "sha256:dc7663818d2c93946159f1c09a9e11d5dccb5af148a5cda78965dc434b9fb765",
-        ".claude/rules/canon/lang/typescript.md": "sha256:5c2729d919f8e25ef30e8ec3e3ec7154837d036bd21b3cf39da0100a7e236835",
+        ".claude/rules/canon/lang/typescript.md": "sha256:171f36ef653f7c19f2020fa368e58e20470989041c57eaba9fb5aa6b78913ee4",
         ".claude/rules/canon/lib/e2e-reliability.md": "sha256:bd6f049c79d0afd59d678ca663d146fc0641ade7c08f0f91cf0d7b133c440290",
         ".claude/rules/canon/lib/security-server.md": "sha256:c7c8f4c7360a90030d0efb832d67bc72b9d3d09b3a1fcf58e3d423bcffb49c8b",
         ".claude/rules/canon/lib/security-web.md": "sha256:2a02b9a4136c1efbd66eec3ffcfacb0f4d08c5910f186d45397c594c195924f8",
-        ".claude/rules/canon/lib/test-scope.md": "sha256:39044ef65a02671f5230f3df3fd39f7ee964ab249c08cd21111f8528278fabb5",
-        ".claude/rules/canon/lib/testing-ts.md": "sha256:91df02df06e6e3273497502c6615c195672f7ea1a885c4a908e7bb79a8798ddc",
+        ".claude/rules/canon/lib/test-scope.md": "sha256:558dc0328f766e81e0eb7c1335de7f483c0231a534b6909d2158d6f7655dd6d0",
+        ".claude/rules/canon/lib/testing-ts.md": "sha256:625d1a4bd0169e960beff9c3932633ac2117af55433d8614b39709e8521b01c4",
         ".claude/rules/canon/tooling/ci-workflow.md": "sha256:96f2beaf852bc6634a6523d21acc7b1b05abd9169e4e4523a52f214ef9e83884",
         ".claude/rules/canon/tooling/code-comments.md": "sha256:8f661982be703a632c6e2548b81e871c291462cd2c28c8612d91e3a0b5ed53b6",
         ".claude/rules/canon/tooling/config-comments.md": "sha256:4d1618d7297e6c5ca588e8f55f3f7ba707fd49b27260818ada8d3ac8a305faaf",
@@ -37,18 +37,18 @@
       "chain": ["node"]
     },
     "tooling": {
-      "version": "5.122.0",
-      "syncedAt": "2026-11-24T16:50:06.722Z",
+      "version": "5.128.0",
+      "syncedAt": "2026-11-25T05:16:54.877Z",
       "files": {
         ".github/workflows/deploy.yml": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2",
         ".github/workflows/phase-label-gate.yml": "sha256:40abb5f8b078badce41d6e2697ce569f00bb2dcda963b5ea476f84ec02d315fd",
         ".github/workflows/pr-local-preview.yml": "sha256:f75f4263eae2dade5be73c6ab2fed7c5f82f2bf2dc7e0d01f896a584455abb0e",
-        ".github/workflows/verify.yml": "sha256:0b6e3c9d3f347cf9c732886abbf6d08fbd78a0572568c8d30eb2703dbcc8ce35",
+        ".github/workflows/verify.yml": "sha256:d18c665fc11734a74d54f2b0b7666f7572042336c1dd8d1a17444f25fe4a4083",
         ".husky/commit-msg": "sha256:466995785613d23781be71a1338fec590dec636a8b2a0f13d7b850639358fbeb",
         ".husky/post-merge": "sha256:c40426a0d545cb0fcf94c61eb69409d7e3952a86cfe780ff1ebb6201320f504b",
         ".husky/post-rewrite": "sha256:4f35974c54e0cf6cb9ce587f8840c24132ea8d7e74ca5ae884ee546f7b878a91",
         ".husky/pre-commit": "sha256:a7e3ee0be7554bb60837cd7a414e61aa6a51db987390e325a3799cbdc254ddd8",
-        ".husky/pre-push": "sha256:e059070389c708b2bcebd7b96f8787f4bdcedc866539c02af1dfd5d98630eb3e",
+        ".husky/pre-push": "sha256:a3d65597fcaeac542e460464eb6ae4fd9813c68ef5da7586b5b805f11d2be855",
         ".oxfmtrc.json": "sha256:2c67a0febb5a16c2656a53159bdcb5de7a86332f01630aea57f6d06ade271b5c",
         "e2e/capture-types.ts": "sha256:cd2139808afdd653fe5c39cf03f5b24956ccebf4ab11727c67db83cfcbdd54c0",
         "e2e/screenshot.ts": "sha256:952f40ee3e3e78ee7c953b3dd1c6c85b0497f57cab3de6e82804d86a0474175c",
@@ -58,7 +58,7 @@
         "scripts/readme-screenshot.sh": "sha256:adff1d85ed1ccee6d9df9c6ee12cf13e1798dbdc911b624d82d13e20a77e5725",
         "scripts/screenshot.sh": "sha256:dc7a583c96c57cc7124842c51ead536c5b29987e52eda8e50eed51f28fbd4d96",
         "scripts/verify.json": "sha256:5e9e1e78b1f5dafcc39baeba83d140975fbf0df5336c8afdd0267cd4749f1f85",
-        "scripts/verify.ts": "sha256:29d74763f72fa0214aec0d2289aa747d2b2400b756538fa1cf5db22a1192bea2",
+        "scripts/verify.ts": "sha256:bf6e8e46fd64d35d3d217e26427023d5abdd1d4696c6cc36f149ea54af44914f",
         "scripts/worktree-port.sh": "sha256:77672f787a296ba315377c36d3a88a861fd829bfebe17e97087839dfd2bb8a65",
         "src/test/setup.ts": "sha256:81c5f1d7ba79bea949bc636250c52d71d18f2d56bfeff58ac15181786b93211d"
       },
@@ -68,17 +68,9 @@
           "disposition": "customized",
           "base": "sha256:c10b99a419a6f54dd238f889dfb86f71ad86d79d2c0ec12b1655785ce128c25c"
         },
-        ".github/workflows/readme-screenshot.yml": {
-          "disposition": "declined",
-          "reason": "The README shows the .github/readme-hero-loop-light.webp and .github/readme-hero-loop-dark.webp loops, with the .github/readme-hero-light.png and .github/readme-hero-dark.png stills as the reduced-motion fallbacks, and commits no capture under assets/evidence/readme"
-        },
         ".github/workflows/verify.yml": {
           "disposition": "customized",
-          "base": "sha256:8a7c3b12a77cdc3502d09986327dc25a99ec3db79c3fa1c770349d03ab3f4395"
-        },
-        ".husky/pre-push": {
-          "disposition": "customized",
-          "base": "sha256:e059070389c708b2bcebd7b96f8787f4bdcedc866539c02af1dfd5d98630eb3e"
+          "base": "sha256:d18c665fc11734a74d54f2b0b7666f7572042336c1dd8d1a17444f25fe4a4083"
         },
         ".oxlintrc.json": {
           "disposition": "customized",
@@ -98,7 +90,11 @@
         },
         "e2e/screenshot.ts": {
           "disposition": "customized",
-          "base": "sha256:952f40ee3e3e78ee7c953b3dd1c6c85b0497f57cab3de6e82804d86a0474175c"
+          "base": "sha256:0b8805dc5ed921a7b568df0ff9df2f4422a9a85ecaa940bdb4be05a7efc92a9f"
+        },
+        "package.json:check:changed": {
+          "disposition": "customized",
+          "base": "sha256:571308aef0a904e4bde46c3ce1f40aed6f56a699ac487449a2a92b96d9800b04"
         },
         "package.json:lint": {
           "disposition": "customized",
@@ -108,13 +104,13 @@
           "disposition": "customized",
           "base": "sha256:f5e7b7d244eb0d26a7a7e4c0dc7474961d45097c2461910faae9095f06b9b760"
         },
-        "package.json:readme-screenshot": {
-          "disposition": "declined",
-          "reason": "It runs scripts/readme-screenshot.sh, which is declined"
-        },
         "package.json:screenshot": {
           "disposition": "customized",
           "base": "sha256:bc35258b147950c026e4eb66f60291deb057b27987e13e86577f161fb85b8b9e"
+        },
+        "package.json:test:changed": {
+          "disposition": "declined",
+          "reason": "scripts/check-changed.ts ties its own tests and runs them through test:run under scripts/test-locked.ts, so no script calls test:changed"
         },
         "package.json:test:coverage": {
           "disposition": "customized",
@@ -131,10 +127,6 @@
         "package.json:test:run": {
           "disposition": "customized",
           "base": "sha256:a9f07d70d30ee848c66c3a46453a52ce11dd6eb2067d020162b67c6d853567b7"
-        },
-        "scripts/readme-screenshot.sh": {
-          "disposition": "declined",
-          "reason": "The README shows the .github/readme-hero-loop clips, so no README capture runs"
         },
         "scripts/worktree-port.sh": {
           "disposition": "customized",

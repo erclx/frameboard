@@ -27,7 +27,6 @@
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix --max-warnings 0",
     "screenshot": "PREVIEW_PORT=$(bash scripts/worktree-port.sh 4321) && export PREVIEW_PORT && bash scripts/screenshot.sh",
-    "readme-screenshot": "PREVIEW_PORT=$(bash scripts/worktree-port.sh 4321) && export PREVIEW_PORT && bash scripts/readme-screenshot.sh",
     "check:format": "oxfmt --check . && prettier --check --log-level warn '**/*.astro'",
     "format": "oxfmt . && prettier --write --log-level warn '**/*.astro'"
   },

@@ -41,6 +41,7 @@ CI alone runs the full suites, since a push runs only the tests beside its chang
 
 - The ruleset requires `🎭 E2E Tests` by name and GitHub passes a required job that was skipped, so that job runs on `always()` and fails unless `e2e-shards` reads `success`
 - The shards need `build-verify` alone, so a red unit test never holds them back
+- Each shard lists the specs first and fails on an empty list, since a sharded run over no specs can exit 0. Raise `shardIndex` and `shardTotal` together, or specs past the last index go unrun
 - The ruleset requires neither macOS nor `🌐 Landing Page Gate`, and a push no longer builds `web/`, so a red landing page can merge
 
 ### `.github/workflows/perf-compare.yml`

@@ -2,9 +2,9 @@
 set -e
 set -o pipefail
 
-# Fails a build that carries the social card route, since a widened srcDir would
-# publish a scaffolding page with every other check green, and exclusion is the
-# one of its three consumers a check can enforce.
+# Fails when the social card route reaches the published build, as a widened
+# srcDir or a card file under src/pages/ would do with every other check green.
+# Of the route's three consumers, only its exclusion can be checked.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
@@ -29,8 +29,9 @@ if [ ! -d "$DIST" ]; then
   exit 1
 fi
 
-# Asserts the route still carries its marker, so a dropped one fails loudly
-# rather than blinding the leak test below.
+# The route must still carry its marker, or a dropped one silently retires the
+# leak test below. A fixed <meta> tag rather than prose, since rewording prose
+# would retire it the same way.
 if ! grep -rl "$MARKER" "$PROJECT_ROOT/card-src" >/dev/null 2>&1; then
   echo "No $MARKER under $PROJECT_ROOT/card-src. The card route dropped its own marker, which is what the leak test below reads for." >&2
   exit 1
@@ -41,8 +42,9 @@ if grep -rl "$MARKER" "$DIST" >/dev/null 2>&1; then
   exit 1
 fi
 
-# Built pages in either Astro format, searched from inside dist so a checkout
-# path such as blog-card-site cannot match on its own prefix.
+# Built pages only, in both build.format layouts Astro emits, searched from
+# inside dist so a checkout under a directory like blog-card-site cannot match
+# on its own prefix.
 if (cd "$DIST" && find . -ipath '*og-card*' -name '*.html' | grep -q .); then
   echo "A page named for the card route reached $DIST. See card.config.mjs's srcDir." >&2
   exit 1
