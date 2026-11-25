@@ -18,4 +18,4 @@ When an agent writes a frame, the board marks it with a dot and counts it on its
 You can also watch an agent work as it goes.
 
 - Click a listening agent's initial in the inspector header to follow it
-- The board then pans to each frame it claims or writes, across pages, until you pan, zoom, or click the canvas yourself
+- The board then pans to each frame it claims or writes, across pages, until you pan, zoom, or click the canvas yourself, and holds still while you present a page
