@@ -205,14 +205,19 @@ async function holdDistance(viewer: Viewer, meters: number): Promise<void> {
   if (farthest === 'auto') stateLast(viewer, 'max-camera-orbit', radius)
   await settle(viewer)
   const stands = () => viewer.getCameraOrbit?.().radius ?? meters
+  // A moved limit leaves the viewer at the distance the old one held it to, until the orbit is stated again.
+  const restate = async () => {
+    state(viewer, 'camera-orbit', viewer.getAttribute('camera-orbit'))
+    await settle(viewer)
+  }
   if (stands() < meters && !near(stands(), meters)) {
     stateLast(viewer, 'max-camera-orbit', radius)
-    await settle(viewer)
+    await restate()
   }
   // The viewer keeps its camera outside the model's framed size, which a larger model passes.
   if (stands() > meters && !near(stands(), meters)) {
     stateLast(viewer, 'min-camera-orbit', '0m')
-    await settle(viewer)
+    await restate()
   }
 }
 

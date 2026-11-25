@@ -65,6 +65,9 @@ class StubViewer extends HTMLElement {
   applied = { x: 1, y: 1, z: 1 }
   angles = { theta: 0, phi: 75 * RADIANS }
   target = CENTER.z
+  // The distance asked for, kept inside the limits as they stood, so a limit moving off it never brings it back.
+  goalRadius = 1
+  orbitStated = true
   // The viewer eases its camera toward a stated orbit, so the camera trails the goal until told to jump.
   camera = { theta: 0, phi: 75 * RADIANS, radius: 1, view: 30 }
 
@@ -88,13 +91,30 @@ class StubViewer extends HTMLElement {
 
   attributeChangedCallback(name, _before, value) {
     this[PROPERTIES[name]] = value
-    if (name === 'camera-orbit') this.angles = anglesOf(value) ?? this.angles
+    if (name === 'camera-orbit') {
+      this.angles = anglesOf(value) ?? this.angles
+      this.orbitStated = true
+    }
     if (name === 'camera-target') this.retarget()
   }
 
   get updateComplete() {
     this.transform()
+    this.reach()
     return Promise.resolve()
+  }
+
+  /** Holds the distance asked for inside the limits, read from the orbit only when one was stated or framed. */
+  reach() {
+    const asked = this.orbitStated
+      ? (lastOf(this.cameraOrbit) ?? 1.05 * this.ideal)
+      : this.goalRadius
+    this.orbitStated = false
+    this.goalRadius = clamp(
+      asked,
+      lastOf(this.minCameraOrbit) ?? 2.2 * this.framed.radius,
+      lastOf(this.maxCameraOrbit) ?? this.ideal,
+    )
   }
 
   /** Applies the stated scale, throwing on the null a dropped one reads as. */
@@ -131,6 +151,7 @@ class StubViewer extends HTMLElement {
     this.framed.radius = Math.hypot(x / 2, y / 2, depth)
     this.framed.idealAspect =
       Math.hypot(x / 2, depth) / (this.ideal - y / 2) / tangent(this.framedView)
+    this.orbitStated = true
   }
 
   async updateFraming() {
@@ -150,13 +171,11 @@ class StubViewer extends HTMLElement {
   }
 
   goal() {
-    const nearest = lastOf(this.minCameraOrbit) ?? 2.2 * this.framed.radius
-    const farthest = lastOf(this.maxCameraOrbit) ?? this.ideal
-    const radius = lastOf(this.cameraOrbit) ?? 1.05 * this.ideal
+    this.reach()
     const widest = this.widened(lastOf(this.maxFieldOfView) ?? 30)
     return {
       ...this.angles,
-      radius: clamp(radius, nearest, farthest),
+      radius: this.goalRadius,
       view: clamp(this.widened(this.framedView), 12, widest),
     }
   }

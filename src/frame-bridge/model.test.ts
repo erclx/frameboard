@@ -353,6 +353,20 @@ describe('model-transform', () => {
     },
   )
 
+  it('stands where it did for a larger model under a farthest limit the file states', async () => {
+    const own = 'max-camera-orbit="auto auto 10m"'
+    const { frame, reading, close } = await drawn(own)
+    const before = reading().camera
+
+    const answered = await transform(frame, { scale: even(2), depth: 0 })
+
+    expect(reading().camera?.distance).toBeCloseTo(before?.distance ?? 0, 3)
+    expect(stated(answered)).toContain(
+      'min-camera-orbit="auto auto 0m" max-camera-orbit="auto auto 10m"',
+    )
+    close()
+  })
+
   it('drops the limit it added once a file with its own distance is back at rest', async () => {
     const own = 'camera-orbit="0deg 75deg 3m" max-camera-orbit="auto auto 3m"'
     const { frame, close } = await drawn(own)
