@@ -5,21 +5,21 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { Toaster } from '@/client/components/ui/toast'
+import { markPointerFocus } from '@/client/focus/pointer-mark'
 import { liveStore } from '@/client/live/store'
 import type { KitRecord } from '@/shared/kits'
 import type { ProjectKitRecord } from '@/shared/records/list'
 import type { FontList, InstalledFont } from '@/shared/records/sourcing'
 import type { TokenRow, TokenTable } from '@/shared/records/tokens'
 import { boardOf, frameOf, pageOf } from '@/test/board'
+import { contrastOnPage } from '@/test/contrast'
+import { keyboardFocus } from '@/test/focus-ring'
+import { pointerOff, pointerOver, realClick } from '@/test/real-pointer'
 
-import { closeNote, notesUi } from '../../notes/tool'
+import { Composer } from '../../notes/composer'
+import { closeNote, notesUi, useNotesUi } from '../../notes/tool'
 import { clear, select, selectionStore } from '../../selection'
-import {
-  closeTheme,
-  openTheme,
-  themeDialogStore,
-  type ThemeSection,
-} from './dialog-store'
+import { closeTheme, openTheme, type ThemeSection } from './dialog-store'
 import { ThemeTab } from './tab'
 import type { writeToken } from './write'
 
@@ -119,6 +119,14 @@ async function openOn(section: ThemeSection, props: TabProps = {}) {
   )
   act(() => openTheme(section, section))
   return screen.findByRole('dialog', { name: 'Theme · studio' })
+}
+
+/** The note a person is writing, where the board's markers draw it. */
+function OpenNote() {
+  const open = useNotesUi((state) => state.open)
+  return open?.kind === 'new' ? (
+    <Composer pick={open.pick} onClose={closeNote} />
+  ) : null
 }
 
 function sectionTab(title: string) {
@@ -230,6 +238,52 @@ describe('ThemeDialog', () => {
       ).toBeInTheDocument()
       expect(field).toBeInTheDocument()
     })
+
+    it('draws no outline on a pressed section once a key turns the browser’s on', async () => {
+      const stop = markPointerFocus(window)
+      await openOn('kits')
+      await realClick(sectionTab('Colors'))
+
+      await keyboardFocus(sectionTab('Colors'))
+
+      expect(sectionTab('Colors')).toHaveAttribute('data-pointer-focus')
+      expect(getComputedStyle(sectionTab('Colors')).outlineStyle).toBe('none')
+      stop()
+    })
+
+    it('rings a section focused by a key', async () => {
+      const stop = markPointerFocus(window)
+      await openOn('kits')
+
+      await keyboardFocus(sectionTab('Colors'))
+
+      await waitFor(() =>
+        expect(getComputedStyle(sectionTab('Colors')).boxShadow).toContain(
+          '0px 0px 0px 3px',
+        ),
+      )
+      stop()
+    })
+
+    it.each(['light', 'dark'])(
+      'reads a hovered section’s count at 4.5:1 or better in %s',
+      async (theme) => {
+        document.documentElement.classList.toggle('dark', theme === 'dark')
+        await openOn('kits')
+        const count = within(sectionTab('Colors')).getByText('2')
+
+        await pointerOver(sectionTab('Colors'))
+        await Promise.all(
+          sectionTab('Colors')
+            .getAnimations({ subtree: true })
+            .map((motion) => motion.finished),
+        )
+
+        expect(contrastOnPage(count)).toBeGreaterThanOrEqual(4.5)
+        await pointerOff(sectionTab('Colors'))
+        document.documentElement.classList.remove('dark')
+      },
+    )
 
     it('says why a section is empty', async () => {
       await openOn('other')
@@ -518,6 +572,7 @@ describe('ThemeDialog', () => {
 
   it('hands the focus to the note Ask the agent opens, with the dialog gone', async () => {
     act(() => select(selectionStore, 'studio/home', ['studio/home/hero']))
+    render(<OpenNote />)
     await openOn('kits')
     await userEvent.click(
       await screen.findByRole('button', { name: 'Add kit' }),
@@ -530,8 +585,10 @@ describe('ThemeDialog', () => {
     )
 
     await themeClosed()
-    expect(notesUi.getState().open?.kind).toBe('new')
-    expect(themeDialogStore.getState().opener).toBeNull()
+    await waitFor(() =>
+      expect(document.querySelector('[data-base-ui-portal]')).toBeNull(),
+    )
+    expect(screen.getByRole('textbox', { name: 'Note on hero' })).toHaveFocus()
   })
 
   it('opens on a tab that may not write, with nothing to edit and why', async () => {

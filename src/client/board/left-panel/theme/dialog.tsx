@@ -108,7 +108,7 @@ export function ThemeDialog({
 }
 
 const SECTION =
-  'group/section h-7 w-full flex-none group-data-vertical/tabs:justify-between rounded-[5px] border-0 px-1 text-xs font-normal text-foreground hover:bg-accent data-active:bg-accent data-active:font-semibold group-data-[variant=default]/tabs-list:data-active:shadow-none dark:text-foreground dark:data-active:border-transparent dark:data-active:bg-accent after:hidden'
+  'group/section outline-none h-7 w-full flex-none group-data-vertical/tabs:justify-between rounded-[5px] border-0 px-1 text-xs font-normal text-foreground hover:bg-accent data-active:bg-accent data-active:font-semibold group-data-[variant=default]/tabs-list:data-active:shadow-none dark:text-foreground dark:data-active:border-transparent dark:data-active:bg-accent after:hidden'
 
 /** The sections with what each holds. */
 function SectionList({ counts }: Pick<ThemeDialogProps, 'counts'>) {
@@ -121,7 +121,7 @@ function SectionList({ counts }: Pick<ThemeDialogProps, 'counts'>) {
       {SECTIONS.map(({ section, title }) => (
         <TabsTrigger key={section} value={section} className={SECTION}>
           {title}
-          <span className="text-(length:--text-caption) font-normal text-muted-foreground tabular-nums group-data-active/section:text-foreground">
+          <span className="text-(length:--text-caption) font-normal text-muted-foreground tabular-nums group-hover/section:text-foreground group-data-active/section:text-foreground">
             {counts[section]}
           </span>
         </TabsTrigger>
