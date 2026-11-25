@@ -4,7 +4,6 @@ import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { findAction } from '@/client/actions/registry'
 import { liveStore } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import type { KitRecord } from '@/shared/kits'
@@ -13,9 +12,8 @@ import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { closeNote, newNoteDraft, notesUi } from '../../notes/tool'
 import { clear, select, selectionStore } from '../../selection'
-import { leftTabStore } from '../tab-store'
-import { addKitStore, ASK_FOR_KIT, useAddKitAction } from './add-kit'
-import { KitsSection } from './kits'
+import { closeTheme, openTheme, themeDialogStore } from './dialog-store'
+import { ASK_FOR_KIT, KitsSection } from './kits'
 
 const SKETCH: ProjectKitRecord = {
   name: 'sketch',
@@ -84,8 +82,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => {
     liveStore.setState({ board: null, canWrite: false })
-    addKitStore.setState({ open: false })
-    leftTabStore.setState({ tab: 'design' })
+    closeTheme()
     clear(selectionStore)
     closeNote()
     notesUi.setState({ drafts: {} })
@@ -102,7 +99,6 @@ describe('KitsSection', () => {
         .getAllByRole('listitem')
         .map((item) => item.textContent),
     ).toEqual(['Sketch3 frames', 'Wireframenot used'])
-    expect(screen.getByText('2 in project')).toBeInTheDocument()
   })
 
   it('says how to start while the project holds no kit', () => {
@@ -225,27 +221,37 @@ describe('KitsSection', () => {
     )
   })
 
-  it('disables Add kit and Remove on a tab that may not write', () => {
+  it('closes the Theme dialog ahead of the note, with nothing to hand the focus back to', async () => {
+    act(() => {
+      select(selectionStore, 'studio/home', ['studio/home/pricing'])
+      openTheme('kits', 'kits')
+    })
+    let openAsTheNoteOpened: boolean | undefined
+    const unsubscribe = notesUi.subscribe(() => {
+      openAsTheNoteOpened ??= themeDialogStore.getState().open
+    })
+    renderSection()
+
+    const menu = await openList()
+    await userEvent.click(
+      within(menu).getByRole('menuitem', {
+        name: 'Ask the agent for a new kit',
+      }),
+    )
+    unsubscribe()
+
+    expect(openAsTheNoteOpened).toBe(false)
+    expect(themeDialogStore.getState().opener).toBeNull()
+  })
+
+  it('disables Add kit and Remove on a tab that may not write, saying why', () => {
     liveBoard([SKETCH], false)
     renderSection()
 
     expect(screen.getByRole('button', { name: 'Add kit' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Remove Sketch' })).toBeDisabled()
-  })
-})
-
-describe('useAddKitAction', () => {
-  function Registered() {
-    useAddKitAction()
-    return null
-  }
-
-  it('opens the Theme tab and its Add kit list from the palette', () => {
-    render(<Registered />)
-
-    act(() => findAction('theme.addKit')?.run())
-
-    expect(leftTabStore.getState().tab).toBe('theme')
-    expect(addKitStore.getState().open).toBe(true)
+    expect(
+      screen.getByText('View only, so kits can’t be added or removed here.'),
+    ).toBeInTheDocument()
   })
 })

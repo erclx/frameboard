@@ -35,6 +35,10 @@ Owns Cmd+K's command palette and the `?` shortcuts sheet, mounted once over both
 
 Owns `assets.find` and `assets.generate`, the palette's Find media and Generate media, which show the UI and the Assets tab, close find, then open the dialog the two share, in a read-only tab too.
 
+### `src/client/board/left-panel/theme/actions.ts`
+
+Owns `theme.addKit` and `theme.edit`, the palette's Add kit and Edit theme, which each open the Theme dialog on Kits the same way. Add kit opens its list too and takes a writing tab. Both sit in the group `look`, since the avatar menu lists every `theme` action as a theme choice.
+
 ### `src/client/history/`
 
 Owns `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, plus Ctrl+Y off a Mac, registered for the whole app since the home view undoes too, lit from the server's `history` counts and following the page an undo brings back.

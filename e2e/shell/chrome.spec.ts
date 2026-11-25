@@ -122,10 +122,9 @@ test.describe('a side panel taller than the window', () => {
     await page.goto(BOARD)
     const panel = leftPanel(page)
     await panel.getByRole('tab', { name: 'Theme' }).click()
-    const tokens = panel.getByRole('tabpanel').getByRole('listitem')
-    await expect(tokens).not.toHaveCount(0)
+    await expect(panel.getByRole('button', { name: /^Colors ·/ })).toBeVisible()
 
-    await wheelTo(page, panel, tokens.last())
+    await wheelTo(page, panel, panel.getByRole('button', { name: /theme…$/ }))
 
     expect(await panel.boundingBox()).toMatchObject({ y: 0, height: 300 })
     expect(await slack(panel)).toBe(0)

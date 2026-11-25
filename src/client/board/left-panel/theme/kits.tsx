@@ -1,5 +1,5 @@
 import { Plus, X } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useStore } from 'zustand'
 
 import { Button } from '@/client/components/ui/button'
@@ -32,7 +32,13 @@ import { ChromeMenuContent, MENU_ROW } from '../../chrome/menu'
 import { askOnFrame } from '../../notes/tool'
 import { selectionStore } from '../../selection'
 import { reportRefusal } from '../page-actions'
-import { addKitStore, ASK_FOR_KIT } from './add-kit'
+import { closeTheme, themeDialogStore } from './dialog-store'
+import { focusAfterConfirm } from './focus'
+import { HEAD_BUTTON, SectionHead } from './section-head'
+
+/** The note Ask the agent opens on the selected frame. */
+export const ASK_FOR_KIT =
+  'Write a new design kit for this project from this frame’s look, then add it to the project.'
 
 const NO_KITS: readonly ProjectKitRecord[] = []
 
@@ -56,6 +62,8 @@ export function KitsSection({
   const kits = useLive((state) => projectOf(state.board, project)?.kits)
   const added = kits ?? NO_KITS
   const [removing, setRemoving] = useState<ProjectKitRecord | null>(null)
+  const section = useRef<HTMLElement>(null)
+  const pressed = useRef<HTMLButtonElement | null>(null)
 
   const remove = (kit: ProjectKitRecord) => {
     calls
@@ -65,19 +73,21 @@ export function KitsSection({
 
   return (
     <section
+      ref={section}
       aria-labelledby="theme-kits"
-      className="border-b border-sidebar-border px-3 pt-1 pb-2.5"
+      className="flex flex-col gap-3"
     >
-      <div className="flex h-6 items-center justify-between gap-2">
-        <h3 id="theme-kits" className="text-xs font-semibold">
-          Kits
-        </h3>
-        <span className="text-label text-muted-foreground">
-          {added.length > 0 ? `${added.length} in project` : null}
-        </span>
-      </div>
+      <SectionHead id="theme-kits" title="Kits">
+        <AddKit
+          project={project}
+          added={added}
+          disabled={!canWrite}
+          loadKits={loadKits}
+          calls={calls}
+        />
+      </SectionHead>
       {added.length === 0 ? (
-        <p className="pt-0.5 pb-1 leading-[1.45] text-muted-foreground">
+        <p className="text-muted-foreground">
           No kits yet. Add one, then set it on frames in the inspector.
         </p>
       ) : (
@@ -85,9 +95,11 @@ export function KitsSection({
           {added.map((kit) => (
             <li
               key={kit.name}
-              className="group flex h-7 items-center gap-2 text-xs"
+              className="flex min-h-8 items-center gap-3 border-b border-border last:border-b-0"
             >
-              <span className="min-w-0 flex-1 truncate">{kit.title}</span>
+              <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+                {kit.title}
+              </span>
               <span className="shrink-0 text-label text-muted-foreground tabular-nums">
                 {usage(kit.frameCount)}
               </span>
@@ -95,10 +107,12 @@ export function KitsSection({
                 type="button"
                 aria-label={`Remove ${kit.title}`}
                 disabled={!canWrite}
-                onClick={() =>
-                  kit.frameCount > 0 ? setRemoving(kit) : remove(kit)
-                }
-                className="grid size-5 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40"
+                onClick={(event) => {
+                  pressed.current = event.currentTarget
+                  if (kit.frameCount > 0) setRemoving(kit)
+                  else remove(kit)
+                }}
+                className="grid size-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
               >
                 <X aria-hidden className="size-3" />
               </button>
@@ -106,20 +120,22 @@ export function KitsSection({
           ))}
         </ul>
       )}
-      <AddKit
-        project={project}
-        added={added}
-        disabled={!canWrite}
-        loadKits={loadKits}
-        calls={calls}
-      />
+      {canWrite ? null : (
+        <p className="text-muted-foreground">
+          View only, so kits can’t be added or removed here.
+        </p>
+      )}
       <Dialog
         open={removing !== null}
         onOpenChange={(open) => {
           if (!open) setRemoving(null)
         }}
       >
-        <DialogContent showCloseButton={false} className="gap-3 p-4">
+        <DialogContent
+          showCloseButton={false}
+          finalFocus={() => focusAfterConfirm(pressed.current, section.current)}
+          className="gap-3 p-4"
+        >
           <DialogTitle className="text-title font-semibold">
             Remove {removing?.title}?
           </DialogTitle>
@@ -156,23 +172,23 @@ interface AddKitProps {
 }
 
 function AddKit({ project, added, disabled, loadKits, calls }: AddKitProps) {
-  const open = useStore(addKitStore, (state) => state.open)
+  const open = useStore(themeDialogStore, (state) => state.addingKit)
   const frame = useSelectedFrame()
 
   return (
     <DropdownMenu
       open={open && !disabled}
-      onOpenChange={(next) => addKitStore.setState({ open: next })}
+      onOpenChange={(next) => themeDialogStore.setState({ addingKit: next })}
     >
       <DropdownMenuTrigger
         disabled={disabled}
-        className="mt-1 -ml-1 flex h-6 items-center gap-1 rounded-[5px] px-1 text-xs font-medium text-primary outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-40 aria-expanded:bg-accent"
+        render={<Button variant="outline" size="sm" className={HEAD_BUTTON} />}
       >
-        <Plus aria-hidden className="size-3" />
+        <Plus aria-hidden />
         Add kit
       </DropdownMenuTrigger>
       <ChromeMenuContent
-        align="start"
+        align="end"
         sideOffset={4}
         className="w-auto min-w-[220px]"
       >
@@ -186,7 +202,10 @@ function AddKit({ project, added, disabled, loadKits, calls }: AddKitProps) {
         <DropdownMenuItem
           disabled={frame === null}
           onClick={() => {
-            if (frame) askOnFrame(frame, ASK_FOR_KIT)
+            if (!frame) return
+            // The note's composer takes the focus, so the dialog hands it to nothing.
+            closeTheme({ focusBack: false })
+            askOnFrame(frame, ASK_FOR_KIT)
           }}
           className={cn(
             MENU_ROW,

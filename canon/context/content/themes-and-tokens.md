@@ -13,7 +13,7 @@ Owns how a frame gets its look from outside itself, being the token stylesheets 
 
 ### `src/server/look/`
 
-Owns the head spliced into a served frame, the Theme tab's token table, and the static color and flow reads the inspector shows, served through the face, sheet, and token routes in `src/server/routes/`, which `canon/context/board/server.md` owns. `starter.ts` writes a project `tokens.css`, refusing `tokens-exist` where a sheet reaches it.
+Owns the head spliced into a served frame, the Theme dialog's token table, and the static color and flow reads the inspector shows, served through the face, sheet, and token routes in `src/server/routes/`, which `canon/context/board/server.md` owns. `starter.ts` writes a project `tokens.css`, refusing `tokens-exist` where a sheet reaches it.
 
 - One `<style data-frameboard>` goes first in `head`, importing the faces, the project's font sheet, the board sheet, the project sheet, then the frame's kit sheets, so its own stylesheet still wins
 - It lands after a stated `head` start tag, else `html`, else the doctype, else byte 0 past a BOM, in the response alone, and the file on disk never changes
@@ -42,11 +42,11 @@ Owns design kits, each a folder of plain files being `kit.json`, a `tokens.css` 
 
 ### `src/server/look/token-edit.ts`
 
-Writes one hand edit from the Theme tab into the project's `tokens.css`, creating it when the project has none, or into the board's sheet, which every project without an override follows. The route never writes a `--tokens` sheet outside the board folder, since it belongs to whatever handed it over.
+Writes one hand edit from the Theme dialog into the project's `tokens.css`, creating it when the project has none, or into the board's sheet, which every project without an override follows. The route never writes a `--tokens` sheet outside the board folder, since it belongs to whatever handed it over.
 
 - It splices declarations inside the existing rules through postcss, keeping every other byte, and reads the sheet back, refusing `invalid-edit` for a value that would leave it unreadable
 - A one-theme edit pins the other theme's old value under its rule when the new declaration would reach it, since a project `:root` ties a board dark rule and wins by coming later
-- The table never compares specificity, so a board `:root[data-theme=dark]` beats a project `[data-theme='dark']` in a frame while the tab shows the project's value
+- The table never compares specificity, so a board `:root[data-theme=dark]` beats a project `[data-theme='dark']` in a frame while the dialog shows the project's value
 - A light declaration lands ahead of every dark one of the token, and a reset takes out every project declaration and empty rule, refusing a token the board does not set
 - The write goes through a temporary file and a rename after reading the sheet again, refusing a sheet whose hash moved, and takes no lock
 
@@ -63,6 +63,6 @@ Owns the board-wide theme.
 
 - `serve --tokens <path>` resolves against the working folder and is saved in the address file as `tokens`, so the hook and `check` read that server's sheet, and a `reused: true` answer names it
 - A change to the board, `--tokens`, or project sheet reloads and rechecks every frame it reaches, and a `--tokens` sheet outside the board gets its own watch feeding the same batches
-- With no token sheet at all, frames render unstyled and the Theme tab says where tokens would go
+- With no token sheet at all, frames render unstyled and the Theme dialog says where tokens would go
 - Never paste a token sheet into a frame, since the injected copy follows the project and a pasted one stops following it
 - Canon's own frames name Noto Sans Mono and Excalifont, which no package ships, so they fall back until a project adds the face to its `assets/`

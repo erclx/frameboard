@@ -1,0 +1,1024 @@
+import '../../../styles.css'
+
+import { act, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+
+import { liveStore } from '@/client/live/store'
+import type { ListResult } from '@/shared/records/list'
+import type { TokenRow, TokenTable } from '@/shared/records/tokens'
+import { contrastOnPage } from '@/test/contrast'
+
+import { useTokenTable } from '../../tokens'
+import { closeTheme, openTheme } from './dialog-store'
+import { ThemeTab } from './tab'
+import { useTokenWriter } from './token-writer'
+import { TokensSection } from './tokens'
+import { type TokenChange, writeToken } from './write'
+
+function row(name: string, extra: Partial<TokenRow> = {}): TokenRow {
+  return {
+    name,
+    group: 'color',
+    light: '#111111',
+    dark: '#eeeeee',
+    sheet: 'tokens.css',
+    overrides: false,
+    ...extra,
+  }
+}
+
+function table(
+  tokens: TokenRow[],
+  extra: Partial<TokenTable> = {},
+): TokenTable {
+  return {
+    sheets: [{ path: 'tokens.css', kind: 'board', error: null, hash: 'h' }],
+    tokens,
+    ...extra,
+  }
+}
+
+function board(): ListResult {
+  return { root: '/board', projects: [] } as unknown as ListResult
+}
+
+/** One group over its own read and writer, as the tab wires them. */
+function Tokens({
+  project,
+  group = 'color',
+  load,
+  write,
+}: {
+  project: string
+  group?: TokenRow['group']
+  load: () => Promise<TokenTable | null>
+  write?: typeof writeToken
+}) {
+  const table = useTokenTable(project, load)
+  const writer = useTokenWriter(project, table, write)
+  return <TokensSection group={group} table={table} writer={writer} />
+}
+
+afterEach(() => {
+  act(() => liveStore.setState({ board: null }))
+})
+
+describe('TokensSection', () => {
+  it('names the board sheet it read', async () => {
+    render(<Tokens project="studio" load={async () => table([])} />)
+
+    expect(await screen.findByText(/^From board/)).toHaveTextContent(
+      /^From board tokens\.css$/,
+    )
+  })
+
+  it('names the board sheet and the project sheet overriding it', async () => {
+    const both = table([], {
+      sheets: [
+        { path: 'tokens.css', kind: 'board', error: null, hash: 'h' },
+        { path: 'studio/tokens.css', kind: 'project', error: null, hash: 'p' },
+      ],
+    })
+
+    render(<Tokens project="studio" load={async () => both} />)
+
+    expect(await screen.findByText(/^From board/)).toHaveTextContent(
+      'From board tokens.css, overridden by project tokens.css',
+    )
+  })
+
+  it('keeps the full path in the help mark and out of the line', async () => {
+    const path = '/home/someone/boards/tokens.css'
+    const long = table([row('primary')], {
+      sheets: [{ path, kind: 'board', error: null, hash: 'h' }],
+    })
+
+    render(<Tokens project="studio" load={async () => long} />)
+
+    const note = await screen.findByText(/^From board/)
+    expect(note).toHaveTextContent(/^From board tokens\.css$/)
+    expect(
+      screen.getByRole('button', { name: 'About token source' }),
+    ).toHaveAccessibleDescription(`${path}.`)
+  })
+
+  it('wraps a path no break rescues inside the open tip', async () => {
+    // One segment wider than the tip, which no slash break rescues.
+    const path =
+      'northwindbrandsystemworkspacedesigntokensnorthwindbrandsystem/tokens.css'
+    const long = table([row('primary')], {
+      sheets: [{ path, kind: 'board', error: null, hash: 'h' }],
+    })
+
+    render(<Tokens project="studio" load={async () => long} />)
+
+    await userEvent.hover(
+      await screen.findByRole('button', { name: 'About token source' }),
+    )
+    const tip = await waitFor(() => {
+      const open = document.querySelector('[data-slot="tooltip-content"]')
+      if (!open) throw new Error('The tip is not open')
+      return open
+    })
+    expect(tip.scrollWidth).toBeLessThanOrEqual(tip.clientWidth)
+  })
+
+  it('draws each color with a light and a dark swatch', async () => {
+    render(
+      <Tokens
+        project="studio"
+        load={async () =>
+          table([row('--primary', { light: '#4f46e5', dark: '#818cf8' })])
+        }
+      />,
+    )
+
+    const primary = (await screen.findByText('primary')).closest('li')
+    expect(primary).not.toBeNull()
+    expect(
+      within(primary as HTMLElement).getByRole('img', {
+        name: 'Light: #4f46e5',
+      }),
+    ).toHaveStyle({ backgroundColor: 'rgb(79, 70, 229)' })
+    expect(
+      within(primary as HTMLElement).getByRole('img', {
+        name: 'Dark: #818cf8',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  describe.each(['light', 'dark'])('in the %s theme', (theme) => {
+    beforeEach(() => {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+    })
+
+    afterEach(() => {
+      document.documentElement.classList.remove('dark')
+    })
+
+    it('reads the Light and Dark column header at 4.5:1 or better', async () => {
+      render(
+        <div className="bg-popover">
+          <Tokens
+            project="studio"
+            load={async () => table([row('--primary')])}
+          />
+        </div>,
+      )
+
+      expect(
+        contrastOnPage(await screen.findByText('Light')),
+      ).toBeGreaterThanOrEqual(4.5)
+    })
+
+    it('reads the Project tag at 4.5:1 or better', async () => {
+      render(
+        <div className="bg-popover">
+          <Tokens
+            project="studio"
+            load={async () =>
+              table([row('--primary', { sheet: 'studio/tokens.css' })], {
+                sheets: [
+                  { path: 'tokens.css', kind: 'board', error: null, hash: 'h' },
+                  {
+                    path: 'studio/tokens.css',
+                    kind: 'project',
+                    error: null,
+                    hash: 'p',
+                  },
+                ],
+              })
+            }
+          />
+        </div>,
+      )
+
+      expect(
+        contrastOnPage(await screen.findByText('Project')),
+      ).toBeGreaterThanOrEqual(4.5)
+    })
+  })
+
+  it('marks a side a color does not set', async () => {
+    render(
+      <Tokens
+        project="studio"
+        load={async () => table([row('--glow', { light: null })])}
+      />,
+    )
+
+    expect(
+      await screen.findByRole('img', { name: 'Light: not set' }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows a value as text', async () => {
+    render(
+      <Tokens
+        project="studio"
+        group="radius"
+        load={async () =>
+          table([
+            row('--radius-sm', { group: 'radius', light: '4px', dark: '4px' }),
+          ])
+        }
+      />,
+    )
+
+    expect(await screen.findByText('4px')).toBeInTheDocument()
+  })
+
+  it('shows a font by its first family, drawn in the face it names', async () => {
+    render(
+      <Tokens
+        project="studio"
+        group="font"
+        load={async () =>
+          table([
+            row('--font-mono', {
+              group: 'font',
+              light: "'Geist Mono', monospace",
+              dark: "'Geist Mono', monospace",
+            }),
+          ])
+        }
+      />,
+    )
+
+    expect(await screen.findByText('Geist Mono')).toHaveStyle({
+      fontFamily: "'Geist Mono', monospace",
+    })
+  })
+
+  it('draws a font naming another token in the chrome’s face, which the frame’s own would not be', async () => {
+    render(
+      <Tokens
+        project="studio"
+        group="font"
+        load={async () =>
+          table([
+            row('--font-text', {
+              group: 'font',
+              light: 'var(--font-sans)',
+              dark: 'var(--font-sans)',
+            }),
+          ])
+        }
+      />,
+    )
+
+    const value = await screen.findByText('var(--font-sans)')
+    expect(value.style.fontFamily).toBe('')
+  })
+
+  it('reads a color in words in both themes, and the side it does not set as not set', async () => {
+    render(
+      <Tokens
+        project="studio"
+        load={async () =>
+          table([row('--glow', { light: null, dark: '#818cf8' })])
+        }
+      />,
+    )
+
+    const glow = (await screen.findByText('glow')).closest('li')
+    expect(glow).toHaveTextContent('Not set')
+    expect(glow).toHaveTextContent('#818cf8')
+  })
+
+  it('shows a long token name whole', async () => {
+    const name = `--${'surface-raised-'.repeat(8)}end`
+    render(
+      <div className="w-[300px]">
+        <Tokens project="studio" load={async () => table([row(name)])} />
+      </div>,
+    )
+
+    const shown = await screen.findByText(name.slice(2))
+    expect(shown.scrollWidth).toBeLessThanOrEqual(shown.clientWidth)
+    expect(shown.getBoundingClientRect().right).toBeLessThanOrEqual(
+      shown.closest('li')?.getBoundingClientRect().right ?? 0,
+    )
+  })
+
+  it('says what a group’s sheets leave out', async () => {
+    render(
+      <Tokens
+        project="studio"
+        group="font"
+        load={async () => table([row('--primary')])}
+      />,
+    )
+
+    expect(
+      await screen.findByText('These sheets set no font tokens.'),
+    ).toBeInTheDocument()
+  })
+
+  it('says the sheets set nothing at all', async () => {
+    render(<Tokens project="studio" load={async () => table([])} />)
+
+    expect(
+      await screen.findByText(
+        'These sheets set no tokens under :root, [data-theme], or .dark.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('says why a tab that may not write edits nothing', async () => {
+    render(
+      <Tokens project="studio" load={async () => table([row('--primary')])} />,
+    )
+
+    expect(
+      await screen.findByText('View only, so values can’t be changed here.'),
+    ).toBeInTheDocument()
+  })
+
+  it('draws the empty card when the project has no token sheet', async () => {
+    render(
+      <Tokens
+        project="studio"
+        load={async () => ({ sheets: [], tokens: [] })}
+      />,
+    )
+
+    expect(await screen.findByText('No tokens yet')).toBeInTheDocument()
+  })
+
+  it('names a sheet that does not parse rather than drawing the empty card', async () => {
+    const broken = table([], {
+      sheets: [
+        {
+          path: 'tokens.css',
+          kind: 'board',
+          error: 'Unclosed block at line 1',
+          hash: 'h',
+        },
+      ],
+    })
+
+    render(<Tokens project="studio" load={async () => broken} />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'tokens.css does not parse',
+    )
+    expect(screen.queryByText('No tokens yet')).toBeNull()
+    expect(screen.queryByText(/^These sheets set no/)).toBeNull()
+  })
+
+  it('says the tokens did not load when the read fails', async () => {
+    render(<Tokens project="studio" load={async () => null} />)
+
+    expect(
+      await screen.findByText(/The tokens did not load/),
+    ).toBeInTheDocument()
+  })
+
+  it('reads the table again on each board message', async () => {
+    let reads = 0
+    const load = async () => {
+      reads += 1
+      return table([row(`--read-${reads}`)])
+    }
+    render(<Tokens project="studio" load={load} />)
+    await screen.findByText('read-1')
+
+    act(() => liveStore.setState({ board: board() }))
+
+    expect(await screen.findByText('read-2')).toBeInTheDocument()
+  })
+
+  describe('editing', () => {
+    const BOARD_HASH = 'b'.repeat(64)
+    const PROJECT_HASH = 'c'.repeat(64)
+    const WRITTEN_HASH = 'd'.repeat(64)
+
+    function both(tokens: TokenRow[]): TokenTable {
+      return table(tokens, {
+        sheets: [
+          { path: 'tokens.css', kind: 'board', error: null, hash: BOARD_HASH },
+          {
+            path: 'studio/tokens.css',
+            kind: 'project',
+            error: null,
+            hash: PROJECT_HASH,
+          },
+        ],
+      })
+    }
+
+    interface Sent {
+      hash: string | null
+      change: TokenChange
+    }
+
+    function recordingWrite(
+      sent: Sent[],
+      written = () => WRITTEN_HASH,
+    ): typeof writeToken {
+      return async (project, hash, change) => {
+        sent.push({ hash, change })
+        return {
+          project,
+          name: change.name,
+          light: null,
+          dark: null,
+          hash: written(),
+          sheet: change.sheet ?? 'project',
+          created: false,
+        }
+      }
+    }
+
+    beforeEach(() => {
+      act(() => liveStore.setState({ canWrite: true }))
+    })
+
+    afterEach(() => {
+      act(() => liveStore.setState({ canWrite: false }))
+    })
+
+    it('keeps how to edit in the help mark', async () => {
+      render(<Tokens project="studio" load={async () => both([])} />)
+
+      expect(await screen.findByText(/^From board/)).toHaveTextContent(
+        /^From board tokens\.css, overridden by project tokens\.css$/,
+      )
+      expect(
+        screen.getByRole('button', { name: 'About token source' }),
+      ).toHaveAccessibleDescription(/Click a value to edit it\.$/)
+    })
+
+    it('tags a project value Project and any other Board', async () => {
+      render(
+        <Tokens
+          project="studio"
+          load={async () =>
+            both([
+              row('--primary', { sheet: 'studio/tokens.css', overrides: true }),
+              row('--secondary'),
+            ])
+          }
+        />,
+      )
+
+      expect(
+        (await screen.findByText('primary')).closest('li'),
+      ).toHaveTextContent('Project')
+      expect(screen.getByText('secondary').closest('li')).toHaveTextContent(
+        'Board',
+      )
+    })
+
+    it('offers a reset only on a row the project overrides', async () => {
+      render(
+        <Tokens
+          project="studio"
+          load={async () =>
+            both([
+              row('--primary', { sheet: 'studio/tokens.css', overrides: true }),
+              row('--own', { sheet: 'studio/tokens.css' }),
+            ])
+          }
+        />,
+      )
+
+      expect(
+        await screen.findByRole('button', {
+          name: 'Reset primary to the board value',
+        }),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: 'Reset own to the board value' }),
+      ).toBeNull()
+    })
+
+    it('gives the reset and the two values 24px targets that do not overlap where they stack', async () => {
+      render(
+        <div className="w-[300px] bg-popover">
+          <Tokens
+            project="studio"
+            load={async () =>
+              both([
+                row('--primary', {
+                  sheet: 'studio/tokens.css',
+                  overrides: true,
+                }),
+              ])
+            }
+          />
+        </div>,
+      )
+
+      const reset = (
+        await screen.findByRole('button', {
+          name: 'Reset primary to the board value',
+        })
+      ).getBoundingClientRect()
+      const light = screen
+        .getByRole('button', { name: /^Light:/ })
+        .getBoundingClientRect()
+      const dark = screen
+        .getByRole('button', { name: /^Dark:/ })
+        .getBoundingClientRect()
+
+      expect(
+        Math.min(
+          ...[reset, light, dark].flatMap((box) => [box.width, box.height]),
+        ),
+      ).toBeGreaterThanOrEqual(24)
+      expect(reset.bottom).toBeLessThanOrEqual(light.top)
+      expect(light.right).toBeLessThanOrEqual(dark.left)
+    })
+
+    it('reaches the reset by Tab and sends it from the sheet the tab read', async () => {
+      const sent: Sent[] = []
+      render(
+        <Tokens
+          project="studio"
+          load={async () =>
+            both([
+              row('--primary', { sheet: 'studio/tokens.css', overrides: true }),
+            ])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+      await screen.findByText('primary')
+
+      // The source note's help mark takes the first stop, above the tokens.
+      await userEvent.tab()
+      await userEvent.tab()
+      await userEvent.keyboard('{Enter}')
+
+      expect(sent).toEqual([
+        {
+          hash: PROJECT_HASH,
+          change: { name: '--primary', reset: true, sheet: 'project' },
+        },
+      ])
+    })
+
+    it('opens the picker on Custom for the swatch and writes the board sheet once as it closes', async () => {
+      const sent: Sent[] = []
+      render(
+        <Tokens
+          project="studio"
+          load={async () =>
+            both([row('--primary', { light: '#4f46e5', dark: '#818cf8' })])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Dark: #818cf8' }),
+      )
+      const hex = await screen.findByRole('textbox', { name: 'Hex' })
+      await userEvent.clear(hex)
+      await userEvent.type(hex, '112233{Enter}')
+
+      expect(screen.queryByRole('tab', { name: 'Tokens' })).toBeNull()
+      expect(sent).toEqual([
+        {
+          hash: BOARD_HASH,
+          change: {
+            name: '--primary',
+            side: 'dark',
+            value: '#112233',
+            sheet: 'board',
+          },
+        },
+      ])
+    })
+
+    it('writes nothing when the picker closes on Escape', async () => {
+      const sent: Sent[] = []
+      render(
+        <Tokens
+          project="studio"
+          load={async () => both([row('--primary', { light: '#4f46e5' })])}
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('button', { name: 'Light: #4f46e5' }),
+      )
+      const hex = await screen.findByRole('textbox', { name: 'Hex' })
+      await userEvent.clear(hex)
+      await userEvent.type(hex, '112233')
+      await userEvent.keyboard('{Escape}')
+
+      expect(sent).toEqual([])
+    })
+
+    it('writes a typed number with its unit on Enter', async () => {
+      const sent: Sent[] = []
+      render(
+        <Tokens
+          project="studio"
+          group="radius"
+          load={async () =>
+            both([
+              row('--radius-sm', {
+                group: 'radius',
+                light: '4px',
+                dark: '4px',
+              }),
+            ])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      const field = await screen.findByRole('textbox', {
+        name: 'radius-sm value',
+      })
+      await userEvent.clear(field)
+      await userEvent.type(field, '6{Enter}')
+
+      expect(sent.map((call) => call.change)).toEqual([
+        { name: '--radius-sm', side: 'both', value: '6px', sheet: 'board' },
+      ])
+    })
+
+    it('keeps a number set at zero or above from going below zero', async () => {
+      const sent: Sent[] = []
+      render(
+        <Tokens
+          project="studio"
+          group="radius"
+          load={async () =>
+            both([
+              row('--radius-sm', {
+                group: 'radius',
+                light: '1px',
+                dark: '1px',
+              }),
+            ])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('textbox', { name: 'radius-sm value' }),
+      )
+      await userEvent.keyboard('{Shift>}{ArrowDown}{/Shift}')
+
+      expect(sent.map((call) => call.change)).toEqual([
+        { name: '--radius-sm', side: 'both', value: '0px', sheet: 'board' },
+      ])
+    })
+
+    it('edits a font as text, Enter writing the whole value', async () => {
+      const sent: Sent[] = []
+      render(
+        <Tokens
+          project="studio"
+          group="font"
+          load={async () =>
+            both([
+              row('--font-text', {
+                group: 'font',
+                light: 'Geist, sans-serif',
+                dark: 'Geist, sans-serif',
+              }),
+            ])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: 'font-text value: Geist, sans-serif',
+        }),
+      )
+      const field = screen.getByRole('textbox', { name: 'font-text value' })
+      await userEvent.clear(field)
+      await userEvent.type(field, 'Inter, sans-serif{Enter}')
+
+      expect(sent.map((call) => call.change)).toEqual([
+        {
+          name: '--font-text',
+          side: 'both',
+          value: 'Inter, sans-serif',
+          sheet: 'board',
+        },
+      ])
+    })
+
+    it('puts the stored text back on Escape and writes nothing', async () => {
+      const sent: Sent[] = []
+      render(
+        <Tokens
+          project="studio"
+          group="font"
+          load={async () =>
+            both([
+              row('--font-text', {
+                group: 'font',
+                light: 'Geist, sans-serif',
+                dark: 'Geist, sans-serif',
+              }),
+            ])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: 'font-text value: Geist, sans-serif',
+        }),
+      )
+      await userEvent.type(
+        screen.getByRole('textbox', { name: 'font-text value' }),
+        'x{Escape}',
+      )
+
+      expect(sent).toEqual([])
+      expect(
+        screen.getByRole('button', {
+          name: 'font-text value: Geist, sans-serif',
+        }),
+      ).toHaveFocus()
+    })
+
+    it('sends the next edit from the hash the last one wrote', async () => {
+      const sent: Sent[] = []
+      render(
+        <Tokens
+          project="studio"
+          load={async () =>
+            both([
+              row('--primary', { sheet: 'studio/tokens.css', overrides: true }),
+              row('--accent', { sheet: 'studio/tokens.css', overrides: true }),
+            ])
+          }
+          write={recordingWrite(sent)}
+        />,
+      )
+
+      await userEvent.click(
+        await screen.findByRole('button', {
+          name: 'Reset primary to the board value',
+        }),
+      )
+      await userEvent.click(
+        screen.getByRole('button', { name: 'Reset accent to the board value' }),
+      )
+
+      expect(sent.map((call) => call.hash)).toEqual([
+        PROJECT_HASH,
+        WRITTEN_HASH,
+      ])
+    })
+
+    it('raises the error toast on a refused write and keeps the stored value', async () => {
+      const refusals: { title: string; description: string }[] = []
+      const refuse: typeof fetch = async () =>
+        Response.json(
+          { ok: false, error: { code: 'stale-tokens', message: 'changed' } },
+          { status: 409 },
+        )
+      render(
+        <Tokens
+          project="studio"
+          group="radius"
+          load={async () =>
+            both([
+              row('--radius-sm', {
+                group: 'radius',
+                light: '4px',
+                dark: '4px',
+              }),
+            ])
+          }
+          write={(project, hash, change) =>
+            writeToken(project, hash, change, {
+              send: refuse,
+              notify: (refusal) => refusals.push(refusal),
+            })
+          }
+        />,
+      )
+
+      const field = await screen.findByRole('textbox', {
+        name: 'radius-sm value',
+      })
+      await userEvent.clear(field)
+      await userEvent.type(field, '6{Enter}')
+
+      expect(refusals).toEqual([
+        {
+          title: "Couldn't change radius-sm",
+          description:
+            'The token sheet changed since the tab read it. Try again on the value it shows now.',
+        },
+      ])
+      expect(field).toHaveValue('4')
+    })
+
+    it('stays read-only while neither sheet parses', async () => {
+      const broken: TokenTable = {
+        sheets: [
+          {
+            path: 'tokens.css',
+            kind: 'board',
+            error: 'Unclosed block at line 3',
+            hash: BOARD_HASH,
+          },
+          {
+            path: 'studio/tokens.css',
+            kind: 'project',
+            error: 'Unclosed block at line 1',
+            hash: PROJECT_HASH,
+          },
+        ],
+        tokens: [],
+      }
+
+      render(<Tokens project="studio" load={async () => broken} />)
+
+      expect(await screen.findByText(/^From board/)).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'About token source' }),
+      ).not.toHaveAccessibleDescription(/Click a value to edit it/)
+    })
+
+    it('keeps the board rows editable while the project sheet does not parse', async () => {
+      const broken: TokenTable = {
+        sheets: [
+          { path: 'tokens.css', kind: 'board', error: null, hash: BOARD_HASH },
+          {
+            path: 'studio/tokens.css',
+            kind: 'project',
+            error: 'Unclosed block at line 1',
+            hash: PROJECT_HASH,
+          },
+        ],
+        tokens: [row('--primary', { light: '#4f46e5' })],
+      }
+
+      render(<Tokens project="studio" load={async () => broken} />)
+
+      expect(
+        await screen.findByRole('button', { name: 'Light: #4f46e5' }),
+      ).toBeInTheDocument()
+    })
+
+    it('keeps the board rows read-only for a --tokens sheet outside the board folder', async () => {
+      const outside = table(
+        [
+          row('--primary', { light: '#4f46e5' }),
+          row('--accent', { sheet: 'studio/tokens.css', light: '#e11d48' }),
+        ],
+        {
+          sheets: [
+            {
+              path: '/work/app/tokens.css',
+              kind: 'board',
+              error: null,
+              hash: BOARD_HASH,
+            },
+            {
+              path: 'studio/tokens.css',
+              kind: 'project',
+              error: null,
+              hash: PROJECT_HASH,
+            },
+          ],
+        },
+      )
+
+      render(<Tokens project="studio" load={async () => outside} />)
+
+      expect(
+        await screen.findByRole('img', { name: 'Light: #4f46e5' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: 'Light: #e11d48' }),
+      ).toBeInTheDocument()
+      expect(screen.getByText(/^From board/)).toHaveTextContent(
+        'From board tokens.css, overridden by project tokens.css, read only',
+      )
+      expect(
+        screen.getByRole('button', { name: 'About token source' }),
+      ).toHaveAccessibleDescription(
+        '/work/app/tokens.css. studio/tokens.css. Click a value to edit it. Board values stay read-only here, since that sheet sits outside the board folder.',
+      )
+    })
+
+    describe('across sections', () => {
+      const tokens = [
+        row('--primary', { sheet: 'studio/tokens.css', overrides: true }),
+        row('--radius-sm', { group: 'radius', light: '4px', dark: '4px' }),
+        row('--radius-md', { group: 'radius', light: '8px', dark: '8px' }),
+      ]
+      const load = async () => both(tokens)
+      const loadFonts = async () => null
+
+      async function typeValue(name: string, value: string) {
+        const field = await screen.findByRole('textbox', { name })
+        await userEvent.clear(field)
+        await userEvent.type(field, `${value}{Enter}`)
+      }
+
+      afterEach(() => {
+        act(() => closeTheme())
+      })
+
+      it('sends each sheet the hash its own last edit wrote', async () => {
+        const sent: Sent[] = []
+        let next = 0
+        render(
+          <ThemeTab
+            project="studio"
+            load={load}
+            loadFonts={loadFonts}
+            write={recordingWrite(sent, () => String(++next).repeat(64))}
+          />,
+        )
+        act(() => openTheme('radius', 'radius'))
+
+        await typeValue('radius-sm value', '2')
+        await typeValue('radius-md value', '2')
+        await userEvent.click(screen.getByRole('tab', { name: /^Colors/ }))
+        await userEvent.click(
+          await screen.findByRole('button', {
+            name: 'Reset primary to the board value',
+          }),
+        )
+
+        expect(sent.map((call) => [call.change.sheet, call.hash])).toEqual([
+          ['board', BOARD_HASH],
+          ['board', '1'.repeat(64)],
+          ['project', PROJECT_HASH],
+        ])
+      })
+
+      it('holds an edit made in one section behind one still landing from another', async () => {
+        const sent: Sent[] = []
+        const land: (() => void)[] = []
+        const record = recordingWrite(sent)
+        render(
+          <ThemeTab
+            project="studio"
+            load={load}
+            loadFonts={loadFonts}
+            write={async (...edit) => {
+              const result = await record(...edit)
+              await new Promise<void>((resolve) => land.push(resolve))
+              return result
+            }}
+          />,
+        )
+        act(() => openTheme('radius', 'radius'))
+
+        await typeValue('radius-sm value', '2')
+        await userEvent.click(screen.getByRole('tab', { name: /^Colors/ }))
+        await userEvent.click(
+          await screen.findByRole('button', {
+            name: 'Reset primary to the board value',
+          }),
+        )
+        expect(sent.map((call) => call.change.name)).toEqual(['--radius-sm'])
+
+        await act(async () => land[0]?.())
+
+        expect(sent.map((call) => call.change.name)).toEqual([
+          '--radius-sm',
+          '--primary',
+        ])
+      })
+
+      it('keeps the hash an edit wrote through closing the dialog', async () => {
+        const sent: Sent[] = []
+        render(
+          <ThemeTab
+            project="studio"
+            load={load}
+            loadFonts={loadFonts}
+            write={recordingWrite(sent)}
+          />,
+        )
+        act(() => openTheme('radius', 'radius'))
+        await typeValue('radius-sm value', '2')
+        act(() => closeTheme())
+        act(() => openTheme('radius', 'radius'))
+
+        await typeValue('radius-md value', '2')
+
+        expect(sent.map((call) => call.hash)).toEqual([
+          BOARD_HASH,
+          WRITTEN_HASH,
+        ])
+      })
+    })
+  })
+})

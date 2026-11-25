@@ -7,19 +7,27 @@ description: The left panel's header, its Design, Theme, and Assets tabs, the pa
 
 ## Overview
 
-Owns the board's left side, being the project header, the page list, the layers tree, the Theme and Assets tabs, and the first-run guide a new board shows. It also owns find, which takes the panel's place under Cmd+F. Each tab's lists or body scroll under the project name and the tabs.
+Owns the board's left side, being the project header, the page list, the layers tree, the Theme and Assets tabs with the dialogs they open, and the first-run guide a new board shows. It also owns find, which takes the panel's place under Cmd+F. Each tab's lists or body scroll under the project name and the tabs.
 
 ## Layout
 
 ### `src/client/board/left-panel/`
 
-Owns the left panel, being `project-header.tsx` with the way home, the name, and Hide UI, then Design's searchable pages list over a layers tree, Theme in `theme/` with kits, fonts, then tokens, Assets, and `page-actions.ts` for the `page.*` actions. The name renames on a click, a rename keeping the open tab, and its chevron opens the project menu.
+Owns the left panel, being `project-header.tsx` with the way home, the name, and Hide UI, then Design's searchable pages list over a layers tree, Theme in `theme/`, Assets, and `page-actions.ts` for the `page.*` actions. The name renames on a click, a rename keeping the open tab, and its chevron opens the project menu.
 
 - `board/frame-order.ts` holds the section grouping the rows draw, apart from the canvas order the selection chip's count and the Tab step read
 - A row restacks within its own group, never into or out of a section, landing at the page-wide index beside the frame it drops by
 - A canvas click waits out `REVEAL_DELAY_MS` before it centers a frame, since a travel would move the point a double-click picks at
 - The reveal reports as a hand move, so it stops Follow, and a row click fits a frame larger than the view where a canvas click never does
 - An element row's F2 stops at the row, so the board's own F2 opens no second field, and its drag moves it among its siblings alone
+
+### `src/client/board/left-panel/theme/`
+
+Owns the Theme tab's four cards over `Edit theme…`, and the dialog they open, which lists six sections as vertical tabs and shows one. `tab.tsx` reads the fonts and the tokens once for both, and is keyed by project.
+
+- `dialog-store.ts` holds the dialog's section and opener, and Ask the agent clears the opener so the note's composer keeps the focus
+- `token-writer.ts` queues the token edits and holds each sheet's landed hash in the tab, since a section unmounts as another shows
+- A field's Esc stops at the field, and `NumberField` and a confirmed removal hand the focus to the dialog around them
 
 ### `src/client/board/assets/`
 
@@ -33,7 +41,7 @@ Owns the Assets tab, whose `Find…` and `Generate…` buttons sit in `tab.tsx` 
 
 ### `src/client/board/assets/sourcing-dialog.tsx`
 
-Owns the one dialog both buttons open, its shell one component, while `open-dialog.ts` holds whether it is open, on which view, and the two palette commands.
+Owns the one dialog both buttons open, on the shell in `src/client/board/chrome/wide-dialog.tsx` that the Theme dialog shares, while `open-dialog.ts` holds whether it is open, on which view, and the two palette commands.
 
 - `preview.tsx` shows the picked result with Save and Insert, landing in the one selected frame while part of it is in view, else the canvas, as `src/client/board/place/write.ts` lands it
 - An insert holds the dialog open until it lands, a refusal shows beside its buttons, and a project switch closes the dialog at once, so a refusal after that toasts

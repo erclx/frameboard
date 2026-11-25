@@ -1,14 +1,7 @@
-import { XIcon } from 'lucide-react'
-import { type ComponentProps, type ReactNode, useRef } from 'react'
+import type { ComponentProps } from 'react'
 import { useStore } from 'zustand'
 
-import { Button } from '@/client/components/ui/button'
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTitle,
-} from '@/client/components/ui/dialog'
+import { DialogTitle } from '@/client/components/ui/dialog'
 import {
   Tabs,
   TabsContent,
@@ -16,6 +9,7 @@ import {
   TabsTrigger,
 } from '@/client/components/ui/tabs'
 
+import { WideDialog, WideDialogHeader } from '../chrome/wide-dialog'
 import { FindView } from './find/view'
 import { GenerateView } from './generate/view'
 import {
@@ -51,96 +45,44 @@ export function SourcingDialog({
     <WideDialog
       open={open}
       onClose={closeSourcing}
-      title={view === 'find' ? 'Find media' : 'Generate media'}
+      className="h-[620px] max-w-[min(920px,calc(100%-2rem))] sm:max-w-[min(920px,calc(100%-2rem))]"
+      focusFirst={(popup) =>
+        popup.querySelector<HTMLElement>('input, textarea')
+      }
       returnTo={() => buttonOf(opener)}
     >
-      {(close) => (
-        <Tabs
-          value={view}
-          onValueChange={(next) =>
-            sourcingDialogStore.setState({
-              view: next === 'generate' ? 'generate' : 'find',
-            })
-          }
-          className="min-h-0 flex-1 gap-0"
-        >
-          <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
-            <TabsList
-              aria-label="Find or generate"
-              className="h-7 w-[200px] rounded-[7px] p-0.5"
-            >
-              <TabsTrigger value="find" className={TAB}>
-                Find
-              </TabsTrigger>
-              <TabsTrigger value="generate" className={TAB}>
-                Generate
-              </TabsTrigger>
-            </TabsList>
-            {close}
-          </header>
-          <TabsContent value="find" tabIndex={-1} className={VIEW}>
-            <FindView project={project} {...find} />
-          </TabsContent>
-          <TabsContent value="generate" tabIndex={-1} className={VIEW}>
-            <GenerateView project={project} {...generate} />
-          </TabsContent>
-        </Tabs>
-      )}
-    </WideDialog>
-  )
-}
-
-/**
- * A 920 by 620 dialog, capped by the window, opening on its first field and
- * handing the focus back to what it was opened from.
- */
-function WideDialog({
-  open,
-  onClose,
-  title,
-  returnTo,
-  children,
-}: {
-  open: boolean
-  onClose: () => void
-  title: string
-  /** What takes the focus back on close, the last focused element when null. */
-  returnTo: () => HTMLElement | null
-  /** Draws the dialog around its close button. */
-  children: (close: ReactNode) => ReactNode
-}) {
-  const popup = useRef<HTMLDivElement>(null)
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onClose()
-      }}
-    >
-      <DialogContent
-        ref={popup}
-        showCloseButton={false}
-        initialFocus={() =>
-          popup.current?.querySelector<HTMLElement>('input, textarea') ?? true
+      <DialogTitle className="sr-only">
+        {view === 'find' ? 'Find media' : 'Generate media'}
+      </DialogTitle>
+      <Tabs
+        value={view}
+        onValueChange={(next) =>
+          sourcingDialogStore.setState({
+            view: next === 'generate' ? 'generate' : 'find',
+          })
         }
-        finalFocus={() => returnTo() ?? true}
-        className="flex h-[620px] max-h-[calc(100dvh-2rem)] max-w-[min(920px,calc(100%-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(920px,calc(100%-2rem))]"
+        className="min-h-0 flex-1 gap-0"
       >
-        <DialogTitle className="sr-only">{title}</DialogTitle>
-        {children(
-          <span className="flex items-center gap-1 text-muted-foreground">
-            <kbd aria-hidden className="font-sans">
-              Esc
-            </kbd>
-            <DialogClose
-              aria-label="Close"
-              render={<Button variant="ghost" size="icon-sm" />}
-            >
-              <XIcon aria-hidden />
-            </DialogClose>
-          </span>,
-        )}
-      </DialogContent>
-    </Dialog>
+        <WideDialogHeader>
+          <TabsList
+            aria-label="Find or generate"
+            className="h-7 w-[200px] rounded-[7px] p-0.5"
+          >
+            <TabsTrigger value="find" className={TAB}>
+              Find
+            </TabsTrigger>
+            <TabsTrigger value="generate" className={TAB}>
+              Generate
+            </TabsTrigger>
+          </TabsList>
+        </WideDialogHeader>
+        <TabsContent value="find" tabIndex={-1} className={VIEW}>
+          <FindView project={project} {...find} />
+        </TabsContent>
+        <TabsContent value="generate" tabIndex={-1} className={VIEW}>
+          <GenerateView project={project} {...generate} />
+        </TabsContent>
+      </Tabs>
+    </WideDialog>
   )
 }

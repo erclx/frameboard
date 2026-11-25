@@ -31,17 +31,19 @@ A board folder holds projects, a project holds pages, and a page holds frames.
 
 ## Tokens and themes
 
-Frames share one look through a `tokens.css` in the board folder, which a project's own `tokens.css` overrides. The board's Theme tab tags each token Board or Project and edits a value in place into the sheet its tag names, as one undo step. A Board edit changes every project that does not override the token.
+Frames share one look through a `tokens.css` in the board folder, which a project's own `tokens.css` overrides. The board's Theme tab sums up the look in cards, each opening the Theme dialog on its section, and Edit theme in the palette opens it too.
 
-- `serve --tokens <path>` takes a sheet another tool manages instead, and the Theme tab leaves one outside the board folder read-only
+The dialog tags each token Board or Project and edits a value in place into the sheet its tag names, as one undo step. A Board edit changes every project that does not override the token.
+
+- `serve --tokens <path>` takes a sheet another tool manages instead, and the Theme dialog leaves one outside the board folder read-only
 - `project tokens <project> --accent <preset> --font <face>` writes a starter sheet where no sheet reaches the project, and refuses where one does
 - The server puts the sheets, five faces, and the project's installed fonts ahead of each frame's own styles as it serves the frame, leaving the file as written
-- The five are Geist, Geist Mono, Inter, Source Serif 4, and Caveat, and `font find` or the Theme tab's Find a font installs others, which the inspector's family picker then lists
+- The five are Geist, Geist Mono, Inter, Source Serif 4, and Caveat, and `font find` or the Theme dialog's Find a font installs others, which the inspector's family picker then lists
 - One toggle switches the board and every frame between light and dark
 
 ## Design kits
 
-A kit gives chosen frames a whole look at once, being its tokens, a stylesheet of drawn parts, a note for the agent, and sample frames. Frameboard ships Clean, Sketch, and Wireframe, and a project holds several kits beside its own `tokens.css`. The Theme tab adds and removes them.
+A kit gives chosen frames a whole look at once, being its tokens, a stylesheet of drawn parts, a note for the agent, and sample frames. Frameboard ships Clean, Sketch, and Wireframe, and a project holds several kits beside its own `tokens.css`. The Theme dialog adds and removes them.
 
 - `frameboard kit add <project> <kit>` copies a kit into the project's `assets/kits/<kit>/`, and `--from <folder>` copies a kit folder on disk
   - `--replace` on that command puts a newer copy in place of a kit the project holds. Every frame keeps its kit, and an edit made inside the old copy is lost.

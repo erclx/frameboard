@@ -1,5 +1,5 @@
 import { Plus, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useRef, useState } from 'react'
 
 import { Button } from '@/client/components/ui/button'
 import {
@@ -12,22 +12,23 @@ import {
 import { toast } from '@/client/components/ui/toast'
 import { useLive } from '@/client/live/store'
 import { BoardWriteError } from '@/client/live/write'
-import { FACES, faceSheetUrl, faceStack } from '@/shared/faces'
+import { FACES, faceSheetUrl } from '@/shared/faces'
 import type { ListResult } from '@/shared/records/list'
 import type {
   FontFind,
+  FontList,
   FontResult,
   InstalledFont,
 } from '@/shared/records/sourcing'
 
 import {
   fetchFontFrames,
-  fetchInstalledFonts,
   findFonts,
   installedFontSheet,
-  type InstalledFontsRead,
-  useInstalledFonts,
 } from '../../assets/sourcing'
+import { familyRows, licenseMark } from './families'
+import { focusAfterConfirm } from './focus'
+import { HEAD_BUTTON, SectionHead } from './section-head'
 import { installFont, removeFont } from './write'
 
 /** How many frame names the removal confirmation spells out before counting the rest. */
@@ -35,8 +36,8 @@ const NAMED_FRAMES = 5
 
 interface FontsSectionProps {
   project: string
-  /** Reads the project's installed fonts, the API in the app. */
-  load?: InstalledFontsRead
+  /** The project's installed fonts, undefined while they read and null when the read failed. */
+  list: FontList | null | undefined
   /** Reads the frames drawing text in one font, as a removal asks. */
   readFrames?: typeof fetchFontFrames
   find?: typeof findFonts
@@ -80,24 +81,28 @@ function useDrawn(drawn = true): { current: boolean } {
 /** How long typing rests before the search runs, so each keystroke sends no request. */
 const SEARCH_REST_MS = 250
 
-/** One family a frame may name, built in or installed. */
-interface FamilyRow {
-  family: string
-  /** The stack the row's name is set in. */
-  stack: string
-  /** Where it came from, as `Built in` or a license such as `OFL`. */
-  source: string
-  installed: InstalledFont | null
+/** The faces every family draws from, for the cards and the dialog alike. */
+export function FontFaces({ list }: Pick<FontsSectionProps, 'list'>) {
+  return (
+    <>
+      {FACES.map((face) => (
+        <link key={face.folder} rel="stylesheet" href={faceSheetUrl(face)} />
+      ))}
+      {list?.fonts.length ? (
+        <link rel="stylesheet" href={installedFontSheet(list)} />
+      ) : null}
+    </>
+  )
 }
 
 /**
  * Every family the project's frames may name, built in then installed, each
- * set in its own face. An installed family the board also serves lists once,
- * as installed, since that row is the one removal acts on.
+ * in its own face. An installed family the board also serves lists once, as
+ * installed, since that specimen is the one removal acts on.
  */
 export function FontsSection({
   project,
-  load = fetchInstalledFonts,
+  list,
   readFrames = fetchFontFrames,
   find = findFonts,
   install = installFont,
@@ -105,13 +110,14 @@ export function FontsSection({
 }: FontsSectionProps) {
   const canWrite = useLive((state) => state.canWrite)
   const board = useLive((state) => state.board)
-  const list = useInstalledFonts(project, load)
   const installed = list?.fonts ?? []
   const [confirming, setConfirming] = useState<Confirming | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const report = reportTo(useDrawn(), setProblem)
   const reading = useRef(false)
+  const section = useRef<HTMLElement>(null)
+  const pressed = useRef<HTMLElement | null>(null)
 
   const rows = familyRows(installed)
 
@@ -148,61 +154,10 @@ export function FontsSection({
 
   return (
     <section
+      ref={section}
       aria-labelledby="theme-fonts"
-      className="border-b border-sidebar-border px-3 pt-1 pb-2.5"
+      className="flex flex-col gap-3"
     >
-      {FACES.map((face) => (
-        <link key={face.folder} rel="stylesheet" href={faceSheetUrl(face)} />
-      ))}
-      {list?.fonts.length ? (
-        <link rel="stylesheet" href={installedFontSheet(list)} />
-      ) : null}
-      <div className="flex h-6 items-center justify-between gap-2">
-        <h3 id="theme-fonts" className="text-xs font-semibold">
-          Fonts
-        </h3>
-        <span className="text-label text-muted-foreground tabular-nums">
-          {rows.length}
-        </span>
-      </div>
-      {list === null ? (
-        <p className="pb-1 leading-[1.45] text-muted-foreground">
-          The installed fonts did not load. Reload the board to try again.
-        </p>
-      ) : null}
-      <ul
-        aria-label="Fonts frames can use"
-        className="-mx-1 max-h-64 overflow-y-auto px-1"
-      >
-        {rows.map((row) => (
-          <li
-            key={row.family}
-            className="group flex min-h-8 items-center gap-2"
-          >
-            <span
-              className="min-w-0 flex-1 truncate text-[15px] leading-tight group-focus-within:whitespace-normal"
-              style={{ fontFamily: row.stack }}
-            >
-              {row.family}
-            </span>
-            <span className="shrink-0 text-label text-muted-foreground">
-              {row.source}
-            </span>
-            {row.installed && canWrite ? (
-              <RemoveButton
-                font={row.installed}
-                busy={removing === row.installed.id}
-                onRemove={(font) => void ask(font)}
-              />
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      {problem ? (
-        <p role="alert" className="pt-1 leading-[1.45] text-destructive">
-          {problem}
-        </p>
-      ) : null}
       {canWrite ? (
         <FindFont
           project={project}
@@ -211,17 +166,55 @@ export function FontsSection({
           install={install}
         />
       ) : (
-        <p className="pt-1 leading-[1.45] text-muted-foreground">
-          View only, so fonts can’t be added or removed here.
-        </p>
+        <>
+          <SectionHead id="theme-fonts" title="Fonts" />
+          <p className="text-muted-foreground">
+            View only, so fonts can’t be added or removed here.
+          </p>
+        </>
       )}
+      {list === null ? (
+        <p className="text-muted-foreground">
+          The installed fonts did not load. Reload the board to try again.
+        </p>
+      ) : null}
+      {problem ? (
+        <p role="alert" className="leading-[1.45] text-destructive">
+          {problem}
+        </p>
+      ) : null}
+      <ul aria-label="Fonts frames can use" className={GRID}>
+        {rows.map((row) => (
+          <Specimen
+            key={row.family}
+            family={row.family}
+            stack={row.stack}
+            note={row.source}
+          >
+            {row.installed && canWrite ? (
+              <RemoveButton
+                font={row.installed}
+                busy={removing === row.installed.id}
+                onRemove={(font, button) => {
+                  pressed.current = button
+                  void ask(font)
+                }}
+              />
+            ) : null}
+          </Specimen>
+        ))}
+      </ul>
       <Dialog
         open={confirming !== null}
         onOpenChange={(open) => {
           if (!open) setConfirming(null)
         }}
       >
-        <DialogContent showCloseButton={false} className="gap-3 p-4">
+        <DialogContent
+          showCloseButton={false}
+          finalFocus={() => focusAfterConfirm(pressed.current, section.current)}
+          className="gap-3 p-4"
+        >
           <DialogTitle className="text-title font-semibold">
             Remove {confirming?.font.family}?
           </DialogTitle>
@@ -249,6 +242,39 @@ export function FontsSection({
   )
 }
 
+const GRID = 'grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5'
+
+/** One family's tile, two letters in its own face over its name and where it came from. */
+function Specimen({
+  family,
+  stack,
+  note,
+  children,
+}: {
+  family: string
+  stack: string
+  note: string
+  /** What the tile does, at its corner. */
+  children: ReactNode
+}) {
+  return (
+    <li className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] content-start gap-y-0.5 rounded-lg bg-secondary p-2.5">
+      <span
+        aria-hidden
+        className="overflow-hidden text-(length:--text-title) leading-7"
+        style={{ fontFamily: stack }}
+      >
+        Aa
+      </span>
+      <span className="col-span-2 font-semibold [overflow-wrap:anywhere]">
+        {family}
+      </span>
+      <span className="col-span-2 text-muted-foreground">{note}</span>
+      <span className="col-start-2 row-start-1">{children}</span>
+    </li>
+  )
+}
+
 type Search =
   | { state: 'idle' }
   | { state: 'searching' }
@@ -263,8 +289,9 @@ interface FindFontProps {
 }
 
 /**
- * Find a font and the search it opens, focused since the press asked to type.
- * It finds once typing rests, and Escape hands focus back to Find a font.
+ * The section's heading beside Find a font, or the search that opens in its
+ * place, focused since the press asked to type. It finds once typing rests,
+ * and Escape hands focus back to Find a font.
  */
 function FindFont({ project, installed, find, install }: FindFontProps) {
   const [open, setOpen] = useState(false)
@@ -342,15 +369,18 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
 
   if (!open) {
     return (
-      <button
-        ref={opener}
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mt-1 -ml-1 flex h-6 items-center gap-1 rounded-[5px] px-1 text-xs font-medium text-primary outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
-      >
-        <Plus aria-hidden className="size-3" />
-        Find a font
-      </button>
+      <SectionHead id="theme-fonts" title="Fonts">
+        <Button
+          ref={opener}
+          variant="outline"
+          size="sm"
+          className={HEAD_BUTTON}
+          onClick={() => setOpen(true)}
+        >
+          <Plus aria-hidden />
+          Find a font
+        </Button>
+      </SectionHead>
     )
   }
 
@@ -359,6 +389,7 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
   const found = shown.state === 'found' ? shown.find : null
   return (
     <div
+      className="flex flex-col gap-3"
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.stopPropagation()
@@ -366,35 +397,37 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
         }
       }}
     >
-      <div className="mt-1 flex h-7 items-center gap-2 rounded-md border border-border bg-background px-2 text-xs text-foreground focus-within:ring-2 focus-within:ring-ring/50">
-        <input
-          ref={field}
-          type="search"
-          aria-label="Search Fontsource by name or category"
-          // oxlint-disable-next-line jsx-a11y/no-autofocus
-          autoFocus
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          className="min-w-0 flex-1 bg-transparent outline-none [&::-webkit-search-cancel-button]:hidden"
-        />
-        <span
-          aria-live="polite"
-          className="shrink-0 text-label text-muted-foreground tabular-nums"
-        >
-          {shown.state === 'searching'
-            ? 'Searching'
-            : found
-              ? `${found.total} found`
-              : null}
-        </span>
-      </div>
+      <SectionHead id="theme-fonts" title="Fonts">
+        <div className="flex h-7 w-72 max-w-full min-w-0 items-center gap-2 rounded-md bg-input px-2 focus-within:ring-2 focus-within:ring-ring">
+          <input
+            ref={field}
+            type="search"
+            aria-label="Search Fontsource by name or category"
+            // oxlint-disable-next-line jsx-a11y/no-autofocus
+            autoFocus
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            className="min-w-0 flex-1 bg-transparent outline-none [&::-webkit-search-cancel-button]:hidden"
+          />
+          <span
+            aria-live="polite"
+            className="shrink-0 text-label text-muted-foreground tabular-nums"
+          >
+            {shown.state === 'searching'
+              ? 'Searching'
+              : found
+                ? `${found.total} found`
+                : null}
+          </span>
+        </div>
+      </SectionHead>
       {shown.state === 'failed' ? (
-        <p role="alert" className="pt-1 leading-[1.45] text-destructive">
+        <p role="alert" className="leading-[1.45] text-destructive">
           {shown.message}
         </p>
       ) : null}
       {found && found.results.length === 0 ? (
-        <p className="pt-1 leading-[1.45] text-muted-foreground">
+        <p className="text-muted-foreground">
           Nothing matched “{shown.state === 'found' ? shown.text : typed}”. Try
           part of a name, or a category such as serif or monospace.
         </p>
@@ -402,15 +435,13 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
       {found && found.results.length > 0 ? (
         <>
           <SampleFaces results={found.results} />
-          <ul
-            aria-label="Fonts found"
-            className="-mx-1 mt-1 max-h-64 overflow-y-auto px-1"
-          >
+          <ul aria-label="Fonts found" className={GRID}>
             {found.results.map((result) => (
-              <ResultRow
+              <ResultSpecimen
                 key={result.id}
                 result={result}
                 held={heldAs(result, installed)}
+                stack={heldStack(result, installed)}
                 installing={installing.has(result.id)}
                 onInstall={(picked, pressed) =>
                   void run(
@@ -423,7 +454,7 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
             ))}
           </ul>
           {found.total > found.results.length ? (
-            <p className="pt-1 leading-[1.45] text-muted-foreground">
+            <p className="text-muted-foreground">
               Showing the first {found.results.length} of {found.total}. Type
               more of a name to narrow them.
             </p>
@@ -431,52 +462,51 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
         </>
       ) : null}
       {problem ? (
-        <p role="alert" className="pt-1 leading-[1.45] text-destructive">
+        <p role="alert" className="leading-[1.45] text-destructive">
           {problem}
         </p>
       ) : null}
-      <p className="pt-1 leading-[1.45] text-muted-foreground">
+      <p className="border-b border-border pb-3 text-muted-foreground">
         From Fontsource. Each font saves into this project with its license.
       </p>
     </div>
   )
 }
 
-function ResultRow({
+function ResultSpecimen({
   result,
   held,
+  stack,
   installing,
   onInstall,
 }: {
   result: FontResult
   held: 'Installed' | 'Built in' | null
+  /** The stack a family the project holds draws in, null for one it does not. */
+  stack: string | null
   installing: boolean
   onInstall: (result: FontResult, pressed: HTMLElement) => void
 }) {
   return (
-    <li className="group flex min-h-8 items-center gap-2">
-      <span
-        className="min-w-0 flex-1 truncate text-[15px] leading-tight group-focus-within:whitespace-normal"
-        style={{ fontFamily: `"${sampleFamily(result)}", var(--font-sans)` }}
-      >
-        {result.family}
-      </span>
-      <span className="shrink-0 text-label text-muted-foreground">
-        {held ?? (installing ? 'Installing' : licenseMark(result.license))}
-      </span>
+    <Specimen
+      family={result.family}
+      stack={stack ?? `"${sampleFamily(result)}", var(--font-sans)`}
+      note={held ?? (installing ? 'Installing' : licenseMark(result.license))}
+    >
       {held === null ? (
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="xs"
           aria-label={`Install ${result.family}`}
           // Kept focusable while it runs, since disabling the focused button drops focus to the page.
           aria-disabled={installing || undefined}
           onClick={(event) => onInstall(result, event.currentTarget)}
-          className="flex h-6 shrink-0 items-center rounded-[5px] px-1.5 text-xs font-medium text-primary outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50 aria-disabled:cursor-default aria-disabled:opacity-40"
+          className="bg-card aria-disabled:cursor-default aria-disabled:opacity-40 dark:bg-card"
         >
           Install
-        </button>
+        </Button>
       ) : null}
-    </li>
+    </Specimen>
   )
 }
 
@@ -526,6 +556,19 @@ function heldAs(
     : null
 }
 
+/** The stack of a family a project's frames may already name, which draws whether its sample loads or not. */
+function heldStack(
+  result: FontResult,
+  installed: readonly InstalledFont[],
+): string | null {
+  const family = result.family.toLowerCase()
+  const row = familyRows(installed).find(
+    (held) =>
+      held.installed?.id === result.id || held.family.toLowerCase() === family,
+  )
+  return row?.stack ?? null
+}
+
 function searchFailure(error: unknown): string {
   if (error instanceof BoardWriteError && error.code === 'source-failed') {
     return 'Fontsource didn’t answer, so nothing can be found right now. Check the connection and search again.'
@@ -540,7 +583,7 @@ function RemoveButton({
 }: {
   font: InstalledFont
   busy: boolean
-  onRemove: (font: InstalledFont) => void
+  onRemove: (font: InstalledFont, button: HTMLElement) => void
 }) {
   return (
     <button
@@ -548,38 +591,14 @@ function RemoveButton({
       aria-label={`Remove ${font.family}`}
       // Kept focusable while its frames read, so Cancel on the dialog has a button to hand focus back to.
       aria-disabled={busy || undefined}
-      onClick={() => {
-        if (!busy) onRemove(font)
+      onClick={(event) => {
+        if (!busy) onRemove(font, event.currentTarget)
       }}
-      className="grid size-5 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 aria-disabled:cursor-default aria-disabled:opacity-40"
+      className="grid size-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring aria-disabled:cursor-default aria-disabled:opacity-40"
     >
       <X aria-hidden className="size-3" />
     </button>
   )
-}
-
-function familyRows(installed: readonly InstalledFont[]): FamilyRow[] {
-  const taken = new Set(installed.map((font) => font.family.toLowerCase()))
-  const builtIn = FACES.filter(
-    (face) => !taken.has(face.family.toLowerCase()),
-  ).map((face) => ({
-    family: face.family,
-    stack: faceStack(face),
-    source: 'Built in',
-    installed: null,
-  }))
-  const own = installed.map((font) => ({
-    family: font.family,
-    stack: `'${font.family}', sans-serif`,
-    source: licenseMark(font.license),
-    installed: font,
-  }))
-  return [...builtIn, ...own]
-}
-
-/** A license's short mark, as `OFL-1.1` reads `OFL`. */
-function licenseMark(license: string): string {
-  return license.replace(/-[\d.]+$/, '')
 }
 
 /** The sentence naming the frames a removal leaves falling back, by frame name. */

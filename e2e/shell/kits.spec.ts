@@ -62,7 +62,7 @@ test.describe('a kit set on one frame', () => {
     await expect(await rootOf(page, 'hero')).toHaveCSS('--accent', '')
   })
 
-  test('adds a kit from the Theme tab, sets it on one frame by hand, takes it off with None, and undo puts it back', async ({
+  test('adds a kit from the Theme dialog, sets it on one frame by hand, takes it off with None, and undo puts it back', async ({
     page,
   }) => {
     await page.goto(await server.ticketUrl())
@@ -72,11 +72,14 @@ test.describe('a kit set on one frame', () => {
     ).not.toHaveAttribute('aria-disabled')
 
     await page.getByRole('tab', { name: 'Theme' }).click()
+    await page.getByRole('button', { name: /^Kits/ }).click()
     await page.getByRole('button', { name: 'Add kit' }).click()
     await page.getByRole('menuitem', { name: 'Sketch' }).click()
     await expect(
       page.getByRole('region', { name: 'Kits' }).getByRole('listitem'),
     ).toHaveText(['Sketchnot used'])
+    await page.getByRole('button', { name: 'Close' }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
 
     const hero = page.locator('[data-frame="studio/home/hero"]')
     const box = await hero.boundingBox()
@@ -94,9 +97,9 @@ test.describe('a kit set on one frame', () => {
       SKETCH_ACCENT,
     )
     await expect(await rootOf(page, 'mobile')).toHaveCSS('--accent', '')
-    await expect(
-      page.getByRole('region', { name: 'Kits' }).getByRole('listitem'),
-    ).toHaveText(['Sketch1 frame'])
+    await expect(page.getByRole('button', { name: /^Kits/ })).toHaveText(
+      'Kits · 1Sketch',
+    )
 
     await kit.click()
     await page.getByRole('menuitemradio', { name: 'None' }).click()

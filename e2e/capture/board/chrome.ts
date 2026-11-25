@@ -12,7 +12,6 @@ import { pointerPressOnLoad } from './canvas'
 import {
   actWhen,
   asWriter,
-  AT_END,
   AVATAR,
   both,
   chooseOnLoad,
@@ -25,7 +24,6 @@ import {
   pressOnLoad,
   readyWhen,
   ROW_FRAMES,
-  scrolledToEnd,
   SERVED_BOARD,
   STATE_ONLY,
   TAB_FRAMES,
@@ -76,8 +74,31 @@ function leftTab(name: string): (page: Page) => Promise<void> {
 
 const themeTab = leftTab('Theme')
 
-/** The picked design's own font files, tracked beside its reference, so a shot draws real faces offline. */
-const DESIGN_FONTS = 'canon/design/assets/groundwork-61/fonts'
+/** The Theme dialog's sections in order, the first four opened by a card each. */
+const THEME_SECTIONS = ['kits', 'fonts', 'color', 'radius', 'font', 'other']
+
+/** Opens the Theme dialog on a section, the last two reached from Radius. */
+function themeDialog(section: string): (page: Page) => Promise<void> {
+  const at = THEME_SECTIONS.indexOf(section) + 1
+  const card = `aside[aria-label="Pages and layers"] [role="tabpanel"] button[aria-haspopup="dialog"]:nth-of-type(${Math.min(at, 4)})`
+  // A focused tab shows its section. Past the opening focus, which would put Radius back.
+  const tab = `[role="dialog"] [role="tablist"]:focus-within [role="tab"]:nth-of-type(${at})`
+  return at > 4
+    ? both(themeTab, pointerPressOnLoad(card), focusOnLoad(tab))
+    : both(themeTab, pointerPressOnLoad(card))
+}
+
+/**
+ * Opens the Theme dialog on Fonts by a bare click, which marks no pointer, so
+ * a control focused in it rings as it does for a key.
+ */
+const fontsByKey = both(themeTab, pressOnLoad('^Fonts ·'))
+
+/** A drawn row of the token group the Theme dialog shows. */
+const TOKEN_ROW = 'section[aria-labelledby^="tokens-"] li'
+
+/** The fixture fonts, so a shot draws real faces offline. */
+const FIXTURE_FONTS = 'test/fixtures/fonts'
 
 /** Lora installed in `webapp`, used by `frames` and drawn from its file through the project's font sheet. */
 function installedLora(frames: string[]): (page: Page) => Promise<void> {
@@ -122,7 +143,7 @@ function installedLora(frames: string[]): (page: Page) => Promise<void> {
         contentType: 'font/woff2',
         body: readFileSync(
           join(
-            DESIGN_FONTS,
+            FIXTURE_FONTS,
             new URL(route.request().url()).pathname.split('/').pop() ?? '',
           ),
         ),
@@ -131,7 +152,7 @@ function installedLora(frames: string[]): (page: Page) => Promise<void> {
   }
 }
 
-/** A search for `serif` answering three families, their samples drawn from the design's files. */
+/** A search for `serif` answering three families, their samples drawn from the fixture files. */
 async function foundSerifs(page: Page): Promise<void> {
   const result = (number: number, id: string, family: string) => ({
     number,
@@ -171,7 +192,7 @@ async function foundSerifs(page: Page): Promise<void> {
     return id === 'lora' || id === 'playfair-display'
       ? route.fulfill({
           contentType: 'font/woff2',
-          body: readFileSync(join(DESIGN_FONTS, `${id}.woff2`)),
+          body: readFileSync(join(FIXTURE_FONTS, `${id}.woff2`)),
         })
       : route.abort()
   })
@@ -943,7 +964,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       setup: themed(themeTab),
     },
     {
-      // A writing tab, where Board rows take edits into the board sheet.
+      // A writing tab, whose button edits where a reading one views.
       section: 'theme-tab-writer',
       theme,
       route: '/p/webapp/home',
@@ -953,8 +974,8 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       setup: themed(both(asWriter, themeTab)),
     },
     {
-      // Its last token row at the panel's foot, under the same header and tabs.
-      section: 'theme-tab-scrolled',
+      // Colors in a writing tab, each value in words beside its swatch.
+      section: 'theme-tab-colors',
       theme,
       route: '/p/webapp/home',
       evidence: true,
@@ -962,24 +983,104 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       mask: [AVATAR],
       setup: themed(
         both(
-          themeTab,
-          scrolledToEnd('Pages and layers'),
-          readyWhen(`[${AT_END}] section[aria-labelledby^="tokens-"] li`),
+          asWriter,
+          themeDialog('color'),
+          readyWhen(`${TOKEN_ROW}:last-child`),
         ),
       ),
     },
     {
-      // A board sheet outside the board folder at a long path, which wraps inside the note.
+      // A color open in the picker, under its value.
+      section: 'theme-tab-picker',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          themeDialog('color'),
+          actWhen(TOKEN_ROW, 'Dark: #38bdf8', 'click'),
+          readyWhen('[data-slot="popover-content"] input'),
+        ),
+      ),
+    },
+    {
+      // Radius, where numbers scrub and write on release.
+      section: 'theme-tab-radius',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(asWriter, themeDialog('radius'), readyWhen(`${TOKEN_ROW} input`)),
+      ),
+    },
+    {
+      // Font tokens, each value in the face it names.
+      section: 'theme-tab-font-tokens',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          themeDialog('font'),
+          readyWhen('section[aria-labelledby="tokens-font"] li'),
+        ),
+      ),
+    },
+    {
+      // Other, the last section.
+      section: 'theme-tab-other',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          themeDialog('other'),
+          readyWhen('section[aria-labelledby="tokens-other"] li'),
+        ),
+      ),
+    },
+    {
+      // A reading tab, whose values take no edit and say why.
+      section: 'theme-tab-view-only',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(themeDialog('color'), readyWhen(`${TOKEN_ROW}:last-child`)),
+      ),
+    },
+    {
+      // A board sheet outside the board folder at a long path, which wraps in the open help mark.
       section: 'theme-tab-long-path',
       theme,
       route: '/p/webapp/home',
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      setup: themed(both(longBoardSheet, themeTab)),
+      setup: themed(
+        both(
+          longBoardSheet,
+          themeDialog('color'),
+          focusOnLoad('[role="dialog"] [aria-label="About token source"]'),
+          readyWhen('[data-slot="tooltip-content"]'),
+        ),
+      ),
     },
     {
-      // Two kits added, one on a frame, and the Add kit list open over the tokens.
+      // Two kits added, one on a frame, and the Add kit list open over them.
       section: 'theme-tab-kits',
       theme,
       route: '/p/webapp/home',
@@ -991,7 +1092,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
           asWriter,
           webappKits,
           noAgentChanges,
-          themeTab,
+          themeDialog('kits'),
           pointerPressOnLoad(
             'section[aria-labelledby="theme-kits"] [aria-haspopup="menu"]',
           ),
@@ -1000,7 +1101,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
-      // The Fonts section under Kits, the built-in five and Lora installed, in their own faces.
+      // The built-in five and Lora installed, each in its own face.
       section: 'theme-tab-fonts',
       theme,
       route: '/p/webapp/home',
@@ -1008,7 +1109,30 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
       setup: themed(
-        both(asWriter, installedLora([]), themeTab, readyWhen(REMOVE_LORA)),
+        both(
+          asWriter,
+          installedLora([]),
+          themeDialog('fonts'),
+          readyWhen(REMOVE_LORA),
+        ),
+      ),
+    },
+    {
+      // Opened by key, so the shown section holds the ring.
+      section: 'theme-tab-section-focus',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          fontsByKey,
+          readyWhen(
+            '[role="dialog"] [role="tab"]:focus-visible:not([data-pointer-focus])',
+          ),
+        ),
       ),
     },
     {
@@ -1024,7 +1148,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
           asWriter,
           installedLora([]),
           foundSerifs,
-          themeTab,
+          themeDialog('fonts'),
           pressOnLoad('Find a font'),
           searchFontsOnLoad('serif'),
           readyWhen(
@@ -1045,9 +1169,9 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           asWriter,
           installedLora(['webapp/home/hero']),
-          themeTab,
+          themeDialog('fonts'),
           actWhen(REMOVE_LORA, 'Remove Lora', 'click'),
-          readyWhen('[role="dialog"]'),
+          readyWhen(CONFIRM_REMOVE),
         ),
       ),
     },
@@ -1063,10 +1187,12 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           asWriter,
           installedLora(['webapp/home/hero']),
-          themeTab,
+          fontsByKey,
           actWhen(REMOVE_LORA, 'Remove Lora', 'click'),
           focusOnLoad(CONFIRM_REMOVE),
-          readyWhen(`${CONFIRM_REMOVE}:focus-visible`),
+          readyWhen(
+            `${CONFIRM_REMOVE}:focus-visible:not([data-pointer-focus])`,
+          ),
         ),
       ),
     },
@@ -1532,6 +1658,21 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           asWriter,
           openOverlayOnLoad('commands', 'add'),
+          readyWhen('[role="listbox"] [role="option"]'),
+        ),
+      ),
+    },
+    {
+      // The palette's way into the Theme dialog, in a reading tab too.
+      section: 'palette-edit-theme',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          openOverlayOnLoad('commands', 'edit theme'),
           readyWhen('[role="listbox"] [role="option"]'),
         ),
       ),
