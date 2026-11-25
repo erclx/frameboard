@@ -60,7 +60,7 @@ import { ensureViewer } from '@/server/models/viewer'
 import type { PlaceableKind } from '@/shared/asset-kinds'
 import { START_PROJECT } from '@/shared/board-files'
 import { FrameboardError } from '@/shared/errors'
-import { ISLANDS, POSES, TURNS } from '@/shared/frame-device'
+import { ISLANDS, pageBox, POSES, topInset, TURNS } from '@/shared/frame-device'
 import { FRAME_SIZE_NAMES, referenceHeight } from '@/shared/frame-sizes'
 import { linkedBar, type LinkedWidth } from '@/shared/frame-widths'
 import { nextFreeName } from '@/shared/names'
@@ -659,7 +659,9 @@ export function structureRoutes(
       }
       for (const target of targets) {
         const frame = await readFrame(root, target.ref, { cwd })
-        const content = await measure(frame)
+        // A phone's page stands inside its status bar or side strips, so the box holds the page and both.
+        const page = pageBox(frame.box, frame.device, frame.turn)
+        const content = await measure({ ...frame, box: page })
         // Measured here, since a fit writes no frame file and so queues no hug.
         const widths: LinkedWidth[] = []
         for (const { width } of frame.widths) {
@@ -670,7 +672,10 @@ export function structureRoutes(
           })
           widths.push({ width, height: linked.height + bar })
         }
-        target.measured = { height: content.height, widths }
+        target.measured = {
+          height: content.height + topInset(frame.device, frame.turn),
+          widths,
+        }
       }
     }
     const frames = await recorded(
