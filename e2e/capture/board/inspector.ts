@@ -1125,7 +1125,7 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
           aboutBuilds,
           noAgentChanges,
           asWriter,
-          elementInFrame('webapp/home/about', '[data-step="2"]'),
+          elementInFrame('webapp/home/about', 'model-viewer'),
           scrolledToEnd('Inspector'),
           readyWhen(
             `[${AT_END}] [aria-labelledby="inspector-present-row"] button`,
