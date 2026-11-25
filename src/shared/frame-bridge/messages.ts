@@ -294,10 +294,9 @@ export interface BridgeOps {
     push: never
   }
   /**
-   * Reads the page's steps and shows the first `shown`, answering how many
-   * presses it holds, and on an agent's write reads them again, showing the
-   * step it holds and pushing the new count, until closed. `plays` has an
-   * entering step start its clip, which no walk does unasked.
+   * Shows the page's first `shown` presses, answering how many it holds, and on
+   * an agent's write reads again, pushing the new count, until closed. `plays`
+   * has an entering step start its clip, which no walk does unasked.
    */
   steps: {
     args: { shown: number; plays?: boolean }
