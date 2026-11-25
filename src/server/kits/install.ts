@@ -36,7 +36,9 @@ export async function installKit(
   if (!swaps && (held !== undefined || existsSync(target))) {
     throw new FrameboardError(
       'name-taken',
-      `${project.name} already holds a kit named ${name}, so none was added. Remove it first with \`frameboard kit remove ${project.name} ${name}\`.`,
+      held === undefined
+        ? `${target} exists and is not a kit folder, so no kit was added. Move it away first.`
+        : `${project.name} already holds a kit named ${name}, so none was added. Run \`frameboard kit add\` with --replace to put this copy in its place, which keeps the kit on every frame naming it.`,
       { project: project.name, kit: name },
     )
   }

@@ -199,6 +199,15 @@ describe('installKit', () => {
     },
   )
 
+  it('points the refusal over a held kit at --replace, which keeps the frames naming it', async () => {
+    board = writeBoard({ ...PROJECT, 'acme/assets/kits/clean/kit.css': '' })
+
+    const refused = installKit(board.root, 'acme', findKit(board.root, 'clean'))
+
+    await expect(refused).rejects.toThrow('--replace')
+    await expect(refused).rejects.not.toThrow('kit remove')
+  })
+
   it('refuses invalid-name for a folder whose name no frame could name, writing nothing', async () => {
     board = writeBoard({
       ...PROJECT,
@@ -421,9 +430,10 @@ describe('installKit', () => {
         })
         stand(join(board.root, 'acme/assets/kits/plain'))
 
-        await expect(replaceWith('kits/plain')).rejects.toMatchObject({
-          code: 'name-taken',
-        })
+        const refused = replaceWith('kits/plain')
+
+        await expect(refused).rejects.toMatchObject({ code: 'name-taken' })
+        await expect(refused).rejects.not.toThrow('--replace')
       },
     )
   })
