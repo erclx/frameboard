@@ -1181,6 +1181,31 @@
       .toast2 .ic {
         color: var(--good);
       }
+      .mtitle {
+        padding: 6px 8px 4px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .toast3 {
+        bottom: 228px;
+        align-items: center;
+      }
+      .toast3 .tbody {
+        flex: 1;
+      }
+      .tact {
+        flex: none;
+        height: 24px;
+        padding: 0 8px;
+        margin-right: 20px;
+        border-radius: 6px;
+        background: var(--raised);
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text);
+        white-space: nowrap;
+      }
       .pill {
         left: calc(240px + (100% - 480px)/2);
       }
@@ -2186,7 +2211,14 @@
         </button></span
       >
     </div>
-    <div class="menu" style="left: 900px; top: 150px">
+    <div class="menu" style="left: 900px; top: 120px">
+      <div class="mtitle">Frame</div>
+      <div class="mi">
+        Copy<span class="kbd"><span>⌘</span><span>C</span></span>
+      </div>
+      <div class="mi">
+        Cut<span class="kbd"><span>⌘</span><span>X</span></span>
+      </div>
       <div class="mi">
         Copy as PNG<span class="kbd"
           ><span>⇧</span><span>⌘</span><span>C</span></span
@@ -2195,7 +2227,17 @@
       <div class="mi on">
         Duplicate<span class="kbd"><span>⌘</span><span>D</span></span>
       </div>
+      <div class="mi">
+        Wrap in section<span class="kbd"
+          ><span>⌥</span><span>⌘</span><span>G</span></span
+        >
+      </div>
       <div class="mi">Rename</div>
+      <div class="mi">Fit height</div>
+      <div class="mi">Compare with before</div>
+      <div class="mi">
+        Add a note<span class="kbd"><span>N</span></span>
+      </div>
       <div class="msep"></div>
       <div class="mi">
         Hide<span class="kbd"><span>⇧</span><span>⌘</span><span>H</span></span>
@@ -2208,6 +2250,30 @@
       <div class="mi danger">
         Delete<span class="kbd"><span>⌫</span></span>
       </div>
+    </div>
+    <div class="toast toast3">
+      <svg
+        class="ic"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M12 8v5M12 16v.5" />
+        <circle cx="12" cy="12" r="9" />
+      </svg>
+      <div class="tbody">
+        <b>Edit not saved</b
+        ><span
+          >Pricing changed after this edit was made, so nothing was
+          written.</span
+        >
+      </div>
+      <button class="tact">Copy text</button>
     </div>
     <div class="toast toast2">
       <svg
