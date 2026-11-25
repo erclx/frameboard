@@ -47,11 +47,14 @@ Every staging choice is an attribute on the element, so set one with `frameboard
 
 - Set `camera-orbit` for the angle, and `max-camera-orbit` beside it once the distance passes the model's own framing, since the viewer ignores the distance otherwise. The inspector shows the angle under Camera.
 - Set `orientation` to turn the model itself and `scale` to size it per axis. The inspector shows both under Transform.
-- State the camera's distance with a `scale`, in `camera-orbit` and `max-camera-orbit` with `min-camera-orbit="auto auto 0m"`, since a load frames the camera around the scaled model and draws it at its first size
-- Keep the camera attributes a model already states, since a size set on the board writes them to hold its view
 - Turn a model with `orientation` rather than a CSS `transform`, since the inspector hides its box rotation for a model whose `style` sets no `transform` and no `rotate`
 - Set `animation-name` and `autoplay` only for a model that carries a clip
 - Read the element again before staging it, since the developer may have turned it by hand on the board
+
+A load frames the camera around the scaled model, so a `scale` alone draws it at its first size.
+
+- State the camera's distance with a `scale`, in `camera-orbit` and `max-camera-orbit` beside `min-camera-orbit="auto auto 0m"`
+- Keep the camera attributes a model already states, since a size set on the board writes them to hold its view
 
 ## Build a simple model with a kept script
 
