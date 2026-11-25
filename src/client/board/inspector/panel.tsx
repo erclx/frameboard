@@ -134,9 +134,9 @@ export function InspectorPanel({
       ) : null}
       {framing || playing ? (
         <div
-          // Unfocusable, since Firefox puts a scroll body in the Tab order.
+          // Unfocusable, since Firefox puts a scroll body in the Tab order, and filled as the tabs' bodies are.
           tabIndex={-1}
-          className="relative min-h-0 flex-1 overflow-y-auto outline-none"
+          className="relative min-h-0 flex-1 overflow-y-auto bg-sidebar outline-none"
         >
           {framing ? (
             <PresetSection />

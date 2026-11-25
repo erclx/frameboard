@@ -65,7 +65,8 @@ export function InspectorTabs({
           // Unfocusable, so Tab lands on the first control rather than an unringed panel.
           tabIndex={-1}
           // Relative, so a tip's hidden node scrolls with the tab rather than stretching the panel.
-          className="relative min-h-0 overflow-y-auto text-body"
+          // Filled, since a scroll layer with no fill loses its text's subpixel smoothing.
+          className="relative min-h-0 overflow-y-auto bg-sidebar text-body"
         >
           {bodies[one]}
         </TabsContent>

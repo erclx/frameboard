@@ -249,7 +249,8 @@ export function LeftPanel({
           <TabsContent
             value="theme"
             // Relative, so a tip's hidden node scrolls with the tab rather than stretching the panel.
-            className="relative min-h-0 overflow-y-auto text-xs"
+            // Filled, since a scroll layer with no fill loses its text's subpixel smoothing.
+            className="relative min-h-0 overflow-y-auto bg-sidebar text-xs"
           >
             {theme}
           </TabsContent>
