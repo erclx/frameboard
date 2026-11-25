@@ -15,6 +15,7 @@ import {
   AVATAR,
   both,
   chooseOnLoad,
+  focusOnLoad,
   LIVE_BOARD,
   noAgentChanges,
   noTokens,
@@ -207,6 +208,8 @@ function searchFontsOnLoad(text: string): (page: Page) => Promise<void> {
 }
 
 const REMOVE_LORA = 'button[aria-label="Remove Lora"]'
+const CONFIRM_REMOVE =
+  '[role="dialog"] [data-slot="dialog-footer"] button:last-child'
 
 /**
  * Names the board sheet at a long absolute path in the token read, filtered
@@ -965,6 +968,25 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
           themeTab,
           actWhen(REMOVE_LORA, 'Remove Lora', 'click'),
           readyWhen('[role="dialog"]'),
+        ),
+      ),
+    },
+    {
+      // Remove under keyboard focus, its ring the focus blue rather than red.
+      section: 'theme-tab-fonts-remove-focus',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          installedLora(['webapp/home/hero']),
+          themeTab,
+          actWhen(REMOVE_LORA, 'Remove Lora', 'click'),
+          focusOnLoad(CONFIRM_REMOVE),
+          readyWhen(`${CONFIRM_REMOVE}:focus-visible`),
         ),
       ),
     },

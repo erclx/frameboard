@@ -21,7 +21,7 @@ export function EditAccessButton() {
       variant="outline"
       size="sm"
       aria-haspopup="dialog"
-      className="text-foreground focus-visible:ring-ring motion-reduce:transition-none"
+      className="text-foreground motion-reduce:transition-none"
       onClick={askToEdit}
     >
       Edit this board
