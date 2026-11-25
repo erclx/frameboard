@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Locator, type Page, test } from '@playwright/test'
 
 import {
   copyFixtureBoard,
@@ -23,6 +23,38 @@ function leftPanel(page: Page) {
 async function widthOf(page: Page): Promise<number> {
   const box = await leftPanel(page).boundingBox()
   return box ? Math.round(box.width) : -1
+}
+
+/**
+ * Wheels down over the panel's middle until `last` stands at its foot, which
+ * a short window leaves below the panel until then.
+ */
+async function wheelTo(
+  page: Page,
+  panel: Locator,
+  last: Locator,
+): Promise<void> {
+  await expect(last).not.toBeInViewport({ ratio: 1 })
+  const box = await panel.boundingBox()
+  if (!box) throw new Error('The panel has no box to wheel over')
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await expect(async () => {
+    await page.mouse.wheel(0, 400)
+    await expect(last).toBeInViewport({ ratio: 1, timeout: 200 })
+  }).toPass({ timeout: 10_000 })
+}
+
+/**
+ * How far the panel and everything around it can scroll, 0 when only a body
+ * inside it scrolls. Past 0 a wheel slides the panel off the canvas behind it.
+ */
+function slack(panel: Locator): Promise<number> {
+  return panel.evaluate((element) => {
+    let most = 0
+    for (let box: Element | null = element; box; box = box.parentElement)
+      most = Math.max(most, box.scrollHeight - box.clientHeight)
+    return most
+  })
 }
 
 async function edgeCenter(page: Page): Promise<[number, number]> {
@@ -78,6 +110,55 @@ test.describe('the board shell', () => {
 
     await expect(page.getByRole('button', { name: 'Show UI' })).toBeVisible()
     await expect(page.getByRole('complementary')).toHaveCount(0)
+  })
+})
+
+test.describe('a side panel taller than the window', () => {
+  test.use({ viewport: { width: 1280, height: 300 } })
+
+  test('scrolls Theme under the project name and the tabs, with the panel filling the window', async ({
+    page,
+  }) => {
+    await page.goto(BOARD)
+    const panel = leftPanel(page)
+    await panel.getByRole('tab', { name: 'Theme' }).click()
+    const tokens = panel.getByRole('tabpanel').getByRole('listitem')
+    await expect(tokens).not.toHaveCount(0)
+
+    await wheelTo(page, panel, tokens.last())
+
+    expect(await panel.boundingBox()).toMatchObject({ y: 0, height: 300 })
+    expect(await slack(panel)).toBe(0)
+    await expect(panel.getByRole('button', { name: 'Hide UI' })).toBeInViewport(
+      { ratio: 1 },
+    )
+    await expect(panel.getByRole('tab', { name: 'Theme' })).toBeInViewport({
+      ratio: 1,
+    })
+    await panel.getByRole('tab', { name: 'Design' }).click()
+    await expect(panel.getByRole('region', { name: 'Layers' })).toBeVisible()
+  })
+
+  test('scrolls the inspector under its header and the tabs, with the panel filling the window', async ({
+    page,
+  }) => {
+    await page.goto(BOARD)
+    await leftPanel(page).getByRole('button', { name: 'Select hero' }).click()
+    const panel = page.getByRole('complementary', { name: 'Inspector' })
+    const colors = panel
+      .getByRole('region', { name: /^Selection colors/ })
+      .getByRole('button')
+    await expect(colors).not.toHaveCount(0)
+
+    await wheelTo(page, panel, colors.last())
+
+    expect(await panel.boundingBox()).toMatchObject({ y: 0, height: 300 })
+    expect(await slack(panel)).toBe(0)
+    await expect(panel.getByRole('tab', { name: 'Design' })).toBeInViewport({
+      ratio: 1,
+    })
+    await panel.getByRole('tab', { name: 'Export' }).click()
+    await expect(panel.getByRole('region', { name: 'Export' })).toBeVisible()
   })
 })
 

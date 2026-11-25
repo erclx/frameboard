@@ -925,6 +925,39 @@ export function menuOn(
   }
 }
 
+/** Set on the root while `scrolledToEnd` holds a panel's body at its end, for `readyWhen` to wait on. */
+export const AT_END = 'data-capture-at-end'
+
+/**
+ * Holds the body of the side panel named `label` at its end on every frame,
+ * since a section above the end grows once its read answers.
+ */
+export function scrolledToEnd(label: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ label, marker, frames }) => {
+        if (window !== window.top) return
+        let left = frames
+        const scroll = () => {
+          const body = document.querySelector(
+            `aside[aria-label="${label}"] [role="tabpanel"]:not([hidden])`,
+          )
+          if (body) {
+            body.scrollTop = body.scrollHeight
+            document.documentElement.toggleAttribute(marker, body.scrollTop > 0)
+          }
+          if (--left > 0) requestAnimationFrame(scroll)
+          else if (!body?.scrollTop) console.error(`${label} never scrolled`)
+        }
+        document.addEventListener('DOMContentLoaded', () =>
+          requestAnimationFrame(scroll),
+        )
+      },
+      { label, marker: AT_END, frames: ROW_FRAMES },
+    )
+  }
+}
+
 export function both(
   ...setups: ((page: Page) => Promise<void>)[]
 ): (page: Page) => Promise<void> {

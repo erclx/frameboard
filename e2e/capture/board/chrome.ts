@@ -12,9 +12,11 @@ import { pointerPressOnLoad } from './canvas'
 import {
   actWhen,
   asWriter,
+  AT_END,
   AVATAR,
   both,
   chooseOnLoad,
+  focusOnLoad,
   LIVE_BOARD,
   noAgentChanges,
   noTokens,
@@ -23,6 +25,7 @@ import {
   pressOnLoad,
   readyWhen,
   ROW_FRAMES,
+  scrolledToEnd,
   SERVED_BOARD,
   STATE_ONLY,
   TAB_FRAMES,
@@ -207,6 +210,8 @@ function searchFontsOnLoad(text: string): (page: Page) => Promise<void> {
 }
 
 const REMOVE_LORA = 'button[aria-label="Remove Lora"]'
+const CONFIRM_REMOVE =
+  '[role="dialog"] [data-slot="dialog-footer"] button:last-child'
 
 /**
  * Names the board sheet at a long absolute path in the token read, filtered
@@ -948,6 +953,22 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       setup: themed(both(asWriter, themeTab)),
     },
     {
+      // Its last token row at the panel's foot, under the same header and tabs.
+      section: 'theme-tab-scrolled',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          themeTab,
+          scrolledToEnd('Pages and layers'),
+          readyWhen(`[${AT_END}] section[aria-labelledby^="tokens-"] li`),
+        ),
+      ),
+    },
+    {
       // A board sheet outside the board folder at a long path, which wraps inside the note.
       section: 'theme-tab-long-path',
       theme,
@@ -1027,6 +1048,25 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
           themeTab,
           actWhen(REMOVE_LORA, 'Remove Lora', 'click'),
           readyWhen('[role="dialog"]'),
+        ),
+      ),
+    },
+    {
+      // Remove under keyboard focus, its ring the focus blue rather than red.
+      section: 'theme-tab-fonts-remove-focus',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          installedLora(['webapp/home/hero']),
+          themeTab,
+          actWhen(REMOVE_LORA, 'Remove Lora', 'click'),
+          focusOnLoad(CONFIRM_REMOVE),
+          readyWhen(`${CONFIRM_REMOVE}:focus-visible`),
         ),
       ),
     },
