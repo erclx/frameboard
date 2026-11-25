@@ -66,12 +66,13 @@ function Toast({ className, ...props }: ToastPrimitive.Root.Props) {
   )
 }
 
+/** Ends clear of the close button's corner and ring in a toast drawing one. */
 function ToastContent({ className, ...props }: ToastPrimitive.Content.Props) {
   return (
     <ToastPrimitive.Content
       data-slot="toast-content"
       className={cn(
-        'flex h-full items-start gap-2.5 overflow-hidden px-3.5 py-3 text-xs',
+        'flex h-full items-start gap-2.5 overflow-hidden px-3.5 py-3 text-xs group-has-data-[slot=toast-close]/toast:pr-[33px]',
         className,
       )}
       {...props}
@@ -83,7 +84,10 @@ function ToastTitle({ className, ...props }: ToastPrimitive.Title.Props) {
   return (
     <ToastPrimitive.Title
       data-slot="toast-title"
-      className={cn('mb-0.5 text-xs font-semibold', className)}
+      className={cn(
+        'mb-0.5 text-xs font-semibold [overflow-wrap:anywhere]',
+        className,
+      )}
       {...props}
     />
   )
@@ -96,7 +100,10 @@ function ToastDescription({
   return (
     <ToastPrimitive.Description
       data-slot="toast-description"
-      className={cn('text-xs leading-[1.45] text-muted-foreground', className)}
+      className={cn(
+        'text-xs leading-[1.45] [overflow-wrap:anywhere] text-muted-foreground',
+        className,
+      )}
       {...props}
     />
   )
@@ -198,17 +205,11 @@ function DefaultToast({ toastItem }: { toastItem: ToastObject }) {
     <Toast toast={toastItem}>
       <ToastContent className={cn(acts && 'items-center')}>
         <ToastIcon type={toastItem.type} />
-        <div
-          className={cn(
-            'flex min-w-0 flex-1 flex-col',
-            acts ? '[overflow-wrap:anywhere]' : 'pr-4',
-          )}
-        >
+        <div className="flex min-w-0 flex-1 flex-col">
           <ToastTitle />
           <ToastDescription />
         </div>
-        {/* Clear of the close button's corner, which a one-line toast shares. */}
-        {acts ? <ToastAction className="mr-5" /> : null}
+        {acts ? <ToastAction /> : null}
         <ToastClose />
       </ToastContent>
     </Toast>

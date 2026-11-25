@@ -263,6 +263,29 @@ describe('ChangesToast', () => {
     expect(screen.getByRole('button', { name: 'Show' })).toBeVisible()
   })
 
+  it('breaks a long unbroken name before it runs under Show', async () => {
+    render(<Harness />)
+
+    act(() =>
+      receiveChanges(store, [change(`studio/home/${'northwind'.repeat(9)}`)]),
+    )
+
+    const title = await screen.findByText(/^Claude updated northwind/)
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
+  })
+
+  it('keeps its last button at the toast edge, with no close button', async () => {
+    render(<Harness />)
+
+    act(() => receiveChanges(store, [change('studio/home/pricing')]))
+
+    const show = await screen.findByRole('button', { name: 'Show' })
+    const root = show.closest('[role="dialog"]')?.getBoundingClientRect()
+    // The 1px border and the content's 14px padding.
+    expect((root?.right ?? 0) - show.getBoundingClientRect().right).toBe(15)
+    expect(screen.queryByLabelText('Close')).toBeNull()
+  })
+
   it('holds a change landing while presenting until presenting ends', async () => {
     presentStore.setState({ page: 'studio/home', frame: 'studio/home/hero' })
     render(<Harness />)

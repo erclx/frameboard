@@ -12,6 +12,11 @@ import { attachCanvas, type CanvasControls } from '../view'
 import { receiveShow, SHOW_OFFER, startBusyWatch } from './show'
 import { ShowOfferBody } from './show-toast'
 
+/** The close button's ring, which a focused toast draws outside its box. */
+const RING = 3
+
+const box = (element: Element) => element.getBoundingClientRect()
+
 const SHOP_HERO = 'shop/home/hero'
 
 const controls: CanvasControls = {
@@ -68,6 +73,25 @@ describe('the show offer', () => {
 
     const go = await screen.findByRole('button', { name: 'Go' })
     expect(contrastOnPage(go)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('keeps Go clear of the close button and its ring', async () => {
+    renderStack()
+
+    act(() => receiveShow(SHOP_HERO))
+
+    const go = box(await screen.findByRole('button', { name: 'Go' }))
+    const close = box(screen.getByLabelText('Close'))
+    expect(go.right + RING).toBeLessThanOrEqual(close.left)
+  })
+
+  it('breaks a long unbroken name before it runs under Go', async () => {
+    renderStack()
+
+    act(() => receiveShow(`shop/home/${'northwind'.repeat(9)}`))
+
+    const title = await screen.findByText(/^An agent showed northwind/)
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
   })
 
   it('jumps to the frame and closes on Go', async () => {
