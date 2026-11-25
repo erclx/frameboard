@@ -31,6 +31,8 @@ Owns Cmd+K's command palette and the `?` shortcuts sheet, mounted once over both
 - `palette.open`, `help.shortcuts`, and `help.characterKeys` register at the app level in `main.tsx`, and `overlay.ts` holds which overlay is open
 - The sheet reads each key from the registry and greys an unregistered row, and it sits outside the routes, so a test rendering it needs a `Router` on the path it means
 
+`assets.find` and `assets.generate` show the UI and the Assets tab, close find, and open the dialog Find and Generate share, in a read-only tab too.
+
 ### `src/client/history/`
 
 Owns `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, plus Ctrl+Y off a Mac, registered for the whole app since the home view undoes too, lit from the server's `history` counts and following the page an undo brings back.

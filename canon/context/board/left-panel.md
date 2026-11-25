@@ -23,7 +23,7 @@ Owns the left panel, being `project-header.tsx` with the way home, the name, and
 
 ### `src/client/board/assets/`
 
-Owns the Assets tab, whose Files, Find, and Generate row sits in `tab.tsx`. Files in `files.tsx` lists the project's `assets/` files as tiles grouped by folder in `groups.ts`, under a name search and kind chips, and each kit and installed font folds into one line pointing at the Theme tab.
+Owns the Assets tab, whose `Find…` and `Generate…` buttons sit in `tab.tsx` over Files. Files in `files.tsx` lists the project's `assets/` files as tiles grouped by folder in `groups.ts`, under a name search and kind chips, and each kit and installed font folds into one line pointing at the Theme tab.
 
 - Root files come first, a folder's group collapses from its heading, a chip with no files hides, and a tile reads `Unused` for a file no frame links
 - A tile click copies `../assets/<path>`, each segment encoded, and the tile's size stays in its accessible name
@@ -31,19 +31,22 @@ Owns the Assets tab, whose Files, Find, and Generate row sits in `tab.tsx`. File
 - A tile's menu opens from a right-click or a writing tab's ⋯, offering Place on canvas through `placeAtCenter` and Show frames using it, and Copy path alone when read-only
 - Rename edits the stem in `RenameField`, Replace file… bumps the tile's `?v=` so its thumbnail reloads, and Delete asks first only for a file some frame links
 
+The dialog those buttons open sits in three files beside the tab.
+
+- `sourcing-dialog.tsx` is the one dialog both buttons open, its shell one component, and `open-dialog.ts` holds whether it is open, on which view, and the two palette commands
+- `preview.tsx` shows the picked result with Save and Insert, landing in the one selected frame while part of it is in view, else the canvas, as `src/client/board/place/write.ts` lands it
+- An insert holds the dialog open until it lands, a refusal shows beside its buttons, and a project switch closes the dialog at once, so a refusal after that toasts
+
 ### `src/client/board/assets/find/`
 
-Owns Find, searching Openverse's images or Poly Haven's CC0 models, picked in the field's filter menu, and a model saves as one 1k GLB. A newer search aborts the older. `saveStore` in `../sourcing.ts` keys each save by project, kind, and source id, so a Save click and a drag of one result land one file.
+Owns Find, searching Openverse's images or Poly Haven's CC0 models, picked in the kind menu, and a model saves as one 1k GLB. A newer search aborts the older. `saveStore` in `../sourcing.ts` keys each save by project, kind, and source id, so Save and Insert of one result land one file.
 
-- `search-store.ts` holds each project's query, kind, license choice, and last search, so Find returns as it was left and a reload starts it empty
-
-- A result's thumbnail loads straight from the source in the board's chrome, over http or https alone, and falls back to its grey block
-- Save keeps its Saved mark once the file lands, so the grid never jumps, and a read-only tab lists results with Save off and says why
-- A result's drag carries a `DraggedResult` and saves only on a drop over the canvas, through `placeResult` in `src/client/board/place/write.ts`, then lands as a tile's drop does
+- `search-store.ts` holds each project's query, kind, license choice, last search, and pick, so Find returns as it was left and a reload starts it empty
+- `picture.tsx` loads a thumbnail straight from its source, over http or https alone, then an SVG's original, then names the file type and source, since a photo's original can be many megabytes
 
 ### `src/client/board/assets/generate/`
 
-Owns Generate, which shows the provider and its price from `GET sourcing/provider` before anything runs, so one press is the consent. The button holds while a run is out.
+Owns Generate, which shows the provider and its price from `GET sourcing/provider` before anything runs, so one press is the consent. The button holds while a run is out, and `run-store.ts` keeps each project's prompt, run, and pictures, so a run that spent outlives the dialog.
 
 ### `src/client/board/find/`
 

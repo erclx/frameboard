@@ -1,6 +1,6 @@
 ---
 title: Elements
-description: Placing text, shapes, images, video, audio, and 3D models in a frame, moving and resizing them, and media controls
+description: Placing text, shapes, images, video, audio, and 3D models in a frame, moving and resizing them, finding and generating media, and media controls
 ---
 
 # Elements
@@ -34,9 +34,6 @@ Images, videos, audio, and 3D models come from the project's `assets/` folder an
 - Image, video, audio, or model in the Shape menu, or Cmd+Shift+K, places a file where you click, at its own size shrunk to fit the column and the frame, and audio lands as a player 300px wide
 - Dragging a tile from the Assets tab onto a frame places it where you let go. A video tile shows its first frame and length, plays muted on hover, and says when its codec cannot play.
   - A tile let go over empty canvas makes a frame the file's size, outlined while you drag, and one undo takes the frame and its media back
-  - Find in the Assets tab searches Openverse for public domain photos, or Poly Haven for CC0 3D models from its filter menu. Save brings one into `assets/` with its license, and a dragged result saves, then lands.
-    - Find keeps its last search after another tab, until the board reloads
-  - Generate shows the provider and its price before anything runs, and one press makes the image into `assets/` with its license, spending on that provider's key
 - A model lands 240 by 135 as a `<model-viewer>`, and the first one placed copies the viewer's script into `assets/` and links it in the frame's head
 - A dropped video is written with `controls`, so Play shows the browser's own strip to pause it and turn on its sound
 - A selected video in Edit draws a bar inside its bottom edge, and an audio's bar sits under it
@@ -44,6 +41,15 @@ Images, videos, audio, and 3D models come from the project's `assets/` folder an
 - Controls, Autoplay, Loop, and Muted under In the file are the switches that write, each setting or dropping one attribute while the clip keeps playing, and audio has no Controls switch
 
 A right-click on an Assets tile, or its ⋯, places the file, lists the frames using it, or renames, replaces, or deletes it, each as one undo step. A rename points every frame linking the file at its new name, and a layer still named after the old file takes the new one. Delete asks first when a frame uses it.
+
+## Find and generate media
+
+`Find…` and `Generate…` at the top of the Assets tab, or Find media and Generate media in the palette, open one dialog that switches between the two.
+
+- Find searches Openverse for public domain photos, or Poly Haven for CC0 3D models, beside a larger look at the result you pick. Save to assets brings it into `assets/` with its license.
+- Generate shows the provider and its price before anything runs, and one press makes the image into `assets/` with its license, spending on that provider's key
+- Insert saves what you picked and lands it in the middle of the selected frame's part in view, or in a frame of its own with no one frame selected, then closes the dialog
+- Both keep their last search, run, and pictures after the dialog closes, until the board reloads
 
 ## Drawn controls
 
