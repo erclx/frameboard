@@ -278,13 +278,24 @@ const NOT_ON_SCREEN = (
 function ElementSlides({ page, element }: ElementProps) {
   const canWrite = useLive((state) => state.canWrite)
   const live = useLiveElement(element)
+  const media = useLiveMedia(element)
+  const model = useLiveModel(element)
   if (!live) return NOT_ON_SCREEN
+  const holdsNone =
+    model?.reading.loaded === true && model.reading.clips.length === 0
+  const clip =
+    model || media?.reading.tag === 'video'
+      ? holdsNone
+        ? 'none'
+        : 'held'
+      : undefined
   return (
     <StepSection
       step={live.step}
+      clip={clip}
       disabled={!canWrite}
       write={(change) => writeElement(page, element, change)}
-      onPreview={(effect) => previewStepOn(element, effect)}
+      onPreview={(effect, ms) => previewStepOn(element, effect, ms)}
       onPreviewEnd={stopPreview}
     />
   )
