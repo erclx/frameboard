@@ -456,6 +456,187 @@ describe('focus in what an asset tile menu opens', () => {
   })
 })
 
+describe('focus once what an asset tile menu opened closes', () => {
+  beforeEach(() => {
+    act(() => liveStore.setState({ canWrite: true }))
+  })
+
+  afterEach(() => {
+    act(() => liveStore.setState({ canWrite: false, board: null }))
+  })
+
+  /** A project whose Delete takes the file out of the list read after it. */
+  function renderDeletable(paths: string[]) {
+    let files: AssetFile[] = paths.map((path) => ({ ...LAKE, path }))
+    const { writes } = fakeWrites()
+    const drop = (path: string) => {
+      files = files.filter((file) => file.path !== path)
+    }
+    render(
+      <FilesView
+        project="studio"
+        load={async () => ({ files })}
+        writes={{
+          ...writes,
+          remove: async (project, path) => {
+            drop(path)
+            return writes.remove(project, path)
+          },
+        }}
+      />,
+    )
+    return { drop }
+  }
+
+  async function askDeleteFromMore(user: User, path: string) {
+    await pickByEnter(user, await openMoreByEnter(user, path), 'Delete')
+    await screen.findByRole('dialog')
+  }
+
+  async function deleteFile(user: User, path: string) {
+    await askDeleteFromMore(user, path)
+    await user.click(await confirmButton('Delete'))
+    await dialogGone()
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: new RegExp(path) }),
+      ).toBeNull(),
+    )
+  }
+
+  async function dialogGone() {
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { hidden: true })).toBeNull(),
+    )
+  }
+
+  it('returns to the tile on Escape from a confirm the ⋯ menu opened', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+    await askDeleteFromMore(user, 'lake.jpg')
+
+    await user.keyboard('{Escape}')
+    await dialogGone()
+
+    expect(await tileButton('lake.jpg')).toHaveFocus()
+  })
+
+  it('returns to the tile on Cancel in a confirm the ⋯ menu opened', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+    await askDeleteFromMore(user, 'lake.jpg')
+
+    await user.click(await confirmButton('Cancel'))
+    await dialogGone()
+
+    expect(await tileButton('lake.jpg')).toHaveFocus()
+  })
+
+  it('returns to the tile on Escape from a confirm a right-click opened', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+    await pickByPointer(user, await rightClick('lake.jpg'), 'Delete')
+    await screen.findByRole('dialog')
+
+    await user.keyboard('{Escape}')
+    await dialogGone()
+
+    expect(await tileButton('lake.jpg')).toHaveFocus()
+  })
+
+  it('returns to the tile on Cancel in a confirm a right-click opened', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+    await pickByPointer(user, await rightClick('lake.jpg'), 'Delete')
+
+    await user.click(await confirmButton('Cancel'))
+    await dialogGone()
+
+    expect(await tileButton('lake.jpg')).toHaveFocus()
+  })
+
+  it('moves to the next tile after Delete', async () => {
+    const user = userEvent.setup()
+    renderDeletable(['lake.jpg', 'reef.jpg', 'tokyo.jpg'])
+
+    await deleteFile(user, 'reef.jpg')
+
+    expect(await tileButton('tokyo.jpg')).toHaveFocus()
+  })
+
+  it('moves to the previous tile after Delete on the last one', async () => {
+    const user = userEvent.setup()
+    renderDeletable(['lake.jpg', 'tokyo.jpg'])
+
+    await deleteFile(user, 'tokyo.jpg')
+
+    expect(await tileButton('lake.jpg')).toHaveFocus()
+  })
+
+  it('moves to Add files after Delete on the only file', async () => {
+    const user = userEvent.setup()
+    renderDeletable(['lake.jpg'])
+
+    await deleteFile(user, 'lake.jpg')
+
+    expect(screen.getByRole('button', { name: 'Add files' })).toHaveFocus()
+  })
+
+  it('moves to Add files rather than another folder after Delete on a folder’s only file', async () => {
+    const user = userEvent.setup()
+    renderDeletable(['lake.jpg', 'team/ana.jpg'])
+
+    await deleteFile(user, 'team/ana.jpg')
+
+    expect(screen.getByRole('button', { name: 'Add files' })).toHaveFocus()
+  })
+
+  it('moves to Add files when the file went away while the confirm was open', async () => {
+    const user = userEvent.setup()
+    const { drop } = renderDeletable(['lake.jpg', 'tokyo.jpg'])
+    await askDeleteFromMore(user, 'lake.jpg')
+    drop('lake.jpg')
+    act(() => liveStore.setState({ board: { root: '/board', projects: [] } }))
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: /lake\.jpg/, hidden: true }),
+      ).toBeNull(),
+    )
+
+    await user.keyboard('{Escape}')
+    await dialogGone()
+
+    expect(screen.getByRole('button', { name: 'Add files' })).toHaveFocus()
+  })
+
+  it('returns to the tile on Escape from the frames popover the ⋯ menu opened', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+    const menu = await openMoreByEnter(user, 'lake.jpg')
+    await pickByEnter(user, menu, 'Show 1 frame using it')
+
+    await user.keyboard('{Escape}')
+    await dialogGone()
+
+    expect(await tileButton('lake.jpg')).toHaveFocus()
+  })
+
+  it('rests on the next tile when the Delete is refused and its tile stays', async () => {
+    const user = userEvent.setup()
+    const { writes } = fakeWrites()
+    const refused: AssetWrites['remove'] = () =>
+      Promise.reject(new Error('The file is locked.'))
+    renderFiles({ ...writes, remove: refused })
+    await askDeleteFromMore(user, 'lake.jpg')
+
+    await user.click(await confirmButton('Delete'))
+    await dialogGone()
+
+    expect(await tileButton('lake.jpg')).toBeVisible()
+    expect(await tileButton('tokyo.jpg')).toHaveFocus()
+  })
+})
+
 describe('an asset tile menu in a view-only tab', () => {
   it('offers Copy path alone and draws no ⋯ button', async () => {
     renderFiles(fakeWrites().writes)

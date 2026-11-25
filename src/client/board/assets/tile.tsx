@@ -32,13 +32,18 @@ import {
 import { tileDragData } from './drag'
 import { fileName } from './groups'
 
+/** What a tile's menu does, Delete handed the tile's button to give focus back to. */
+export interface TileActs extends Omit<AssetMenuActs, 'copy' | 'remove'> {
+  remove?: (tile: HTMLElement | null) => void
+}
+
 interface TileProps {
   project: string
   file: AssetFile
   /** Bumped by a replace, so the thumbnail loads the new bytes from the same path. */
   version?: number
   /** The menu's writes, each absent where the tile cannot make it. */
-  acts?: Omit<AssetMenuActs, 'copy'>
+  acts?: TileActs
   /** Reads the refs of the frames linking the file, for Show frames using it. */
   loadFrames?: () => Promise<string[]>
   /** Set while the name shows as the rename field, saving the stem it is given with the extension kept. */
@@ -58,7 +63,7 @@ export function Tile({
   project,
   file,
   version = 0,
-  acts = {},
+  acts: { remove, ...acts } = {},
   loadFrames,
   rename,
 }: TileProps) {
@@ -95,6 +100,7 @@ export function Tile({
     ...acts,
     copy: () => void copyPath(),
     showFrames: loadFrames ? showFrames : undefined,
+    remove: remove ? () => remove(button.current) : undefined,
   }
   // The size moves the address on both sides of a replace's undo, which a counter alone would leave cached.
   const url = `${assetUrl(project, path)}${version > 0 ? `?v=${file.size}-${version}` : ''}`
@@ -198,6 +204,7 @@ export function Tile({
       ) : null}
       <FramesPopover
         anchor={item}
+        tile={button}
         listing={listing}
         onClose={() => setListing(null)}
       />
@@ -216,10 +223,13 @@ type FramesListing =
  */
 function FramesPopover({
   anchor,
+  tile,
   listing,
   onClose,
 }: {
   anchor: RefObject<HTMLElement | null>
+  /** The tile's own button, which takes focus back when the popover closes. */
+  tile: RefObject<HTMLElement | null>
   listing: FramesListing | null
   onClose: () => void
 }) {
@@ -234,6 +244,7 @@ function FramesPopover({
         anchor={anchor}
         side="right"
         align="start"
+        finalFocus={tile}
         className="w-52 gap-1 p-1 text-label"
       >
         <PopoverTitle className="px-2 pt-1 pb-0.5 text-[10px] font-normal text-muted-foreground">
