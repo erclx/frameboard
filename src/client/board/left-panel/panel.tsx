@@ -246,7 +246,11 @@ export function LeftPanel({
               </ResizablePanel>
             </ResizablePanelGroup>
           </TabsContent>
-          <TabsContent value="theme" className="min-h-0 text-xs">
+          <TabsContent
+            value="theme"
+            // Relative, so a tip's hidden node scrolls with the tab rather than stretching the panel.
+            className="relative min-h-0 overflow-y-auto text-xs"
+          >
             {theme}
           </TabsContent>
           <TabsContent value="assets" className="min-h-0 text-xs">
