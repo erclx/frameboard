@@ -2,7 +2,15 @@ import '../../../styles.css'
 
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from 'vitest'
 
 import { Toaster } from '@/client/components/ui/toast'
 import { markPointerFocus } from '@/client/focus/pointer-mark'
@@ -121,6 +129,53 @@ async function openOn(section: ThemeSection, props: TabProps = {}) {
   return screen.findByRole('dialog', { name: 'Theme · studio' })
 }
 
+/** A search finding one font, whose install waits until it is refused. */
+function refusedInstall() {
+  let reject: (error: Error) => void = () => {}
+  const fontCalls: TabProps['fontCalls'] = {
+    find: async (_project, query) => ({
+      version: 1,
+      query,
+      category: null,
+      licenses: ['OFL-1.1'],
+      source: { name: 'Fontsource', url: 'https://fontsource.org' },
+      total: 1,
+      results: [
+        {
+          number: 1,
+          id: 'playfair-display',
+          family: 'Playfair Display',
+          category: 'serif',
+          license: 'OFL-1.1',
+          variable: true,
+          weights: [400],
+          styles: ['normal'],
+          subsets: ['latin'],
+          landingUrl: 'https://fontsource.org/fonts/playfair-display',
+          sample: 'https://cdn.example.test/playfair.woff2',
+        },
+      ],
+    }),
+    install: () =>
+      new Promise((_resolve, refused) => {
+        reject = refused
+      }),
+  }
+  const refuse = () => reject(new Error('Fontsource refused the files.'))
+  return { fontCalls, refuse }
+}
+
+/** Finds the one font `refusedInstall` answers with and presses its Install. */
+async function pressInstall() {
+  await userEvent.click(
+    await screen.findByRole('button', { name: 'Find a font' }),
+  )
+  await userEvent.type(screen.getByRole('searchbox'), 'playfair')
+  await userEvent.click(
+    await screen.findByRole('button', { name: 'Install Playfair Display' }),
+  )
+}
+
 /** The note a person is writing, where the board's markers draw it. */
 function OpenNote() {
   const open = useNotesUi((state) => state.open)
@@ -139,6 +194,39 @@ function themeDialog() {
 
 async function themeClosed() {
   await waitFor(() => expect(themeDialog()).toBeNull())
+}
+
+/**
+ * Holds animation frames from now until the answer is called, so a late frame
+ * is certain. A test that fails first still gives the window's own back.
+ */
+function holdFrames(): () => void {
+  const held = new Map<number, FrameRequestCallback>()
+  // Clear of any id the window itself gave out before the hold.
+  let id = 1_000_000
+  const ask = vi
+    .spyOn(window, 'requestAnimationFrame')
+    .mockImplementation((frame) => {
+      id += 1
+      held.set(id, frame)
+      return id
+    })
+  const drop = vi
+    .spyOn(window, 'cancelAnimationFrame')
+    .mockImplementation((asked) => {
+      held.delete(asked)
+    })
+  const release = () => {
+    ask.mockRestore()
+    drop.mockRestore()
+    const frames = [...held.values()]
+    held.clear()
+    act(() => {
+      for (const frame of frames) frame(performance.now())
+    })
+  }
+  onTestFinished(release)
+  return release
 }
 
 beforeEach(() => {
@@ -356,6 +444,27 @@ describe('ThemeDialog', () => {
       await themeClosed()
     })
 
+    it('closes the color picker alone on an Esc before it takes the focus', async () => {
+      await openOn('color')
+      const swatch = await screen.findByRole('button', {
+        name: 'Light: #4f46e5',
+      })
+      const release = holdFrames()
+      await userEvent.click(swatch)
+      await screen.findByRole('textbox', { name: 'Hex' })
+
+      await userEvent.keyboard('{Escape}')
+      release()
+
+      await waitFor(() =>
+        expect(screen.queryByRole('textbox', { name: 'Hex' })).toBeNull(),
+      )
+      expect(themeDialog()).not.toBeNull()
+      expect(swatch).toHaveFocus()
+      await userEvent.keyboard('{Escape}')
+      await themeClosed()
+    })
+
     it('keeps the dialog through a press in the color picker, which draws outside it', async () => {
       await openOn('color')
       await userEvent.click(
@@ -529,53 +638,74 @@ describe('ThemeDialog', () => {
   })
 
   it('toasts an install refused once its section was left', async () => {
-    let refuse = () => {}
+    const { fontCalls, refuse } = refusedInstall()
     render(<Toaster />)
-    await openOn('fonts', {
-      fontCalls: {
-        find: async (_project, query) => ({
-          version: 1,
-          query,
-          category: null,
-          licenses: ['OFL-1.1'],
-          source: { name: 'Fontsource', url: 'https://fontsource.org' },
-          total: 1,
-          results: [
-            {
-              number: 1,
-              id: 'playfair-display',
-              family: 'Playfair Display',
-              category: 'serif',
-              license: 'OFL-1.1',
-              variable: true,
-              weights: [400],
-              styles: ['normal'],
-              subsets: ['latin'],
-              landingUrl: 'https://fontsource.org/fonts/playfair-display',
-              sample: 'https://cdn.example.test/playfair.woff2',
-            },
-          ],
-        }),
-        install: () =>
-          new Promise((_resolve, reject) => {
-            refuse = () => reject(new Error('Fontsource refused the files.'))
-          }),
-      },
-    })
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Find a font' }),
-    )
-    await userEvent.type(screen.getByRole('searchbox'), 'playfair')
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Install Playfair Display' }),
-    )
+    await openOn('fonts', { fontCalls })
+    await pressInstall()
+    const release = holdFrames()
 
     await userEvent.click(sectionTab('Colors'))
     await act(async () => refuse())
+    release()
 
     expect(
       await screen.findByText('Couldn’t install Playfair Display'),
     ).toBeInTheDocument()
+  })
+
+  it('toasts an install refused as the dialog closes', async () => {
+    const { fontCalls, refuse } = refusedInstall()
+    render(<Toaster />)
+    await openOn('fonts', { fontCalls })
+    await pressInstall()
+    const release = holdFrames()
+
+    act(() => closeTheme())
+    await act(async () => refuse())
+    release()
+
+    expect(
+      await screen.findByText('Couldn’t install Playfair Display'),
+    ).toBeInTheDocument()
+  })
+
+  it('toasts a removal refused as the dialog closes', async () => {
+    let refuse = () => {}
+    const remove = () =>
+      new Promise<never>((_resolve, reject) => {
+        refuse = () => reject(new Error('The fonts folder is locked.'))
+      })
+    render(<Toaster />)
+    await openOn('fonts', {
+      fontCalls: { readFrames: async () => [], remove },
+    })
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Remove Lora' }),
+    )
+    const release = holdFrames()
+
+    act(() => closeTheme())
+    await act(async () => refuse())
+    release()
+
+    expect(await screen.findByText('Couldn’t remove Lora')).toBeInTheDocument()
+  })
+
+  it('shows an install refused inline once the dialog reopens mid-close', async () => {
+    const { fontCalls, refuse } = refusedInstall()
+    render(<Toaster />)
+    await openOn('fonts', { fontCalls })
+    await pressInstall()
+    const release = holdFrames()
+
+    act(() => closeTheme())
+    act(() => openTheme('fonts', 'fonts'))
+    await act(async () => refuse())
+    release()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Couldn’t install Playfair Display. Fontsource refused the files.',
+    )
   })
 
   it('hands the focus to the note Ask the agent opens, with the dialog gone', async () => {

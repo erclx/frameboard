@@ -43,7 +43,10 @@ interface ThemeDialogProps {
   table: TokenTable | null | undefined
   writer: SheetWriter
   /** The Fonts section's calls, the board's routes in the app. */
-  fontCalls?: Omit<ComponentProps<typeof FontsSection>, 'project' | 'list'>
+  fontCalls?: Omit<
+    ComponentProps<typeof FontsSection>,
+    'project' | 'list' | 'drawn'
+  >
   /** The Kits section's calls, the board's routes in the app. */
   kitCalls?: Omit<ComponentProps<typeof KitsSection>, 'project'>
   /** The card or button it opened from, which takes the focus back when it closes. */
@@ -65,7 +68,14 @@ export function ThemeDialog({
   const bodyOf = (shown: ThemeSection): ReactNode => {
     if (shown === 'kits') return <KitsSection project={project} {...kitCalls} />
     if (shown === 'fonts') {
-      return <FontsSection project={project} list={fonts} {...fontCalls} />
+      return (
+        <FontsSection
+          project={project}
+          list={fonts}
+          drawn={open && section === 'fonts'}
+          {...fontCalls}
+        />
+      )
     }
     return <TokensSection group={shown} table={table} writer={writer} />
   }

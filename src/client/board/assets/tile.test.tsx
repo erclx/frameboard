@@ -418,12 +418,17 @@ describe('focus in what an asset tile menu opens', () => {
     const menu = await openMoreByEnter(user, 'lake.jpg')
     await pickByEnter(user, menu, 'Delete')
 
+    const cancel = await confirmButton('Cancel')
+    const remove = await confirmButton('Delete')
+    await waitFor(() => expect(cancel).toHaveFocus())
+
+    // Base UI's focus guard at each end moves the focus on a frame later.
     await user.tab()
-    expect(await confirmButton('Delete')).toHaveFocus()
+    await waitFor(() => expect(remove).toHaveFocus())
     await user.tab()
-    expect(await confirmButton('Cancel')).toHaveFocus()
+    await waitFor(() => expect(cancel).toHaveFocus())
     await user.tab({ shift: true })
-    expect(await confirmButton('Delete')).toHaveFocus()
+    await waitFor(() => expect(remove).toHaveFocus())
   })
 
   it('stays in the frames popover opened from the ⋯ menu', async () => {

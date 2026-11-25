@@ -38,6 +38,8 @@ interface FontsSectionProps {
   project: string
   /** The project's installed fonts, undefined while they read and null when the read failed. */
   list: FontList | null | undefined
+  /** Whether the section is in view, false while it is leaving and still mounted. */
+  drawn?: boolean
   /** Reads the frames drawing text in one font, as a removal asks. */
   readFrames?: typeof fetchFontFrames
   find?: typeof findFonts
@@ -53,7 +55,8 @@ interface Confirming {
 
 /**
  * Shows a refusal inline while `inline` says its place is drawn, and as an
- * error toast once the section closed or unmounted, so no refusal goes unsaid.
+ * error toast once the search closed or the section started leaving, so no
+ * refusal goes unsaid.
  */
 function reportTo(
   inline: { current: boolean },
@@ -66,8 +69,11 @@ function reportTo(
   }
 }
 
-/** A ref reading true while the component is mounted and `drawn` holds. */
-function useDrawn(drawn = true): { current: boolean } {
+/**
+ * A ref reading true while the component is mounted and `drawn` holds. The two
+ * differ as a tab panel or a dialog leaves, which unmounts frames later.
+ */
+function useDrawn(drawn: boolean): { current: boolean } {
   const ref = useRef(drawn)
   useEffect(() => {
     ref.current = drawn
@@ -103,6 +109,7 @@ export function FontFaces({ list }: Pick<FontsSectionProps, 'list'>) {
 export function FontsSection({
   project,
   list,
+  drawn = true,
   readFrames = fetchFontFrames,
   find = findFonts,
   install = installFont,
@@ -114,7 +121,7 @@ export function FontsSection({
   const [confirming, setConfirming] = useState<Confirming | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
-  const report = reportTo(useDrawn(), setProblem)
+  const report = reportTo(useDrawn(drawn), setProblem)
   const reading = useRef(false)
   const section = useRef<HTMLElement>(null)
   const pressed = useRef<HTMLElement | null>(null)
@@ -162,6 +169,7 @@ export function FontsSection({
         <FindFont
           project={project}
           installed={installed}
+          drawn={drawn}
           find={find}
           install={install}
         />
@@ -284,6 +292,7 @@ type Search =
 interface FindFontProps {
   project: string
   installed: readonly InstalledFont[]
+  drawn: boolean
   find: typeof findFonts
   install: typeof installFont
 }
@@ -293,7 +302,7 @@ interface FindFontProps {
  * place, focused since the press asked to type. It finds once typing rests,
  * and Escape hands focus back to Find a font.
  */
-function FindFont({ project, installed, find, install }: FindFontProps) {
+function FindFont({ project, installed, drawn, find, install }: FindFontProps) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [search, setSearch] = useState<Search>({ state: 'idle' })
@@ -302,7 +311,7 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
   const opener = useRef<HTMLButtonElement>(null)
   const field = useRef<HTMLInputElement>(null)
   const closed = useRef(false)
-  const report = reportTo(useDrawn(open), setProblem)
+  const report = reportTo(useDrawn(drawn && open), setProblem)
 
   useEffect(() => {
     if (!open && closed.current) {

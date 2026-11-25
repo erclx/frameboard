@@ -27,7 +27,7 @@ Owns the Theme tab's four cards over `Edit theme…`, and the dialog they open, 
 
 - `dialog-store.ts` holds the dialog's section and opener, and Ask the agent clears the opener so the note's composer keeps the focus
 - `token-writer.ts` queues the token edits and holds each sheet's landed hash in the tab, since a section unmounts as another shows
-- A field's Esc stops at the field, and `NumberField` and a confirmed removal hand the focus to the dialog around them
+- A field's Esc stops at the field and an open color picker's at its swatch, and `NumberField` and a confirmed removal hand the focus to the dialog around them
 
 ### `src/client/board/assets/`
 
