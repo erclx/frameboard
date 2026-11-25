@@ -21,7 +21,7 @@ Owns the capture browser, the frame host, `fit`, and `inspect`, with flags and r
 - `createWarmBrowser` keeps one browser for the PNG route, the thumbnails, and the browser checker on separate queues, and the route takes no token since it shows only what the frame route serves
 - The warm renderer hides drawn controls through one style marked `data-frameboard`, so an element index still counts the file, while `capture`, `fit`, and `inspect` show them
 - `src/shared/motion.ts` reads `__hf`, then every `__timelines` entry, then `document.getAnimations()`, and `seek.ts` runs it in the page by source text, so it stays self-contained
-- An element shot answers 409 `stale-address` when the hash moved and 422 `invalid-address` for a missing or empty box, and refuses `filmstrip` or `device` beside it as `usage`
+- An element shot answers 409 `stale-address` for a moved hash, 422 `invalid-address` for no box, and past the left or top shifts the root, holding each size the shift moves, its own or an ancestor's
 
 ## Gotchas
 

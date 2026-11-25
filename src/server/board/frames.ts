@@ -167,12 +167,17 @@ export async function addFrame(
     options.size !== undefined ||
     options.width !== undefined ||
     options.height !== undefined
+  const scroll = options.scroll ?? false
+  // A box its name sized states no height, only one to stand in until measured.
+  const reservedDevice = !sized && reserved?.showDevice === true
   // A reserved frame lands in its box, as the server's landing step puts it.
   const statedSize =
     reserved && !sized
-      ? { width: reserved.width, height: reserved.height }
+      ? {
+          width: reserved.width,
+          ...(reservedDevice && scroll ? {} : { height: reserved.height }),
+        }
       : sizeOf(options)
-  const scroll = options.scroll ?? false
   const statedHugs = scroll
     ? { hugWidth: false, hugHeight: false }
     : reserved && !sized
@@ -208,7 +213,8 @@ export async function addFrame(
       const size = named === undefined ? statedSize : { width: named }
       const hugs =
         named === undefined ? statedHugs : { ...statedHugs, hugWidth: false }
-      const showDevice = options.showDevice || named !== undefined
+      const showDevice =
+        options.showDevice || reservedDevice || named !== undefined
       const names = exists ? layout.names : [...layout.names, frame.name].sort()
       // Lands past the placed frames alone, ignoring other unplaced files.
       const placed = placeFrames(

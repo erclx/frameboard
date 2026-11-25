@@ -6,6 +6,7 @@ import { type Page } from '@playwright/test'
 import type { ServerMessage } from '@/shared/live-messages'
 import type { ListResult } from '@/shared/records/list'
 
+import { wholeBoards } from '../../support/whole-boards'
 import type { CaptureCase } from '../types'
 import {
   type ProbedElement,
@@ -788,7 +789,7 @@ async function hiddenSketch(page: Page): Promise<void> {
       }
       socket.send(JSON.stringify(parsed))
     })
-    socket.onMessage((message) => server.send(message))
+    socket.onMessage((message) => server.send(wholeBoards(message)))
   })
 }
 
@@ -940,7 +941,7 @@ async function sectionOnHome(page: Page): Promise<void> {
         JSON.stringify({ ...parsed, data: { ...parsed.data, projects } }),
       )
     })
-    socket.onMessage((message) => server.send(message))
+    socket.onMessage((message) => server.send(wholeBoards(message)))
   })
 }
 

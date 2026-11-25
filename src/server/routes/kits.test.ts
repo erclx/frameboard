@@ -98,6 +98,22 @@ describe('kitRoutes', () => {
     expect(body.error.code).toBe('name-taken')
   })
 
+  it('answers name-taken for a held kit with replace too, leaving it as it was', async () => {
+    await post('/api/kits/install', { project: 'acme', kit: 'clean' })
+    const sheet = join(board.root, 'acme/assets/kits/clean/tokens.css')
+    writeFileSync(sheet, ':root { --a: 1 }\n')
+
+    const response = await post('/api/kits/install', {
+      project: 'acme',
+      kit: 'clean',
+      replace: true,
+    })
+
+    const body = (await response.json()) as { error: { code: string } }
+    expect(body.error.code).toBe('name-taken')
+    expect(readFileSync(sheet, 'utf8')).toBe(':root { --a: 1 }\n')
+  })
+
   it('accepts replace and ignores it, adding the kit beside a project sheet it leaves alone', async () => {
     writeFileSync(join(board.root, 'acme/tokens.css'), ':root { --a: 1 }\n')
 

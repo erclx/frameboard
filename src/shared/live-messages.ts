@@ -1,3 +1,4 @@
+import type { BoardPatch } from './board-sync/patch'
 import type { FrameChange } from './records/changes'
 import type { Finding } from './records/check'
 import type { Claim } from './records/claims'
@@ -19,6 +20,11 @@ export type HelloMessage =
       role: 'board'
       /** The tab's own id, which its selection report carries, so the socket closing forgets it. */
       tab?: string
+      /**
+       * Whether the tab takes a `patch` in place of every board after its
+       * first, absent from one loaded before patches, which takes whole boards.
+       */
+      patches?: boolean
     }
   | {
       type: 'hello'
@@ -35,7 +41,12 @@ export interface AckMessage {
   id: string
 }
 
-export type ClientMessage = HelloMessage | AckMessage
+/** A patch named a record this tab does not hold, so it takes the whole board again. */
+export interface ResyncMessage {
+  type: 'resync'
+}
+
+export type ClientMessage = HelloMessage | AckMessage | ResyncMessage
 
 /** Messages the server sends, as types alone so the client bundle takes no schema library. */
 export type ServerMessage =
@@ -44,8 +55,16 @@ export type ServerMessage =
    * the board's own port could write as the board.
    */
   | { type: 'frames'; port: number }
-  /** The whole board, on hello and after every watch batch. */
+  /**
+   * The whole board, on hello and on a `resync`, and after every watch batch
+   * to a tab that asked for no patches.
+   */
   | { type: 'board'; data: ListResult }
+  /**
+   * The board against the one this tab holds, after every watch batch, one
+   * that changed no record included.
+   */
+  | { type: 'patch'; data: BoardPatch }
   /**
    * Frames to reload, `hashes` set only when the file was the sole cause, so a
    * tab already showing those bytes may skip the reload.
@@ -55,7 +74,7 @@ export type ServerMessage =
   | { type: 'show'; ref: string }
   /**
    * Check findings by frame ref: every frame after hello, and after each
-   * batch's `board` the frames it rechecked, where an empty list clears one.
+   * batch's board or patch the frames it rechecked, where an empty list clears one.
    */
   | { type: 'findings'; findings: Record<string, Finding[]> }
   /**
@@ -78,7 +97,7 @@ export type ServerMessage =
   /**
    * A project, page, or frame the board's own write, undo, or redo renamed,
    * as a project name, page ref, or frame ref on each side, sent ahead of the
-   * batch's `board` so a tab keeps the frames it shows and their state.
+   * batch's board or patch so a tab keeps the frames it shows and their state.
    */
   | { type: 'renamed'; before: string; after: string }
   /** The live claims, after each hello's history, on every change, and as one expires. */

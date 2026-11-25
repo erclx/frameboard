@@ -31,6 +31,7 @@ Adding a kit changes no frame, so each frame that takes the look is set on its o
 
 - Run `frameboard kit list --json` for the kits this board offers, the shipped ones first
 - Run `frameboard kit add <project> <kit> --json` to copy one into the project, or `--from <folder>` for a kit folder on disk. It leaves the project's token sheets alone.
+- Add `--replace` to take a newer copy of a kit the project holds. Every frame keeps its kit, and an edit made inside the old copy is lost.
 - Run `frameboard frame kit <page>/<frame> <kit> --json` on each frame that takes the look, and pass `none` in place of the kit to take it off
 - Run `frameboard kit remove <project> <kit> --json` only when the developer asks, since it clears the kit from every frame naming it
 

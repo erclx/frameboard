@@ -29,8 +29,7 @@ The inspector holds each frame-level setting.
 
 The inspector's Clip content switch decides whether a frame cuts what runs past its edge.
 
-- With it off, the board paints each element past the right or bottom edge as a still picture at its place, and a selected frame shows those pictures either way
-- An element reaching past the left or top edge takes no picture, and a selected frame ghosts it as before
+- With it off, the board paints each element past any edge as a still picture at its place, and a selected frame shows those pictures either way
 - A capture or an export still cuts at the box, and a frame that scrolls or shows its device always does
 
 ### Device

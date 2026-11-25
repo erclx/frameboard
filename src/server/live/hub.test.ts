@@ -39,7 +39,7 @@ describe('createHub', () => {
       tabs,
       port: () => port,
       access,
-      snapshot: async () => SNAPSHOT,
+      snapshot: async (deliver) => deliver(SNAPSHOT),
     })
     server.on('upgrade', (request, socket, head) =>
       hub.handleUpgrade(request, socket, head),
@@ -111,7 +111,7 @@ describe('createHub', () => {
       tabs,
       port: () => port,
       access,
-      snapshot: async () => SNAPSHOT,
+      snapshot: async (deliver) => deliver(SNAPSHOT),
       framePort: () => 47123,
     })
     server.removeAllListeners('upgrade')
@@ -166,7 +166,7 @@ describe('createHub', () => {
           tabs,
           port: () => port,
           access,
-          snapshot: async () => SNAPSHOT,
+          snapshot: async (deliver) => deliver(SNAPSHOT),
           dispatch: true,
         })
       })
@@ -198,7 +198,7 @@ describe('createHub', () => {
           tabs,
           port: () => port,
           access,
-          snapshot: async () => SNAPSHOT,
+          snapshot: async (deliver) => deliver(SNAPSHOT),
           editButton: true,
         })
       })
@@ -246,7 +246,7 @@ describe('createHub', () => {
       tabs,
       port: () => port,
       access,
-      snapshot: async () => SNAPSHOT,
+      snapshot: async (deliver) => deliver(SNAPSHOT),
       closeTab: (tab) => closed.push(tab),
     })
     const socket = connect()
@@ -266,7 +266,7 @@ describe('createHub', () => {
       tabs,
       port: () => port,
       access,
-      snapshot: async () => SNAPSHOT,
+      snapshot: async (deliver) => deliver(SNAPSHOT),
       findings: async () => findings,
     })
     server.removeAllListeners('upgrade')
@@ -304,7 +304,7 @@ describe('createHub', () => {
       tabs,
       port: () => port,
       access,
-      snapshot: async () => SNAPSHOT,
+      snapshot: async (deliver) => deliver(SNAPSHOT),
       history: () => ({ undo: 0, redo: 0 }),
       claims: async () => claims,
     })
@@ -347,7 +347,7 @@ describe('createHub', () => {
       tabs,
       port: () => port,
       access,
-      snapshot: async () => SNAPSHOT,
+      snapshot: async (deliver) => deliver(SNAPSHOT),
       claims: async () => [],
       changes: async () => changes,
     })
@@ -377,7 +377,7 @@ describe('createHub', () => {
       tabs,
       port: () => port,
       access,
-      snapshot: async () => SNAPSHOT,
+      snapshot: async (deliver) => deliver(SNAPSHOT),
       history: () => ({ undo: 2, redo: 1 }),
     })
     server.removeAllListeners('upgrade')
@@ -435,6 +435,107 @@ describe('createHub', () => {
       { type: 'reload', refs: ['studio/home/hero'] },
       { type: 'reload', refs: ['studio/home/hero'] },
     ])
+  })
+
+  describe('patches', () => {
+    const PATCH = { root: '/board', projects: [] }
+    const MOVED: ListResult = { root: '/moved', projects: [] }
+
+    /** Says hello and keeps every message, `access` marking its answer's end. */
+    async function hello(patches?: boolean) {
+      const socket = connect()
+      const received: ServerMessage[] = []
+      socket.on('message', (data) => received.push(JSON.parse(String(data))))
+      await new Promise((resolve) => socket.once('open', resolve))
+      socket.send(JSON.stringify({ type: 'hello', role: 'board', patches }))
+      return { socket, received }
+    }
+
+    const types = (received: ServerMessage[]) =>
+      received.map((message) => message.type)
+
+    it('sends a tab that asked for them its board, then patches', async () => {
+      const { received } = await hello(true)
+      await expect.poll(() => types(received)).toEqual(['board', 'access'])
+
+      hub.broadcastBoard(MOVED, PATCH)
+
+      await expect
+        .poll(() => received.slice(2))
+        .toEqual([{ type: 'patch', data: PATCH }])
+    })
+
+    it('sends a tab that did not ask whole boards', async () => {
+      const { received } = await hello()
+      await expect.poll(() => types(received)).toEqual(['board', 'access'])
+
+      hub.broadcastBoard(MOVED, PATCH)
+
+      await expect
+        .poll(() => received.slice(2))
+        .toEqual([{ type: 'board', data: MOVED }])
+    })
+
+    it('sends a tab no patch ahead of its board', async () => {
+      await hub.close()
+      let scanned = () => {}
+      const turn = new Promise<void>((resolve) => {
+        scanned = resolve
+      })
+      hub = createHub({
+        tabs,
+        port: () => port,
+        access,
+        snapshot: async (deliver) => {
+          await turn
+          deliver(SNAPSHOT)
+        },
+      })
+      const { received } = await hello(true)
+      await expect.poll(() => tabs.count).toBe(1)
+
+      hub.broadcastPatch(PATCH)
+      hub.broadcastBoard(MOVED, PATCH)
+      scanned()
+
+      await expect
+        .poll(() => received)
+        .toEqual([
+          { type: 'board', data: MOVED },
+          { type: 'board', data: SNAPSHOT },
+          { type: 'access', write: false, dispatch: false },
+        ])
+    })
+
+    it('sends a patch of its own to the joined tabs alone', async () => {
+      const joined = await hello(true)
+      const whole = await hello()
+      await expect.poll(() => types(joined.received)).toContain('access')
+      await expect.poll(() => types(whole.received)).toContain('access')
+
+      hub.broadcastPatch(PATCH)
+      hub.broadcast({ type: 'show', ref: 'studio/home/hero' })
+
+      await expect
+        .poll(() => types(joined.received).slice(2))
+        .toEqual(['patch', 'show'])
+      await expect.poll(() => types(whole.received).slice(2)).toEqual(['show'])
+    })
+
+    it('answers a resync with the board, and patches after it', async () => {
+      const { socket, received } = await hello(true)
+      await expect.poll(() => types(received)).toEqual(['board', 'access'])
+
+      socket.send(JSON.stringify({ type: 'resync' }))
+
+      await expect
+        .poll(() => received.slice(2))
+        .toEqual([{ type: 'board', data: SNAPSHOT }])
+      hub.broadcastBoard(MOVED, PATCH)
+      await expect
+        .poll(() => received.slice(3))
+        .toEqual([{ type: 'patch', data: PATCH }])
+    })
   })
 
   it.each([
@@ -498,7 +599,7 @@ describe('createHub', () => {
         tabs,
         port: () => inboxPort,
         access: { ...access, token: () => TOKEN },
-        snapshot: async () => SNAPSHOT,
+        snapshot: async (deliver) => deliver(SNAPSHOT),
         notes: async () => ({ 'studio/home': [] }),
         delivery,
         framePort: () => 47123,

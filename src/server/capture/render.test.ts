@@ -22,6 +22,15 @@ import {
 
 const FRAME = { ref: 'studio/home/hero', box: { width: 10, height: 10 } }
 
+/** Boxes that fill a frame and crop, each sized by what a moved root re-anchors. */
+const STAGES = {
+  inset: 'position:absolute;inset:0;overflow:hidden',
+  fixed: 'position:fixed;inset:0;overflow:hidden',
+  percentage:
+    'position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden',
+  clipped: 'position:absolute;inset:0;clip-path:inset(0)',
+}
+
 /** The alpha of a PNG's top left pixel, read by decoding it in a page. */
 async function cornerAlpha(browser: Browser, png: Buffer): Promise<number> {
   return (await pixelAt(browser, png, 0, 0))[3] ?? -1
@@ -241,6 +250,30 @@ describe.skipIf(shell === null)(
         'studio/home/badge.html':
           '<style>body{margin:0;background:red}</style>' +
           '<span style="display:block;width:60px;height:40px;border-radius:20px;background:blue"></span>',
+        // Element 7 is a blue box its red parent crops on the left.
+        'studio/home/past.html':
+          '<style>body{margin:0;background:red;overflow:hidden}div{position:absolute;background:rgb(0,0,255)}</style>' +
+          '<div style="left:-200px;top:-100px;width:80px;height:50px"></div>' +
+          '<div style="left:-20.3px;top:10px;width:60.7px;height:40px"></div>' +
+          '<div style="left:-10px;top:60px;width:40px;height:30px;overflow:hidden;background:red">' +
+          '<div style="left:-20px;top:0;width:50px;height:30px"></div></div>',
+        'studio/home/zoomed.html':
+          '<style>html{zoom:.5}body{margin:0}</style>' +
+          '<div style="position:absolute;left:-420px;top:-60px;width:40px;height:30px;background:rgb(0,0,255)"></div>',
+        // Element 4 hugs a child whose percentage height is auto, over a blue foot.
+        'studio/home/hugging.html':
+          '<!doctype html><style>body{margin:0}</style>' +
+          '<div style="position:absolute;left:-40px;top:10px;width:100px;overflow:hidden;background:red">' +
+          '<div style="height:20px;background:rgb(0,0,255)"></div><div style="height:100%"><div style="height:30px"></div></div>' +
+          '<div style="height:10px;background:rgb(0,0,255)"></div></div>',
+        // Element 4 is a stage filling the frame that crops element 5 at its left edge.
+        ...Object.fromEntries(
+          Object.entries(STAGES).map(([name, stage]) => [
+            `studio/home/${name}.html`,
+            `<!doctype html><style>body{margin:0}</style><div style="${stage}">` +
+              '<div style="position:absolute;left:-40px;top:20px;width:120px;height:60px;background:rgb(0,0,255)"></div></div>',
+          ]),
+        ),
         // The controls' column would draw blue right of the green photo.
         'studio/home/tuner.html':
           '<style>body{margin:0;background:#fff;display:flex}#photo{width:100px;height:100px;background:#0a0}.controls{width:100px;height:100px;background:#00f}</style>' +
@@ -794,6 +827,102 @@ describe.skipIf(shell === null)(
 
       expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([60, 40])
     })
+
+    it.each([
+      ['wholly past the top left', 'past', 4, [160, 100]],
+      ['crossing the left edge at a fractional place', 'past', 5, [120, 80]],
+      [
+        'past the top left of a page that zooms its root',
+        'zoomed',
+        4,
+        [40, 30],
+      ],
+      ['hugging a child of auto percentage height', 'hugging', 4, [200, 120]],
+    ])(
+      'shoots an element %s whole, to each corner',
+      async (_name, frame, element, [width = 0, height = 0]) => {
+        const render = createWarmRenderer({
+          baseUrl: () => host.url,
+          browser: createWarmBrowser(async () => requireShell(shell)),
+          scale: 2,
+        })
+
+        const bytes = await render(
+          {
+            ref: `studio/home/${frame}`,
+            box: { width: 200, height: 100 },
+            element,
+          },
+          'light',
+        )
+        const corners = await Promise.all(
+          [
+            [0, 0],
+            [width - 1, 0],
+            [0, height - 1],
+            [width - 1, height - 1],
+          ].map(([x = 0, y = 0]) => pixelAt(requireShell(shell), bytes, x, y)),
+        )
+
+        expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+          width,
+          height,
+        ])
+        expect(corners).toEqual(Array(4).fill([0, 0, 255, 255]))
+      },
+    )
+
+    it('keeps the crop of an ancestor over an element past the left edge', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/past',
+          box: { width: 200, height: 100 },
+          element: 7,
+        },
+        'light',
+      )
+
+      expect(bytes.readUInt32BE(16)).toBe(50)
+      expect(await pixelAt(requireShell(shell), bytes, 19, 15)).toEqual([
+        0, 0, 0, 0,
+      ])
+      expect(await pixelAt(requireShell(shell), bytes, 20, 15)).toEqual([
+        0, 0, 255, 255,
+      ])
+    })
+
+    it.each(Object.keys(STAGES))(
+      'keeps the crop of a %s stage filling the page',
+      async (stage) => {
+        const render = createWarmRenderer({
+          baseUrl: () => host.url,
+          browser: createWarmBrowser(async () => requireShell(shell)),
+          scale: 1,
+        })
+
+        const bytes = await render(
+          {
+            ref: `studio/home/${stage}`,
+            box: { width: 200, height: 100 },
+            element: 5,
+          },
+          'light',
+        )
+        const at = (x: number) => pixelAt(requireShell(shell), bytes, x, 30)
+
+        expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+          120, 60,
+        ])
+        expect(await at(39)).toEqual([0, 0, 0, 0])
+        expect(await at(40)).toEqual([0, 0, 255, 255])
+      },
+    )
 
     it('refuses an element index naming none as invalid-address', async () => {
       const render = createWarmRenderer({

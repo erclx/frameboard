@@ -12,6 +12,7 @@ import {
   whenSettled,
 } from '@/client/board/selection'
 import { createThemeStore, flipFrame } from '@/client/theme/store'
+import { patchBetween } from '@/shared/board-sync/patch'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import { connectLive, receiveLiveReload } from './socket'
@@ -332,6 +333,154 @@ describe('connectLive access', () => {
     })
 
     expect(Object.keys(unseen.getState().unseen)).toEqual(['studio/home/hero'])
+    stop()
+  })
+})
+
+describe('connectLive patches', () => {
+  beforeEach(() => {
+    FakeSocket.instances = []
+    vi.stubGlobal('WebSocket', FakeSocket)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  const home = (...names: string[]) =>
+    boardOf(pageOf(names.map((name) => frameOf(name))))
+  const RESYNC = JSON.stringify({ type: 'resync' })
+  /** Names a page the board in hand does not hold. */
+  const UNKNOWN = {
+    type: 'patch',
+    data: { root: '/board', projects: ['gone'] },
+  }
+
+  function connected() {
+    const store = createLiveStore()
+    const unseen = createUnseenStore(null)
+    const stop = connectLive(store, { unseen })
+    const socket = FakeSocket.instances.at(-1)
+    if (!socket) throw new Error('no socket')
+    socket.dispatchEvent(new Event('open'))
+    socket.receive({ type: 'board', data: home('hero') })
+    return { store, unseen, socket, stop }
+  }
+
+  const asked = (socket: FakeSocket) =>
+    socket.sent.filter((text) => text === RESYNC).length
+
+  it('asks for patches in its hello', () => {
+    const { socket, stop } = connected()
+
+    expect(JSON.parse(socket.sent[0] ?? '')).toMatchObject({
+      type: 'hello',
+      role: 'board',
+      patches: true,
+    })
+    stop()
+  })
+
+  it('applies a patch to the board it holds', () => {
+    const { store, socket, stop } = connected()
+
+    socket.receive({
+      type: 'patch',
+      data: patchBetween(home('hero'), home('hero', 'about')),
+    })
+
+    expect(store.getState().board).toEqual(home('hero', 'about'))
+    expect(asked(socket)).toBe(0)
+    stop()
+  })
+
+  it('takes a patch that changes nothing as a new board', () => {
+    const { store, socket, stop } = connected()
+    const before = store.getState().board
+
+    socket.receive({
+      type: 'patch',
+      data: patchBetween(home('hero'), home('hero')),
+    })
+
+    const { board } = store.getState()
+    expect(board).not.toBe(before)
+    expect(board?.projects).toBe(before?.projects)
+    stop()
+  })
+
+  it('drops the unseen mark of a frame a patch removes', () => {
+    const { unseen, socket, stop } = connected()
+    socket.receive({
+      type: 'changes',
+      changes: [
+        {
+          id: 'c1',
+          frame: 'studio/home/hero',
+          at: '2026-10-19T12:00:00.000Z',
+          hash: 'h1',
+          author: null,
+          elements: [],
+          removed: 0,
+          whole: true,
+          created: true,
+        },
+      ],
+    })
+
+    socket.receive({ type: 'patch', data: patchBetween(home('hero'), home()) })
+
+    expect(unseen.getState().unseen).toEqual({})
+    stop()
+  })
+
+  it('asks for the whole board when a patch does not apply, and keeps the one it holds', () => {
+    const { store, socket, stop } = connected()
+
+    socket.receive(UNKNOWN)
+
+    expect(asked(socket)).toBe(1)
+    expect(store.getState().board).toEqual(home('hero'))
+    stop()
+  })
+
+  it('takes no patch and asks no more until the whole board comes, then patches again', () => {
+    const { store, socket, stop } = connected()
+    socket.receive(UNKNOWN)
+
+    socket.receive(UNKNOWN)
+    socket.receive({
+      type: 'patch',
+      data: patchBetween(home('hero'), home('hero', 'late')),
+    })
+    expect(asked(socket)).toBe(1)
+    expect(store.getState().board).toEqual(home('hero'))
+
+    socket.receive({ type: 'board', data: home('hero', 'about') })
+    socket.receive({
+      type: 'patch',
+      data: patchBetween(home('hero', 'about'), home('about')),
+    })
+    expect(store.getState().board).toEqual(home('about'))
+    stop()
+  })
+
+  it('applies no patch to the board an earlier socket left', () => {
+    vi.useFakeTimers()
+    const { store, socket, stop } = connected()
+    socket.dispatchEvent(new Event('close'))
+    vi.runOnlyPendingTimers()
+    const again = FakeSocket.instances.at(-1)
+    again?.dispatchEvent(new Event('open'))
+
+    again?.receive({
+      type: 'patch',
+      data: patchBetween(home('hero'), home('hero', 'about')),
+    })
+
+    expect(again).not.toBe(socket)
+    expect(store.getState().board).toEqual(home('hero'))
     stop()
   })
 })
