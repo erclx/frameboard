@@ -44,7 +44,7 @@ const LINE = `${LINE_BOX} text-muted-foreground`
 const ALERT = `${LINE_BOX} text-destructive`
 const FOOT = 'mt-2.5 text-caption leading-[1.4] text-muted-foreground'
 const LINK =
-  'rounded-sm text-foreground underline underline-offset-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
+  'rounded-sm text-foreground underline underline-offset-2 outline-none focus-visible:ring-3 focus-visible:ring-ring'
 
 /** How many grey tiles hold the grid's shape while a search runs. */
 const PLACEHOLDERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
@@ -305,7 +305,7 @@ function placeable(project: string, path: string): PlaceableFile {
 }
 
 const MENU_TRIGGER =
-  'flex h-[26px] shrink-0 items-center gap-1 rounded-md bg-input px-2 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50'
+  'flex h-[26px] shrink-0 items-center gap-1 rounded-md bg-input px-2 outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring'
 
 /** Whether Find searches images or models. */
 function KindMenu({
