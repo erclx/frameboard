@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { applyPatch, patchBetween } from '@/shared/board-sync/patch'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type { ListResult } from '@/shared/records/list'
@@ -98,6 +99,26 @@ describe('receiveBoard', () => {
       after?.projects[0]?.pages[0]?.frames[1] ===
         before?.projects[0]?.pages[0]?.frames[1],
     ]).toEqual([false, true, true])
+  })
+
+  it('keeps every record a patch names by identity', () => {
+    const store = createLiveStore()
+    receiveBoard(store, boardWith('hero', 'about'))
+    const before = store.getState().board
+    if (!before) throw new Error('no board')
+    const next = boardWith('hero', 'about')
+    const moved = next.projects[0]?.pages[0]?.frames[0]
+    if (moved) moved.box = { ...moved.box, x: 40 }
+
+    const patched = applyPatch(before, patchBetween(before, next))
+    if (!patched) throw new Error('the patch does not apply')
+    receiveBoard(store, patched)
+
+    const after = store.getState().board
+    expect(after).toEqual(next)
+    expect(after?.projects[0]?.pages[0]?.frames[1]).toBe(
+      before.projects[0]?.pages[0]?.frames[1],
+    )
   })
 
   it('replaces a changed frame, its page, and its project, and keeps its sibling', () => {

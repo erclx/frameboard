@@ -1,6 +1,7 @@
 import { useStore } from 'zustand'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
+import { isEqual } from '@/shared/board-sync/patch'
 import {
   holdsRef,
   renameOnBoard,
@@ -295,22 +296,6 @@ function keepList<T>(
 
 function keepEqual<T>(held: T, next: T): T {
   return isEqual(held, next) ? held : next
-}
-
-/** Whether two JSON values match on every key, named in their types or not. */
-function isEqual(a: unknown, b: unknown): boolean {
-  if (a === b) return true
-  if (!isObject(a) || !isObject(b)) return false
-  if (Array.isArray(a) !== Array.isArray(b)) return false
-  const keys = Object.keys(a)
-  return (
-    keys.length === Object.keys(b).length &&
-    keys.every((key) => Object.hasOwn(b, key) && isEqual(a[key], b[key]))
-  )
-}
-
-function isObject(value: unknown): value is Readonly<Record<string, unknown>> {
-  return typeof value === 'object' && value !== null
 }
 
 /** Replaces one page's notes. */
