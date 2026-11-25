@@ -11,6 +11,7 @@ import { pointerPressOnLoad } from './canvas'
 import {
   actWhen,
   asWriter,
+  AT_END,
   AVATAR,
   both,
   chooseOnLoad,
@@ -22,6 +23,7 @@ import {
   pressOnLoad,
   readyWhen,
   ROW_FRAMES,
+  scrolledToEnd,
   SERVED_BOARD,
   STATE_ONLY,
   TAB_FRAMES,
@@ -883,6 +885,22 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
       setup: themed(both(asWriter, themeTab)),
+    },
+    {
+      // Its last token row at the panel's foot, under the same header and tabs.
+      section: 'theme-tab-scrolled',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          themeTab,
+          scrolledToEnd('Pages and layers'),
+          readyWhen(`[${AT_END}] section[aria-labelledby^="tokens-"] li`),
+        ),
+      ),
     },
     {
       // A board sheet outside the board folder at a long path, which wraps inside the note.
