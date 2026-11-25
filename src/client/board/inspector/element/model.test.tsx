@@ -12,7 +12,7 @@ import { BRIDGE } from '@/test/frame-bridge'
 import { request } from '../../bridge/channel'
 import { useLiveModel } from '../../element/model'
 import type { ElementKey } from '../../selection'
-import { ModelSection } from './model'
+import { CameraSection } from './model'
 
 const UNSTAGED: ModelReading['staged'] = {
   'camera-orbit': null,
@@ -49,8 +49,13 @@ function renderSection(
   const writes: ModelStage[][] = []
   render(
     <TooltipProvider>
-      <ModelSection
-        model={{ reading, stage: (changes) => staged.push([...changes]) }}
+      <CameraSection
+        model={{
+          reading,
+          stage: (changes) => staged.push([...changes]),
+          preview: () => {},
+          hold: () => Promise.resolve([]),
+        }}
         disabled={disabled}
         write={(changes) => {
           writes.push([...changes])
@@ -68,32 +73,25 @@ async function typeInto(name: string, value: string) {
   await userEvent.type(field, `${value}{Enter}`)
 }
 
-describe('ModelSection', () => {
-  it("names the model's file and shows what the viewer states", () => {
+describe('CameraSection', () => {
+  it('shows what the viewer states', () => {
     renderSection(
       readingOf({
         staged: {
           ...UNSTAGED,
           'camera-orbit': '-40deg 60deg auto',
-          orientation: '10deg 20deg 30deg',
-          scale: '2 2 2',
           'animation-name': 'Run',
           autoplay: '',
         },
       }),
     )
 
-    expect(screen.getByText('phone.glb')).toBeVisible()
     expect(screen.getByRole('textbox', { name: 'Camera around' })).toHaveValue(
       '-40°',
     )
     expect(screen.getByRole('textbox', { name: 'Camera height' })).toHaveValue(
       '60°',
     )
-    expect(screen.getByRole('textbox', { name: 'Rotation X' })).toHaveValue(
-      '20°',
-    )
-    expect(screen.getByRole('textbox', { name: 'Scale' })).toHaveValue('2')
     expect(screen.getByRole('button', { name: 'Clip' })).toHaveTextContent(
       'Run',
     )
@@ -147,29 +145,6 @@ describe('ModelSection', () => {
     ])
   })
 
-  it.each([
-    ['Rotation X', '20', { name: 'orientation', value: '0deg 20deg 0deg' }],
-    ['Rotation Y', '-30', { name: 'orientation', value: '0deg 0deg -30deg' }],
-    ['Rotation Z', '45', { name: 'orientation', value: '45deg 0deg 0deg' }],
-    ['Scale', '2', { name: 'scale', value: '2 2 2' }],
-  ])('writes %s as its attribute', async (name, value, stage) => {
-    const { writes } = renderSection(readingOf())
-
-    await typeInto(name, value)
-
-    expect(writes).toEqual([[stage]])
-  })
-
-  it('drops the scale from the file at 1', async () => {
-    const { writes } = renderSection(
-      readingOf({ staged: { ...UNSTAGED, scale: '2 2 2' } }),
-    )
-
-    await typeInto('Scale', '1')
-
-    expect(writes).toEqual([[{ name: 'scale', value: null }]])
-  })
-
   it('writes nothing for a value left where it was', async () => {
     const { writes } = renderSection(readingOf())
 
@@ -180,14 +155,19 @@ describe('ModelSection', () => {
 
   it('puts back what the viewer stated when a write is refused', async () => {
     const { staged } = renderSection(
-      readingOf({ staged: { ...UNSTAGED, scale: '2 2 2' } }),
+      readingOf({
+        staged: { ...UNSTAGED, 'camera-orbit': '9deg 75deg 6m' },
+      }),
       { written: false },
     )
 
-    await typeInto('Scale', '3')
+    await typeInto('Camera around', '30')
 
     await waitFor(() =>
-      expect(staged.at(-1)).toEqual([{ name: 'scale', value: '2 2 2' }]),
+      expect(staged.at(-1)).toEqual([
+        { name: 'camera-orbit', value: '9deg 75deg 6m' },
+        { name: 'max-camera-orbit', value: null },
+      ]),
     )
   })
 
@@ -239,7 +219,7 @@ describe('ModelSection', () => {
   })
 })
 
-describe('ModelSection over a live frame', () => {
+describe('CameraSection over a live frame', () => {
   const FRAME = 'studio/home/hero'
   const HASH = 'a'.repeat(64)
   /** The viewer's index, after html, head, and body, the injected style skipped. */
@@ -272,7 +252,7 @@ describe('ModelSection over a live frame', () => {
     const model = useLiveModel(VIEWER)
     return model ? (
       <TooltipProvider>
-        <ModelSection
+        <CameraSection
           model={model}
           disabled={false}
           write={(changes) => {
@@ -288,20 +268,25 @@ describe('ModelSection over a live frame', () => {
     const iframe = await mountFrame()
     const write = vi.fn()
     render(<Section write={write} />)
-    await screen.findByRole('textbox', { name: 'Scale' })
+    await screen.findByRole('textbox', { name: 'Camera around' })
 
-    await typeInto('Scale', '2')
+    await typeInto('Camera around', '30')
 
     await waitFor(() =>
       expect(
         iframe.contentDocument
           ?.querySelector('model-viewer')
-          ?.getAttribute('scale'),
-      ).toBe('2 2 2'),
+          ?.getAttribute('camera-orbit'),
+      ).toBe('30deg 75deg auto'),
     )
     await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Scale' })).toHaveValue('2'),
+      expect(
+        screen.getByRole('textbox', { name: 'Camera around' }),
+      ).toHaveValue('30°'),
     )
-    expect(write).toHaveBeenCalledWith([{ name: 'scale', value: '2 2 2' }])
+    expect(write).toHaveBeenCalledWith([
+      { name: 'camera-orbit', value: '30deg 75deg auto' },
+      { name: 'max-camera-orbit', value: 'auto auto auto' },
+    ])
   })
 })

@@ -1,6 +1,8 @@
 import {
+  type Axes,
   type ModelReading,
   type ModelStage,
+  type ModelTransform,
   stagedTerms,
 } from '@/shared/frame-bridge/model'
 
@@ -11,11 +13,7 @@ export interface Angle {
 }
 
 /** A model's own rotation about each axis, in degrees. */
-export interface Turn {
-  x: number
-  y: number
-  z: number
-}
+export type Turn = Axes
 
 /** The orbit a viewer takes with none stated, from its `DEFAULT_CAMERA_ORBIT`. */
 const DEFAULT_ANGLE: Angle = { theta: 0, phi: 75 }
@@ -73,25 +71,57 @@ export function turnStage({ x, y, z }: Turn): ModelStage {
   }
 }
 
-/** A stated `scale` as one number, 1 for none and null for axes that differ. */
-export function scaleOf(scale: string | null): number | null {
+/** The smallest size an axis takes, since a viewer draws nothing at zero and turns a negative one inside out. */
+export const SCALE_MIN = 0.01
+
+/** A value at four decimals, past what a field shows and short of a drag's float noise. */
+const rounded = (value: number) => Number(value.toFixed(4))
+
+/** A stated `scale` per axis, one term naming every axis and a missing one taking the first. */
+export function scaleOf(scale: string | null): Axes {
   const [x = 1, y = x, z = x] = stagedTerms(scale).map(Number)
-  return x === y && y === z && Number.isFinite(x) ? x : null
+  return [x, y, z].every(Number.isFinite) ? { x, y, z } : { x: 1, y: 1, z: 1 }
 }
 
-export function scaleStage(scale: number): ModelStage {
-  return {
-    name: 'scale',
-    value: scale === 1 ? null : `${scale} ${scale} ${scale}`,
-  }
+/** Whether a scale is the same on every axis. */
+export function isEven({ x, y, z }: Axes): boolean {
+  return x === y && y === z
 }
 
-/** The file a viewer's `src` names, as the section's header shows it. */
-export function fileName(src: string): string {
-  const last = src.split(/[?#]/)[0]?.split('/').at(-1) ?? ''
-  try {
-    return decodeURIComponent(last)
-  } catch {
-    return last
-  }
+/**
+ * A scale with one axis at `value`, held at the smallest size, a linked one
+ * carrying the other axes by the same ratio.
+ */
+export function scaledTo(
+  from: Axes,
+  axis: keyof Axes,
+  value: number,
+  linked: boolean,
+): Axes {
+  const held = Math.max(SCALE_MIN, value)
+  if (!linked) return { ...from, [axis]: rounded(held) }
+  const { x, y, z } = from
+  // An axis at zero has no ratio to carry the others by.
+  if (from[axis] === 0) return { x: held, y: held, z: held }
+  const least = Math.min(...[x, y, z].map(Math.abs).filter((size) => size > 0))
+  const ratio = Math.max(Math.abs(held / from[axis]), SCALE_MIN / least)
+  return { x: rounded(x * ratio), y: rounded(y * ratio), z: rounded(z * ratio) }
+}
+
+/**
+ * How many meters nearer than its center a model stands: zero for a target
+ * left to the viewer, and null for one stated as no length this reads.
+ */
+export function depthOf({ staged, bounds }: ModelReading): number | null {
+  const term = stagedTerms(staged['camera-target'])[2] ?? 'auto'
+  if (term === 'auto') return 0
+  const read = /^(-?\d*\.?\d+)(m|cm|mm)?$/.exec(term)
+  if (!read?.[1] || !bounds) return null
+  const per = read[2] === 'cm' ? 0.01 : read[2] === 'mm' ? 0.001 : 1
+  return rounded(bounds.center.z - Number(read[1]) * per)
+}
+
+/** The size and depth a reading shows, the depth null where it has none to count from. */
+export function transformOf(reading: ModelReading): ModelTransform {
+  return { scale: scaleOf(reading.staged.scale), depth: depthOf(reading) }
 }

@@ -24,6 +24,98 @@ interface PositionSectionProps {
   hugs?: boolean
 }
 
+interface PlacementSwitchProps {
+  placement: Placement
+  disabled: boolean
+  place: PositionSectionProps['place']
+  hugs?: boolean
+}
+
+/** The In flow and Absolute switch, which places an element where it renders or puts it back. */
+export function PlacementSwitch({
+  placement,
+  disabled,
+  place,
+  hugs = false,
+}: PlacementSwitchProps) {
+  const { free } = placement
+  const choose = (next: boolean) => {
+    if (next === free) return
+    void place(next ? freeSpot(placement, hugs) : null)
+  }
+  const options = [
+    { label: 'In flow', on: !free, value: false },
+    { label: 'Absolute', on: free, value: true },
+  ]
+  return (
+    <div
+      role="group"
+      aria-label="Placement"
+      className="flex gap-0.5 rounded-md bg-input p-0.5"
+    >
+      {options.map(({ label, on, value }) => {
+        const button = (
+          <button
+            key={label}
+            type="button"
+            aria-pressed={on}
+            disabled={disabled}
+            onClick={() => choose(value)}
+            className={cn(
+              'flex h-5 items-center rounded-[5px] px-2 text-[11px] font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50',
+              on && 'bg-sidebar text-foreground shadow-xs',
+            )}
+          >
+            {label}
+          </button>
+        )
+        return value ? (
+          <ActionTooltip key={label} label={FREE_TIP} side="bottom">
+            {button}
+          </ActionTooltip>
+        ) : (
+          button
+        )
+      })}
+    </div>
+  )
+}
+
+interface OffsetFieldProps {
+  side: 'left' | 'top'
+  placement: Placement
+  disabled: boolean
+  write: WriteElement
+  preview?: PreviewStyle
+}
+
+/** A placed element's `left` as X or `top` as Y. */
+export function OffsetField({
+  side,
+  placement,
+  disabled,
+  write,
+  preview,
+}: OffsetFieldProps) {
+  const letter = side === 'left' ? 'X' : 'Y'
+  return (
+    <NumberField
+      prefix={letter}
+      label={`${letter} position in its parent`}
+      value={placement[side]}
+      format={WHOLE}
+      disabled={disabled}
+      {...styleNumber(
+        side,
+        placement[side],
+        (value) => `${value}px`,
+        write,
+        preview,
+      )}
+    />
+  )
+}
+
 /**
  * The Position section. Absolute places the element where it renders, at its
  * rendered size unless it holds text alone, which hugs its words from where
@@ -37,15 +129,7 @@ export function PositionSection({
   place,
   hugs = false,
 }: PositionSectionProps) {
-  const { free, left, top } = placement
-  const choose = (next: boolean) => {
-    if (next === free) return
-    void place(next ? freeSpot(placement, hugs) : null)
-  }
-  const options = [
-    { label: 'In flow', on: !free, value: false },
-    { label: 'Absolute', on: free, value: true },
-  ]
+  const { free } = placement
   return (
     <section
       aria-labelledby="inspector-position"
@@ -60,66 +144,28 @@ export function PositionSection({
         <h2 id="inspector-position" className="text-xs font-semibold">
           Position
         </h2>
-        <div
-          role="group"
-          aria-label="Placement"
-          className="flex gap-0.5 rounded-md bg-input p-0.5"
-        >
-          {options.map(({ label, on, value }) => {
-            const button = (
-              <button
-                key={label}
-                type="button"
-                aria-pressed={on}
-                disabled={disabled}
-                onClick={() => choose(value)}
-                className={cn(
-                  'flex h-5 items-center rounded-[5px] px-2 text-[11px] font-medium text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50',
-                  on && 'bg-sidebar text-foreground shadow-xs',
-                )}
-              >
-                {label}
-              </button>
-            )
-            return value ? (
-              <ActionTooltip key={label} label={FREE_TIP} side="bottom">
-                {button}
-              </ActionTooltip>
-            ) : (
-              button
-            )
-          })}
-        </div>
+        <PlacementSwitch
+          placement={placement}
+          disabled={disabled}
+          place={place}
+          hugs={hugs}
+        />
       </div>
       {free ? (
         <div className="grid grid-cols-2 gap-1.5">
-          <NumberField
-            prefix="X"
-            label="X position in its parent"
-            value={left}
-            format={WHOLE}
+          <OffsetField
+            side="left"
+            placement={placement}
             disabled={disabled}
-            {...styleNumber(
-              'left',
-              left,
-              (value) => `${value}px`,
-              write,
-              preview,
-            )}
+            write={write}
+            preview={preview}
           />
-          <NumberField
-            prefix="Y"
-            label="Y position in its parent"
-            value={top}
-            format={WHOLE}
+          <OffsetField
+            side="top"
+            placement={placement}
             disabled={disabled}
-            {...styleNumber(
-              'top',
-              top,
-              (value) => `${value}px`,
-              write,
-              preview,
-            )}
+            write={write}
+            preview={preview}
           />
         </div>
       ) : null}

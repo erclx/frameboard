@@ -4,10 +4,11 @@ import type { ModelReading } from '@/shared/frame-bridge/model'
 
 import {
   angleOf,
-  fileName,
+  depthOf,
+  isEven,
   orbitStages,
+  scaledTo,
   scaleOf,
-  scaleStage,
   turnOf,
   turnStage,
 } from './model-staging'
@@ -131,31 +132,78 @@ describe('turnStage', () => {
 })
 
 describe('scaleOf', () => {
-  it('reads one number for a scale even on every axis', () => {
-    expect(scaleOf('2 2 2')).toBe(2)
-  })
-
-  it('reads no scale as 1', () => {
-    expect(scaleOf(null)).toBe(1)
-  })
-
-  it('reads null for axes that differ', () => {
-    expect(scaleOf('1 2 1')).toBeNull()
+  it.each([
+    [null, { x: 1, y: 1, z: 1 }],
+    ['2', { x: 2, y: 2, z: 2 }],
+    ['2 3', { x: 2, y: 3, z: 2 }],
+    ['1 2 3', { x: 1, y: 2, z: 3 }],
+    ['big', { x: 1, y: 1, z: 1 }],
+  ])('reads %j per axis', (stated, axes) => {
+    expect(scaleOf(stated)).toEqual(axes)
   })
 })
 
-describe('scaleStage', () => {
-  it('states the number on every axis', () => {
-    expect(scaleStage(1.5)).toEqual({ name: 'scale', value: '1.5 1.5 1.5' })
+describe('scaledTo', () => {
+  it('sizes one axis alone while unlinked', () => {
+    expect(scaledTo({ x: 1, y: 2, z: 3 }, 'y', 5, false)).toEqual({
+      x: 1,
+      y: 5,
+      z: 3,
+    })
   })
 
-  it('drops the attribute at 1', () => {
-    expect(scaleStage(1)).toEqual({ name: 'scale', value: null })
+  it("keeps the axes' ratio while linked", () => {
+    expect(scaledTo({ x: 1, y: 2, z: 3 }, 'y', 3, true)).toEqual({
+      x: 1.5,
+      y: 3,
+      z: 4.5,
+    })
+  })
+
+  it.each([0, -2])('holds a size of %d at the smallest', (value) => {
+    expect(scaledTo({ x: 1, y: 2, z: 3 }, 'x', value, false).x).toBe(0.01)
+  })
+
+  it('holds a linked size where its least axis is at the smallest, the ratio kept', () => {
+    expect(scaledTo({ x: 1, y: 2, z: 3 }, 'z', 0, true)).toEqual({
+      x: 0.01,
+      y: 0.02,
+      z: 0.03,
+    })
+  })
+
+  it('evens every axis stepped from a size of zero while linked', () => {
+    expect(scaledTo({ x: 0, y: 1, z: 1 }, 'x', 2, true)).toEqual({
+      x: 2,
+      y: 2,
+      z: 2,
+    })
   })
 })
 
-describe('fileName', () => {
-  it('reads the last segment of a link, decoded, with no query', () => {
-    expect(fileName('../assets/models/my%20phone.glb?v=2')).toBe('my phone.glb')
+describe('isEven', () => {
+  it('tells a scale apart on one axis', () => {
+    expect(isEven({ x: 1, y: 1, z: 2 })).toBe(false)
+    expect(isEven({ x: 2, y: 2, z: 2 })).toBe(true)
+  })
+})
+
+describe('depthOf', () => {
+  const far = { center: { x: 0, y: 0, z: 5 }, size: { x: 1, y: 1, z: 1 } }
+
+  it('reads zero for a model whose center is far from its origin, until a target is stated', () => {
+    expect(depthOf(reading({ bounds: far }))).toBe(0)
+  })
+
+  it.each([
+    ['0m 0m 4m', 1],
+    ['auto auto 450cm', 0.5],
+    ['auto auto 5200mm', -0.2],
+    ['auto 1m auto', 0],
+    ['auto auto calc(1m + 1m)', null],
+  ])('reads %j from the center', (stated, depth) => {
+    const staged = { ...UNSTAGED, 'camera-target': stated }
+
+    expect(depthOf(reading({ bounds: far, staged }))).toBe(depth)
   })
 })

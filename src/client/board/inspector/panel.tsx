@@ -16,11 +16,11 @@ import { AvatarMenu } from '../chrome/avatar-menu'
 import { ZoomControl } from '../chrome/zoom-control'
 import { ClaimAvatars } from '../claims/avatars'
 import { useLiveMedia } from '../element/media'
-import { useLiveModel, writeStaged } from '../element/model'
+import { useLiveModel, type WriteStaged, writeStaged } from '../element/model'
 import { type TreeEntry, useElementTree } from '../element/tree'
 import { usePendingFrames } from '../geometry/write'
 import { useMode } from '../mode'
-import { placeFree } from '../place/write'
+import { type FreeSpot, placeFree } from '../place/write'
 import { previewStepOn, stopPreview } from '../present/preview'
 import { type ElementKey, useSelection } from '../selection'
 import { choosePreset, usePreset } from '../structure/tool'
@@ -29,7 +29,7 @@ import { ArrangeSection } from './arrange-section'
 import { AppearanceSection } from './element/appearance'
 import { FillSection } from './element/fill'
 import { LayoutSection } from './element/layout'
-import { ModelSection } from './element/model'
+import { CameraSection } from './element/model'
 import { PositionSection } from './element/position'
 import { SeveralElements } from './element/several'
 import { ShadowSection } from './element/shadow'
@@ -44,6 +44,7 @@ import {
   useLiveElement,
 } from './element/styles'
 import { TextSection } from './element/text'
+import { TransformSection } from './element/transform'
 import { TypographySection } from './element/typography'
 import { VideoSection } from './element/video'
 import { type ElementChange, shownHash, writeElement } from './element/write'
@@ -330,6 +331,10 @@ function ElementDesign({ page, element }: ElementProps) {
   const write = (change: ElementChange) => writeElement(page, element, change)
   const preview = (property: string, value: string | null) =>
     previewStyle(element, property, value)
+  const writeModel: WriteStaged = (changes) =>
+    writeStaged(page, element, changes)
+  const place = (spot: FreeSpot | null) =>
+    placeFree(page, element, spot, { inline: live.placement.inline })
   const own = styles?.element
   return (
     <>
@@ -343,22 +348,29 @@ function ElementDesign({ page, element }: ElementProps) {
         />
       ) : null}
       {model ? (
-        <ModelSection
-          model={model}
+        <>
+          <TransformSection
+            element={element}
+            model={model}
+            placement={live.placement}
+            disabled={disabled}
+            write={write}
+            writeStaged={writeModel}
+            preview={preview}
+            place={place}
+          />
+          <CameraSection model={model} disabled={disabled} write={writeModel} />
+        </>
+      ) : (
+        <PositionSection
+          placement={live.placement}
           disabled={disabled}
-          write={(changes) => writeStaged(page, element, changes)}
+          write={write}
+          preview={preview}
+          place={place}
+          hugs={own?.flow !== undefined && own.flow.size.width !== 'fixed'}
         />
-      ) : null}
-      <PositionSection
-        placement={live.placement}
-        disabled={disabled}
-        write={write}
-        preview={preview}
-        place={(spot) =>
-          placeFree(page, element, spot, { inline: live.placement.inline })
-        }
-        hugs={own?.flow !== undefined && own.flow.size.width !== 'fixed'}
-      />
+      )}
       <LayoutSection
         layout={live.layout}
         flow={own?.flow}
