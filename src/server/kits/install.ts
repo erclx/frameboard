@@ -17,10 +17,9 @@ type InstallOptions =
   | { journal?: undefined; replace?: boolean }
 
 /**
- * Adds a kit to a project as a copy of its folder under `assets/kits/`, so
- * a frame can name it, touching no token sheet and no page. Refuses
- * `name-taken` where the project holds a kit by that name, writing nothing,
- * or under `replace` swaps that kit for the copy under the name it is held by.
+ * Copies a kit's folder into a project's `assets/kits/`, touching no token
+ * sheet and no page. Over a kit the project holds, refuses `name-taken` or,
+ * under `replace`, swaps in the copy under the name it is held by.
  */
 export async function installKit(
   root: string,
