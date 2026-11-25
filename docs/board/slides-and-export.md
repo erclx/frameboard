@@ -11,7 +11,21 @@ The Slides and Export tabs, and the Motion section a moving frame adds.
 
 - The inspector's Slides tab picks the page's transition from a grid of tiles, with a direction for Slide and Push and a duration under it, and a frame's This slide grid sets its own
 - Hovering a tile plays it on the selected slides, and a click saves it. Transitions under `assets/transitions/` follow the built-ins, by file name.
-- An element's Slides tab sets the step it appears on, its effect from the same tiles, and its start as On press, With last, or After last
+
+### Steps
+
+A step is an element that waits for a press. Select one and the Slides tab's Present section sets the step it appears on, its effect from the same tiles, and its start as On press, With last, or After last.
+
+- Duration sets how long the entrance runs, from 100 to 5000 ms, and Delay how long it waits first, up to 10 seconds. Appear runs no entrance, so it holds Duration off.
+- Play as it appears starts a video's or a 3D model's clip with its step, in the audience's window alone, and a step back rests it at its start
+- The Steps list at the top of the tab shows the selected slide's steps in playing order, with a line between presses. A click on a row selects its element and its play button previews the entrance.
+- Dragging a row renumbers every step from 1 in one undo step, and typing a step number moves one without a drag
+- With reduced motion set, every step appears at once and a model's clip stays still
+
+### Presenting
+
+The Present button in the toolbar plays the open page as slides.
+
 - While presenting, the arrows reveal a slide's steps in order before moving on, and the bar shows a dot per step, or the count past six
 - G while presenting, or the bar's grid button, shows every slide, the one on stage badged Now and the arrows' place ringed. Enter, a click, or a typed number and Enter jumps to that slide's first step.
 - Alt+Shift+P or the bar's Presenter view button opens a second window with the slide now, the next one, the note, a timer, and the clock, and F then takes the audience full screen

@@ -11,8 +11,13 @@ The commands that set how a page plays as slides.
 
 - `--ms` sets the length from 100 to 5000, and `--direction left`, `right`, `up`, or `down` applies to `slide` and `push` alone
 - Both write `layout.json` and never a frame's file
-- An element marked `data-step="2"` appears on the second press while presenting, with `data-step-effect` of `appear`, `fade`, `fly`, `wipe`, or `zoom`, and `frameboard edit --attr` writes each
+
+A step is an element a press reveals, marked by attributes in the frame's file that `frameboard edit --attr` writes.
+
+- An element marked `data-step="2"` appears on the second press while presenting, with `data-step-effect` of `appear`, `fade`, `fly`, `wipe`, or `zoom`
 - `data-step-start` of `with` shows a step alongside the one before it and `after` right behind it, and everywhere but present mode every step shows
+- `data-step-duration` sets an entrance's length from 100 to 5000 ms and `data-step-delay` its wait from 0 to 10000 ms, each a whole number
+- `data-step-play` on a `video` or `model-viewer` step starts its clip as the step appears to the audience. The clip rests while the step is hidden, and nowhere else plays it.
 
 `frame speaker-notes <frame-ref> "<text>"` sets what the presenter means to say over a slide, kept in `layout.json` and never in the frame's file. Run it with no text to print the note, or with `--clear` to remove it. A note is plain text up to 10,000 characters with its line breaks kept, and a longer one is refused rather than cut.
 
