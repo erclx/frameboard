@@ -9,9 +9,16 @@ export type LeftTab = 'design' | 'theme' | 'assets'
  */
 export const leftTabStore = createStore<{
   tab: LeftTab
-  /** The identity of the project the panel last showed, which a rename keeps, null before it first mounts. */
+  /** The project the panel last showed, null before it first mounts. */
   project: string | null
 }>()(() => ({
   tab: 'design',
   project: null,
 }))
+
+/** Follows a rename of the project the panel last showed, so it keeps its tab. */
+export function renameLeftTab(before: string, after: string): void {
+  if (leftTabStore.getState().project === before) {
+    leftTabStore.setState({ project: after })
+  }
+}

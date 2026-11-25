@@ -1,4 +1,5 @@
 import { liveIframe, stampRenderedAt } from '@/client/board/frame-dom'
+import { renameLeftTab } from '@/client/board/left-panel/tab-store'
 import {
   awaitingHash,
   forgetLiveHashes,
@@ -155,8 +156,9 @@ export function connectLive(
         receiveLiveReload(store, message.refs, message.hashes)
       } else if (message.type === 'renamed') {
         const { before, after } = message
-        // A page or frame ref names no pin, so its rename moves none.
+        // A page or frame ref names no pin and no panel, so its rename moves neither.
         movePin(before, after)
+        renameLeftTab(before, after)
         const { board } = store.getState()
         // Moved first, since the renamed board prunes a selection it no longer holds.
         if (board && takesRename(board, before, after)) {

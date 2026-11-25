@@ -98,8 +98,8 @@ const HOSTNAME = '127.0.0.1'
 const OWN_GRACE_MS = 1000
 
 /**
- * How long a folder the board's own rename moved keeps its unchanged frames
- * from reloading, well past the watcher reporting the move under load.
+ * How long a folder a rename moved keeps its unchanged frames from reloading,
+ * well past the watcher reporting the move under load.
  */
 const MOVED_MS = 10_000
 
@@ -773,9 +773,9 @@ async function pushBatch(
     hug: Hug
     /** Broadcasts the changes `own` has not withdrawn once the grace passes. */
     settleLater: (held: FrameChange[]) => void
-    /** The folders the board's own renames recently moved, whose unchanged frames keep their page. */
+    /** The folders renames recently moved, whose unchanged frames keep their page. */
     moved: () => readonly MovedFolder[]
-    /** The board the tabs last received, replaced by this batch's. */
+    /** The board the tabs last received, replaced by this batch's unless a rename overtook it. */
     shown: { board: ListResult | null }
     scanned: ScannedBoard
   },

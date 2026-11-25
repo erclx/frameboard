@@ -277,7 +277,7 @@ function reloadCauses(
   return { refs, everyFrame, media }
 }
 
-/** A project or page folder the board's own rename moved from `from` to `path`, at `at` in epoch milliseconds. */
+/** A project or page folder a rename moved from `from` to `path`, at `at` in epoch milliseconds. */
 export interface MovedFolder {
   from: string
   path: string

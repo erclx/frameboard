@@ -18,7 +18,6 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/client/components/ui/tabs'
-import { identityOf, useLive } from '@/client/live/store'
 import type { Structure } from '@/client/live/structure'
 import type { ProjectRecord } from '@/shared/records/list'
 
@@ -116,16 +115,15 @@ export function LeftPanel({
       leftTabStore.setState({ tab: next })
     }
   }
-  const identity = useLive((state) => identityOf(state.aliases, project.name))
   // A reset in a mount effect's cleanup would undo the palette's tab under StrictMode's remount.
   useEffect(() => {
     const { project: shown } = leftTabStore.getState()
-    if (shown === identity) return
+    if (shown === project.name) return
     leftTabStore.setState({
-      project: identity,
+      project: project.name,
       ...(shown === null ? {} : { tab: 'design' }),
     })
-  }, [identity])
+  }, [project.name])
   const splitShown = !finding && tab === 'design'
   const counted = useRef({ project: project.name, pages: project.pages.length })
   useEffect(() => {

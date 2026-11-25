@@ -36,7 +36,7 @@ import { clear, selectElement, selectionStore } from '../selection'
 import { stopFrameRename } from '../structure/actions'
 import { attachCanvas, canvasView } from '../view'
 import { LeftPanel } from './panel'
-import { leftTabStore } from './tab-store'
+import { leftTabStore, renameLeftTab } from './tab-store'
 
 function frame(name: string, extra: Partial<FrameRecord> = {}): FrameRecord {
   return {
@@ -288,20 +288,40 @@ describe('LeftPanel', () => {
     )
   })
 
-  it('keeps its tab through a rename of its project', async () => {
-    const studio = project([page('home')])
-    receiveBoard(liveStore, { root: '/board', projects: [studio] })
-    renderPanel(studio, 'home', <p>the files</p>)
-    await userEvent.click(screen.getByRole('tab', { name: 'Assets' }))
-    cleanup()
+  describe('after a rename of its project', () => {
+    /** Opens studio's Assets tab, then hears studio renamed to atelier. */
+    async function renamed(): Promise<ProjectRecord> {
+      const studio = project([page('home')])
+      receiveBoard(liveStore, { root: '/board', projects: [studio] })
+      renderPanel(studio, 'home', <p>the files</p>)
+      await userEvent.click(screen.getByRole('tab', { name: 'Assets' }))
+      cleanup()
+      renameLeftTab('studio', 'atelier')
+      receiveRename(liveStore, 'studio', 'atelier')
+      return studio
+    }
 
-    receiveRename(liveStore, 'studio', 'atelier')
-    renderPanel({ ...studio, name: 'atelier' }, 'home', <p>the files</p>)
+    it('keeps its tab', async () => {
+      const studio = await renamed()
 
-    expect(screen.getByRole('tab', { name: 'Assets' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    )
+      renderPanel({ ...studio, name: 'atelier' }, 'home', <p>the files</p>)
+
+      expect(screen.getByRole('tab', { name: 'Assets' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+    })
+
+    it('opens a new project under the old name on Design', async () => {
+      const studio = await renamed()
+
+      renderPanel(studio, 'home', <p>the files</p>)
+
+      expect(screen.getByRole('tab', { name: 'Design' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+    })
   })
 
   it("lists the page's frames, a hidden one marked so", () => {
