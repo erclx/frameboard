@@ -36,6 +36,7 @@ import { contentHash } from './edit/address'
 import { startFrameOrigin } from './frame-origin/listener'
 import { History } from './history/stack'
 import { emptyTrash } from './history/trash'
+import { type BoardFeed, createBoardFeed } from './live/feed'
 import {
   type BoardFindings,
   createBoardFindings,
@@ -354,11 +355,7 @@ async function listen({
           ]
         }
         const from = side === 'after' ? 'before' : 'after'
-        hub.broadcast({
-          type: 'renamed',
-          before: step.renamed[from],
-          after: step.renamed[side],
-        })
+        feed.rename(step.renamed[from], step.renamed[side])
       }
       void inTurn(() => tracker.own(step))
     },
@@ -376,10 +373,11 @@ async function listen({
     port: boundPort,
     framePort: () => frameOrigin.port,
     access,
-    snapshot: () =>
+    snapshot: (deliver) =>
       inTurn(async () => {
-        shown.board = await scanBoard(root)
-        return shown.board
+        const board = await scanBoard(root)
+        shown.board = board
+        feed.join(board, deliver)
       }),
     findings: () => inTurn(async () => findings.all()),
     notes: () => inTurn(() => boardView(root)),
@@ -391,6 +389,7 @@ async function listen({
     dispatch: dispatcher !== undefined,
     editButton,
   })
+  const feed = createBoardFeed(hub)
   const claims = createClaimsPush(root, {
     broadcast: (list) => hub.broadcast({ type: 'claims', claims: list }),
     inTurn,
@@ -620,7 +619,7 @@ async function listen({
             scanned.unmeasured,
           )
           scanned.board = latest
-          hub.broadcast({ type: 'board', data: latest })
+          feed.push(latest)
           shown.board = latest
           const changed = await recheck(latest, stale)
           if (Object.keys(changed).length > 0) {
@@ -644,6 +643,7 @@ async function listen({
     void inTurn(() =>
       pushBatch(root, tokens ?? null, rest, {
         hub,
+        feed,
         recheck,
         rendered,
         delivery,
@@ -736,6 +736,7 @@ async function pushBatch(
   paths: string[],
   {
     hub,
+    feed,
     recheck,
     rendered,
     delivery,
@@ -749,6 +750,7 @@ async function pushBatch(
     scanned,
   }: {
     hub: LiveHub
+    feed: BoardFeed
     recheck: Recheck
     rendered: RenderedFindings
     delivery: Delivery
@@ -810,7 +812,7 @@ async function pushBatch(
     // A board folder mid-removal does not scan, and the next batch catches up.
     return
   }
-  hub.broadcast({ type: 'board', data: board })
+  feed.push(board)
   const last = shown.board
   shown.board = board
   const refs = [
@@ -846,7 +848,10 @@ async function pushBatch(
   }
   const held = await tracker.update(board, paths, await claims.read())
   if (held.length > 0) settleLater(held)
-  const due = recheckRefs(root, paths, board, tokens)
+  // A kit set in `layout.json` moves what its frame's checks read.
+  const due = [
+    ...new Set([...recheckRefs(root, paths, board, tokens), ...rekitted]),
+  ]
   const changed = await recheck(board, due)
   if (Object.keys(changed).length > 0) {
     hub.broadcast({ type: 'findings', findings: changed })

@@ -14,6 +14,7 @@ import { shippedViewerPath } from '@/server/models/viewer'
 import { VIEWER_FILE } from '@/shared/model-viewer'
 import type { ListResult } from '@/shared/records/list'
 
+import { wholeBoards } from '../../support/whole-boards'
 import type { CaptureCase } from '../types'
 import { probeFrames, type ProbeWindow } from './frame-probe'
 import {
@@ -484,7 +485,7 @@ async function tenPagesFit(page: Page): Promise<void> {
       }
       socket.send(JSON.stringify(parsed))
     })
-    socket.onMessage((message) => server.send(message))
+    socket.onMessage((message) => server.send(wholeBoards(message)))
   })
   await page.addInitScript((frames) => {
     let left = frames

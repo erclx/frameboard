@@ -55,7 +55,7 @@ Where the sync reads from, and what moves every reference, follow.
 What a run says, and what it leans on, follow.
 
 - Read a change against a run of one commit with itself, which shows how far apart two equal sides land
-- The harness waits for the live socket's `board` message and the canvas's `[data-layer]`, so a change to either shape moves the harness too
+- The harness waits for the live socket's `board` message, which a tab now hears once and then patches, and the canvas's `[data-layer]`, so a change to either shape moves the harness too
 
 A running `preview` and the drive copy it serves carry these conditions.
 

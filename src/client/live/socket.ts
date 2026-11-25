@@ -13,9 +13,11 @@ import {
   type ThemeStore,
   themeStore,
 } from '@/client/theme/store'
+import { applyPatch } from '@/shared/board-sync/patch'
+import { takesRename } from '@/shared/board-sync/rename'
 import { FACES, FACES_URL } from '@/shared/faces'
 import {
-  type HelloMessage,
+  type ClientMessage,
   LIVE_PATH,
   type ServerMessage,
 } from '@/shared/live-messages'
@@ -36,7 +38,6 @@ import {
   receiveReload,
   receiveRename,
   receiveThumbnails,
-  takesRename,
 } from './store'
 import {
   pruneUnseen,
@@ -93,6 +94,8 @@ export function connectLive(
   let retry: ReturnType<typeof setTimeout> | undefined
   let stopped = false
   let hellos = 0
+  // Whether the board in hand is the one this socket's patches start from.
+  let synced = false
 
   const settleFrames = async (port: number) => {
     hellos += 1
@@ -103,12 +106,18 @@ export function connectLive(
     if (hello === hellos && !stopped) receiveFrames(store, port, host)
   }
 
+  const say = (message: ClientMessage) => socket?.send(JSON.stringify(message))
+
+  const takeBoard = (board: ListResult) => {
+    receiveBoard(store, board)
+    pruneUnseen(unseen, board)
+  }
+
   const open = () => {
     const scheme = location.protocol === 'https:' ? 'wss' : 'ws'
     socket = new WebSocket(`${scheme}://${location.host}${LIVE_PATH}`)
     socket.addEventListener('open', () => {
-      const hello: HelloMessage = { type: 'hello', role: 'board', tab: TAB_ID }
-      socket?.send(JSON.stringify(hello))
+      say({ type: 'hello', role: 'board', tab: TAB_ID, patches: true })
       store.setState({ connected: true })
     })
     socket.addEventListener('message', (event) => {
@@ -116,8 +125,19 @@ export function connectLive(
       if (message.type === 'frames') {
         void settleFrames(message.port)
       } else if (message.type === 'board') {
-        receiveBoard(store, message.data)
-        pruneUnseen(unseen, message.data)
+        synced = true
+        takeBoard(message.data)
+      } else if (message.type === 'patch') {
+        const { board } = store.getState()
+        // One sent ahead of the board this socket asked for starts from another.
+        if (!synced || !board) return
+        const next = applyPatch(board, message.data)
+        if (next) {
+          takeBoard(next)
+        } else {
+          synced = false
+          say({ type: 'resync' })
+        }
       } else if (message.type === 'changes') {
         receiveChanges(unseen, message.changes)
         const { board } = store.getState()
@@ -134,8 +154,9 @@ export function connectLive(
         receiveLiveReload(store, message.refs, message.hashes)
       } else if (message.type === 'renamed') {
         const { before, after } = message
+        const { board } = store.getState()
         // Moved first, since the renamed board prunes a selection it no longer holds.
-        if (takesRename(store, before, after)) {
+        if (board && takesRename(board, before, after)) {
           renameSelection(selection, before, after)
           renameFlipped(before, after, theme)
           renameUnseen(unseen, before, after)
@@ -156,6 +177,7 @@ export function connectLive(
       } else if (message.type === 'show') onShow?.(message.ref)
     })
     socket.addEventListener('close', () => {
+      synced = false
       receiveDisconnect(store)
       onDisconnect?.()
       if (!stopped) retry = setTimeout(open, RECONNECT_MS)

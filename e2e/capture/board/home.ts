@@ -6,6 +6,7 @@ import { type Page } from '@playwright/test'
 import type { ServerMessage } from '@/shared/live-messages'
 import type { ListResult } from '@/shared/records/list'
 
+import { wholeBoards } from '../../support/whole-boards'
 import type { CaptureCase } from '../types'
 import {
   agentChange,
@@ -239,7 +240,7 @@ function filedBoard({ archived = false }: { archived?: boolean } = {}): (
           JSON.stringify({ ...parsed, data: { ...parsed.data, projects } }),
         )
       })
-      socket.onMessage((message) => server.send(message))
+      socket.onMessage((message) => server.send(wholeBoards(message)))
     })
   }
 }
