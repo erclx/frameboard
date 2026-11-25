@@ -2,7 +2,7 @@ import { type KeyboardEvent, useRef, useState } from 'react'
 
 import { Input } from '@/client/components/ui/input'
 import { cn } from '@/client/lib/cn'
-import type { LiveStep } from '@/shared/frame-bridge/live-element'
+import type { StepAttributes } from '@/shared/present-steps'
 import {
   STEP_ATTRIBUTES,
   STEP_EFFECT_LABELS,
@@ -19,7 +19,7 @@ import { LabelTip } from '../label-tip'
 import type { WriteElement } from './write'
 
 interface StepSectionProps {
-  step: LiveStep
+  step: StepAttributes
   disabled: boolean
   write: WriteElement
   /** Plays an effect once on the element, on a tile's hover or focus. */

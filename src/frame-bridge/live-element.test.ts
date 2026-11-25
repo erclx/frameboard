@@ -26,7 +26,7 @@ function heading(frame: HTMLIFrameElement): HTMLElement {
 describe('live-element', () => {
   it('reads each named element as the page computes it', async () => {
     const frame = await frameOf(
-      '<h1 style="opacity:0.5;border-radius:4px;rotate:30deg">Title</h1><div data-step="2"></div>',
+      '<h1 style="opacity:0.5;border-radius:4px;rotate:30deg">Title</h1><div data-step="2" data-step-duration="900" data-step-delay="250" data-step-play></div>',
     )
 
     const asked = await ask(frame, 'live-element', {
@@ -44,7 +44,16 @@ describe('live-element', () => {
           rotation: { degrees: 30 },
           inline: { color: false, border: false },
         },
-        { holdsText: false, step: { step: '2' } },
+        {
+          holdsText: false,
+          step: {
+            step: '2',
+            effect: null,
+            duration: '900',
+            delay: '250',
+            play: '',
+          },
+        },
       ],
     })
   })

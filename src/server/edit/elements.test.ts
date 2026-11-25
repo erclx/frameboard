@@ -65,6 +65,38 @@ describe('elementTree', () => {
     expect(parseFrame(source).elements[5]?.tagName).toBe('h1')
   })
 
+  it('carries the step an element holds, every default filled in', () => {
+    const tree = elementTree(
+      `<body>
+        <p>plain</p>
+        <p data-step="4">bare</p>
+        <video data-step="2" data-step-effect="fly" data-step-start="after" data-step-duration="900" data-step-delay="250" data-step-play></video>
+        <p data-step="0">none</p>
+      </body>`,
+    )
+
+    expect(Array.isArray(tree) && tree.map((row) => row.step)).toEqual([
+      undefined,
+      {
+        number: 4,
+        effect: 'appear',
+        start: 'click',
+        durationMs: 400,
+        delayMs: 0,
+        plays: false,
+      },
+      {
+        number: 2,
+        effect: 'fly',
+        start: 'after',
+        durationMs: 900,
+        delayMs: 250,
+        plays: true,
+      },
+      undefined,
+    ])
+  })
+
   it('reads an empty paragraph as text, as a placed Text opens', () => {
     const tree = elementTree('<body><p data-name="Text"> </p></body>')
 

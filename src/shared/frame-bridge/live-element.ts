@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import type { StepAttributes } from '@/shared/present-steps'
+
 // What the frame reads off its live elements and the board draws or edits
 // from, each shape beside the schema the board parses a reply against.
 
@@ -29,13 +31,6 @@ export interface LiveLayout {
   /** The rendered box in px, before any rotation. */
   width: number
   height: number
-}
-
-/** The step attributes present mode reads, each as the file holds it, null where absent. */
-export interface LiveStep {
-  step: string | null
-  effect: string | null
-  start: string | null
 }
 
 /**
@@ -141,7 +136,7 @@ export interface LiveElement {
     border: boolean
   }
   /** The step attributes present mode reads, as the file writes them. */
-  step: LiveStep
+  step: StepAttributes
 }
 
 /** An element's size in its frame's CSS pixels. */
@@ -425,6 +420,10 @@ const liveElementSchema: z.ZodType<LiveElement> = z.object({
     step: z.string().nullable(),
     effect: z.string().nullable(),
     start: z.string().nullable(),
+    // Absent from a page whose bridge is older than a step's own time.
+    duration: z.string().nullable().optional(),
+    delay: z.string().nullable().optional(),
+    play: z.string().nullable().optional(),
   }),
 })
 

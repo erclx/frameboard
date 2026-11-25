@@ -4,15 +4,15 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
-import type { LiveStep } from '@/shared/frame-bridge/live-element'
+import type { StepAttributes } from '@/shared/present-steps'
 
 import { StepSection } from './step'
 import type { ElementChange } from './write'
 
-const NO_STEP: LiveStep = { step: null, effect: null, start: null }
+const NO_STEP: StepAttributes = { step: null, effect: null, start: null }
 
 /** Renders the section over `step`, answering the changes it writes. */
-function mount(step: LiveStep, previews: string[] = []) {
+function mount(step: StepAttributes, previews: string[] = []) {
   const written: ElementChange[] = []
   render(
     <StepSection

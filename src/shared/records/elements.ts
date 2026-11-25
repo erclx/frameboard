@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+import type { Step } from '@/shared/present-steps'
+import { STEP_EFFECTS, STEP_STARTS } from '@/shared/present-transition'
+
 /**
  * How an element lays out what it holds, read from the frame's static
  * cascade: a flex by its main axis, a grid, or `block` for anything else,
@@ -8,6 +11,20 @@ import { z } from 'zod'
 export const layoutSchema = z.enum(['row', 'column', 'grid', 'block'])
 
 export type Layout = z.infer<typeof layoutSchema>
+
+/** An element's step as a presented page reads it, every default filled in. */
+export const treeStepSchema: z.ZodType<Step> = z.object({
+  /** The number as written, which a walk closes gaps in. */
+  number: z.int().min(1),
+  effect: z.enum(STEP_EFFECTS),
+  /** As written, which the first step of a frame and one sharing a number do not start by. */
+  start: z.enum(STEP_STARTS),
+  /** How long its entrance runs, which an `appear` one runs none of. */
+  durationMs: z.int(),
+  delayMs: z.int(),
+  /** True when it starts a video's or a model's clip as it appears. */
+  plays: z.boolean(),
+})
 
 /** One element under a frame's `body`, addressed by the index `edit --index` takes. */
 export const treeElementSchema = z.object({
@@ -31,6 +48,8 @@ export const treeElementSchema = z.object({
   hidden: z.boolean().optional(),
   /** True when it carries `data-locked`, which keeps canvas presses off it and what it holds. */
   locked: z.boolean().optional(),
+  /** Present when a press of its slide reveals it, as `data-step` marks it. */
+  step: treeStepSchema.optional(),
   /** The unlisted element right after it, such as a script, which a move to the end of its siblings lands ahead of. */
   unlistedNext: z.int().min(0).optional(),
 })
