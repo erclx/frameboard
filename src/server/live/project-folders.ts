@@ -48,6 +48,16 @@ export function keepFolders(held: Folders, found: Folders): Folders {
   )
 }
 
+export function renameFolder(
+  folders: Folders,
+  before: string,
+  after: string,
+): Folders {
+  return new Map(
+    [...folders].map(([name, id]) => [name === before ? after : name, id]),
+  )
+}
+
 /**
  * The folders `found` holds under another name than `held` does, ordered so
  * each target is free by its turn. One whose target never frees, as in a

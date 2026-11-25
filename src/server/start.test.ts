@@ -791,6 +791,72 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     tab.terminate()
   })
 
+  describe('a project folder renamed on disk', () => {
+    let received: ServerMessage[]
+    let tab: WebSocket
+
+    beforeEach(async () => {
+      received = []
+      tab = new WebSocket(`ws://127.0.0.1:${server.port}/api/live`)
+      tab.on('message', (data) => received.push(JSON.parse(String(data))))
+      await new Promise((resolve) => tab.once('open', resolve))
+      tab.send(JSON.stringify({ type: 'hello', role: 'board', patches: true }))
+      await expect
+        .poll(() => received.some((message) => message.type === 'findings'))
+        .toBe(true)
+    })
+
+    afterEach(() => {
+      tab.terminate()
+    })
+
+    /** Every frame a batch went stale, which it sends after any reload it makes. */
+    const stale = () =>
+      new Set(
+        received.flatMap((message) =>
+          message.type === 'thumbnails' ? Object.keys(message.stamps) : [],
+        ),
+      )
+    const FRAMES = ['home/hero', 'home/mobile', 'pricing/plans']
+    const reloads = () =>
+      received.flatMap((message) =>
+        message.type === 'reload' ? message.refs : [],
+      )
+
+    it('sends its rename, then a patch of names alone, and reloads no frame', async () => {
+      renameSync(join(board.root, 'studio'), join(board.root, 'atelier'))
+
+      await expect
+        .poll(stale, { timeout: 5000 })
+        .toEqual(new Set(FRAMES.map((frame) => `atelier/${frame}`)))
+      const renamed = received.findIndex(
+        (message) => message.type === 'renamed',
+      )
+      expect(received.slice(renamed, renamed + 2)).toEqual([
+        { type: 'renamed', before: 'studio', after: 'atelier' },
+        {
+          type: 'patch',
+          data: expect.objectContaining({ projects: ['atelier'] }),
+        },
+      ])
+      expect(
+        received.filter((message) => message.type === 'renamed'),
+      ).toHaveLength(1)
+      expect(reloads()).toEqual([])
+    })
+
+    it('reloads only the frame edited beside its rename', async () => {
+      renameSync(join(board.root, 'studio'), join(board.root, 'atelier'))
+      writeFileSync(join(board.root, 'atelier/home/hero.html'), '<p>new</p>')
+
+      await expect
+        .poll(reloads, { timeout: 5000 })
+        .toContain('atelier/home/hero')
+      await expect.poll(() => stale().size, { timeout: 5000 }).toBe(3)
+      expect(new Set(reloads())).toEqual(new Set(['atelier/home/hero']))
+    })
+  })
+
   it('reloads only the frame a layout write gives a kit', async () => {
     const layout = join(board.root, 'studio/home/layout.json')
     const file = JSON.parse(readFileSync(layout, 'utf8'))

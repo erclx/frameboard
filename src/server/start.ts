@@ -51,6 +51,7 @@ import {
   writtenSinceLayout,
 } from './live/hug'
 import { openBoard } from './live/open-board'
+import { readFolders } from './live/project-folders'
 import {
   createFrameKeys,
   createRememberedStore,
@@ -375,9 +376,10 @@ async function listen({
     access,
     snapshot: (deliver) =>
       inTurn(async () => {
-        const board = await scanBoard(root)
-        shown.board = board
-        feed.join(board, deliver)
+        await feed.join(await feed.scan(), (board) => {
+          shown.board = board
+          deliver(board)
+        })
       }),
     findings: () => inTurn(async () => findings.all()),
     notes: () => inTurn(() => boardView(root)),
@@ -389,7 +391,19 @@ async function listen({
     dispatch: dispatcher !== undefined,
     editButton,
   })
-  const feed = createBoardFeed(hub)
+  const feed = createBoardFeed(hub, {
+    look: async () => {
+      const board = await scanBoard(root)
+      const names = board.projects.map(({ name }) => name)
+      return { board, folders: await readFolders(root, names) }
+    },
+    onFound: (before, after) => {
+      moved = [
+        ...recentlyMoved(),
+        { from: join(root, before), path: join(root, after), at: Date.now() },
+      ]
+    },
+  })
   const claims = createClaimsPush(root, {
     broadcast: (list) => hub.broadcast({ type: 'claims', claims: list }),
     inTurn,
@@ -610,7 +624,7 @@ async function listen({
         if (closing) return
         let latest = scanned.board ?? board
         if (trails) {
-          latest = await scanBoard(root)
+          latest = await feed.push(await feed.scan())
           // Measures nothing it finds newly placed, so those wait for the batch naming their layout.
           scanned.unmeasured = placedRefs(
             scanned.board ?? board,
@@ -619,7 +633,6 @@ async function listen({
             scanned.unmeasured,
           )
           scanned.board = latest
-          feed.push(latest)
           shown.board = latest
           const changed = await recheck(latest, stale)
           if (Object.keys(changed).length > 0) {
@@ -767,7 +780,8 @@ async function pushBatch(
     scanned: ScannedBoard
   },
 ): Promise<void> {
-  let board
+  let found
+  let board: ListResult
   let own: string[]
   let placed: string[]
   let relisted: string[] = []
@@ -775,7 +789,8 @@ async function pushBatch(
   try {
     // Lands reserved frames first, so the board first sees them in their box.
     await landReserved(root, new Date()).catch(() => [])
-    board = await scanBoard(root)
+    found = await feed.scan()
+    board = found.board
     const { board: previous, unmeasured } = scanned
     own = ownFileRefs(board, paths)
     // Measured here, since a placement changes only `layout.json`.
@@ -797,24 +812,37 @@ async function pushBatch(
     // Measured first, so the board never shows a reloaded frame at its old size.
     if (await hug.now(board, [...own, ...placed]).catch(() => false)) {
       const measured = board
-      board = await scanBoard(root)
+      found = await feed.scan()
+      board = found.board
       scanned.board = board
       // Measures frames placed mid-measure once, since the next batch reads them as placed.
       const late = placedRefs(measured, board)
       if (late.length > 0) {
         placed = [...placed, ...late]
         if (await hug.now(board, late).catch(() => false)) {
-          board = await scanBoard(root)
+          found = await feed.scan()
+          board = found.board
         }
       }
+    }
+    board = await feed.push(found)
+    if (board !== found.board) {
+      // Measures nothing the overtaken scan missed, as the start's measure does.
+      scanned.unmeasured = placedRefs(
+        found.board,
+        board,
+        undefined,
+        scanned.unmeasured,
+      )
+      scanned.board = board
     }
   } catch {
     // A board folder mid-removal does not scan, and the next batch catches up.
     return
   }
-  feed.push(board)
   const last = shown.board
-  shown.board = board
+  // An overtaken batch names old paths, so the rename's own batch still reads the stamps under them.
+  if (board === found.board) shown.board = board
   const refs = [
     ...new Set([...reloadRefs(root, paths, board, tokens), ...rekitted]),
   ]
