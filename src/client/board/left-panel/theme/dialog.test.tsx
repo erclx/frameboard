@@ -270,7 +270,7 @@ describe('ThemeDialog', () => {
       async (theme) => {
         document.documentElement.classList.toggle('dark', theme === 'dark')
         await openOn('kits')
-        const count = within(sectionTab('Colors')).getByText('2')
+        const count = await within(sectionTab('Colors')).findByText('2')
 
         await pointerOver(sectionTab('Colors'))
         await Promise.all(
