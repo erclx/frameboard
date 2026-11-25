@@ -29,7 +29,7 @@ export function PresentRow({ step }: { step: StepAttributes }) {
             .getElementById(inspectorTabId('slides'))
             ?.focus({ focusVisible: event.detail === 0 })
         }}
-        className="flex h-[26px] w-full items-center justify-between gap-2 rounded-md bg-input px-2 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="flex h-[26px] w-full items-center justify-between gap-2 rounded-md bg-input px-2 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
       >
         <span className="truncate">{shown}</span>
         <ChevronRight

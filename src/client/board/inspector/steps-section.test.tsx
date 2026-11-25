@@ -7,7 +7,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { liveStore } from '@/client/live/store'
 import type { Step } from '@/shared/present-steps'
 import type { TreeElement } from '@/shared/records/elements'
+import { contrastOnPage, ringContrastOnPage } from '@/test/contrast'
 import { dragOnto } from '@/test/drag-row'
+import { keyboardFocus, ringFocused } from '@/test/focus-ring'
+import { contrastHovered } from '@/test/hover-contrast'
 
 import { trees } from '../element/tree'
 import { clear, selectionStore } from '../selection'
@@ -383,4 +386,58 @@ describe('reordering', () => {
     expect(batches).toEqual([])
     expect(selectionStore.getState().element?.index).toBe(5)
   })
+})
+
+describe.each(['light', 'dark'] as const)('a row in %s', (theme) => {
+  afterEach(() => {
+    document.documentElement.classList.remove('dark')
+  })
+
+  /** One plain row and one selected, over the panel they draw on. */
+  function mountRows() {
+    document.documentElement.classList.toggle('dark', theme === 'dark')
+    holdTree([
+      stepped('Title', 4, { number: 1, effect: 'fly' }),
+      stepped('Body', 5, { number: 2, effect: 'fade' }),
+    ])
+    render(
+      <aside className="w-60 bg-sidebar text-sidebar-foreground">
+        <StepsSection page="studio/home" frame={FRAME} selected={[5]} />
+      </aside>,
+    )
+  }
+
+  it('keeps its effect past 4.5 to 1 at rest, hovered, and selected', async () => {
+    mountRows()
+
+    expect(contrastOnPage(screen.getByText('Fly'))).toBeGreaterThanOrEqual(4.5)
+    expect(contrastOnPage(screen.getByText('Fade'))).toBeGreaterThanOrEqual(4.5)
+    expect(
+      await contrastHovered(screen.getByText('Fly')),
+    ).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('draws a 3 to 1 ring on a plain row and a selected one', async () => {
+    mountRows()
+    const button = (name: RegExp) => screen.getByRole('button', { name })
+
+    expect(await ringFocused(button(/^Title,/))).toBeGreaterThanOrEqual(3)
+    expect(await ringFocused(button(/^Body,/))).toBeGreaterThanOrEqual(3)
+  })
+
+  it.each(['Title', 'Body'])(
+    'draws a 3 to 1 ring on the preview of %s',
+    async (name) => {
+      slide = showSlide()
+      mountRows()
+      const preview = screen.getByRole('button', { name: `Preview ${name}` })
+      await expect.poll(() => preview.hasAttribute('disabled')).toBe(false)
+
+      await keyboardFocus(preview)
+
+      const [mark] = preview.children
+      if (!mark) throw new Error('The preview draws no mark')
+      expect(ringContrastOnPage(mark)).toBeGreaterThanOrEqual(3)
+    },
+  )
 })

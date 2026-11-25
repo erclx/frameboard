@@ -190,18 +190,22 @@ function StepRow({
   const edge = useReorderRow(row, { list, index, enabled: canWrite })
   const effect = STEP_EFFECT_LABELS[step.effect]
   const starts = STEP_START_LABELS[start].toLowerCase()
+  // Both row fills drop muted text below 4.5:1.
+  const quiet = selected
+    ? 'text-accent-foreground'
+    : 'text-muted-foreground group-hover:text-accent-foreground'
   return (
     <li
       ref={row}
       className={cn(
-        'relative flex h-[26px] items-center gap-1 rounded-md pr-0.5 pl-1.5',
+        'group relative flex h-[26px] items-center gap-1 rounded-md pr-0.5 pl-1.5',
         selected ? 'bg-primary/26' : 'hover:bg-accent',
       )}
     >
       <DropLine edge={edge} />
       <span
         aria-hidden
-        className="w-4 shrink-0 text-center text-muted-foreground tabular-nums"
+        className={cn('w-4 shrink-0 text-center tabular-nums', quiet)}
       >
         {press}
       </span>
@@ -216,7 +220,13 @@ function StepRow({
         ].join(', ')}
         title={element.name}
         onClick={onSelect}
-        className="flex min-w-0 flex-1 items-center gap-1.5 self-stretch rounded-[5px] text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
+        className={cn(
+          'flex min-w-0 flex-1 items-center gap-1.5 self-stretch rounded-[5px] text-left outline-none focus-visible:ring-2 focus-visible:ring-inset',
+          // The focus blue sits below 3:1 on the selected tint.
+          selected
+            ? 'focus-visible:ring-foreground'
+            : 'focus-visible:ring-ring',
+        )}
       >
         <StepGlyph icon={elementGlyph(element)} selected={selected} />
         <span
@@ -228,12 +238,7 @@ function StepRow({
           {element.name}
         </span>
         {/* A row opening a press shows that by its number, so only a joining one spells its start. */}
-        <span
-          className={cn(
-            'shrink-0 text-caption',
-            selected ? 'text-accent-foreground' : 'text-muted-foreground',
-          )}
-        >
+        <span className={cn('shrink-0 text-caption', quiet)}>
           {start === 'click' ? effect : `${effect}, ${starts}`}
         </span>
       </button>
@@ -244,7 +249,14 @@ function StepRow({
         onClick={onPreview}
         className="group/target grid size-6 shrink-0 place-items-center text-muted-foreground outline-none hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
       >
-        <span className="grid size-5 place-items-center rounded-[5px] group-hover/target:bg-accent group-focus-visible/target:ring-2 group-focus-visible/target:ring-ring/50">
+        <span
+          className={cn(
+            'grid size-5 place-items-center rounded-[5px] group-hover/target:bg-accent group-focus-visible/target:ring-2',
+            selected
+              ? 'group-focus-visible/target:ring-foreground'
+              : 'group-focus-visible/target:ring-ring',
+          )}
+        >
           <Play aria-hidden className="size-[11px]" />
         </span>
       </button>
