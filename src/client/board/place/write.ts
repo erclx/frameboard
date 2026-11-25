@@ -2,7 +2,6 @@ import { toast } from '@/client/components/ui/toast'
 import { type LiveStore, liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
-import { assetKind, isPlaceableKind } from '@/shared/asset-kinds'
 import { pageBox } from '@/shared/frame-device'
 import { elementFrameName, NAME_MAX_LENGTH, nextFreeName } from '@/shared/names'
 import type {
@@ -17,8 +16,7 @@ import type { ElementTree } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { assetUrl } from '../assets/describe'
-import type { DraggedResult, PlaceableFile } from '../assets/drag'
-import { saveResult } from '../assets/sourcing'
+import type { PlaceableFile } from '../assets/drag'
 import { WaitDropped, whenFree } from '../claims/waiting'
 import { catchUpTree, fetchTree, treeOf } from '../element/tree'
 import { siblingGap } from '../element/walk'
@@ -248,31 +246,6 @@ export async function placeFile(
     ...deps,
     asset: { path: file.path, natural },
   })
-}
-
-/**
- * Saves a dropped found result through the save Save sends, then hands the
- * landed file to `place` as a tile's drop would. A refused save places nothing.
- */
-export async function placeResult(
-  dropped: DraggedResult,
-  place: (file: PlaceableFile) => Promise<unknown>,
-  { save = saveResult }: { save?: typeof saveResult } = {},
-): Promise<void> {
-  let path: string
-  try {
-    path = (await save(dropped.request)).path
-  } catch (error) {
-    reportRefusal(
-      dropped.request.kind === 'model'
-        ? "Couldn't save the model"
-        : "Couldn't save the image",
-    )(error)
-    return
-  }
-  const kind = assetKind(path)
-  if (!isPlaceableKind(kind)) return
-  await place({ project: dropped.request.project, path, kind })
 }
 
 /** A new frame's name stem when a file's own gives none. */

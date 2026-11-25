@@ -24,7 +24,6 @@ import {
   placeFileFrame,
   placeFree,
   placeInFrame,
-  placeResult,
   wrapSelection,
 } from './write'
 
@@ -1615,79 +1614,6 @@ describe('placeInFrame', () => {
 
     expect(placed).toBeNull()
     expect(sent).toEqual([])
-  })
-})
-
-describe('placeResult', () => {
-  const FOUND = {
-    request: {
-      project: 'studio',
-      result: { id: 'a1' },
-      query: 'modern house',
-      credited: false,
-    },
-    name: 'modern-house',
-    natural: { width: 1024, height: 768 },
-  }
-
-  function landedAs(path: string) {
-    return async () => ({
-      version: 1 as const,
-      project: 'studio',
-      path,
-      licensePath: `${path}.license.json`,
-      license: {
-        version: 1 as const,
-        origin: 'found' as const,
-        source: 'openverse' as const,
-        id: 'a1',
-        query: 'modern house',
-        title: null,
-        creator: null,
-        creatorUrl: null,
-        license: 'cc0',
-        licenseVersion: null,
-        licenseUrl: null,
-        attribution: null,
-        landingUrl: null,
-        url: 'https://images.example.org/a1.jpg',
-        savedAt: '2026-11-18T12:00:00.000Z',
-      },
-    })
-  }
-
-  it('saves the result first, then places the file it landed as', async () => {
-    const placed: unknown[] = []
-
-    await placeResult(
-      FOUND,
-      async (file) => {
-        placed.push(file)
-      },
-      { save: landedAs('modern-house-2.jpg') },
-    )
-
-    expect(placed).toEqual([
-      { project: 'studio', path: 'modern-house-2.jpg', kind: 'image' },
-    ])
-  })
-
-  it('places nothing when the save is refused', async () => {
-    const placed: unknown[] = []
-
-    await placeResult(
-      FOUND,
-      async (file) => {
-        placed.push(file)
-      },
-      {
-        save: async () => {
-          throw new Error('The image host answered 500.')
-        },
-      },
-    )
-
-    expect(placed).toEqual([])
   })
 })
 
