@@ -7,6 +7,8 @@ import { useLive } from '@/client/live/store'
 import type { ElementTree, TreeElement } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { DropLine } from '../chrome/drop-line'
+import { useReorderMonitor, useReorderRow } from '../chrome/reorder'
 import { flagElements } from '../element/flags'
 import { useElementTree } from '../element/tree'
 import { writeElement } from '../inspector/element/write'
@@ -20,9 +22,7 @@ import {
   selectionStore,
   toggleElement,
 } from '../selection'
-import { DropLine } from './drop-line'
 import { elementGlyph } from './layer-glyphs'
-import { useReorderMonitor, useReorderRow } from './reorder'
 import { HIDDEN_TEXT, RowFlags } from './row-flags'
 import { addsOne, spanTo } from './row-pick'
 
