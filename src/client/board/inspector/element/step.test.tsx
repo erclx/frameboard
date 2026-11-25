@@ -37,11 +37,11 @@ function mount(
 const field = () => screen.getByRole('textbox', { name: 'Appears on step' })
 
 describe('the step field', () => {
-  it('describes the field with when its step shows', () => {
+  it('describes the field as a place in the order, which is not a press', () => {
     mount(NO_STEP)
 
     expect(field()).toHaveAccessibleDescription(
-      'Shown on that press while presenting. Edit mode and export show every step.',
+      'Its place in the order a slide’s steps show while presenting. Edit mode and export show every step.',
     )
   })
 

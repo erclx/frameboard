@@ -54,7 +54,7 @@ function parseStep(value: string): number | null | undefined {
 }
 
 /**
- * Which press of its slide reveals the element. An empty step drops
+ * Where the element stands among its slide's steps. An empty step drops
  * `data-step`, which takes the element out of the steps whatever else it holds.
  */
 export function StepSection({
@@ -291,7 +291,7 @@ function StepField({
     <div className="flex flex-col gap-1">
       <LabelTip
         label="Appears on step"
-        tip="Shown on that press while presenting. Edit mode and export show every step."
+        tip="Its place in the order a slide’s steps show while presenting. Edit mode and export show every step."
         tipId="inspector-step-tip"
       >
         <label
