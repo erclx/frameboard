@@ -49,6 +49,8 @@ export function follow(
   let target: string | null = null
   // Carried across pages, since a canvas mounts at its own remembered view.
   let carried: number | undefined
+  // When the newest claim Follow headed for was taken.
+  let claimedAt = ''
 
   const travel = () => {
     if (target === null) return
@@ -80,6 +82,8 @@ export function follow(
     const landed = inLandingOrder(state.unseen).filter(
       (change) =>
         change.author?.session === session &&
+        // A change is sent a second after its write, so it can land behind a newer claim.
+        change.at >= claimedAt &&
         previous.unseen[change.frame]?.id !== change.id,
     )
     head(landed.at(-1)?.frame ?? null)
@@ -96,8 +100,11 @@ export function follow(
         claim.box === undefined &&
         previous.claims[claim.frame]?.session !== session,
     )
-    if (claimed.length > 0) head(claimed.at(-1)?.frame ?? null)
-    else if (state.board !== previous.board) travel()
+    const newest = claimed.at(-1)
+    if (newest) {
+      if (newest.claimedAt > claimedAt) claimedAt = newest.claimedAt
+      head(newest.frame)
+    } else if (state.board !== previous.board) travel()
   })
   const stopPresent = presentStore.subscribe(() => {
     if (!presenting()) return

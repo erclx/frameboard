@@ -40,7 +40,11 @@ function change(
   }
 }
 
-function claim(frame: string, session: string): Claim {
+function claim(
+  frame: string,
+  session: string,
+  overrides: Partial<Claim> = {},
+): Claim {
   return {
     frame,
     session,
@@ -48,6 +52,7 @@ function claim(frame: string, session: string): Claim {
     tag: `claude · ${session}`,
     claimedAt: '2026-10-19T12:00:00.000Z',
     expiresAt: '2026-10-19T12:05:00.000Z',
+    ...overrides,
   }
 }
 
@@ -201,6 +206,46 @@ describe('follow', () => {
 
     expect(visited).toEqual([])
     expect(centered).toEqual([{ page: 'studio/home', box: HOME_BOX }])
+  })
+
+  it('stays on the page of a newer claim when an older change lands', () => {
+    const { live, unseen, visited, canvasOn, detach } = setup()
+    const first = claim('studio/home/a', 's-1')
+    const second = claim('studio/about/b', 's-1', {
+      claimedAt: '2026-10-19T12:00:02.000Z',
+    })
+    live.setState({ claims: { 'studio/home/a': first } })
+    live.setState({
+      claims: { 'studio/home/a': first, 'studio/about/b': second },
+    })
+    detach()
+    canvasOn('studio/about')
+
+    receiveChanges(unseen, [
+      change('studio/home/a', 's-1', { at: '2026-10-19T12:00:01.000Z' }),
+    ])
+
+    expect(visited).toEqual(['/p/studio/about'])
+  })
+
+  it('returns to the frame claimed first for a write after the newer claim', () => {
+    const { live, unseen, visited, canvasOn, detach } = setup()
+    const first = claim('studio/home/a', 's-1')
+    const second = claim('studio/about/b', 's-1', {
+      claimedAt: '2026-10-19T12:00:02.000Z',
+    })
+    live.setState({ claims: { 'studio/home/a': first } })
+    live.setState({
+      claims: { 'studio/home/a': first, 'studio/about/b': second },
+    })
+    detach()
+    canvasOn('studio/about')
+
+    receiveChanges(unseen, [
+      change('studio/home/a', 's-1', { at: '2026-10-19T12:00:03.000Z' }),
+    ])
+
+    expect(visited).toEqual(['/p/studio/about', '/p/studio/home'])
   })
 
   it('stops on a hand move and leaves the next change alone', () => {

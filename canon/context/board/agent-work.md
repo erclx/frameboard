@@ -46,7 +46,7 @@ Owns the change toast, the glow over changed elements, compare in `compare.ts` a
 Owns the socket and the store every screen reads, being unseen marks, seen replies, each frame's compare base, shown marks, findings counts, write access, and Follow, kept in memory or `localStorage`. `structure.ts` holds the typed calls to the structure and history routes over `writeBoard`.
 
 - A reply counts only while its root is not done and its frame stands, since only then can the thread open
-- Follow skips a reservation and a hand move stops it, and a board message keeps a reservation's claim, whose frame is listed only once it lands
+- Follow skips a reservation and a change older than its newest claim, a hand move stops it, and a board message keeps a reservation's claim, whose frame is listed only once it lands
 - `canWrite` is false until the server's `access` message and whenever the socket drops, and `writeBoard` marks the tab read-only on a 401
 - A look clears a shown mark by the show's id and time, never by hash, since the hash may already have been seen
 - A show of a frame whose write is still unseen leaves the write's mark, so its glow and the changed title stay
