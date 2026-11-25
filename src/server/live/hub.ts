@@ -3,6 +3,7 @@ import type { Duplex } from 'node:stream'
 
 import { type WebSocket, WebSocketServer } from 'ws'
 
+import type { BoardPatch } from '@/shared/board-sync/patch'
 import {
   type ClientMessage,
   LIVE_PATH,
@@ -28,6 +29,10 @@ export interface LiveHub {
   ) => void
   /** Sends a message to every board client. */
   broadcast: (message: ServerMessage) => void
+  /** Sends `patch` to every joined tab, being one holding the board it starts from, and `board` to the rest. */
+  broadcastBoard: (board: ListResult, patch: BoardPatch) => void
+  /** Sends `patch` to the joined tabs alone. */
+  broadcastPatch: (patch: BoardPatch) => void
   close: () => Promise<void>
 }
 
@@ -37,8 +42,12 @@ export interface HubOptions {
   port: () => number
   /** Decides from the upgrade request whether a tab may write. */
   access: Access
-  /** The board as it stands, sent to a board client on its hello. */
-  snapshot: () => Promise<ListResult>
+  /**
+   * Reads the board as it stands and hands it to `deliver`, on a board
+   * client's hello and on its `resync`. `deliver` joins a tab that takes
+   * patches, so it is called as the board the next patch starts from is read.
+   */
+  snapshot: (deliver: (board: ListResult) => void) => Promise<void>
   /** Every frame's check findings, sent on a hello after the board. */
   findings?: () => Promise<Record<string, Finding[]>>
   /** Every page's notes by page ref, sent to a board client after its access. */
@@ -85,6 +94,14 @@ export function createHub({
   const boards = new Map<WebSocket, boolean>()
   const inboxes = new Map<WebSocket, Follower>()
   const tabIds = new Map<WebSocket, string>()
+  // The tabs whose hello asked for patches, and those of them holding a board.
+  const patching = new Set<WebSocket>()
+  const joined = new Set<WebSocket>()
+
+  const deliver = (socket: WebSocket, board: ListResult) => {
+    send(socket, { type: 'board', data: board })
+    if (patching.has(socket)) joined.add(socket)
+  }
 
   server.on('connection', (socket, request) => {
     socket.on('message', (data) => {
@@ -97,7 +114,14 @@ export function createHub({
         }
         return
       }
-      if (boards.has(socket) || message?.type !== 'hello') return
+      if (boards.has(socket)) {
+        // Out until its board goes, so no patch lands on the one it holds.
+        if (message?.type === 'resync' && joined.delete(socket)) {
+          void snapshot((board) => deliver(socket, board)).catch(() => {})
+        }
+        return
+      }
+      if (message?.type !== 'hello') return
       if (message.role === 'inbox') {
         const bearer = isWriter(
           { authorization: request.headers.authorization },
@@ -124,11 +148,11 @@ export function createHub({
       )
       boards.set(socket, writer)
       if (typeof message.tab === 'string') tabIds.set(socket, message.tab)
+      if (message.patches === true) patching.add(socket)
       tabs.open(writer)
       if (framePort) send(socket, { type: 'frames', port: framePort() })
-      void snapshot()
-        .then(async (board) => {
-          send(socket, { type: 'board', data: board })
+      void snapshot((board) => deliver(socket, board))
+        .then(async () => {
           send(socket, {
             type: 'access',
             write: writer,
@@ -166,6 +190,8 @@ export function createHub({
       const writer = boards.get(socket)
       if (writer !== undefined) {
         boards.delete(socket)
+        patching.delete(socket)
+        joined.delete(socket)
         tabs.close(writer)
       }
       const tab = tabIds.get(socket)
@@ -188,6 +214,15 @@ export function createHub({
     },
     broadcast: (message) => {
       for (const socket of boards.keys()) send(socket, message)
+    },
+    broadcastBoard: (board, patch) => {
+      for (const socket of boards.keys()) {
+        if (joined.has(socket)) send(socket, { type: 'patch', data: patch })
+        else deliver(socket, board)
+      }
+    },
+    broadcastPatch: (patch) => {
+      for (const socket of joined) send(socket, { type: 'patch', data: patch })
     },
     close: () => {
       for (const socket of server.clients) socket.terminate()

@@ -752,6 +752,45 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
     expect(messages[0]?.type).toBe('board')
   })
 
+  it('sends a tab that takes patches the records a write moved and no board after its first', async () => {
+    const received: ServerMessage[] = []
+    const tab = new WebSocket(`ws://127.0.0.1:${server.port}/api/live`)
+    tab.on('message', (data) => received.push(JSON.parse(String(data))))
+    await new Promise((resolve) => tab.once('open', resolve))
+    tab.send(JSON.stringify({ type: 'hello', role: 'board', patches: true }))
+    await expect
+      .poll(() => received.some((message) => message.type === 'findings'))
+      .toBe(true)
+
+    writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
+
+    const patches = () =>
+      received.flatMap((message) =>
+        message.type === 'patch' ? message.data.projects : [],
+      )
+    await expect
+      .poll(() => patches().find((project) => typeof project !== 'string'), {
+        timeout: 5000,
+      })
+      .toMatchObject({
+        name: 'studio',
+        pages: [
+          {
+            name: 'home',
+            frames: expect.arrayContaining([
+              expect.objectContaining({ ref: 'studio/home/hero' }),
+              'mobile',
+            ]),
+          },
+          'pricing',
+        ],
+      })
+    expect(received.filter((message) => message.type === 'board')).toHaveLength(
+      1,
+    )
+    tab.terminate()
+  })
+
   it('reloads only the frame a layout write gives a kit', async () => {
     const layout = join(board.root, 'studio/home/layout.json')
     const file = JSON.parse(readFileSync(layout, 'utf8'))
