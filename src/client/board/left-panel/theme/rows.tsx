@@ -36,7 +36,7 @@ export function ColorRow({ row, fromProject, editable, onWrite }: RowProps) {
     <li
       className={cn(
         ROW,
-        'grid-cols-2 @md:grid-cols-[minmax(0,1fr)_10rem_10rem]',
+        'grid-cols-2 @lg:grid-cols-[minmax(0,1fr)_10rem_10rem]',
       )}
     >
       <RowHead
@@ -44,7 +44,7 @@ export function ColorRow({ row, fromProject, editable, onWrite }: RowProps) {
         fromProject={fromProject}
         editable={editable}
         onWrite={onWrite}
-        className="col-span-2 @md:col-span-1"
+        className="col-span-2 @lg:col-span-1"
       />
       {(['light', 'dark'] as const).map((side) =>
         editable ? (
@@ -73,10 +73,7 @@ export function ValueRow({ row, fromProject, editable, onWrite }: RowProps) {
   const face = row.group === 'font' ? faceOf(value) : undefined
   return (
     <li
-      className={cn(
-        ROW,
-        'grid-cols-1 @md:grid-cols-[minmax(0,1fr)_minmax(0,auto)]',
-      )}
+      className={cn(ROW, 'grid-cols-1 @lg:grid-cols-[minmax(0,1fr)_20.75rem]')}
     >
       <RowHead
         row={row}
@@ -128,9 +125,11 @@ function RowHead({
 }: RowProps & { className?: string }) {
   return (
     <span className={cn('flex min-w-0 items-center gap-1.5', className)}>
-      <span className="min-w-0 flex-1 [overflow-wrap:anywhere]">
+      <span className="flex min-w-0 flex-1">
         <span className="text-faint">--</span>
-        {row.name.replace(/^--/, '')}
+        <span className="min-w-0 [overflow-wrap:anywhere]">
+          {row.name.replace(/^--/, '')}
+        </span>
       </span>
       <span
         className={cn(
@@ -279,10 +278,10 @@ function SwatchPicker({
       >
         <PopoverContent
           anchor={anchor}
-          // Its own value stays in sight, since the row runs the dialog's width.
-          side="left"
+          // Under the value, so the row's name and both its values stay in sight.
+          side="bottom"
           align="start"
-          sideOffset={8}
+          sideOffset={6}
           aria-label={`${name.replace(/^--/, '')} ${side} color`}
           className="w-[248px] gap-0 rounded-xl p-2.5 text-xs shadow-[0_14px_40px_rgba(0,0,0,.28)]"
         >
@@ -326,7 +325,7 @@ function NumberValue({
       <NumberField
         label={`${name.replace(/^--/, '')} value`}
         className="w-12"
-        inputClassName="h-5 rounded-sm px-1 text-right text-muted-foreground focus-visible:text-foreground"
+        inputClassName="h-6 rounded-sm px-1 text-right text-muted-foreground focus-visible:text-foreground"
         value={value}
         // A token set at zero or above stays there, as a radius or a space does.
         min={value >= 0 ? 0 : undefined}
@@ -395,7 +394,7 @@ function TextValue({
           setDraft(value)
         }}
         style={{ fontFamily: face }}
-        className="min-h-6 max-w-80 min-w-0 justify-self-start rounded-sm px-1 text-left [overflow-wrap:anywhere] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring @md:justify-self-end @md:text-right"
+        className="min-h-6 max-w-80 min-w-0 justify-self-start rounded-sm px-1 text-left [overflow-wrap:anywhere] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
       >
         {shown}
       </button>
@@ -422,7 +421,7 @@ function TextValue({
           finish(false, true)
         }
       }}
-      className="h-6 w-80 max-w-full rounded-sm bg-input px-1 outline-none focus-visible:ring-2 focus-visible:ring-ring @md:text-right"
+      className="h-6 w-80 max-w-full rounded-sm bg-input px-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
     />
   )
 }

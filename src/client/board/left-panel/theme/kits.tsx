@@ -1,5 +1,5 @@
 import { Plus, X } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useStore } from 'zustand'
 
 import { Button } from '@/client/components/ui/button'
@@ -33,6 +33,7 @@ import { askOnFrame } from '../../notes/tool'
 import { selectionStore } from '../../selection'
 import { reportRefusal } from '../page-actions'
 import { closeTheme, themeDialogStore } from './dialog-store'
+import { focusAfterConfirm } from './focus'
 import { HEAD_BUTTON, SectionHead } from './section-head'
 
 /** The note Ask the agent opens on the selected frame. */
@@ -61,6 +62,8 @@ export function KitsSection({
   const kits = useLive((state) => projectOf(state.board, project)?.kits)
   const added = kits ?? NO_KITS
   const [removing, setRemoving] = useState<ProjectKitRecord | null>(null)
+  const section = useRef<HTMLElement>(null)
+  const pressed = useRef<HTMLButtonElement | null>(null)
 
   const remove = (kit: ProjectKitRecord) => {
     calls
@@ -69,7 +72,11 @@ export function KitsSection({
   }
 
   return (
-    <section aria-labelledby="theme-kits" className="flex flex-col gap-3">
+    <section
+      ref={section}
+      aria-labelledby="theme-kits"
+      className="flex flex-col gap-3"
+    >
       <SectionHead id="theme-kits" title="Kits">
         <AddKit
           project={project}
@@ -100,9 +107,11 @@ export function KitsSection({
                 type="button"
                 aria-label={`Remove ${kit.title}`}
                 disabled={!canWrite}
-                onClick={() =>
-                  kit.frameCount > 0 ? setRemoving(kit) : remove(kit)
-                }
+                onClick={(event) => {
+                  pressed.current = event.currentTarget
+                  if (kit.frameCount > 0) setRemoving(kit)
+                  else remove(kit)
+                }}
                 className="grid size-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-40"
               >
                 <X aria-hidden className="size-3" />
@@ -122,7 +131,11 @@ export function KitsSection({
           if (!open) setRemoving(null)
         }}
       >
-        <DialogContent showCloseButton={false} className="gap-3 p-4">
+        <DialogContent
+          showCloseButton={false}
+          finalFocus={() => focusAfterConfirm(pressed.current, section.current)}
+          className="gap-3 p-4"
+        >
           <DialogTitle className="text-title font-semibold">
             Remove {removing?.title}?
           </DialogTitle>

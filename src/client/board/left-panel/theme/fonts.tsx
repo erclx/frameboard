@@ -27,6 +27,7 @@ import {
   installedFontSheet,
 } from '../../assets/sourcing'
 import { familyRows, licenseMark } from './families'
+import { focusAfterConfirm } from './focus'
 import { HEAD_BUTTON, SectionHead } from './section-head'
 import { installFont, removeFont } from './write'
 
@@ -115,6 +116,8 @@ export function FontsSection({
   const [problem, setProblem] = useState<string | null>(null)
   const report = reportTo(useDrawn(), setProblem)
   const reading = useRef(false)
+  const section = useRef<HTMLElement>(null)
+  const pressed = useRef<HTMLElement | null>(null)
 
   const rows = familyRows(installed)
 
@@ -150,7 +153,11 @@ export function FontsSection({
   }
 
   return (
-    <section aria-labelledby="theme-fonts" className="flex flex-col gap-3">
+    <section
+      ref={section}
+      aria-labelledby="theme-fonts"
+      className="flex flex-col gap-3"
+    >
       {canWrite ? (
         <FindFont
           project={project}
@@ -188,7 +195,10 @@ export function FontsSection({
               <RemoveButton
                 font={row.installed}
                 busy={removing === row.installed.id}
-                onRemove={(font) => void ask(font)}
+                onRemove={(font, button) => {
+                  pressed.current = button
+                  void ask(font)
+                }}
               />
             ) : null}
           </Specimen>
@@ -200,7 +210,11 @@ export function FontsSection({
           if (!open) setConfirming(null)
         }}
       >
-        <DialogContent showCloseButton={false} className="gap-3 p-4">
+        <DialogContent
+          showCloseButton={false}
+          finalFocus={() => focusAfterConfirm(pressed.current, section.current)}
+          className="gap-3 p-4"
+        >
           <DialogTitle className="text-title font-semibold">
             Remove {confirming?.font.family}?
           </DialogTitle>
@@ -552,7 +566,7 @@ function RemoveButton({
 }: {
   font: InstalledFont
   busy: boolean
-  onRemove: (font: InstalledFont) => void
+  onRemove: (font: InstalledFont, button: HTMLElement) => void
 }) {
   return (
     <button
@@ -560,8 +574,8 @@ function RemoveButton({
       aria-label={`Remove ${font.family}`}
       // Kept focusable while its frames read, so Cancel on the dialog has a button to hand focus back to.
       aria-disabled={busy || undefined}
-      onClick={() => {
-        if (!busy) onRemove(font)
+      onClick={(event) => {
+        if (!busy) onRemove(font, event.currentTarget)
       }}
       className="grid size-6 shrink-0 place-items-center rounded-[5px] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring aria-disabled:cursor-default aria-disabled:opacity-40"
     >

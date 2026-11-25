@@ -180,9 +180,9 @@ function ThemeHeader() {
   return (
     <div
       aria-hidden
-      className="grid grid-cols-2 gap-x-3 pb-1 text-label text-muted-foreground @md:grid-cols-[minmax(0,1fr)_10rem_10rem]"
+      className="grid grid-cols-2 gap-x-3 pb-1 text-label text-muted-foreground @lg:grid-cols-[minmax(0,1fr)_10rem_10rem]"
     >
-      <span className="hidden @md:block" />
+      <span className="hidden @lg:block" />
       <span>Light</span>
       <span>Dark</span>
     </div>

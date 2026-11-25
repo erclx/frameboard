@@ -80,7 +80,7 @@ export function ThemeDialog({
       returnTo={() => (opener === null ? false : openerOf(opener))}
     >
       <WideDialogHeader>
-        <DialogTitle className="min-w-0 truncate text-panel leading-normal">
+        <DialogTitle className="min-w-0 truncate text-panel leading-normal font-semibold">
           Theme · {project}
         </DialogTitle>
       </WideDialogHeader>

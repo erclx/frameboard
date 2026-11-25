@@ -177,11 +177,13 @@ describe('ThemeDialog', () => {
 
       await userEvent.click(sectionTab(title))
 
-      expect(
-        screen
-          .getAllByRole('heading', { level: 3 })
-          .map((shown) => shown.textContent),
-      ).toEqual([heading])
+      await waitFor(() =>
+        expect(
+          screen
+            .getAllByRole('heading', { level: 3 })
+            .map((shown) => shown.textContent),
+        ).toEqual([heading]),
+      )
     })
 
     it('moves through the sections on the arrow keys from the one it opened on', async () => {
@@ -369,6 +371,65 @@ describe('ThemeDialog', () => {
       )
       expect(themeDialog()).not.toBeNull()
     })
+  })
+
+  it('keeps the focus inside as a confirmed removal takes its button away', async () => {
+    const dialog = await openOn('kits', {
+      kitCalls: {
+        loadKits,
+        calls: {
+          installKit: async () => {
+            throw new Error('Nothing installs here.')
+          },
+          removeKit: async () => {
+            const board = boardOf(pageOf([frameOf('hero')]))
+            act(() => liveStore.setState({ board }))
+            return { undo: null } as never
+          },
+        },
+      },
+    })
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Remove Sketch' }),
+    )
+    const confirm = await screen.findByRole('dialog', {
+      name: 'Remove Sketch?',
+    })
+
+    await userEvent.click(
+      within(confirm).getByRole('button', { name: 'Remove' }),
+    )
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: 'Remove Sketch?' }),
+      ).toBeNull(),
+    )
+    await waitFor(() =>
+      expect(dialog.contains(document.activeElement)).toBe(true),
+    )
+  })
+
+  it('writes a picked color when the press that closes the picker lands outside the dialog', async () => {
+    const sent: string[] = []
+    await openOn('color', {
+      write: (project, hash, change) => {
+        if ('value' in change) sent.push(change.value)
+        return write(project, hash, change)
+      },
+    })
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Light: #4f46e5' }),
+    )
+    const hex = await screen.findByRole('textbox', { name: 'Hex' })
+    await userEvent.clear(hex)
+    await userEvent.type(hex, '112233')
+
+    const scrim = document.querySelector('[data-slot="dialog-overlay"]')
+    if (!scrim) throw new Error('The dialog draws no scrim')
+    await userEvent.click(scrim)
+
+    await waitFor(() => expect(sent).toEqual(['#112233']))
   })
 
   it('keeps an open row’s draft while an agent’s write updates the others', async () => {
