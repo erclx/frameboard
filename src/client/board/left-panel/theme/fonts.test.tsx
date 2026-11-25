@@ -521,6 +521,10 @@ describe('FontsSection', () => {
         getComputedStyle(within(tile as HTMLElement).getByText('Aa'))
           .fontFamily,
       ).toMatch(/^"?frameboard-sample-playfair-display"?,/)
+      const builtIn = within(found).getByText('Source Serif 4').closest('li')
+      expect(within(builtIn as HTMLElement).getByText('Aa')).toHaveStyle({
+        fontFamily: "'Source Serif 4', serif",
+      })
       expect(
         within(found).getByRole('button', { name: 'Install Playfair Display' }),
       ).toBeInTheDocument()

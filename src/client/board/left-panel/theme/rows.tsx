@@ -280,7 +280,7 @@ function SwatchPicker({
           anchor={anchor}
           // Under the value, so the row's name and both its values stay in sight.
           side="bottom"
-          align="start"
+          align={side === 'light' ? 'start' : 'end'}
           sideOffset={6}
           aria-label={`${name.replace(/^--/, '')} ${side} color`}
           className="w-[248px] gap-0 rounded-xl p-2.5 text-xs shadow-[0_14px_40px_rgba(0,0,0,.28)]"

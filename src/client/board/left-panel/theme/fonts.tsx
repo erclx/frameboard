@@ -441,6 +441,7 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
                 key={result.id}
                 result={result}
                 held={heldAs(result, installed)}
+                stack={heldStack(result, installed)}
                 installing={installing.has(result.id)}
                 onInstall={(picked, pressed) =>
                   void run(
@@ -475,18 +476,21 @@ function FindFont({ project, installed, find, install }: FindFontProps) {
 function ResultSpecimen({
   result,
   held,
+  stack,
   installing,
   onInstall,
 }: {
   result: FontResult
   held: 'Installed' | 'Built in' | null
+  /** The stack a family the project holds draws in, null for one it does not. */
+  stack: string | null
   installing: boolean
   onInstall: (result: FontResult, pressed: HTMLElement) => void
 }) {
   return (
     <Specimen
       family={result.family}
-      stack={`"${sampleFamily(result)}", var(--font-sans)`}
+      stack={stack ?? `"${sampleFamily(result)}", var(--font-sans)`}
       note={held ?? (installing ? 'Installing' : licenseMark(result.license))}
     >
       {held === null ? (
@@ -550,6 +554,19 @@ function heldAs(
   return FACES.some((face) => face.family.toLowerCase() === family)
     ? 'Built in'
     : null
+}
+
+/** The stack of a family a project's frames may already name, which draws whether its sample loads or not. */
+function heldStack(
+  result: FontResult,
+  installed: readonly InstalledFont[],
+): string | null {
+  const family = result.family.toLowerCase()
+  const row = familyRows(installed).find(
+    (held) =>
+      held.installed?.id === result.id || held.family.toLowerCase() === family,
+  )
+  return row?.stack ?? null
 }
 
 function searchFailure(error: unknown): string {
