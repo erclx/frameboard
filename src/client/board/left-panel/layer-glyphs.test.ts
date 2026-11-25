@@ -1,4 +1,4 @@
-import { Box, Circle, Image, Minus, Type } from 'lucide-react'
+import { Box, Circle, Image, Minus, Music, Type } from 'lucide-react'
 import { describe, expect, it } from 'vitest'
 
 import type { TreeElement } from '@/shared/records/elements'
@@ -41,6 +41,17 @@ describe('elementGlyph', () => {
       'a model placed free still as a model',
       element({ tag: 'model-viewer', placed: true }),
       Box,
+    ],
+    ['an audio', element({ tag: 'audio' }), Music],
+    [
+      'an audio placed free still as an audio',
+      element({ tag: 'audio', placed: true }),
+      Music,
+    ],
+    [
+      'an audio holding fallback text still as an audio',
+      element({ tag: 'audio', textOnly: true }),
+      Music,
     ],
     ['a row flex', element({ layout: 'row' }), LayoutRowGlyph],
     ['a column flex', element({ layout: 'column' }), LayoutColumnGlyph],
