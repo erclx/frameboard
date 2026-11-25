@@ -60,6 +60,27 @@ describe('POST /api/frame/height', () => {
       empty: false,
     }))
 
+  /** Fits the hero at 632 px of content, answering each box it was measured at. */
+  const fitHero = async (box: { width: number; height: number }) => {
+    const opened: { width: number; height: number }[] = []
+    app = structureRoutes(
+      board.root,
+      ACCESS,
+      history,
+      async (frame, linked) => {
+        const { width, height } = linked ?? frame.box
+        opened.push({ width, height })
+        return { width, height: 632, contentWidth: width, empty: false }
+      },
+    )
+    await post('/api/frame/height', {
+      refs: ['studio/home/hero'],
+      mode: 'fit',
+      expected: { 'studio/home/hero': { x: 0, y: 0, ...box } },
+    })
+    return opened
+  }
+
   it('sets scroll in one undoable step', async () => {
     const response = await post('/api/frame/height', {
       refs: ['studio/home/hero'],
@@ -166,6 +187,58 @@ describe('POST /api/frame/height', () => {
 
     expect(opened).toEqual([790])
     expect(frames().hero.widths).toEqual([{ width: 390, height: 2454 }])
+  })
+
+  it('fits an upright phone to its page and the status bar above it', async () => {
+    const box = { width: 390, height: 844 }
+    setHero({ ...box, showDevice: true })
+
+    const opened = await fitHero(box)
+
+    expect(opened).toEqual([{ width: 390, height: 790 }])
+    expect(frames().hero).toMatchObject({ height: 686, hugHeight: true })
+  })
+
+  it('fits a turned phone between its side strips, with no bar above it', async () => {
+    const box = { width: 844, height: 390 }
+    setHero({
+      ...box,
+      showDevice: true,
+      turn: 'left',
+      upright: { width: 390, height: 844 },
+    })
+
+    const opened = await fitHero(box)
+
+    expect(opened).toEqual([{ width: 736, height: 390 }])
+    expect(frames().hero).toMatchObject({ height: 632, hugHeight: true })
+  })
+
+  it('fits a turned foldable between its side strips, with no bar above it', async () => {
+    const box = { width: 678, height: 466 }
+    setHero({
+      ...box,
+      showDevice: true,
+      foldable: true,
+      pose: 'closed',
+      turn: 'left',
+      upright: { width: 466, height: 678 },
+    })
+
+    const opened = await fitHero(box)
+
+    expect(opened).toEqual([{ width: 570, height: 466 }])
+    expect(frames().hero).toMatchObject({ height: 632, hugHeight: true })
+  })
+
+  it('fits a phone width with its device off to its content alone', async () => {
+    const box = { width: 390, height: 844 }
+    setHero(box)
+
+    const opened = await fitHero(box)
+
+    expect(opened).toEqual([{ width: 390, height: 844 }])
+    expect(frames().hero).toMatchObject({ height: 632, hugHeight: true })
   })
 
   it('refuses a fit of content sized off the viewport with 422, writing nothing', async () => {
