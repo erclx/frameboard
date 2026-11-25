@@ -15,7 +15,7 @@ Each group holds accepted frames a build matches, light and dark. Each line link
 - [Inspector](inspector.md): The right panel for a frame or an element
 - [Landing](landing.md): The landing page in `web/`, a separate project from the board, from the hero through the walkthrough to the install
 - [Layers](layers.md): The left panel's pages, layers, and find
-- [Menus](menus.md): Right-click and avatar menus, and the copy toast
+- [Menus](menus.md): Right-click and avatar menus, and the toasts
 - [Notes](notes.md): Notes pinned on frames and their threads
 - [Palette](palette.md): The command palette and the shortcuts sheet
 - [Present](present.md): A page presented full screen one frame at a time, its step bar and slide overview, and the presenter view

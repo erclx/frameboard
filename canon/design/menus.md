@@ -1,6 +1,6 @@
 ---
 title: Menus
-description: Right-click and avatar menus, and the copy toast
+description: Right-click and avatar menus, and the toasts
 ---
 
 # Menus
@@ -9,6 +9,7 @@ description: Right-click and avatar menus, and the copy toast
 
 - `src/client/board/menus/`
 - `src/client/board/chrome/avatar-menu.tsx`
+- `src/client/components/ui/toast.tsx`
 
 ## States
 
@@ -17,4 +18,4 @@ description: Right-click and avatar menus, and the copy toast
 - Home sort menu
 - Canvas
 - Avatar
-- A toast shown
+- A toast stack shown, with an action toast, a copy toast, and an undo toast
