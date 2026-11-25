@@ -226,7 +226,11 @@ function isTyping(event: KeyboardEvent): boolean {
     return true
   if (target.closest?.('[data-slot="toast"]') != null)
     return event.key === 'Enter'
-  return target.closest?.('[role="dialog"]') != null
+  // A modal's Tab rests on a guard outside its node, or on the body between the two.
+  return (
+    target.closest?.('[role="dialog"]') != null ||
+    document.querySelector('[data-slot="dialog-content"][data-open]') !== null
+  )
 }
 
 function isFramePressTaken(event: KeyboardEvent): boolean {
