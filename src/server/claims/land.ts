@@ -44,7 +44,8 @@ export async function landReserved(root: string, now: Date): Promise<string[]> {
       for (const { claim, page, name } of due) {
         const layout = layoutAt(layouts, page)
         if (layout.hasEntry(name) || !layout.names.includes(name)) continue
-        const { x, y, width, height, hugWidth, hugHeight } = claim.box
+        const { x, y, width, height, hugWidth, hugHeight, showDevice } =
+          claim.box
         layout.set(name, {
           box: { x, y, width, height },
           order: layout.placement(name).order,
@@ -54,6 +55,7 @@ export async function landReserved(root: string, now: Date): Promise<string[]> {
           hugHeight: hugHeight ?? false,
           scroll: false,
           widths: [],
+          ...(showDevice ? { showDevice: true as const } : {}),
           placed: true,
         })
         layout.renumber()

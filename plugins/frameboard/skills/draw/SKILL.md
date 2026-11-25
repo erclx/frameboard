@@ -97,12 +97,12 @@ The developer draws sections on the board, and `list --json` names each section'
 
 ## Claim a frame before you rewrite it
 
-Reserve every new frame you plan with `frameboard editing <page>/<frame>... --new --json` before writing any, so the developer's board shows where each will land. Each file lands in its reserved box.
+Reserve every new frame you plan with `frameboard editing <page>/<frame>... --new --json` before writing any, so the board shows where each will land. With no size, a name ending in a listed width reserves it and its device.
 
 Run `frameboard editing <page>/<frame> --json` before you change an existing frame, so the developer's board shows you working on it and another session knows it is taken. Run it on each reserved frame as you turn to write it too, which marks that box as the one you are drawing and keeps the whole set held.
 
 - A claim lapses five minutes after you last ran it, so run it again while you are still at work
-- Drop it with `frameboard editing <page>/<frame> --release --json` as soon as you are done rather than letting it lapse, since the developer's hand edits on it wait for your claim to end
+- Drop it with `frameboard editing <page>/<frame>... --release --json` once you are done with the frames, rather than letting it lapse, since the developer's hand edits on them wait
 - A refusal with `frame-claimed` means another session holds the frame. Leave it alone, or ask the developer, rather than writing it anyway, since nothing else stops you.
 - Treat a frame the developer locked as one to keep as they left it. Rewrite its file only when they name it, since the lock never stops a write, and never clear the lock yourself.
 - Leave a hidden frame out of `show`, and tell the developer when you change one

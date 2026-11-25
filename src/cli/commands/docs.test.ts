@@ -30,6 +30,7 @@ describe('docs', () => {
         controls: string[]
         kits: string[]
         images: string[]
+        layout: string[]
         models: string[]
         names: { pattern: string }
         frameSizes: Record<string, { width: number; height: number }>
@@ -158,6 +159,14 @@ describe('docs', () => {
       'video-landscape',
       'video-portrait',
     ])
+  })
+
+  it('says editing --new reads a name for its size as frame add does', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.layout.join('\n')).toMatch(
+      /frame add takes a name ending in -<px>.*editing --new with no size flag reads the name the same way/,
+    )
   })
 
   it('states the drawn controls contract by its attribute names', async () => {
