@@ -383,10 +383,9 @@ export function endTransition(id: number): void {
 }
 
 /**
- * Ends presenting and returns to the board with the presented frame
- * selected and in view, unless another page's canvas is mounted, whose own
- * selection and view stand. Leaves full screen when it is still on and closes
- * the presenter window. Writes nothing to the board and records no undo step.
+ * Ends presenting, full screen, and the presenter window, then selects and
+ * reveals the presented frame unless another page's canvas is mounted. Writes
+ * nothing to the board and records no undo step.
  */
 export function leavePresenting(): void {
   const { page, frame } = presentStore.getState()
