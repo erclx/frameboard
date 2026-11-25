@@ -19,7 +19,7 @@ Owns the loopback server around the folders below. `app.ts` is the Hono app, `st
 
 ### `src/server/live/`
 
-Owns the board folder's watcher, the socket hub, the decision to open a tab, and the selection `selection.ts` keeps in memory from the last writing tab, forgotten once that tab's socket closes. A reload carries a frame's hash only when its own file was the batch's sole cause, so a tab keeps a page already showing those bytes.
+Owns the folder's watcher, the socket hub, the decision to open a tab, and the last writing tab's selection, forgotten once its socket closes. `feed.ts` alone sends tabs a scan or a rename, as a patch or a whole board. A reload carries a frame's hash only when its own file was the batch's sole cause, so a tab keeps a page showing those bytes.
 
 - `.html` or `.swap` reloads its frame, a page file its page, non-kit media its linking frames, the rest and font records the project, `layout.json` a `kit` change, `notes.json` and licenses nothing
 - Writes gather into batches closing 50 ms after the last event or 250 ms after the first, and a watch resolves only past its first 100 ms, since `fs.watch` on macOS drops writes then
