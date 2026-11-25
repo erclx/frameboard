@@ -79,8 +79,18 @@ const PANS = [
 ] as const
 
 const STEPS = [
-  { name: 'next', label: 'Next frame', key: 'Tab', by: 1 },
-  { name: 'previous', label: 'Previous frame', key: 'Shift+Tab', by: -1 },
+  {
+    name: 'next',
+    label: 'Next frame',
+    keys: ['Tab', '$mod+Shift+ArrowRight'],
+    by: 1,
+  },
+  {
+    name: 'previous',
+    label: 'Previous frame',
+    keys: ['Shift+Tab', '$mod+Shift+ArrowLeft'],
+    by: -1,
+  },
 ] as const
 
 /**
@@ -394,13 +404,13 @@ function boardActions(): Action[] {
       run: () => canvasView.fitTo(selectedFrames().map((frame) => frame.box)),
     },
     // Only for one frame with board focus, since Tab otherwise walks elements or focus.
-    ...STEPS.map(({ name, label, key, by }): Action => ({
+    ...STEPS.map(({ name, label, keys, by }): Action => ({
       id: `frame.${name}`,
       label,
       group: 'view',
       // Focus sits in the palette while it is open, so a step could never run there.
       palette: false,
-      keys: [key],
+      keys,
       enabled: () =>
         onCanvas((count) => count === 1)() &&
         focusOnBoard() &&

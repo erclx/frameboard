@@ -9,6 +9,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { setCharacterKeys } from '@/client/actions/character-keys'
+import { IS_MAC } from '@/client/actions/keys'
 import {
   bindKeys,
   findAction,
@@ -508,6 +509,103 @@ describe('useBoardActions', () => {
 
       expect(stepped).toEqual([ABOUT.ref])
       expect(selectionStore.getState().frames).toEqual([HERO.ref])
+    })
+
+    describe('on Cmd or Ctrl with Shift and an arrow', () => {
+      const MOD = IS_MAC ? 'Meta' : 'Control'
+      const press = (arrow: 'ArrowLeft' | 'ArrowRight') =>
+        userEvent.keyboard(`{${MOD}>}{Shift>}{${arrow}}{/Shift}{/${MOD}}`)
+
+      beforeEach(() => {
+        const board = setup()
+        const unbind = bindKeys(window)
+        done = () => {
+          unbind()
+          board.done()
+        }
+      })
+
+      it('steps right, wrapping past the last frame', async () => {
+        select(selectionStore, 'studio/home', [ABOUT.ref])
+
+        await press('ArrowRight')
+        const stepped = selectionStore.getState().frames
+        await press('ArrowRight')
+
+        expect(stepped).toEqual([CONTACT.ref])
+        expect(selectionStore.getState().frames).toEqual([HERO.ref])
+      })
+
+      it('steps left, wrapping past the first frame', async () => {
+        select(selectionStore, 'studio/home', [ABOUT.ref])
+
+        await press('ArrowLeft')
+        const stepped = selectionStore.getState().frames
+        await press('ArrowLeft')
+
+        expect(stepped).toEqual([HERO.ref])
+        expect(selectionStore.getState().frames).toEqual([CONTACT.ref])
+      })
+
+      it('steps once while held', async () => {
+        select(selectionStore, 'studio/home', [HERO.ref])
+
+        await userEvent.keyboard(
+          `{${MOD}>}{Shift>}{ArrowRight>3/}{/Shift}{/${MOD}}`,
+        )
+
+        expect(selectionStore.getState().frames).toEqual([ABOUT.ref])
+      })
+
+      it('runs nothing with several frames selected', async () => {
+        select(selectionStore, 'studio/home', [HERO.ref, ABOUT.ref])
+
+        await press('ArrowRight')
+
+        expect(selectionStore.getState().frames).toEqual([HERO.ref, ABOUT.ref])
+      })
+
+      it('runs nothing with an element selected', async () => {
+        selectElement(selectionStore, 'studio/home', {
+          frame: HERO.ref,
+          index: 3,
+          hash: 'h',
+        })
+        const before = selectionStore.getState()
+
+        await press('ArrowRight')
+
+        expect(selectionStore.getState()).toEqual(before)
+      })
+
+      it('runs nothing with nothing selected', async () => {
+        await press('ArrowRight')
+
+        expect(selectionStore.getState().frames).toEqual([])
+      })
+
+      it('runs nothing in Play', async () => {
+        select(selectionStore, 'studio/home', [HERO.ref])
+        modeStore.setState({ mode: 'play' })
+
+        await press('ArrowRight')
+
+        expect(selectionStore.getState().frames).toEqual([HERO.ref])
+      })
+
+      it('leaves the press to the browser on a page of one frame', async () => {
+        receiveBoard(liveStore, boardOf(pageOf([HERO])))
+        select(selectionStore, 'studio/home', [HERO.ref])
+        const presses: KeyboardEvent[] = []
+        const watch = (event: KeyboardEvent) => presses.push(event)
+        window.addEventListener('keydown', watch)
+
+        await press('ArrowRight')
+        window.removeEventListener('keydown', watch)
+
+        expect(presses.filter((event) => event.defaultPrevented)).toEqual([])
+        expect(presses.at(-1)?.key).toBe('ArrowRight')
+      })
     })
 
     it('stands aside on a page of one frame, so Tab moves focus', () => {
