@@ -60,6 +60,8 @@ interface FilesViewProps {
   writes?: AssetWrites
   /** Lands a file in a new frame at the view's center, `placeAtCenter` in the app. */
   place?: (file: PlaceableFile) => void
+  /** Where to get a file the project lacks, shown over the drop hint. */
+  hint?: string
 }
 
 /** The file Delete asks about and the frames linking it, which the confirm names. */
@@ -80,6 +82,7 @@ export function FilesView({
   upload = uploadAssets,
   writes = ASSET_WRITES,
   place = placeAtCenter,
+  hint,
 }: FilesViewProps) {
   const canWrite = useLive((state) => state.canWrite)
   const [reads, setReads] = useState(0)
@@ -376,6 +379,9 @@ export function FilesView({
           </button>
           .
         </p>
+      ) : null}
+      {hint ? (
+        <p className="mx-3 my-1.5 text-muted-foreground">{hint}</p>
       ) : null}
       <div className="m-2 rounded-[10px] border-[1.5px] border-dashed border-border p-3 text-center leading-normal text-muted-foreground">
         {canWrite ? (
