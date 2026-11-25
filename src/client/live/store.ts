@@ -1,6 +1,11 @@
 import { useStore } from 'zustand'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
+import {
+  holdsRef,
+  renameOnBoard,
+  takesRename,
+} from '@/shared/board-sync/rename'
 import type { Finding } from '@/shared/records/check'
 import type { Claim } from '@/shared/records/claims'
 import type {
@@ -113,7 +118,7 @@ export function receiveRename(
 ): void {
   const state = store.getState()
   const { board } = state
-  if (!board || !takesRename(store, before, after)) return
+  if (!board || !takesRename(board, before, after)) return
   const moveKeys = <T>(byRef: Readonly<Record<string, T>>) =>
     movedKeys(byRef, before, after)
   // No alias for a frame, which would keep its iframe on a dead path.
@@ -138,20 +143,6 @@ export function receiveRename(
     },
     aliases: liveAliases(aliases, renamed),
   })
-}
-
-/**
- * Whether the board in hand still waits on a rename, holding `before` and
- * not yet `after`, so the stores keyed by frame ref outside this one move
- * theirs only for a rename `receiveRename` carries.
- */
-export function takesRename(
-  store: LiveStore,
-  before: string,
-  after: string,
-): boolean {
-  const { board } = store.getState()
-  return !!board && holdsRef(board, before) && !holdsRef(board, after)
 }
 
 /**
@@ -227,106 +218,6 @@ export function renamedRef(
     .flatMap((project) => project.pages)
     .find((candidate) => identityOf(next.aliases, candidate.ref) === identity)
   return page?.ref ?? null
-}
-
-function holdsRef(board: ListResult, ref: string): boolean {
-  return board.projects.some(
-    (project) =>
-      project.name === ref ||
-      project.pages.some(
-        (page) =>
-          page.ref === ref || page.frames.some((frame) => frame.ref === ref),
-      ),
-  )
-}
-
-/**
- * The board with one project, page, or frame renamed, its path and
- * everything under it following.
- */
-function renameOnBoard(
-  board: ListResult,
-  before: string,
-  after: string,
-): ListResult {
-  const [project = '', page, frame] = before.split('/')
-  const name = after.split('/').at(-1) ?? after
-  const repath = (from: string, to: string) => (path: string) =>
-    path === from || path.startsWith(`${from}/`)
-      ? `${to}${path.slice(from.length)}`
-      : path
-  return {
-    ...board,
-    projects: board.projects.map((held) => {
-      if (held.name !== project) return held
-      if (frame !== undefined) {
-        return {
-          ...held,
-          pages: held.pages.map((each) =>
-            each.name !== page
-              ? each
-              : {
-                  ...each,
-                  frames: each.frames.map((one) =>
-                    one.ref !== before
-                      ? one
-                      : {
-                          ...one,
-                          ref: after,
-                          name,
-                          path: siblingPath(one.path, `${name}.html`),
-                        },
-                  ),
-                },
-          ),
-        }
-      }
-      if (page === undefined) {
-        const path = repath(held.path, siblingPath(held.path, name))
-        return {
-          ...held,
-          name,
-          path: path(held.path),
-          pages: held.pages.map((each) => ({
-            ...each,
-            ref: `${name}/${each.name}`,
-            project: name,
-            path: path(each.path),
-            frames: each.frames.map((frame) => ({
-              ...frame,
-              ref: `${name}/${each.name}/${frame.name}`,
-              project: name,
-              path: path(frame.path),
-            })),
-          })),
-        }
-      }
-      return {
-        ...held,
-        pages: held.pages.map((each) => {
-          if (each.name !== page) return each
-          const path = repath(each.path, siblingPath(each.path, name))
-          return {
-            ...each,
-            ref: after,
-            name,
-            path: path(each.path),
-            frames: each.frames.map((frame) => ({
-              ...frame,
-              ref: `${after}/${frame.name}`,
-              page: name,
-              path: path(frame.path),
-            })),
-          }
-        }),
-      }
-    }),
-  }
-}
-
-/** The folder path beside `path` named `name`. */
-function siblingPath(path: string, name: string): string {
-  return `${path.slice(0, path.lastIndexOf('/') + 1)}${name}`
 }
 
 /**

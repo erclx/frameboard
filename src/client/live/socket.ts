@@ -13,6 +13,7 @@ import {
   type ThemeStore,
   themeStore,
 } from '@/client/theme/store'
+import { takesRename } from '@/shared/board-sync/rename'
 import { FACES, FACES_URL } from '@/shared/faces'
 import {
   type HelloMessage,
@@ -36,7 +37,6 @@ import {
   receiveReload,
   receiveRename,
   receiveThumbnails,
-  takesRename,
 } from './store'
 import {
   pruneUnseen,
@@ -134,8 +134,9 @@ export function connectLive(
         receiveLiveReload(store, message.refs, message.hashes)
       } else if (message.type === 'renamed') {
         const { before, after } = message
+        const { board } = store.getState()
         // Moved first, since the renamed board prunes a selection it no longer holds.
-        if (takesRename(store, before, after)) {
+        if (board && takesRename(board, before, after)) {
           renameSelection(selection, before, after)
           renameFlipped(before, after, theme)
           renameUnseen(unseen, before, after)
