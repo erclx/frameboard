@@ -16,6 +16,7 @@ import {
   browserSwept,
   chosenTheme,
   focusOnLoad,
+  hoverOnLoad,
   noAgentChanges,
   openOverlayOnLoad,
   readyWhen,
@@ -319,6 +320,22 @@ const CARD_CAPTURED = '[data-skeleton] rect[data-capture="drawn"]'
 /** A frame in a card's well showing still grey, its frame having no capture. */
 const CARD_UNCAPTURED = 'main li [data-skeleton] g:not(:has(image))'
 
+/**
+ * Deletes `webapp` from its card, answered in the browser so the served board
+ * keeps the project.
+ */
+const projectDeleted = both(
+  async (page) => {
+    await page.route('**/api/project/delete', (route) =>
+      route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, data: { deleted: 'webapp' } }),
+      }),
+    )
+  },
+  focusOnLoad('main a[href^="/p/webapp"]', 'Backspace'),
+)
+
 /** The hint on the one home item a held project is over. */
 const DROP_HINT = 'li[data-drop-over] > [role="status"]'
 
@@ -409,16 +426,24 @@ export const HOME_BUNDLE_CASES: CaptureCase[] = (
     setup: both(
       chosenTheme(theme),
       asWriter,
-      async (page) => {
-        await page.route('**/api/project/delete', (route) =>
-          route.fulfill({
-            contentType: 'application/json',
-            body: JSON.stringify({ ok: true, data: { deleted: 'webapp' } }),
-          }),
-        )
-      },
-      focusOnLoad('main a[href^="/p/webapp"]', 'Backspace'),
+      projectDeleted,
       readyWhen('[data-slot="toast"]:not([data-starting-style])'),
+    ),
+  },
+  {
+    // The pointer on a toast with an action, so its close button draws.
+    section: 'home-deleted-toast-hover',
+    theme,
+    route: '/',
+    evidence: true,
+    excludeViewports: STATE_ONLY,
+    mask: ['[data-edited]'],
+    setup: both(
+      chosenTheme(theme),
+      asWriter,
+      projectDeleted,
+      hoverOnLoad('[data-slot="toast"]:not([data-starting-style])'),
+      readyWhen('[data-slot="toast"]:not([data-starting-style]):hover'),
     ),
   },
   {

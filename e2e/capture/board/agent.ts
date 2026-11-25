@@ -17,6 +17,7 @@ import {
   AVATAR,
   both,
   focusOnLoad,
+  hoverOnLoad,
   LISTENING_SESSION,
   menuOn,
   onCanvas,
@@ -243,6 +244,32 @@ async function stackedNotes(page: Page): Promise<void> {
 
 /** The toast once it has slid in. */
 const TOAST_SHOWN = '[data-change-toast]:not([data-starting-style])'
+
+/** The show offer once it has slid in. */
+const OFFER_SHOWN = '[data-show-offer]:not([data-starting-style])'
+
+/**
+ * Sends the board an agent's `show` of a frame in the other project once the
+ * hello's changes land, through the socket, so it raises the offer and marks
+ * no frame.
+ */
+async function shownElsewhere(page: Page): Promise<void> {
+  await page.routeWebSocket('**/api/live', (socket) => {
+    const server = socket.connectToServer()
+    server.onMessage((message) => {
+      socket.send(message)
+      const parsed = JSON.parse(String(message)) as { type: string }
+      if (parsed.type !== 'changes') return
+      socket.send(
+        JSON.stringify({
+          type: 'show',
+          ref: 'marketing/states/free',
+        } satisfies ServerMessage),
+      )
+    })
+    socket.onMessage((message) => server.send(message))
+  })
+}
 
 /**
  * Clicks the change toast's Mark all seen, its last button on the many form,
@@ -547,6 +574,48 @@ export function agentCases(theme: 'light' | 'dark'): CaptureCase[] {
           ]),
           markAllSeenOnLoad,
           readyWhen(`${TOAST_SHOWN}:has(button:only-of-type)`),
+        ),
+      ),
+    },
+    {
+      // The offer of a frame in another project at rest, per agents/show-offer.
+      section: 'show-offer',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(both(shownElsewhere, readyWhen(OFFER_SHOWN))),
+    },
+    {
+      // The pointer on it, so the close button draws clear of Go.
+      section: 'show-offer-hover',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          shownElsewhere,
+          hoverOnLoad(OFFER_SHOWN),
+          readyWhen(`${OFFER_SHOWN}:hover`),
+        ),
+      ),
+    },
+    {
+      // Keyboard focus on the close button, its ring clear of Go.
+      section: 'show-offer-close-focus',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          shownElsewhere,
+          focusOnLoad(`${OFFER_SHOWN} [data-slot="toast-close"]`),
+          readyWhen('[data-slot="toast-close"]:focus-visible'),
         ),
       ),
     },

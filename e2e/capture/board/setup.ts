@@ -966,6 +966,39 @@ export function both(
   }
 }
 
+/**
+ * Rests the real pointer inside the first `selector` once it draws, so a shot
+ * shows what `:hover` paints. It rests near the left edge, clear of a toast's
+ * buttons and their tooltips.
+ */
+export function hoverOnLoad(selector: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.exposeFunction('captureHover', (x: number, y: number) =>
+      page.mouse.move(x, y),
+    )
+    await page.addInitScript(
+      ({ target, frames }) => {
+        if (window !== window.top) return
+        let left = frames
+        const hover = () => {
+          const element = document.querySelector(target)
+          if (element) {
+            const box = element.getBoundingClientRect()
+            void (
+              window as unknown as {
+                captureHover: (x: number, y: number) => Promise<void>
+              }
+            ).captureHover(box.left + 8, box.top + box.height / 2)
+          } else if (--left > 0) requestAnimationFrame(hover)
+          else console.error(`No ${target} to hover`)
+        }
+        document.addEventListener('DOMContentLoaded', hover)
+      },
+      { target: selector, frames: PRESS_FRAMES },
+    )
+  }
+}
+
 /** Runs a case's setup after the startup browser sweep, in the chosen theme. */
 export function themedFor(
   theme: 'light' | 'dark',

@@ -14,6 +14,20 @@ import { toast, Toaster } from './toast'
 
 const cleanups: (() => void)[] = []
 
+/** The close button's ring, which a focused toast draws outside its box. */
+const RING = 3
+
+/** Where the content of a toast with a close button ends, its 1px border and 34px padding. */
+const END = 35
+
+const box = (element: Element) => element.getBoundingClientRect()
+
+/** How far an element ends from the right edge of the toast holding it. */
+function fromEdge(element: Element): number {
+  const root = element.closest('[data-slot="toast"]')
+  return (root ? box(root).right : Number.NaN) - box(element).right
+}
+
 afterEach(() => {
   while (cleanups.length) cleanups.pop()?.()
   act(() => toast.close())
@@ -135,8 +149,6 @@ describe('a toast with an action', () => {
     })
   }
 
-  const box = (element: Element) => element.getBoundingClientRect()
-
   it('draws the action at the right of its text in one row', async () => {
     raise({
       title: 'Deleted webapp',
@@ -154,12 +166,20 @@ describe('a toast with an action', () => {
     )
   })
 
-  it('keeps the action clear of the close button on a one-line toast', async () => {
+  it('keeps the action clear of the close button and its ring on a one-line toast', async () => {
     raise({ title: 'Deleted webapp', actionProps: { children: 'Undo' } })
     const action = box(await screen.findByRole('button', { name: 'Undo' }))
     const close = box(screen.getByLabelText('Close'))
 
-    expect(action.right).toBeLessThanOrEqual(close.left)
+    expect(action.right + RING).toBeLessThanOrEqual(close.left)
+  })
+
+  it('ends the action where the reference draws it', async () => {
+    raise({ title: 'Deleted webapp', actionProps: { children: 'Undo' } })
+
+    const action = await screen.findByRole('button', { name: 'Undo' })
+
+    expect(fromEdge(action)).toBeCloseTo(END, 1)
   })
 
   it('reaches the action by Tab ahead of the close button', async () => {
@@ -205,21 +225,78 @@ describe('a toast with an action', () => {
 })
 
 describe('a toast with no action', () => {
-  it('keeps its text clear of the close button', async () => {
+  const NAME = 'northwind'.repeat(9)
+
+  function raise(options: Parameters<typeof toast.add>[0]) {
     render(<Toaster />)
     act(() => {
-      toast.add({
-        title: 'Nothing written',
-        description: 'signup changed on disk since you opened it. '.repeat(3),
-        timeout: 0,
-      })
+      toast.add({ timeout: 0, ...options })
     })
-    const title = await screen.findByText('Nothing written')
-    const root = title.closest('[role="dialog"]')?.getBoundingClientRect()
+  }
+
+  it('keeps its text clear of the close button and its ring', async () => {
+    raise({
+      title: 'Nothing written',
+      description: 'signup changed on disk since you opened it. '.repeat(3),
+    })
+    const title = box(await screen.findByText('Nothing written'))
+    const detail = box(screen.getByText(/^signup changed/))
+    const close = box(screen.getByLabelText('Close'))
 
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
-    // The 1px border, the content's 14px padding, and the text column's 16px.
-    expect((root?.right ?? 0) - title.getBoundingClientRect().right).toBe(31)
-    expect(title.getBoundingClientRect().top - (root?.top ?? 0)).toBe(13)
+    expect(title.right + RING).toBeLessThanOrEqual(close.left)
+    expect(detail.right + RING).toBeLessThanOrEqual(close.left)
+  })
+
+  it('ends its text where an action ends', async () => {
+    raise({ title: 'Nothing written' })
+
+    const title = await screen.findByText('Nothing written')
+
+    expect(fromEdge(title)).toBeCloseTo(END, 1)
+  })
+
+  it('breaks a long unbroken title before it runs under the close button', async () => {
+    raise({ title: `Exported ${NAME}` })
+    const title = await screen.findByText(/^Exported northwind/)
+
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
+  })
+
+  it('holds a long unbroken description inside its box', async () => {
+    raise({ title: "Couldn't export hero", description: NAME })
+    const detail = await screen.findByText(NAME)
+    const root = detail.closest('[role="dialog"]')
+
+    expect(detail.scrollWidth).toBeLessThanOrEqual(detail.clientWidth)
+    await waitFor(() =>
+      expect(box(detail).bottom).toBeLessThanOrEqual(
+        root ? box(root).bottom : 0,
+      ),
+    )
+  })
+
+  it('stays clear once an update drops its action', async () => {
+    render(<Toaster />)
+    let id = ''
+    act(() => {
+      id = toast.add({
+        title: 'This edit link has expired',
+        timeout: 0,
+        actionProps: { children: 'Edit this board' },
+      })
+    })
+    await screen.findByRole('button', { name: 'Edit this board' })
+
+    act(() => toast.update(id, { actionProps: undefined }))
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: 'Edit this board' }),
+      ).toBeNull(),
+    )
+    const title = box(screen.getByText('This edit link has expired'))
+    const close = box(screen.getByLabelText('Close'))
+    expect(title.right + RING).toBeLessThanOrEqual(close.left)
   })
 })

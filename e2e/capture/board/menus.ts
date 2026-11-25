@@ -11,6 +11,7 @@ import {
   both,
   focusOnLoad,
   headlineOnHero,
+  hoverOnLoad,
   menuOn,
   noTokens,
   PRESS_FRAMES,
@@ -194,6 +195,23 @@ export function menusCases(theme: 'light' | 'dark'): CaptureCase[] {
           asWriter,
           refusedUndo,
           readyWhen('[data-slot="toast"]:not([data-starting-style])'),
+        ),
+      ),
+    },
+    {
+      // The pointer on a toast with no action, so its close button draws.
+      section: 'undo-refused-hover',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          refusedUndo,
+          hoverOnLoad('[data-slot="toast"]:not([data-starting-style])'),
+          readyWhen('[data-slot="toast"]:not([data-starting-style]):hover'),
         ),
       ),
     },
