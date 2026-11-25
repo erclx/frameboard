@@ -66,7 +66,7 @@ Owns the project verbs, being add, rename, title, delete, the two filing verbs, 
 Owns `kit list`, `kit add`, `kit remove`, and `kit save`, over the same `src/server/kits/` the board's routes call, writing with no journal the way the other verbs do.
 
 - `kit add <project> <kit>` takes a name `kit list` answers, and `--from <folder>` a kit folder resolved against the working folder in its place, refusing `usage` for both or neither
-- `kit add` exits 4 with `name-taken` where the project holds a kit by that name, and takes a hidden `--replace` it never acts on, since a script may still pass it
+- `kit add` exits 4 with `name-taken` over a held kit, and `--replace` swaps in the copy under the held name, writing no `layout.json`, or adds the kit where none is held
 - `kit remove <project> <kit>` answers the frames it cleared, and exits 3 with `kit-not-found` for a kit the project lacks
 
 ### `src/cli/commands/references.ts`
