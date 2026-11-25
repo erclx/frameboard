@@ -37,8 +37,8 @@
       "chain": ["node"]
     },
     "tooling": {
-      "version": "5.122.0",
-      "syncedAt": "2026-11-24T16:50:06.722Z",
+      "version": "5.128.0",
+      "syncedAt": "2026-11-25T05:16:15.916Z",
       "files": {
         ".github/workflows/deploy.yml": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2",
         ".github/workflows/phase-label-gate.yml": "sha256:40abb5f8b078badce41d6e2697ce569f00bb2dcda963b5ea476f84ec02d315fd",
@@ -48,7 +48,7 @@
         ".husky/post-merge": "sha256:c40426a0d545cb0fcf94c61eb69409d7e3952a86cfe780ff1ebb6201320f504b",
         ".husky/post-rewrite": "sha256:4f35974c54e0cf6cb9ce587f8840c24132ea8d7e74ca5ae884ee546f7b878a91",
         ".husky/pre-commit": "sha256:a7e3ee0be7554bb60837cd7a414e61aa6a51db987390e325a3799cbdc254ddd8",
-        ".husky/pre-push": "sha256:e059070389c708b2bcebd7b96f8787f4bdcedc866539c02af1dfd5d98630eb3e",
+        ".husky/pre-push": "sha256:a3d65597fcaeac542e460464eb6ae4fd9813c68ef5da7586b5b805f11d2be855",
         ".oxfmtrc.json": "sha256:2c67a0febb5a16c2656a53159bdcb5de7a86332f01630aea57f6d06ade271b5c",
         "e2e/capture-types.ts": "sha256:cd2139808afdd653fe5c39cf03f5b24956ccebf4ab11727c67db83cfcbdd54c0",
         "e2e/screenshot.ts": "sha256:952f40ee3e3e78ee7c953b3dd1c6c85b0497f57cab3de6e82804d86a0474175c",
@@ -58,7 +58,7 @@
         "scripts/readme-screenshot.sh": "sha256:adff1d85ed1ccee6d9df9c6ee12cf13e1798dbdc911b624d82d13e20a77e5725",
         "scripts/screenshot.sh": "sha256:dc7a583c96c57cc7124842c51ead536c5b29987e52eda8e50eed51f28fbd4d96",
         "scripts/verify.json": "sha256:5e9e1e78b1f5dafcc39baeba83d140975fbf0df5336c8afdd0267cd4749f1f85",
-        "scripts/verify.ts": "sha256:29d74763f72fa0214aec0d2289aa747d2b2400b756538fa1cf5db22a1192bea2",
+        "scripts/verify.ts": "sha256:bf6e8e46fd64d35d3d217e26427023d5abdd1d4696c6cc36f149ea54af44914f",
         "scripts/worktree-port.sh": "sha256:77672f787a296ba315377c36d3a88a861fd829bfebe17e97087839dfd2bb8a65",
         "src/test/setup.ts": "sha256:81c5f1d7ba79bea949bc636250c52d71d18f2d56bfeff58ac15181786b93211d"
       },
@@ -68,17 +68,9 @@
           "disposition": "customized",
           "base": "sha256:c10b99a419a6f54dd238f889dfb86f71ad86d79d2c0ec12b1655785ce128c25c"
         },
-        ".github/workflows/readme-screenshot.yml": {
-          "disposition": "declined",
-          "reason": "The README shows the .github/readme-hero-loop-light.webp and .github/readme-hero-loop-dark.webp loops, with the .github/readme-hero-light.png and .github/readme-hero-dark.png stills as the reduced-motion fallbacks, and commits no capture under assets/evidence/readme"
-        },
         ".github/workflows/verify.yml": {
           "disposition": "customized",
           "base": "sha256:8a7c3b12a77cdc3502d09986327dc25a99ec3db79c3fa1c770349d03ab3f4395"
-        },
-        ".husky/pre-push": {
-          "disposition": "customized",
-          "base": "sha256:e059070389c708b2bcebd7b96f8787f4bdcedc866539c02af1dfd5d98630eb3e"
         },
         ".oxlintrc.json": {
           "disposition": "customized",
@@ -98,7 +90,11 @@
         },
         "e2e/screenshot.ts": {
           "disposition": "customized",
-          "base": "sha256:952f40ee3e3e78ee7c953b3dd1c6c85b0497f57cab3de6e82804d86a0474175c"
+          "base": "sha256:0b8805dc5ed921a7b568df0ff9df2f4422a9a85ecaa940bdb4be05a7efc92a9f"
+        },
+        "package.json:check:changed": {
+          "disposition": "customized",
+          "base": "sha256:571308aef0a904e4bde46c3ce1f40aed6f56a699ac487449a2a92b96d9800b04"
         },
         "package.json:lint": {
           "disposition": "customized",
@@ -108,13 +104,13 @@
           "disposition": "customized",
           "base": "sha256:f5e7b7d244eb0d26a7a7e4c0dc7474961d45097c2461910faae9095f06b9b760"
         },
-        "package.json:readme-screenshot": {
-          "disposition": "declined",
-          "reason": "It runs scripts/readme-screenshot.sh, which is declined"
-        },
         "package.json:screenshot": {
           "disposition": "customized",
           "base": "sha256:bc35258b147950c026e4eb66f60291deb057b27987e13e86577f161fb85b8b9e"
+        },
+        "package.json:test:changed": {
+          "disposition": "declined",
+          "reason": "scripts/check-changed.ts ties its own tests and runs them through test:run under scripts/test-locked.ts, so no script calls test:changed"
         },
         "package.json:test:coverage": {
           "disposition": "customized",
@@ -131,10 +127,6 @@
         "package.json:test:run": {
           "disposition": "customized",
           "base": "sha256:a9f07d70d30ee848c66c3a46453a52ce11dd6eb2067d020162b67c6d853567b7"
-        },
-        "scripts/readme-screenshot.sh": {
-          "disposition": "declined",
-          "reason": "The README shows the .github/readme-hero-loop clips, so no README capture runs"
         },
         "scripts/worktree-port.sh": {
           "disposition": "customized",
