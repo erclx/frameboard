@@ -7,15 +7,13 @@ description: The left panel's header, its Design, Theme, and Assets tabs, the pa
 
 ## Overview
 
-Owns the board's left side, being the project header, the page list, the layers tree, the Theme and Assets tabs, and the first-run guide a new board shows. It also owns find, which takes the panel's place under Cmd+F.
+Owns the board's left side, being the project header, the page list, the layers tree, the Theme and Assets tabs, and the first-run guide a new board shows. It also owns find, which takes the panel's place under Cmd+F. Each tab's lists or body scroll under the project name and the tabs.
 
 ## Layout
 
 ### `src/client/board/left-panel/`
 
 Owns the left panel, being `project-header.tsx` with the way home, the name, and Hide UI, then Design's searchable pages list over a layers tree, Theme in `theme/` with kits, fonts, then tokens, and Assets, with `page-actions.ts` registering the `page.*` actions. The project name renames on a click, and its chevron opens the project menu.
-
-Each tab's lists or body scroll under the project name and the tabs, and Theme's body is `relative`, else a tip's hidden node inside it stretches the panel.
 
 - `board/frame-order.ts` holds the section grouping, so the selection chip's count and the Tab step read the order the rows draw
 - A row restacks within its own group, never into or out of a section, landing at the page-wide index beside the frame it drops by
