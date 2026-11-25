@@ -27,6 +27,8 @@ Owns the folder's watcher, the socket hub, the decision to open a tab, and the l
 - A start answers hellos from what `remembered.ts` keyed in `.run/checks.json`, one changed asset moving its whole project, and `start-checks.ts` rechecks what moved in slices of the scan turn
 - A frame placed mid-measure is measured in that rescan, one a waiting batch saw placed by the batch naming its `layout.json`, and a size whose file changed since its scan is dropped
 
+`project-folders.ts` tells a project folder by its device, inode, and birth time, so a hello or a batch finding one under a new name announces the rename first, whether the CLI, `mv`, or the board made it. A copy then delete, or a folder with no birth time, reads as a project gone and another come.
+
 ### `src/server/claims/`
 
 Owns the claims record, its expiry, and the gate on hand writes, apart from `notes/` and `board/` since the three change together. `land.ts` runs at start and ahead of each batch's scan, writing a reserved frame's layout entry at the claim's box and device once its file exists and dropping the box.

@@ -21,6 +21,8 @@ Owns the left panel, being `project-header.tsx` with the way home, the name, and
 - The reveal reports as a hand move, so it stops Follow, and a row click fits a frame larger than the view where a canvas click never does
 - An element row's F2 stops at the row, so the board's own F2 opens no second field, and its drag moves it among its siblings alone
 
+A rename keeps the open tab, and the Assets tab its search and collapsed folders, since both follow the project's identity, where another project opens on Design.
+
 ### `src/client/board/assets/`
 
 Owns the Assets tab, whose Files, Find, and Generate row sits in `tab.tsx`. Files in `files.tsx` lists the project's `assets/` files as tiles grouped by folder in `groups.ts`, under a name search and kind chips, and each kit and installed font folds into one line pointing at the Theme tab.
