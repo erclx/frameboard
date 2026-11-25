@@ -89,8 +89,6 @@ interface Options {
 async function selected({
   attributes = '',
   placed = PLACED,
-  locked = false,
-  box = BOX,
   written = true,
 }: Options = {}) {
   const { layer, viewer } = await mountCanvas(attributes)
@@ -109,13 +107,13 @@ async function selected({
     },
   }
   act(() => selectElement(selectionStore, 'studio/home', VIEWER))
-  const shown = (
+  const shown = (over: Pick<Options, 'locked' | 'box'> = {}) => (
     <ModelHandles
       element={VIEWER}
-      box={box}
+      box={over.box ?? BOX}
       placed={placed}
       read={null}
-      locked={locked}
+      locked={over.locked ?? false}
       container={layer}
       writes={{
         staged: (_page, _key, changes) => {
@@ -126,8 +124,10 @@ async function selected({
       }}
     />
   )
-  const { unmount } = render(shown)
-  return { viewer, writes, previews, commits, cancels: () => cancels, unmount }
+  const { rerender } = render(shown())
+  const redraw = (over: Pick<Options, 'locked' | 'box'>) =>
+    rerender(shown(over))
+  return { viewer, writes, previews, commits, cancels: () => cancels, redraw }
 }
 
 const gizmo = () => document.querySelector<HTMLElement>('[data-model-handles]')
@@ -298,6 +298,34 @@ describe('ModelHandles', () => {
       expect(commits).toEqual([to])
     })
 
+    it('carries the pins on the model and lets them go at the drop', async () => {
+      await selected()
+      const pin = document.createElement('div')
+      pin.dataset.noteFrame = VIEWER.frame
+      pin.dataset.noteElement = String(VIEWER.index)
+      root?.append(pin)
+
+      const release = await drag('x', 40, 0)
+      expect(pin.style.translate).toBe('40px')
+      await release()
+
+      expect(pin.style.translate).toBe('')
+    })
+
+    it('puts the pins back on Esc', async () => {
+      await selected()
+      const pin = document.createElement('div')
+      pin.dataset.noteFrame = VIEWER.frame
+      pin.dataset.noteElement = String(VIEWER.index)
+      root?.append(pin)
+      const release = await drag('y', 0, -30)
+
+      await user.keyboard('{Escape}')
+      await release()
+
+      expect(pin.style.translate).toBe('')
+    })
+
     it('holds the outline at the drop until the page measures it', async () => {
       await selected()
 
@@ -418,8 +446,11 @@ describe('ModelHandles', () => {
         'for a model too small to hold it clear of its corner marks',
         { box: { ...BOX, width: 40, height: 40 } },
       ],
-    ])('%s', async (_name, options) => {
-      await selected(options)
+    ])('%s', async (_name, over) => {
+      const { redraw } = await selected()
+      await tipOf('z')
+
+      redraw(over)
 
       expect(gizmo()).toBeNull()
     })

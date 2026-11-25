@@ -15,9 +15,10 @@ import type { Offsets, ResizeRead } from '@/shared/frame-bridge/live-element'
 import type { ModelReading, ModelTransform } from '@/shared/frame-bridge/model'
 
 import type { Box } from '../../geometry/box'
-import { screen } from '../../geometry/draw'
+import { screen, shiftElementPins } from '../../geometry/draw'
 import { HANDLE_REACH } from '../../geometry/hit'
 import { useMode } from '../../mode'
+import { refreshCorners } from '../../pin-corner'
 import { usePreview } from '../../preview/store'
 import { type ElementKey, useSelection } from '../../selection'
 import { canvasView } from '../../view'
@@ -219,9 +220,14 @@ function Gizmo({
     [theme, previewed, element.hash, mode],
   )
 
+  /** Shifts the outline and the model's pins with a drag, or puts them back on null. */
   const shiftOutline = (by: Vector | null) => {
     setShift(by ?? { x: 0, y: 0 })
-    const outline = container?.parentElement?.querySelector<HTMLElement>(
+    const canvas = container?.parentElement
+    if (!canvas) return
+    shiftElementPins(canvas, element, by?.x ?? 0, by?.y ?? 0)
+    if (!by) refreshCorners()
+    const outline = canvas.querySelector<HTMLElement>(
       '[data-element-selection]',
     )
     if (!outline) return

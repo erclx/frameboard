@@ -65,7 +65,14 @@ import {
 } from '../selection'
 import { canvasView } from '../view'
 import { boundsOf, type Box, type Point, sameBox } from './box'
-import { drawGuides, drawMarquee, drawMove, drawResize, drawRest } from './draw'
+import {
+  drawGuides,
+  drawMarquee,
+  drawMove,
+  drawResize,
+  drawRest,
+  shiftElementPins,
+} from './draw'
 import {
   badgeAt,
   cornerAt,
@@ -376,15 +383,6 @@ export function attachGestures(
     }
     // A drag's end puts every pin back, so each reads its element's corner where the drag left it.
     if (refs.length === 0) refreshCorners()
-  }
-  // A placed element's drag carries the pins pinned on it, so none is left behind.
-  const shiftElementPins = (key: ElementKey, dx: number, dy: number) => {
-    const pins = target.viewport.querySelectorAll<HTMLElement>(
-      `[data-note-frame="${CSS.escape(key.frame)}"][data-note-element="${key.index}"]`,
-    )
-    for (const pin of pins) {
-      pin.style.translate = dx !== 0 || dy !== 0 ? `${dx}px ${dy}px` : ''
-    }
   }
   /** The boxes a frame resize last drew, which a corner the frame pushes after reflowing places the pins in again. */
   let reflowing: Readonly<Record<string, Box>> | null = null
@@ -961,7 +959,7 @@ export function attachGestures(
         }
         gesture.move.preview(gesture.to)
         shiftElementOutline(ox, oy)
-        shiftElementPins(gesture.key, ox, oy)
+        shiftElementPins(target.viewport, gesture.key, ox, oy)
         showGhost(frameMadeAt(event, gesture))
         return
       }
@@ -977,6 +975,7 @@ export function attachGestures(
         if (first) {
           for (const { index } of gesture.edits) {
             shiftElementPins(
+              target.viewport,
               { ...first, index },
               Math.round(dx),
               Math.round(dy),
@@ -1322,7 +1321,7 @@ export function attachGestures(
     if (gesture.kind === 'placed') {
       gesture.move.cancel()
       shiftElementOutline(0, 0)
-      shiftElementPins(gesture.key, 0, 0)
+      shiftElementPins(target.viewport, gesture.key, 0, 0)
       showGhost(null)
     } else if (gesture.kind === 'element-resize') {
       gesture.resize.cancel()

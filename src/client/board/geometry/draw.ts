@@ -1,3 +1,4 @@
+import type { ElementKey } from '../selection'
 import { boundsOf, type Box } from './box'
 import type { Gap, Guide } from './snap'
 
@@ -11,6 +12,24 @@ import type { Gap, Guide } from './snap'
 export const screen = (px: number) => `calc(${px}px / var(--zoom, 1))`
 
 export const OUTLINE = `${screen(1.5)} solid var(--primary)`
+
+/**
+ * Shifts the pins pinned on an element by a canvas offset, so none is left
+ * behind its drag. `translate` composes with a pin's own `transform`.
+ */
+export function shiftElementPins(
+  viewport: ParentNode,
+  { frame, index }: Pick<ElementKey, 'frame' | 'index'>,
+  dx: number,
+  dy: number,
+): void {
+  const pins = viewport.querySelectorAll<HTMLElement>(
+    `[data-note-frame="${CSS.escape(frame)}"][data-note-element="${index}"]`,
+  )
+  for (const pin of pins) {
+    pin.style.translate = dx !== 0 || dy !== 0 ? `${dx}px ${dy}px` : ''
+  }
+}
 
 /** A box's size for a chip, naming a side that follows its content as `Hug`. */
 export function sizeLabel(box: Box, hugging?: 'height' | 'both'): string {
