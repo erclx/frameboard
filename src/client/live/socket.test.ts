@@ -11,6 +11,7 @@ import {
   selectElement,
   whenSettled,
 } from '@/client/board/selection'
+import { pinnedProjects, togglePin } from '@/client/home/pins'
 import { createThemeStore, flipFrame } from '@/client/theme/store'
 import { patchBetween } from '@/shared/board-sync/patch'
 import { boardOf, frameOf, pageOf } from '@/test/board'
@@ -294,6 +295,43 @@ describe('connectLive access', () => {
 
     expect(selection.getState().frames).toEqual(['studio/start/hero'])
     stop()
+  })
+
+  describe('the home pin', () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    afterEach(() => {
+      localStorage.clear()
+    })
+
+    function hear(before: string, after: string): void {
+      const stop = connectLive(createLiveStore())
+      const socket = FakeSocket.instances[0]
+      socket?.receive({ type: 'board', data: boardWithHome() })
+      socket?.receive({ type: 'renamed', before, after })
+      stop()
+    }
+
+    it("follows a project's rename", () => {
+      togglePin('studio')
+
+      hear('studio', 'atelier')
+
+      expect(pinnedProjects()).toEqual(new Set(['atelier']))
+    })
+
+    it.each([
+      ['a page', 'studio/home', 'studio/start'],
+      ['a frame', 'studio/home/hero', 'studio/home/lead'],
+    ])('stays through the rename of %s', (_, before, after) => {
+      togglePin('studio')
+
+      hear(before, after)
+
+      expect(pinnedProjects()).toEqual(new Set(['studio']))
+    })
   })
 
   it('tells its caller when the socket drops', () => {
