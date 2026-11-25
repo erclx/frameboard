@@ -2,7 +2,6 @@ import { toast } from '@/client/components/ui/toast'
 import { type LiveStore, liveStore } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { BoardWriteError, writeBoard } from '@/client/live/write'
-import { assetKind, isPlaceableKind } from '@/shared/asset-kinds'
 import { pageBox } from '@/shared/frame-device'
 import { elementFrameName, NAME_MAX_LENGTH, nextFreeName } from '@/shared/names'
 import type {
@@ -17,8 +16,7 @@ import type { ElementTree } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { assetUrl } from '../assets/describe'
-import type { DraggedResult, PlaceableFile } from '../assets/drag'
-import { saveResult } from '../assets/sourcing'
+import type { PlaceableFile } from '../assets/drag'
 import { WaitDropped, whenFree } from '../claims/waiting'
 import { catchUpTree, fetchTree, treeOf } from '../element/tree'
 import { siblingGap } from '../element/walk'
@@ -69,6 +67,11 @@ export interface PlaceDeps {
   asset?: { path: string; natural: AssetSize | null }
   /** The top left corner of the box a drag drew, where an element placed out of the flow lands. */
   corner?: BoardPoint
+}
+
+interface PlaceFileDeps extends PlaceDeps {
+  /** Reads a file's natural size, from the server in the app. */
+  measure?: typeof naturalSize
 }
 
 /** The side a Rectangle or an Ellipse takes with no drag, as the insert route writes it. */
@@ -234,13 +237,7 @@ export async function placeFile(
   frames: readonly FrameRecord[],
   at: BoardPoint,
   file: PlaceableFile,
-  {
-    measure = naturalSize,
-    ...deps
-  }: PlaceDeps & {
-    /** Reads a file's natural size, from the server in the app. */
-    measure?: typeof naturalSize
-  } = {},
+  { measure = naturalSize, ...deps }: PlaceFileDeps = {},
 ): Promise<ElementKey | null> {
   const natural = deps.size
     ? null
@@ -249,31 +246,6 @@ export async function placeFile(
     ...deps,
     asset: { path: file.path, natural },
   })
-}
-
-/**
- * Saves a dropped found result through the save Save sends, then hands the
- * landed file to `place` as a tile's drop would. A refused save places nothing.
- */
-export async function placeResult(
-  dropped: DraggedResult,
-  place: (file: PlaceableFile) => Promise<unknown>,
-  { save = saveResult }: { save?: typeof saveResult } = {},
-): Promise<void> {
-  let path: string
-  try {
-    path = (await save(dropped.request)).path
-  } catch (error) {
-    reportRefusal(
-      dropped.request.kind === 'model'
-        ? "Couldn't save the model"
-        : "Couldn't save the image",
-    )(error)
-    return
-  }
-  const kind = assetKind(path)
-  if (!isPlaceableKind(kind)) return
-  await place({ project: dropped.request.project, path, kind })
 }
 
 /** A new frame's name stem when a file's own gives none. */
@@ -325,11 +297,14 @@ export async function placeFileFrame(
     measure = naturalSize,
     selection = selectionStore,
     calls = structure,
+    report = reportRefusal("Couldn't add a frame"),
   }: {
     /** Reads a file's natural size, from the server in the app. */
     measure?: typeof naturalSize
     selection?: SelectionStore
     calls?: Pick<Structure, 'addFrame'>
+    /** Shows a refusal, a toast by default. */
+    report?: (error: unknown) => void
   } = {},
 ): Promise<FrameRecord | null> {
   const natural = await measure(assetUrl(file.project, file.path), file.kind)
@@ -349,7 +324,7 @@ export async function placeFileFrame(
     select(selection, page, [added.ref])
     return added
   } catch (error) {
-    reportRefusal("Couldn't add a frame")(error)
+    report(error)
     return null
   }
 }
@@ -358,26 +333,95 @@ export async function placeFileFrame(
  * Lands a file in a frame of its own at the center of the view, the landing
  * a drop on bare canvas makes, doing nothing while no canvas is mounted.
  */
-export function placeAtCenter(
+export async function placeAtCenter(
   file: PlaceableFile,
   {
     view = canvasView,
     live = liveStore,
-  }: { view?: typeof canvasView; live?: LiveStore } = {},
-): void {
+    report,
+  }: ShownDeps & {
+    /** Shows a refusal, a toast by default. */
+    report?: (error: unknown) => void
+  } = {},
+): Promise<FrameRecord | null> {
   const page = view.page()
   const visible = view.visible()
-  if (page === null || visible === null) return
-  const frames =
-    live
-      .getState()
-      .board?.projects.flatMap((project) => project.pages)
-      .find((record) => record.ref === page)?.frames ?? []
+  if (page === null || visible === null) return null
   const at = {
     x: visible.x + visible.width / 2,
     y: visible.y + visible.height / 2,
   }
-  void placeFileFrame(page, frames, at, file)
+  return placeFileFrame(page, pageFrames(page, live), at, file, { report })
+}
+
+/**
+ * A frame's record and the board area of its page the canvas shows, null for
+ * a frame of another page or one wholly out of view.
+ */
+export function frameInView(
+  ref: string,
+  { view = canvasView, live = liveStore }: ShownDeps = {},
+): { frame: FrameRecord; part: Box } | null {
+  const visible = view.visible()
+  const frame = pageFrames(view.page(), live).find(
+    (candidate) => candidate.ref === ref,
+  )
+  if (!frame || visible === null) return null
+  const page = pageBox(frame.box, frame.device, frame.turn)
+  const x = Math.max(page.x, visible.x)
+  const y = Math.max(page.y, visible.y)
+  const width = Math.min(page.x + page.width, visible.x + visible.width) - x
+  const height = Math.min(page.y + page.height, visible.y + visible.height) - y
+  return width > 0 && height > 0
+    ? { frame, part: { x, y, width, height } }
+    : null
+}
+
+/**
+ * Lands a file at the center of the part of one frame in view, as a drop
+ * there would, whatever is stacked above it. Null with nothing written while
+ * the frame is out of view or has no live page.
+ */
+export async function placeInFrame(
+  ref: string,
+  file: PlaceableFile,
+  {
+    container = document,
+    view = canvasView,
+    live = liveStore,
+    ...deps
+  }: PlaceFileDeps &
+    ShownDeps & {
+      /** Holds the frames' iframes, the whole document in the app. */
+      container?: ParentNode
+    } = {},
+): Promise<ElementKey | null> {
+  const page = view.page()
+  const shown = frameInView(ref, { view, live })
+  if (page === null || !shown) return null
+  const { frame, part } = shown
+  const at = { x: part.x + part.width / 2, y: part.y + part.height / 2 }
+  // The named frame alone, so one stacked above it never takes the file.
+  return placeFile(container, page, [frame], at, file, { ...deps, live })
+}
+
+/** What the canvas shows and the board it shows it from, the app's own by default. */
+interface ShownDeps {
+  view?: Pick<typeof canvasView, 'page' | 'visible'>
+  live?: LiveStore
+}
+
+/** Every frame of a page as the live board holds it. */
+function pageFrames(
+  page: string | null,
+  live: LiveStore,
+): readonly FrameRecord[] {
+  return (
+    live
+      .getState()
+      .board?.projects.flatMap((project) => project.pages)
+      .find((record) => record.ref === page)?.frames ?? []
+  )
 }
 
 /**

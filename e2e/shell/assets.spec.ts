@@ -121,32 +121,32 @@ test.describe('assets tab Find', () => {
     board.cleanup()
   })
 
-  test('journey: a found image saves with its license, and another drags into a frame', async ({
+  test('journey: a found image saves with its license, and another inserts into the selected frame', async ({
     page,
   }) => {
     const assets = join(board.root, 'webapp/assets')
     const hero = join(board.root, 'webapp/home/hero.html')
     await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/webapp/home`)
+    await page.getByRole('button', { name: 'Select hero' }).click()
     await page.getByRole('tab', { name: 'Assets' }).click()
-    await page.getByRole('tab', { name: 'Find' }).click()
-    await page
-      .getByRole('searchbox', { name: 'Search free images' })
-      .fill('house')
-    await page
-      .getByRole('searchbox', { name: 'Search free images' })
-      .press('Enter')
-    const results = page.getByRole('list', { name: 'Results' })
-    await expect(results.getByRole('listitem')).toHaveCount(4)
-
-    await results
-      .getByRole('listitem')
-      .filter({ hasText: 'Glass house' })
-      .hover()
-    await page.getByRole('button', { name: 'Save Glass house' }).click()
+    await page.getByRole('button', { name: 'Find…' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Find media' })
+    const field = dialog.getByRole('searchbox', { name: 'Search free images' })
+    await field.fill('house')
+    await field.press('Enter')
+    const results = dialog.getByRole('list', { name: 'Results' })
+    await expect(results.getByRole('listitem')).toHaveCount(5)
+    await expect(
+      results.getByRole('listitem').filter({ hasText: 'Plan house' }),
+    ).toContainText('PNG')
 
     await expect(
-      page.getByRole('button', { name: 'Saved Glass house' }),
+      dialog.getByRole('heading', { name: 'Glass house' }),
+    ).toBeVisible()
+    await dialog.getByRole('button', { name: 'Save to assets' }).click()
+    await expect(
+      dialog.getByRole('button', { name: 'Saved to assets' }),
     ).toBeVisible()
     expect(readFileSync(join(assets, 'house.png')).byteLength).toBeGreaterThan(
       0,
@@ -155,78 +155,52 @@ test.describe('assets tab Find', () => {
       JSON.parse(readFileSync(join(assets, 'house.png.license.json'), 'utf8')),
     ).toMatchObject({ origin: 'found', id: 'glass', license: 'cc0' })
 
-    const frame = await page
-      .locator('[data-frame="webapp/home/hero"]')
-      .boundingBox()
-    if (!frame) throw new Error('The hero frame draws no box')
-    await results
-      .getByRole('listitem')
-      .filter({ hasText: 'Cabin house' })
-      .hover()
-    await page.mouse.down()
-    await page.mouse.move(
-      frame.x + frame.width / 2 - 20,
-      frame.y + frame.height / 2,
-      { steps: 5 },
-    )
-    await page.mouse.move(
-      frame.x + frame.width / 2,
-      frame.y + frame.height / 2,
-      { steps: 5 },
-    )
-    await page.mouse.up()
+    await results.getByRole('button', { name: /Cabin house/ }).click()
+    await dialog.getByRole('button', { name: 'Insert into hero' }).click()
 
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Find…' })).toBeFocused()
     await expect
       .poll(() => readFileSync(hero, 'utf8'), { timeout: 10_000 })
       .toContain('src="../assets/house-2.png"')
     expect(existsSync(join(assets, 'house-2.png.license.json'))).toBe(true)
   })
 
-  test('journey: a found model drags into a frame, saving once as a GLB placed as a model', async ({
+  test('journey: a found model inserts into the selected frame, saving once as a GLB placed as a model', async ({
     page,
   }) => {
     const assets = join(board.root, 'webapp/assets')
     const hero = join(board.root, 'webapp/home/hero.html')
     await page.goto(await server.ticketUrl())
     await page.goto(`${server.url}/p/webapp/home`)
-    await page.getByRole('tab', { name: 'Assets' }).click()
-    await page.getByRole('tab', { name: 'Find' }).click()
-    await page.getByRole('button', { name: 'Filter: Images' }).click()
+    await page.getByRole('button', { name: 'Select hero' }).click()
+    await page.keyboard.press('ControlOrMeta+k')
+    await page.getByRole('combobox').fill('find media')
+    await page.keyboard.press('Enter')
+    const dialog = page.getByRole('dialog', { name: 'Find media' })
+    await dialog.getByRole('button', { name: 'Kind: Images' }).click()
     await page.getByRole('menuitemradio', { name: 'Models' }).click()
     await page.keyboard.press('Escape')
-    const field = page.getByRole('searchbox', { name: 'Search free models' })
+    await expect(page.getByRole('menuitemradio')).toHaveCount(0)
+    const field = dialog.getByRole('searchbox', { name: 'Search free models' })
     await field.fill('stool')
     await field.press('Enter')
-    const results = page.getByRole('list', { name: 'Results' })
+    const results = dialog.getByRole('list', { name: 'Results' })
     await expect(results.getByRole('listitem')).toHaveCount(1)
-    await expect(results).toContainText('2.7k tris · Poly Haven')
+    await expect(results).toContainText('2.7k tris · CC0')
 
-    const frame = await page
-      .locator('[data-frame="webapp/home/hero"]')
-      .boundingBox()
-    if (!frame) throw new Error('The hero frame draws no box')
-    await results.getByRole('listitem').hover()
-    await page.mouse.down()
-    await page.mouse.move(
-      frame.x + frame.width / 2 - 20,
-      frame.y + frame.height / 2,
-      { steps: 5 },
-    )
-    await page.mouse.move(
-      frame.x + frame.width / 2,
-      frame.y + frame.height / 2,
-      { steps: 5 },
-    )
-    await page.mouse.up()
+    await dialog.getByRole('button', { name: 'Insert into hero' }).click()
 
+    await expect(dialog).toBeHidden()
     await expect
       .poll(() => readFileSync(hero, 'utf8'), { timeout: 10_000 })
       .toMatch(/<model-viewer[^>]*src="\.\.\/assets\/stool\.glb"/)
     expect(
       JSON.parse(readFileSync(join(assets, 'stool.glb.license.json'), 'utf8')),
     ).toMatchObject({ source: 'polyhaven', id: 'wooden_stool_01', size: '1k' })
+    await page.getByRole('button', { name: 'Find…' }).click()
     await expect(
-      page.getByRole('button', { name: 'Saved Wooden Stool 01' }),
-    ).toBeAttached()
+      dialog.getByRole('button', { name: 'Saved to assets' }),
+    ).toBeVisible()
   })
 })

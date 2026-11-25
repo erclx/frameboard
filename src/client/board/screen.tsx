@@ -30,6 +30,7 @@ import {
 import { boardUrl } from '@/shared/board-urls'
 import type { FrameRecord, SectionRecord } from '@/shared/records/list'
 
+import { useSourcingActions } from './assets/open-dialog'
 import { AssetsTab } from './assets/tab'
 import { useBoardActions } from './board-actions'
 import { Canvas } from './canvas'
@@ -146,6 +147,7 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   useBoardActions()
   usePageActions(project, page)
   useAddKitAction()
+  useSourcingActions(project)
   useStructureActions(current?.ref ?? '', current?.frames ?? NO_FRAMES)
   useFrameTool()
   useSectionActions(

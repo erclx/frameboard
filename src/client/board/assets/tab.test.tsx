@@ -18,6 +18,7 @@ import type { AssetAddResult, AssetFile } from '@/shared/records/assets'
 import type { FontList } from '@/shared/records/sourcing'
 import { contrastOnPage } from '@/test/contrast'
 
+import { sourcingDialogStore } from './open-dialog'
 import { AssetsTab } from './tab'
 
 const FILES: AssetFile[] = [
@@ -235,7 +236,7 @@ describe('AssetsTab', () => {
         />,
       )
 
-      await screen.findByRole('tab', { name: 'Files' })
+      await screen.findByRole('button', { name: 'Find…' })
       expect(screen.queryByText('latin-wght-normal.woff2')).toBeNull()
       expect(screen.queryByText(/assets\/ ·/)).toBeNull()
 
@@ -645,6 +646,140 @@ describe('AssetsTab', () => {
       expect(upload).not.toHaveBeenCalled()
       expect(screen.getByRole('button', { name: 'Add files' })).toBeDisabled()
       expect(screen.getByText(/read-only/)).toBeVisible()
+    })
+  })
+
+  describe('Find and Generate', () => {
+    const offer = {
+      load: async () => ({
+        version: 1 as const,
+        provider: null,
+        keys: ['KEY'],
+      }),
+    }
+
+    function renderTab() {
+      render(
+        <AssetsTab project="studio" load={listing(FILES)} generate={offer} />,
+      )
+      return userEvent.setup()
+    }
+
+    afterEach(() => {
+      act(() => sourcingDialogStore.setState({ open: false, inserting: null }))
+    })
+
+    it.each([
+      ['Find…', 'Find', 'Search free images'],
+      ['Generate…', 'Generate', 'Describe the image'],
+    ])(
+      '%s opens the dialog on its view, in its field',
+      async (label, tab, field) => {
+        const user = renderTab()
+
+        await user.click(screen.getByRole('button', { name: label }))
+
+        const dialog = await screen.findByRole('dialog')
+        expect(within(dialog).getByRole('tab', { name: tab })).toHaveAttribute(
+          'aria-selected',
+          'true',
+        )
+        await waitFor(() =>
+          expect(within(dialog).getByLabelText(field)).toHaveFocus(),
+        )
+      },
+    )
+
+    it('switches views in the header', async () => {
+      const user = renderTab()
+      await user.click(screen.getByRole('button', { name: 'Find…' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Find media' })
+
+      await user.click(within(dialog).getByRole('tab', { name: 'Generate' }))
+
+      expect(
+        await screen.findByRole('dialog', { name: 'Generate media' }),
+      ).toContainElement(screen.getByLabelText('Describe the image'))
+    })
+
+    it('hands the focus back to the button pressed, whatever view it closed on', async () => {
+      const user = renderTab()
+      const button = screen.getByRole('button', { name: 'Find…' })
+      await user.click(button)
+      const dialog = await screen.findByRole('dialog')
+      await user.click(within(dialog).getByRole('tab', { name: 'Generate' }))
+
+      await user.keyboard('{Escape}')
+
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+      )
+      expect(button).toHaveFocus()
+    })
+
+    it('closes on ✕ with the focus back on the button', async () => {
+      const user = renderTab()
+      const button = screen.getByRole('button', { name: 'Generate…' })
+      await user.click(button)
+      const dialog = await screen.findByRole('dialog')
+
+      await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
+      )
+      expect(button).toHaveFocus()
+    })
+
+    it('closes an open menu alone on Esc', async () => {
+      const user = renderTab()
+      await user.click(screen.getByRole('button', { name: 'Find…' }))
+      await user.click(
+        await screen.findByRole('button', { name: 'Kind: Images' }),
+      )
+      await screen.findByRole('menuitemradio', { name: 'Models' })
+
+      await user.keyboard('{Escape}')
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('menuitemradio', { name: 'Models' }),
+        ).not.toBeInTheDocument(),
+      )
+      expect(
+        screen.getByRole('dialog', { name: 'Find media' }),
+      ).toHaveAttribute('data-open')
+    })
+
+    it('stays open on Esc while an insert is out', async () => {
+      const user = renderTab()
+      await user.click(screen.getByRole('button', { name: 'Find…' }))
+      await screen.findByRole('dialog')
+      act(() =>
+        sourcingDialogStore.setState({
+          inserting: { project: 'studio', file: 'photo' },
+        }),
+      )
+
+      await user.keyboard('{Escape}')
+
+      expect(
+        screen.getByRole('dialog', { name: 'Find media' }),
+      ).toHaveAttribute('data-open')
+    })
+
+    it('names both under the tiles, over the drop hint', async () => {
+      renderTab()
+
+      const line = await screen.findByText(
+        'No file fits? Find… searches free images and models, and Generate… makes one.',
+      )
+
+      expect(
+        line.compareDocumentPosition(
+          screen.getByText('Drop files here to add them.'),
+        ),
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     })
   })
 })

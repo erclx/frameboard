@@ -1,59 +1,51 @@
-import { type ComponentProps, useState } from 'react'
+import { type ComponentProps, useRef } from 'react'
 
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/client/components/ui/tabs'
+import { Button } from '@/client/components/ui/button'
 
 import { FilesView } from './files'
-import { FindView } from './find/view'
-import { GenerateView } from './generate/view'
+import { openSourcing, type SourcingView } from './open-dialog'
+import { SourcingDialog } from './sourcing-dialog'
 
-const TAB =
-  'h-6 rounded-[5px] border-0 text-xs font-medium text-muted-foreground data-active:bg-card data-active:text-foreground data-active:shadow-none data-active:ring-1 data-active:ring-border dark:data-active:bg-card'
+const BUTTON = 'min-w-0 flex-1 bg-card text-xs dark:bg-card'
 
-interface AssetsTabProps extends ComponentProps<typeof FilesView> {
-  /** Find's calls, the board's routes in the app. */
-  find?: Omit<ComponentProps<typeof FindView>, 'project'>
-  /** Generate's calls, the board's routes in the app. */
-  generate?: Omit<ComponentProps<typeof GenerateView>, 'project'>
-}
+type AssetsTabProps = Omit<ComponentProps<typeof FilesView>, 'hint'> &
+  Pick<ComponentProps<typeof SourcingDialog>, 'find' | 'generate'>
 
-/** The left panel's Assets tab, the project's Files beside Find and Generate, which bring an image in. */
+/** The left panel's Assets tab, the project's files under the buttons opening Find and Generate. */
 export function AssetsTab({ find, generate, ...files }: AssetsTabProps) {
-  const { project } = files
-  const [view, setView] = useState('files')
-  return (
-    <Tabs
-      value={view}
-      onValueChange={(value) => setView(String(value))}
-      className="flex h-full min-h-0 flex-col gap-0"
+  const buttons = useRef<Partial<Record<SourcingView, HTMLElement | null>>>({})
+  const button = (view: SourcingView, label: string) => (
+    <Button
+      ref={(element) => {
+        buttons.current[view] = element
+      }}
+      variant="outline"
+      size="sm"
+      aria-haspopup="dialog"
+      className={BUTTON}
+      onClick={() => openSourcing(files.project, view)}
     >
-      <TabsList
-        aria-label="Assets views"
-        className="mx-2 mt-0 mb-2 h-7 w-auto shrink-0 rounded-[7px] p-0.5"
-      >
-        <TabsTrigger value="files" className={TAB}>
-          Files
-        </TabsTrigger>
-        <TabsTrigger value="find" className={TAB}>
-          Find
-        </TabsTrigger>
-        <TabsTrigger value="generate" className={TAB}>
-          Generate
-        </TabsTrigger>
-      </TabsList>
-      <TabsContent value="files" className="min-h-0 flex-1">
-        <FilesView {...files} />
-      </TabsContent>
-      <TabsContent value="find" className="min-h-0 flex-1">
-        <FindView project={project} {...find} />
-      </TabsContent>
-      <TabsContent value="generate" className="min-h-0 flex-1">
-        <GenerateView project={project} {...generate} />
-      </TabsContent>
-    </Tabs>
+      {label}
+    </Button>
+  )
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 gap-1.5 px-2 pt-1 pb-1">
+        {button('find', 'Find…')}
+        {button('generate', 'Generate…')}
+      </div>
+      <div className="min-h-0 flex-1">
+        <FilesView
+          {...files}
+          hint="No file fits? Find… searches free images and models, and Generate… makes one."
+        />
+      </div>
+      <SourcingDialog
+        project={files.project}
+        find={find}
+        generate={generate}
+        buttonOf={(view) => buttons.current[view] ?? null}
+      />
+    </div>
   )
 }

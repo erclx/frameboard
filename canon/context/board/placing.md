@@ -22,3 +22,7 @@ Owns the Text, Shape, and Image tools, keys T, R, O, L, and Cmd+Shift+K, which d
 - `drop-line.tsx` marks the gap with a 2px blue line, never over a loading frame or a carried element's own spot, and gives way to `drop-ghost.tsx` over bare canvas or where a free click lands
 - A placed Text opens as an empty `p`, read as text-only, under a bare caret, deleted left blank once the edit ends or the page leaves. A break is a newline, never a `<br>`, with `white-space: pre-line`
 - `asset-size.ts` caps a file at its container and, placed free, at the frame past the point, and `asset-drop.ts` swallows a system file dropped on the hit layer so it never opens in place of the board
+
+### `src/client/board/place/write.ts`
+
+Owns what each landing writes. `placeInFrame` lands a file at the center of one named frame's part in view, whatever is stacked above it, and answers null for a frame with no live page.

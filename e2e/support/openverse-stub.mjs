@@ -25,6 +25,15 @@ const IMAGES = ['glass', 'cabin', 'barn', 'villa'].map((id) => ({
   height: 1,
 }))
 
+// Its thumbnail's host never answers a browser, so its tile names the PNG it is.
+IMAGES.push({
+  ...IMAGES[0],
+  id: 'plan',
+  title: 'Plan house',
+  url: 'https://images.example.org/plan.png',
+  thumbnail: 'https://thumbnails.invalid/plan',
+})
+
 const realFetch = globalThis.fetch
 
 globalThis.fetch = async (input, init) => {

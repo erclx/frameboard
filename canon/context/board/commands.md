@@ -31,6 +31,10 @@ Owns Cmd+K's command palette and the `?` shortcuts sheet, mounted once over both
 - `palette.open`, `help.shortcuts`, and `help.characterKeys` register at the app level in `main.tsx`, and `overlay.ts` holds which overlay is open
 - The sheet reads each key from the registry and greys an unregistered row, and it sits outside the routes, so a test rendering it needs a `Router` on the path it means
 
+### `src/client/board/assets/open-dialog.ts`
+
+Owns `assets.find` and `assets.generate`, the palette's Find media and Generate media, which show the UI and the Assets tab, close find, then open the dialog the two share, in a read-only tab too.
+
 ### `src/client/history/`
 
 Owns `edit.undo` on Cmd+Z and `edit.redo` on Cmd+Shift+Z, plus Ctrl+Y off a Mac, registered for the whole app since the home view undoes too, lit from the server's `history` counts and following the page an undo brings back.
@@ -57,7 +61,7 @@ Owns the change kinds a step holds and what each restores, which is only what th
 
 ## Gotchas
 
-- `bindKeys` skips a press inside a field or an open dialog in the board's window, which keeps Esc from the palette and the sheet off `selection.clear` and `mode.exitPlay`
+- `bindKeys` skips a press in a field, a dialog, or anywhere but a toast under an open modal, which keeps Esc from the palette and the sheet off `selection.clear` and `mode.exitPlay`
 - A frame skips only a composing press or one the page prevented, so Esc leaves an entered frame from a focused field, and binds a character key only while the switch is on
 - A toast is a dialog to base-ui but takes board keys, undo among them, by its `data-slot="toast"` marker, while Enter there stays with the toast, which runs Show, or the button holding focus
 - A held key runs its action once and prevents the auto-repeats, unless the action sets `repeat`, as the nudges, resizes, pans, zoom steps, undo, and redo do

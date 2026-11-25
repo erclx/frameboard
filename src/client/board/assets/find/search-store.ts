@@ -2,7 +2,7 @@ import { createStore } from 'zustand/vanilla'
 
 import type { ImageFind, ModelFind } from '@/shared/records/sourcing'
 
-/** What Find searches, picked in the filter menu. */
+/** What Find searches, picked in the kind menu. */
 export type Kind = 'images' | 'models'
 
 export type SearchState =
@@ -12,12 +12,14 @@ export type SearchState =
   | { state: 'models'; find: ModelFind }
   | { state: 'failed'; status: number | null; query: string }
 
-/** One project's Find: the field, the filter, and the last search. */
+/** One project's Find: the field, the filter, the last search, and the result picked from it. */
 export interface FindSearch {
   text: string
   kind: Kind
   credited: boolean
   search: SearchState
+  /** The result the preview shows, by its source id, null until a search finds one. */
+  picked: string | null
 }
 
 export const EMPTY_SEARCH: FindSearch = {
@@ -25,11 +27,12 @@ export const EMPTY_SEARCH: FindSearch = {
   kind: 'images',
   credited: false,
   search: { state: 'idle' },
+  picked: null,
 }
 
 /**
  * Find by project, held here rather than in the view so a search outlives the
- * Assets tab closing and a board reload starts it empty.
+ * dialog closing and a board reload starts it empty.
  */
 export const searchStore = createStore<Record<string, FindSearch>>()(() => ({}))
 

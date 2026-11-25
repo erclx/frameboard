@@ -159,6 +159,22 @@ describe('bindKeys', () => {
     expect(move.runs).toBe(0)
   })
 
+  it('leaves a key pressed outside an open modal dialog to the dialog', async () => {
+    const step = action('frame.next', { keys: ['v'] })
+    register(step)
+    bind(window)
+    const modal = document.createElement('div')
+    modal.dataset.slot = 'dialog-content'
+    modal.dataset.open = ''
+    document.body.append(modal)
+
+    await userEvent.keyboard('v')
+    modal.remove()
+    await userEvent.keyboard('v')
+
+    expect(step.runs).toBe(1)
+  })
+
   it('leaves Esc pressed inside an open dialog to the dialog', async () => {
     const clear = action('selection.clear', { keys: ['Escape'] })
     register(clear)
