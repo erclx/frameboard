@@ -103,7 +103,38 @@ describe('kit', () => {
     expect(result.json().error?.code).toBe('name-taken')
   })
 
-  it('add accepts --replace and ignores it, adding the kit beside the one held', async () => {
+  it('add --replace puts the folder in place of the kit the project holds', async () => {
+    await run('kit', 'add', 'acme', '--from', 'outside/plain')
+    writeFileSync(
+      join(board.root, 'outside/plain/tokens.css'),
+      ':root { --accent: navy }\n',
+    )
+
+    const result = await run(
+      'kit',
+      'add',
+      'acme',
+      '--from',
+      'outside/plain',
+      '--replace',
+    )
+
+    expect(result.exitCode).toBe(0)
+    expect(result.json().data).toEqual({
+      project: 'acme',
+      kit: 'plain',
+      written: [join(board.root, 'acme/assets/kits/plain')],
+      replaced: true,
+    })
+    expect(
+      readFileSync(
+        join(board.root, 'acme/assets/kits/plain/tokens.css'),
+        'utf8',
+      ),
+    ).toBe(':root { --accent: navy }\n')
+  })
+
+  it('add --replace adds a kit the project lacks beside the one it holds', async () => {
     await run('kit', 'add', 'acme', 'clean')
 
     const result = await run('kit', 'add', 'acme', 'sketch', '--replace')
@@ -113,6 +144,22 @@ describe('kit', () => {
       'clean',
       'sketch',
     ])
+  })
+
+  it('add --replace tells a reader whether it added the kit or replaced one', async () => {
+    const argv = ['kit', 'add', 'acme', 'clean', '--replace']
+
+    const added = await cli(argv, { cwd: board.root })
+    const replaced = await cli(argv, { cwd: board.root })
+
+    expect(added.stdout).toBe('Added clean to acme\n')
+    expect(replaced.stdout).toBe('Replaced clean in acme\n')
+  })
+
+  it('add names --replace in its help', async () => {
+    const { stdout } = await cli(['kit', 'add', '--help'], { cwd: board.root })
+
+    expect(stdout).toMatch(/^ {2}--replace /m)
   })
 
   it('remove takes the kit out of the project and answers the frames it cleared', async () => {
