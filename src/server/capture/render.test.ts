@@ -12,6 +12,7 @@ import {
   SHELL_TEST_TIMEOUT_MS,
 } from '../../../test/support/headless-shell'
 import { type TempBoard, writeBoard } from '../../../test/support/temp-board'
+import { isolateElement } from './element-shot'
 import { type FrameHost, startFrameHost } from './host'
 import {
   assertScreenshotFits,
@@ -29,6 +30,88 @@ const STAGES = {
   percentage:
     'position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden',
   clipped: 'position:absolute;inset:0;clip-path:inset(0)',
+}
+
+/** How a fractional box, or the parent holding it, is transformed. */
+const TRANSFORMS = {
+  'no transform': {},
+  'an identity transform': { own: 'transform:matrix(1,0,0,1,0,0)' },
+  'a fractional move': { own: 'transform:translate(1.25px,-.75px)' },
+  'a scale of 2': { own: 'scale:2' },
+  'a quarter turn': { own: 'rotate:90deg' },
+  'a moved parent': { parent: 'transform:translate(1.3px,.6px)' },
+  'a scaled parent': { parent: 'transform:scale(1.5)' },
+  'a parent at the end of its animation': {
+    parent: 'animation:grow 1ms both',
+  },
+} satisfies Record<string, { own?: string; parent?: string }>
+
+/** A frame whose element 5 is a blue box at a fraction of a pixel. */
+function fractionalFrame(
+  place: number,
+  size: number,
+  { own = '', parent = '' }: { own?: string; parent?: string },
+): string {
+  return (
+    '<!doctype html><style>body{margin:0}div{position:absolute}@keyframes grow{from{scale:.5}to{scale:1}}</style>' +
+    `<div style="left:40.3px;top:30.6px;width:60px;height:50px;${parent}">` +
+    `<div style="left:${3 + place}px;top:${2 + place}px;width:${size}px;height:${size}px;background:rgb(0,0,255);${own}"></div></div>`
+  )
+}
+
+const FRACTIONS = Object.entries(TRANSFORMS).flatMap(([name, transform]) =>
+  [0.25, 0.5, 0.75].flatMap((place) =>
+    (name === 'no transform' ? [40, 40.5] : [40.5]).map((size) => ({
+      name,
+      place,
+      size,
+      file: `${name} ${place} ${size}`.replaceAll(/[ .]/g, '-'),
+      transform,
+    })),
+  ),
+)
+
+/** The size of a PNG, and of the part of it holding any alpha, with its clear margins. */
+async function paintedExtent(browser: Browser, png: Buffer) {
+  const context = await browser.newContext()
+  try {
+    const page = await context.newPage()
+    return await page.evaluate(async (data) => {
+      const image = new Image()
+      image.src = `data:image/png;base64,${data}`
+      await image.decode()
+      const { width, height } = image
+      const drawn = new OffscreenCanvas(width, height).getContext('2d')
+      drawn?.drawImage(image, 0, 0)
+      const pixels = drawn?.getImageData(0, 0, width, height).data ?? []
+      const painted = [...Array(width * height).keys()].filter(
+        (at) => pixels[at * 4 + 3],
+      )
+      const columns = painted.map((at) => at % width)
+      const rows = painted.map((at) => Math.floor(at / width))
+      const side = (all: number[]) =>
+        all.reduce(
+          ({ from, to }, at) => ({
+            from: Math.min(from, at),
+            to: Math.max(to, at),
+          }),
+          { from: Infinity, to: -1 },
+        )
+      const across = side(columns)
+      const down = side(rows)
+      return {
+        clear: {
+          left: across.from,
+          top: down.from,
+          right: width - 1 - across.to,
+          bottom: height - 1 - down.to,
+        },
+        painted: [across.to - across.from + 1, down.to - down.from + 1],
+      }
+    }, png.toString('base64'))
+  } finally {
+    await context.close()
+  }
 }
 
 /** The alpha of a PNG's top left pixel, read by decoding it in a page. */
@@ -272,6 +355,12 @@ describe.skipIf(shell === null)(
             `studio/home/${name}.html`,
             `<!doctype html><style>body{margin:0}</style><div style="${stage}">` +
               '<div style="position:absolute;left:-40px;top:20px;width:120px;height:60px;background:rgb(0,0,255)"></div></div>',
+          ]),
+        ),
+        ...Object.fromEntries(
+          FRACTIONS.map(({ file, place, size, transform }) => [
+            `studio/home/${file}.html`,
+            fractionalFrame(place, size, transform),
           ]),
         ),
         // The controls' column would draw blue right of the green photo.
@@ -869,6 +958,62 @@ describe.skipIf(shell === null)(
           height,
         ])
         expect(corners).toEqual(Array(4).fill([0, 0, 255, 255]))
+      },
+    )
+
+    /** One element of a frame isolated and shot with the whole page. */
+    async function wholePage(
+      ref: string,
+      box: { width: number; height: number },
+      element: number,
+      scale: number,
+    ): Promise<Buffer> {
+      const opened = await openFrame(requireShell(shell), {
+        baseUrl: host.url,
+        ref,
+        box,
+        theme: 'light',
+        scale,
+      })
+      try {
+        await isolateElement(opened.page, ref, element, scale)
+        return await opened.page.screenshot({
+          fullPage: true,
+          omitBackground: true,
+        })
+      } finally {
+        await opened.close()
+      }
+    }
+
+    it.each(
+      FRACTIONS.flatMap((fraction) =>
+        [1, 2, 3].map((scale) => ({ ...fraction, scale })),
+      ),
+    )(
+      'shoots a box of $size at $place under $name to its painted edges at $scale',
+      async ({ file, scale }) => {
+        const ref = `studio/home/${file}`
+        const box = { width: 160, height: 120 }
+        const render = createWarmRenderer({
+          baseUrl: () => host.url,
+          browser: createWarmBrowser(async () => requireShell(shell)),
+          scale,
+        })
+
+        const shot = await paintedExtent(
+          requireShell(shell),
+          await render({ ref, box, element: 5 }, 'light'),
+        )
+        const page = await paintedExtent(
+          requireShell(shell),
+          await wholePage(ref, box, 5, scale),
+        )
+
+        expect(shot).toEqual({
+          clear: { left: 0, top: 0, right: 0, bottom: 0 },
+          painted: page.painted,
+        })
       },
     )
 

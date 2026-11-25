@@ -328,7 +328,7 @@ async function shootElement(
   index: number,
   scale: number,
 ): Promise<Buffer> {
-  const box = await isolateElement(page, ref, index)
+  const box = await isolateElement(page, ref, index, scale)
   assertScreenshotFits(ref, box, scale)
   return page.screenshot({
     animations: 'disabled',
