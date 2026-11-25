@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.56.1](https://github.com/erclx/frameboard/compare/v0.56.0...v0.56.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **theme:** close the picker alone on Esc and toast a late refusal ([#510](https://github.com/erclx/frameboard/issues/510)) ([0832845](https://github.com/erclx/frameboard/commit/0832845cf2541e8e27ac41ca41350918298d05b6))
+
 ## [0.56.0](https://github.com/erclx/frameboard/compare/v0.55.0...v0.56.0) (2026-11-25)
 
 
