@@ -84,16 +84,17 @@ function hideAllBut(index: number): Isolated {
 }
 
 // Runs in the page and moves the root, so an ancestor's crop moves along. A
-// moved root anchors absolute and fixed boxes, so the element's used size is
-// held, and the box takes the whole pixels its edges paint on.
+// moved root anchors absolute and fixed boxes, so the used size of the element
+// and all around it is held, and the box takes the pixels its edges paint on.
 function shiftIntoView(): ElementBox {
   const root = document.documentElement
   const target = document.querySelector<HTMLElement>('[data-frameboard-shot]')
   if (!target) throw new Error('No element is isolated.')
   const painted = (): ElementBox => {
     const { left, top, right, bottom } = target.getBoundingClientRect()
-    const x = Math.round(left + window.scrollX)
-    const y = Math.round(top + window.scrollY)
+    // Adding zero turns the negative zero a rounded place can be into zero.
+    const x = Math.round(left + window.scrollX) + 0
+    const y = Math.round(top + window.scrollY) + 0
     return {
       x,
       y,
@@ -106,21 +107,31 @@ function shiftIntoView(): ElementBox {
       element.style.setProperty(name, value, 'important')
     }
   }
-  const { width, height } = getComputedStyle(target)
-  hold(target, {
-    transition: 'none',
-    width,
-    'min-width': width,
-    'max-width': width,
-    height,
-    'min-height': height,
-    'max-height': height,
-  })
+  const used = []
+  for (
+    let element: HTMLElement | null = target;
+    element && element !== root;
+    element = element.parentElement
+  ) {
+    const { width, height } = getComputedStyle(element)
+    used.push({ element, width, height })
+  }
+  for (const { element, width, height } of used) {
+    hold(element, {
+      transition: 'none',
+      width,
+      'min-width': width,
+      'max-width': width,
+      height,
+      'min-height': height,
+      'max-height': height,
+    })
+  }
   // Anchored first, since a box the root newly anchors can move.
   hold(root, { transition: 'none', translate: '0px' })
   const { x, y } = painted()
-  hold(root, { translate: `${Math.max(0, -x)}px ${Math.max(0, -y)}px` })
-  const box = painted()
-  // A clip refuses a place under zero, which a page scaling its root leaves.
-  return { ...box, x: Math.max(0, box.x), y: Math.max(0, box.y) }
+  // A zoomed root scales its own translate.
+  const shift = (at: number) => `${Math.max(0, -at) / root.currentCSSZoom}px`
+  hold(root, { translate: `${shift(x)} ${shift(y)}` })
+  return painted()
 }

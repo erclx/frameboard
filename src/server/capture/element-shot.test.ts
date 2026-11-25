@@ -70,7 +70,7 @@ describe.skipIf(shell === null)(
           '<style>html{translate:-10px 5px;transition:translate 9s}body{margin:0;height:40px}</style>' +
           '<div id="moved" style="position:absolute;left:-30px;top:0;width:60px;height:20px"></div>',
         'studio/home/stretched.html':
-          '<style>body{margin:0;height:40px}' +
+          '<!doctype html><style>body{margin:0;height:40px}' +
           'div{position:absolute}#tall{left:-30px;top:-20px;bottom:20px;width:60px}' +
           '#least{left:-30px;top:0;width:60px;height:10px;min-height:90%!important}</style>' +
           '<div id="tall"></div><div id="least"></div>' +

@@ -22,6 +22,15 @@ import {
 
 const FRAME = { ref: 'studio/home/hero', box: { width: 10, height: 10 } }
 
+/** Boxes that fill a frame and crop, each sized by what a moved root re-anchors. */
+const STAGES = {
+  inset: 'position:absolute;inset:0;overflow:hidden',
+  fixed: 'position:fixed;inset:0;overflow:hidden',
+  percentage:
+    'position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden',
+  clipped: 'position:absolute;inset:0;clip-path:inset(0)',
+}
+
 /** The alpha of a PNG's top left pixel, read by decoding it in a page. */
 async function cornerAlpha(browser: Browser, png: Buffer): Promise<number> {
   return (await pixelAt(browser, png, 0, 0))[3] ?? -1
@@ -248,6 +257,17 @@ describe.skipIf(shell === null)(
           '<div style="left:-20.3px;top:10px;width:60.7px;height:40px"></div>' +
           '<div style="left:-10px;top:60px;width:40px;height:30px;overflow:hidden;background:red">' +
           '<div style="left:-20px;top:0;width:50px;height:30px"></div></div>',
+        'studio/home/zoomed.html':
+          '<style>html{zoom:.5}body{margin:0}</style>' +
+          '<div style="position:absolute;left:-420px;top:-60px;width:40px;height:30px;background:rgb(0,0,255)"></div>',
+        // Element 4 is a stage filling the frame that crops element 5 at its left edge.
+        ...Object.fromEntries(
+          Object.entries(STAGES).map(([name, stage]) => [
+            `studio/home/${name}.html`,
+            `<!doctype html><style>body{margin:0}</style><div style="${stage}">` +
+              '<div style="position:absolute;left:-40px;top:20px;width:120px;height:60px;background:rgb(0,0,255)"></div></div>',
+          ]),
+        ),
         // The controls' column would draw blue right of the green photo.
         'studio/home/tuner.html':
           '<style>body{margin:0;background:#fff;display:flex}#photo{width:100px;height:100px;background:#0a0}.controls{width:100px;height:100px;background:#00f}</style>' +
@@ -803,11 +823,17 @@ describe.skipIf(shell === null)(
     })
 
     it.each([
-      ['wholly past the top left', 4, [160, 100]],
-      ['crossing the left edge at a fractional place', 5, [120, 80]],
+      ['wholly past the top left', 'past', 4, [160, 100]],
+      ['crossing the left edge at a fractional place', 'past', 5, [120, 80]],
+      [
+        'past the top left of a page that zooms its root',
+        'zoomed',
+        4,
+        [40, 30],
+      ],
     ])(
       'shoots an element %s whole, to each corner',
-      async (_name, element, [width = 0, height = 0]) => {
+      async (_name, frame, element, [width = 0, height = 0]) => {
         const render = createWarmRenderer({
           baseUrl: () => host.url,
           browser: createWarmBrowser(async () => requireShell(shell)),
@@ -816,7 +842,7 @@ describe.skipIf(shell === null)(
 
         const bytes = await render(
           {
-            ref: 'studio/home/past',
+            ref: `studio/home/${frame}`,
             box: { width: 200, height: 100 },
             element,
           },
@@ -863,6 +889,33 @@ describe.skipIf(shell === null)(
         0, 0, 255, 255,
       ])
     })
+
+    it.each(Object.keys(STAGES))(
+      'keeps the crop of a %s stage filling the page',
+      async (stage) => {
+        const render = createWarmRenderer({
+          baseUrl: () => host.url,
+          browser: createWarmBrowser(async () => requireShell(shell)),
+          scale: 1,
+        })
+
+        const bytes = await render(
+          {
+            ref: `studio/home/${stage}`,
+            box: { width: 200, height: 100 },
+            element: 5,
+          },
+          'light',
+        )
+        const at = (x: number) => pixelAt(requireShell(shell), bytes, x, 30)
+
+        expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
+          120, 60,
+        ])
+        expect(await at(39)).toEqual([0, 0, 0, 0])
+        expect(await at(40)).toEqual([0, 0, 255, 255])
+      },
+    )
 
     it('refuses an element index naming none as invalid-address', async () => {
       const render = createWarmRenderer({
