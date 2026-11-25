@@ -19,7 +19,7 @@ Owns the loopback server around the folders below. `app.ts` is the Hono app, `st
 
 ### `src/server/live/`
 
-Owns the folder's watcher, the socket hub, the decision to open a tab, and the last writing tab's selection, forgotten once its socket closes. `feed.ts` alone sends tabs a scan, as a patch or a whole board, or a rename, the board's or one on disk. A reload carries a frame's hash only when its own file was the batch's sole cause, so a tab keeps a page showing those bytes.
+Owns the folder's watcher, the socket hub, the decision to open a tab, and the last writing tab's selection, forgotten once its socket closes. `feed.ts` alone sends tabs a scan or a rename, as a patch or a whole board. A reload carries a frame's hash only when its own file was the batch's sole cause, so a tab keeps a page showing those bytes.
 
 - `.html` or `.swap` reloads its frame, a page file its page, non-kit media its linking frames, the rest and font records the project, `layout.json` a `kit` change, `notes.json` and licenses nothing
 - Writes gather into batches closing 50 ms after the last event or 250 ms after the first, and a watch resolves only past its first 100 ms, since `fs.watch` on macOS drops writes then
@@ -77,5 +77,5 @@ Owns the model viewer script a frame loads to show a `<model-viewer>`. `viewer.t
 - A cookie write needs the board's own `Origin`, since cookies and SameSite ignore the port and another `127.0.0.1` port would otherwise write
 - The frame route answers 404 for board records, dot-named paths, and paths leaving the project by realpath, and routes refuse a foreign `Host` and the socket a foreign `Origin`, against DNS rebinding
 - `serve` reads `FRAMEBOARD_DISPATCH` from its environment once at start and never from a board file, so a cloned board cannot make Send run anything
-- `live/project-folders.ts` knows a project folder by its device, inode, and birth time, so a copy then delete, or a file system keeping no birth time, reads as a project gone and another come
+- `live/project-folders.ts` finds a project renamed on disk by its folder's device, inode, and birth time, so a copy then delete, or a disk keeping no birth time, reads as one gone and another come
 - A dispatched note lands `delivered` to the session id the route minted, so the started session's inbox never prints it again, and a command exiting 0 or still running after 2 s counts as started
