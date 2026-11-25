@@ -11,6 +11,7 @@ import { canvasView } from '@/client/board/view'
 import { Button } from '@/client/components/ui/button'
 import { Skeleton } from '@/client/components/ui/skeleton'
 import { toast } from '@/client/components/ui/toast'
+import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
 
 import type { PlaceableFile } from './drag'
@@ -92,7 +93,7 @@ export function Preview({
               <Button
                 variant="outline"
                 size="sm"
-                className={BUTTON}
+                className={cn(BUTTON, OUTLINE)}
                 disabled={save.state?.state === 'saving'}
                 focusableWhenDisabled
                 onClick={save.run}
@@ -104,7 +105,7 @@ export function Preview({
               <Button
                 variant={primary ? 'default' : 'outline'}
                 size="sm"
-                className={BUTTON}
+                className={cn(BUTTON, !primary && OUTLINE)}
                 disabled={inserting}
                 focusableWhenDisabled
                 onClick={() =>
@@ -158,6 +159,9 @@ const PICTURE =
 
 const BUTTON =
   'min-w-0 flex-1 text-xs aria-disabled:opacity-50 @min-[640px]:flex-none'
+
+/** The panel's own fill, where the kit's outline button takes the canvas grey. */
+const OUTLINE = 'bg-card dark:bg-card'
 
 const SAVE_LABEL = {
   idle: 'Save to assets',

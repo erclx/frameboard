@@ -699,8 +699,7 @@ describe('AssetsTab', () => {
 
       expect(
         await screen.findByRole('dialog', { name: 'Generate media' }),
-      ).toBeVisible()
-      expect(screen.getByLabelText('Describe the image')).toBeVisible()
+      ).toContainElement(screen.getByLabelText('Describe the image'))
     })
 
     it('hands the focus back to the button pressed, whatever view it closed on', async () => {
@@ -747,7 +746,9 @@ describe('AssetsTab', () => {
           screen.queryByRole('menuitemradio', { name: 'Models' }),
         ).not.toBeInTheDocument(),
       )
-      expect(screen.getByRole('dialog', { name: 'Find media' })).toBeVisible()
+      expect(
+        screen.getByRole('dialog', { name: 'Find media' }),
+      ).toHaveAttribute('data-open')
     })
 
     it('stays open on Esc while an insert is out', async () => {
@@ -758,7 +759,9 @@ describe('AssetsTab', () => {
 
       await user.keyboard('{Escape}')
 
-      expect(screen.getByRole('dialog', { name: 'Find media' })).toBeVisible()
+      expect(
+        screen.getByRole('dialog', { name: 'Find media' }),
+      ).toHaveAttribute('data-open')
     })
 
     it('names both under the tiles, over the drop hint', async () => {

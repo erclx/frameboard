@@ -27,7 +27,7 @@ import {
 const TAB =
   'h-6 rounded-[5px] border-0 text-xs font-medium text-muted-foreground data-active:bg-card data-active:text-foreground data-active:shadow-none data-active:ring-1 data-active:ring-border dark:data-active:bg-card'
 
-const VIEW = 'flex min-h-0 flex-1 flex-col'
+const VIEW = 'flex min-h-0 flex-1 flex-col text-body'
 
 interface SourcingDialogProps {
   project: string
@@ -78,10 +78,10 @@ export function SourcingDialog({
             </TabsList>
             {close}
           </header>
-          <TabsContent value="find" className={VIEW}>
+          <TabsContent value="find" tabIndex={-1} className={VIEW}>
             <FindView project={project} {...find} />
           </TabsContent>
-          <TabsContent value="generate" className={VIEW}>
+          <TabsContent value="generate" tabIndex={-1} className={VIEW}>
             <GenerateView project={project} {...generate} />
           </TabsContent>
         </Tabs>
