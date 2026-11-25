@@ -126,6 +126,13 @@ async function settle(viewer: Viewer): Promise<void> {
   await Promise.resolve()
 }
 
+/** Settles a target over a scale in the same update, since one left to the viewer follows the center it read first. */
+async function settleTarget(viewer: Viewer): Promise<void> {
+  await viewer.updateComplete
+  state(viewer, 'camera-target', viewer.getAttribute('camera-target'))
+  await settle(viewer)
+}
+
 /** Frames a drawn model as a load of its attributes would. */
 async function reframe(viewer: Viewer): Promise<void> {
   await viewer.updateComplete
@@ -140,10 +147,11 @@ function stage(
   value: string | null,
 ): void {
   state(viewer, name, value)
-  if (name === 'camera-orbit' || name === 'camera-target') {
+  if (name === 'camera-orbit') {
     // The camera eases toward a new orbit, which a drag and a typed angle show at once.
     void settle(viewer)
   }
+  if (name === 'camera-target') void settleTarget(viewer)
   if (name === 'field-of-view' && viewer.loaded) {
     // The view a load takes depends on the model's framing, which no attribute alone redoes.
     void reframe(viewer)
@@ -255,9 +263,7 @@ async function showTransform(
       depth === 0 ? 'auto' : `${measured(center.z - depth)}m`,
     )
   }
-  // A target left to the viewer follows the center a scale moved only once it is stated again.
-  state(viewer, 'camera-target', viewer.getAttribute('camera-target'))
-  await settle(viewer)
+  await settleTarget(viewer)
 }
 
 /**
