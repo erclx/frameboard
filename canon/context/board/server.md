@@ -29,7 +29,7 @@ Owns the folder's watcher, the socket hub, the decision to open a tab, and the l
 
 ### `src/server/claims/`
 
-Owns the claims record, its expiry, and the gate on hand writes, apart from `notes/` and `board/` since the three change together. `land.ts` runs at start and ahead of each batch's scan, writing a reserved frame's layout entry at the claim's box once its file exists and dropping the box.
+Owns the claims record, its expiry, and the gate on hand writes, apart from `notes/` and `board/` since the three change together. `land.ts` runs at start and ahead of each batch's scan, writing a reserved frame's layout entry at the claim's box and device once its file exists and dropping the box.
 
 - `.run/claims.json` is `{ version: 1, claims }`, each naming its `frame` ref, `session`, `agent`, `tag`, `claimedAt`, and `expiresAt`, and a reservation adds its `box` and `set`
 - A renewal keeps `claimedAt`, `box`, and `set`, moves `expiresAt` for every live claim in the set, and stamps `drawingAt` on a reserved frame

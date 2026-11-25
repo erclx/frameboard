@@ -29,7 +29,7 @@ Owns reading, watching, and writing the board folder: `.frameboard/` where a fir
 - Frame order is stacking order, so a reorder in the layers panel changes what draws on top and leaves positions alone
 - `fileProjects` in `projects.ts` writes `group` and `archived` under each file's lock and puts the modified times back, so a filing never moves a project's Edited time
 - `retitleProject` moves the folder to `titledFolder`, and its journal records the title before the move, so the undo moves the folder back before it restores the file
-- `placeNext`, `duplicateFrame`, `paste.ts`, and `editing.ts` read `drawnExtent`, and all but the `editing.ts` reservation add the new frame's own body through `xPast`, so none lands under a device
+- `placeNext`, `duplicateFrame`, `paste.ts`, and `editing.ts` read `drawnExtent` and add the new frame's own body through `xPast`, so none lands under a device
 
 ### `src/server/edit/`
 

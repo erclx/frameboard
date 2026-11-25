@@ -193,13 +193,13 @@ export async function releaseReservation(
 }
 
 /**
- * Drops a session's claim on one frame, or every claim it holds when no
- * frame is named, returning what it dropped.
+ * Drops a session's claims on the frames named in one write, or every claim
+ * it holds when `frames` is undefined, returning what it dropped.
  */
 export async function release(
   root: string,
   session: string,
-  frame: string | undefined,
+  frames: readonly string[] | undefined,
   now: Date,
 ): Promise<Claim[]> {
   const dropped: Claim[] = []
@@ -210,7 +210,7 @@ export async function release(
       if (!isLive(each, now)) continue
       const mine =
         each.session === session &&
-        (frame === undefined || each.frame === frame)
+        (frames === undefined || frames.includes(each.frame))
       ;(mine ? dropped : kept).push(each)
     }
     return { ...file, claims: kept }
