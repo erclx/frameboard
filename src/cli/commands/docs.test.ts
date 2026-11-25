@@ -272,6 +272,12 @@ describe('docs', () => {
     expect(kits).toContain('layout.json entry')
   })
 
+  it('names --replace as taking a newer copy and keeping each frame on it', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.kits[1]).toMatch(/--replace .*keeps its kit/)
+  })
+
   it('names the legacy folder as loading only where it holds kit.json', async () => {
     const { contentFormat } = await docs()
 
