@@ -96,6 +96,10 @@
           "disposition": "declined",
           "reason": "The root commitlint config governs commits"
         },
+        "e2e/capture-types.ts": {
+          "disposition": "customized",
+          "base": "sha256:cd2139808afdd653fe5c39cf03f5b24956ccebf4ab11727c67db83cfcbdd54c0"
+        },
         "e2e/screenshot.ts": {
           "disposition": "customized",
           "base": "sha256:0b8805dc5ed921a7b568df0ff9df2f4422a9a85ecaa940bdb4be05a7efc92a9f"
