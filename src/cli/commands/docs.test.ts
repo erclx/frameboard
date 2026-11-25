@@ -32,6 +32,7 @@ describe('docs', () => {
         images: string[]
         layout: string[]
         models: string[]
+        present: string[]
         names: { pattern: string }
         frameSizes: Record<string, { width: number; height: number }>
       }
@@ -175,6 +176,15 @@ describe('docs', () => {
     expect(contentFormat.controls[0]).toContain(
       'data-binds="<selector> <--property>" and data-unit="<unit>"',
     )
+  })
+
+  it('states each step attribute beside the range its value keeps', async () => {
+    const { contentFormat } = await docs()
+
+    const present = contentFormat.present.join('\n')
+    expect(present).toMatch(/data-step-duration[^.]*100 to 5000[^.]*400/)
+    expect(present).toMatch(/data-step-delay[^.]*0 to 10000/)
+    expect(present).toMatch(/data-step-play[^.]*video or a model-viewer step/)
   })
 
   it("lists capture's project form, its prune, and the removals its record carries", async () => {
