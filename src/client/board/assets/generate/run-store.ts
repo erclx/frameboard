@@ -8,7 +8,11 @@ type Run =
   | { state: 'failed'; message: string }
 
 /** A generated image, which always carries the file it was saved as. */
-export type GeneratedPicture = ImageGenerate & { saved: SavedImage }
+export type GeneratedPicture = ImageGenerate & {
+  /** Its own, since a deleted file's name is free for the next picture. */
+  id: string
+  saved: SavedImage
+}
 
 /** One project's Generate: the prompt, the run, and this session's pictures. */
 export interface GenerateSession {
@@ -16,7 +20,7 @@ export interface GenerateSession {
   run: Run
   /** Newest first. */
   pictures: readonly GeneratedPicture[]
-  /** The picture the preview shows, by its path under `assets/`. */
+  /** The picture the preview shows, by its id. */
   picked: string | null
 }
 
@@ -55,16 +59,17 @@ export async function startRun(
   updateSession(project, { run: { state: 'running' } })
   try {
     const { saved, ...record } = await generate(project, prompt.trim())
+    const id = crypto.randomUUID()
     const { pictures } = runStore.getState()[project] ?? EMPTY_SESSION
     updateSession(project, {
       run: { state: 'idle' },
       ...(saved && {
         pictures: [
-          { ...record, saved },
-          // A deleted file's name is free again, so its picture goes with it.
+          { ...record, id, saved },
+          // The file an earlier picture named now holds this one.
           ...pictures.filter(({ saved: { path } }) => path !== saved.path),
         ],
-        picked: saved.path,
+        picked: id,
       }),
     })
   } catch (error) {

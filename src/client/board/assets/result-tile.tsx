@@ -39,14 +39,16 @@ export function ResultTile({
             {mark}
           </span>
         ) : null}
-        <span className="block truncate px-1.5 pt-[5px] text-label font-normal">
-          {title}
-        </span>
-        <span
-          title={meta}
-          className="block truncate px-1.5 pb-1.5 text-caption text-muted-foreground"
-        >
-          {meta}
+        <span className="block h-[38px] px-1.5 py-[5px]">
+          <span className="block truncate text-label leading-[15px] font-normal">
+            {title}
+          </span>
+          <span
+            title={meta}
+            className="block truncate text-caption leading-[13px] text-muted-foreground"
+          >
+            {meta}
+          </span>
         </span>
       </button>
     </li>

@@ -24,6 +24,9 @@ type InsertTarget =
   | { kind: 'canvas'; page: string }
 
 interface PreviewProps {
+  project: string
+  /** Names the file among every one Find and Generate show, so an insert follows it past a pick. */
+  id: string
   picture: ReactNode
   title: string
   lines: readonly string[]
@@ -44,6 +47,8 @@ interface PreviewProps {
  * column where the view is wide and under the grid where it is not.
  */
 export function Preview({
+  project,
+  id,
   picture,
   title,
   lines,
@@ -57,8 +62,11 @@ export function Preview({
   const inserting = useStore(sourcingDialogStore, (state) => state.inserting)
   const refusal = useStore(sourcingDialogStore, (state) => state.refusal)
   const target = useInsertTarget()
-  // Another pick is another file, so the last one's refusal goes with its pane.
-  useEffect(() => () => sourcingDialogStore.setState({ refusal: null }), [])
+  // A refusal is drawn on the file it is about, and goes with its pane.
+  useEffect(() => {
+    sourcingDialogStore.setState({ shown: id, refusal: null })
+    return () => sourcingDialogStore.setState({ shown: null, refusal: null })
+  }, [id])
   const failed = save?.state?.state === 'failed' ? save.state.message : null
   const problem = refusal ?? failed
   return (
@@ -96,7 +104,10 @@ export function Preview({
                 className={cn(BUTTON, OUTLINE)}
                 disabled={save.state?.state === 'saving'}
                 focusableWhenDisabled
-                onClick={save.run}
+                onClick={() => {
+                  sourcingDialogStore.setState({ refusal: null })
+                  save.run()
+                }}
               >
                 {SAVE_LABEL[save.state?.state ?? 'idle']}
               </Button>
@@ -106,14 +117,17 @@ export function Preview({
                 variant={primary ? 'default' : 'outline'}
                 size="sm"
                 className={cn(BUTTON, !primary && OUTLINE)}
-                disabled={inserting}
+                disabled={inserting !== null}
                 focusableWhenDisabled
                 onClick={() =>
-                  void insert(target, file, { placeFrame, placeCanvas })
+                  void insert({ project, file: id }, target, file, {
+                    placeFrame,
+                    placeCanvas,
+                  })
                 }
               >
                 <span className="truncate">
-                  {inserting ? 'Inserting…' : insertLabel(target)}
+                  {inserting?.file === id ? 'Inserting…' : insertLabel(target)}
                 </span>
               </Button>
             ) : null}
@@ -199,26 +213,29 @@ function useInsertTarget(): InsertTarget | null {
 }
 
 /**
- * Saves the file where it is not saved yet, lands it, and closes the dialog,
- * one insert at a time. A refusal keeps the dialog and says why, or toasts
- * once the dialog is gone.
+ * Saves the file where it is not saved yet, lands it, and closes its project's
+ * dialog, one insert at a time. A refusal keeps the dialog and says why on the
+ * file it is about, or toasts once that file's preview is gone.
  */
 async function insert(
+  inserting: { project: string; file: string },
   target: InsertTarget,
   file: () => Promise<PlaceableFile>,
   place: Required<Pick<PreviewProps, 'placeFrame' | 'placeCanvas'>>,
 ): Promise<void> {
   if (sourcingDialogStore.getState().inserting) return
-  sourcingDialogStore.setState({ inserting: true, refusal: null })
+  sourcingDialogStore.setState({ inserting, refusal: null })
   let refusal: string | null
   try {
     refusal = await land(target, await file(), place)
   } catch (error) {
     refusal = reasonOf(error)
   }
-  sourcingDialogStore.setState({ inserting: false })
-  if (refusal === null) closeSourcing()
-  else if (sourcingDialogStore.getState().open) {
+  sourcingDialogStore.setState({ inserting: null })
+  const { project, shown } = sourcingDialogStore.getState()
+  if (refusal === null) {
+    if (project === inserting.project) closeSourcing()
+  } else if (shown === inserting.file) {
     sourcingDialogStore.setState({ refusal })
   } else {
     toast.add({
@@ -233,7 +250,7 @@ async function insert(
 async function land(
   target: InsertTarget,
   file: PlaceableFile,
-  { placeFrame, placeCanvas }: Parameters<typeof insert>[2],
+  { placeFrame, placeCanvas }: Parameters<typeof insert>[3],
 ): Promise<string | null> {
   if (canvasView.page() !== target.page) {
     return 'The canvas moved to another page, so nothing was inserted.'

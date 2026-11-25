@@ -1,6 +1,6 @@
 import '../../../styles.css'
 
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -319,8 +319,49 @@ describe('GenerateView', () => {
     await user.click(screen.getByRole('button', { name: 'Generate' }))
     await screen.findByRole('heading', { name: 'a-house-2.png' })
 
-    await user.click(screen.getByRole('button', { name: /^a-house.png/ }))
+    await user.click(screen.getByRole('button', { name: /a-house\.png/ }))
 
     expect(screen.getByRole('heading', { name: 'a-house.png' })).toBeVisible()
+  })
+
+  it('asks for the image again when a deleted picture’s name is taken', async () => {
+    const asked = () =>
+      new Set(
+        performance
+          .getEntriesByType('resource')
+          .map((entry) => entry.name)
+          .filter((name) => name.includes('retaken.png')),
+      ).size
+    render(
+      <GenerateView
+        project="webapp"
+        load={async () => offer()}
+        generate={async () => generated('retaken.png')}
+      />,
+    )
+    const user = await describeImage('a house')
+    await user.click(screen.getByRole('button', { name: 'Generate' }))
+    await waitFor(() => expect(asked()).toBe(1))
+
+    await user.click(screen.getByRole('button', { name: 'Generate' }))
+
+    await waitFor(() => expect(asked()).toBe(2))
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+  })
+
+  it('names the file type of a picture no longer in assets', async () => {
+    render(
+      <GenerateView
+        project="webapp"
+        load={async () => offer()}
+        generate={async () => generated('gone.png')}
+      />,
+    )
+    const user = await describeImage('a house')
+
+    await user.click(screen.getByRole('button', { name: 'Generate' }))
+
+    const tile = await screen.findByRole('listitem')
+    await waitFor(() => expect(tile).toHaveTextContent('No longer in assets/'))
   })
 })

@@ -666,7 +666,7 @@ describe('AssetsTab', () => {
     }
 
     afterEach(() => {
-      act(() => sourcingDialogStore.setState({ open: false, inserting: false }))
+      act(() => sourcingDialogStore.setState({ open: false, inserting: null }))
     })
 
     it.each([
@@ -755,7 +755,11 @@ describe('AssetsTab', () => {
       const user = renderTab()
       await user.click(screen.getByRole('button', { name: 'Find…' }))
       await screen.findByRole('dialog')
-      act(() => sourcingDialogStore.setState({ inserting: true }))
+      act(() =>
+        sourcingDialogStore.setState({
+          inserting: { project: 'studio', file: 'photo' },
+        }),
+      )
 
       await user.keyboard('{Escape}')
 

@@ -5,11 +5,13 @@ import { Button } from '@/client/components/ui/button'
 import { useLive } from '@/client/live/store'
 
 import { assetUrl } from '../describe'
+import { Picture } from '../picture'
 import { Preview } from '../preview'
 import { PendingTile, RESULT_GRID, ResultTile } from '../result-tile'
 import { fetchOffer, generateImage, type ImageOffer } from '../sourcing'
 import {
   EMPTY_SESSION,
+  type GeneratedPicture,
   type GenerateSession,
   runStore,
   startRun,
@@ -49,7 +51,7 @@ export function GenerateView({
   const provider = offer?.provider ?? null
   const ready = canWrite && provider !== null && prompt.trim() !== ''
   const running = run.state === 'running'
-  const shown = pictures.find((picture) => picture.saved.path === picked)
+  const shown = pictures.find((picture) => picture.id === picked)
 
   return (
     <div
@@ -110,21 +112,14 @@ export function GenerateView({
               {running ? <PendingTile /> : null}
               {pictures.map((picture) => (
                 <ResultTile
-                  key={picture.saved.path}
+                  key={picture.id}
                   picture={
-                    <img
-                      src={assetUrl(project, picture.saved.path)}
-                      alt=""
-                      draggable={false}
-                      className="object-cover"
-                    />
+                    <GeneratedImage project={project} picture={picture} />
                   }
                   title={picture.saved.path}
                   meta={`${picture.width} × ${picture.height}`}
-                  picked={picture.saved.path === picked}
-                  onPick={() =>
-                    updateSession(project, { picked: picture.saved.path })
-                  }
+                  picked={picture.id === picked}
+                  onPick={() => updateSession(project, { picked: picture.id })}
                 />
               ))}
             </ul>
@@ -138,13 +133,11 @@ export function GenerateView({
         </div>
         {shown ? (
           <Preview
-            key={shown.saved.path}
+            key={shown.id}
+            project={project}
+            id={shown.id}
             picture={
-              <img
-                src={assetUrl(project, shown.saved.path)}
-                alt=""
-                className="object-contain"
-              />
+              <GeneratedImage project={project} picture={shown} fit="contain" />
             }
             title={shown.saved.path}
             lines={[
@@ -160,6 +153,26 @@ export function GenerateView({
         ) : null}
       </div>
     </div>
+  )
+}
+
+/** A generated picture from `assets/`, its file type once the file is gone from there. */
+function GeneratedImage({
+  project,
+  picture: { id, saved },
+  fit,
+}: {
+  project: string
+  picture: GeneratedPicture
+  fit?: 'cover' | 'contain'
+}) {
+  return (
+    <Picture
+      links={[`${assetUrl(project, saved.path)}?v=${id}`]}
+      type={saved.path.split('.').at(-1)?.toUpperCase() ?? 'Image'}
+      source="No longer in assets/"
+      fit={fit}
+    />
   )
 }
 

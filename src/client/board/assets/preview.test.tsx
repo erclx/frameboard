@@ -2,6 +2,7 @@ import '../../styles.css'
 
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ComponentProps } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -11,11 +12,12 @@ import {
   selectionStore,
 } from '@/client/board/selection'
 import { attachCanvas } from '@/client/board/view'
+import { toast } from '@/client/components/ui/toast'
 import { liveStore } from '@/client/live/store'
 import { boardOf, frameOf, pageOf } from '@/test/board'
 
 import type { PlaceableFile } from './drag'
-import { openSourcing, sourcingDialogStore } from './open-dialog'
+import { closeSourcing, openSourcing, sourcingDialogStore } from './open-dialog'
 import { Preview } from './preview'
 
 const PAGE = 'studio/home'
@@ -53,9 +55,15 @@ function show(visible: {
   )
 }
 
-function pane(extra: Partial<Parameters<typeof Preview>[0]> = {}) {
+function pane({
+  key,
+  ...extra
+}: Partial<ComponentProps<typeof Preview>> & { key?: string } = {}) {
   return (
     <Preview
+      key={key}
+      project="studio"
+      id="photo"
       picture={<span />}
       title="Photo"
       lines={['1024 × 768 · CC0 · Openverse']}
@@ -74,7 +82,7 @@ beforeEach(() => {
     canWrite: true,
   })
   show({ x: 0, y: 0, width: 1200, height: 900 })
-  openSourcing('find')
+  openSourcing('studio', 'find')
 })
 
 afterEach(() => {
@@ -84,7 +92,7 @@ afterEach(() => {
     liveStore.setState({ board: null, canWrite: false })
     sourcingDialogStore.setState({
       open: false,
-      inserting: false,
+      inserting: null,
       refusal: null,
     })
   })
@@ -271,6 +279,71 @@ describe('while an insert is out', () => {
   })
 })
 
+describe('once the pick moved while an insert is out', () => {
+  it('draws no refusal on the next file, which keeps its own label', async () => {
+    let fail = (_: Error) => {}
+    const { rerender } = render(
+      pane({ file: () => new Promise((_, refuse) => (fail = refuse)) }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Insert on canvas' }),
+    )
+
+    rerender(pane({ key: 'other', id: 'other', title: 'Other' }))
+    const label = screen.getByRole('button', { name: /Insert/ }).textContent
+    await act(async () => fail(new Error('The image host answered 500.')))
+
+    expect(label).toBe('Insert on canvas')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('says a refusal in a toast, since the file it is about is no longer shown', async () => {
+    const told = vi.spyOn(toast, 'add')
+    let fail = (_: Error) => {}
+    const { rerender } = render(
+      pane({ file: () => new Promise((_, refuse) => (fail = refuse)) }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Insert on canvas' }),
+    )
+
+    rerender(pane({ key: 'other', id: 'other', title: 'Other' }))
+    await act(async () => fail(new Error('The image host answered 500.')))
+
+    expect(told).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Nothing inserted',
+        description: 'The image host answered 500.',
+      }),
+    )
+    told.mockRestore()
+  })
+
+  it('closes another project’s dialog on Esc, and never when its own insert lands', async () => {
+    let land = (_: PlaceableFile) => {}
+    const { unmount } = render(
+      pane({ file: () => new Promise((done) => (land = done)) }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Insert on canvas' }),
+    )
+    unmount()
+    act(() => openSourcing('marketing', 'find'))
+
+    await act(async () => land(PHOTO))
+    const openOnceLanded = sourcingDialogStore.getState().open
+    act(() => {
+      sourcingDialogStore.setState({
+        inserting: { project: 'studio', file: 'photo' },
+      })
+      closeSourcing()
+    })
+
+    expect(openOnceLanded).toBe(true)
+    expect(sourcingDialogStore.getState().open).toBe(false)
+  })
+})
+
 describe('saving', () => {
   it('names the file once it is saved', () => {
     render(
@@ -298,6 +371,24 @@ describe('saving', () => {
       'Openverse answered 500.',
     )
     expect(screen.getByRole('button', { name: 'Save to assets' })).toBeEnabled()
+  })
+
+  it('drops an insert’s refusal once Save is pressed', async () => {
+    render(
+      pane({
+        file: () => Promise.reject(new Error('The image host answered 500.')),
+      }),
+    )
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Insert on canvas' }),
+    )
+    await screen.findByRole('alert')
+
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Save to assets' }),
+    )
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('says why a read-only tab has no buttons', () => {

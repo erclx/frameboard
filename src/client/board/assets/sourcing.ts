@@ -207,7 +207,7 @@ export type SaveState =
   | { state: 'failed'; message: string }
 
 /**
- * Each result's save by `project`, kind, and source id, so a click and a drag
+ * Each result's save by `project`, kind, and source id, so Save and Insert
  * share one and an image and a model sharing an id never do.
  */
 export const saveStore = createStore<Record<string, SaveState>>()(() => ({}))

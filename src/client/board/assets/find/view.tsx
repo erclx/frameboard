@@ -217,6 +217,8 @@ export function FindView({
         {shown ? (
           <Preview
             key={`${shown.kind} ${shown.id}`}
+            project={project}
+            id={saveKey(project, shown.id, shown.kind)}
             picture={shown.picture('contain')}
             title={shown.title}
             lines={[`${shown.meta} · ${KIND[kind].source}`]}

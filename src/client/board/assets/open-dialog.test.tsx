@@ -34,7 +34,7 @@ afterEach(() => {
     modeStore.setState({ hideUi: false })
     leftTabStore.setState({ tab: 'design', project: null })
     liveStore.setState({ canWrite: false })
-    sourcingDialogStore.setState({ open: false, inserting: false })
+    sourcingDialogStore.setState({ open: false, inserting: null })
   })
 })
 
@@ -109,7 +109,7 @@ describe('useSourcingActions', () => {
 
   it('closes the dialog when the board moves to another project', () => {
     const { rerender } = render(<Registered project="studio" />)
-    act(() => openSourcing('find'))
+    act(() => openSourcing('studio', 'find'))
 
     rerender(<Registered project="marketing" />)
 

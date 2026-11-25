@@ -13,37 +13,46 @@ export type SourcingView = 'find' | 'generate'
 
 interface SourcingDialogState {
   open: boolean
+  /** The project it opened over, null before it first opens. */
+  project: string | null
   view: SourcingView
   /** The view it opened on, whose button takes the focus back. */
   opener: SourcingView
-  /** An insert is out, which holds the dialog open until it lands or is refused. */
-  inserting: boolean
-  /** Why the last insert was refused. */
+  /** The insert out, which holds its own project's dialog until it lands or is refused. */
+  inserting: { project: string; file: string } | null
+  /** The file whose preview is drawn, which is where a refusal shows. */
+  shown: string | null
+  /** Why the last insert of the shown file was refused. */
   refusal: string | null
 }
 
 /** The one dialog Find and Generate share, held here so the palette can open it. */
 export const sourcingDialogStore = createStore<SourcingDialogState>()(() => ({
   open: false,
+  project: null,
   view: 'find',
   opener: 'find',
-  inserting: false,
+  inserting: null,
+  shown: null,
   refusal: null,
 }))
 
-export function openSourcing(view: SourcingView): void {
+export function openSourcing(project: string, view: SourcingView): void {
   sourcingDialogStore.setState({
     open: true,
+    project,
     view,
     opener: view,
     refusal: null,
   })
 }
 
-/** Closes the dialog, unless an insert is out, which closes it once it lands. */
+/** Closes the dialog, unless an insert of its project is out, which closes it once it lands. */
 export function closeSourcing(): void {
   sourcingDialogStore.setState((state) =>
-    state.inserting ? state : { open: false, refusal: null },
+    state.inserting && state.inserting.project === state.project
+      ? state
+      : { open: false, refusal: null },
   )
 }
 
@@ -60,7 +69,7 @@ export function useSourcingActions(project: string): void {
       closeFind()
       // With the project, or a panel mounting into another one resets its tab.
       leftTabStore.setState({ tab: 'assets', project })
-      openSourcing(view)
+      openSourcing(project, view)
     }
     const unregister = registerActions([
       {

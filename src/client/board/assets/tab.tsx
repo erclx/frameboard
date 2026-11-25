@@ -23,7 +23,7 @@ export function AssetsTab({ find, generate, ...files }: AssetsTabProps) {
       size="sm"
       aria-haspopup="dialog"
       className={BUTTON}
-      onClick={() => openSourcing(view)}
+      onClick={() => openSourcing(files.project, view)}
     >
       {label}
     </Button>
