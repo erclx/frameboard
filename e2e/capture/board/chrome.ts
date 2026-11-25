@@ -457,6 +457,68 @@ async function offerReady(page: Page): Promise<void> {
   )
 }
 
+/** Answers a generation with one picture, drawn as a gradient, so nothing spends. */
+async function generatedPicture(page: Page): Promise<void> {
+  await page.route('**/sourcing/generate', (route) =>
+    route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          version: 1,
+          provider: 'fal',
+          model: 'fal-ai/flux/schnell',
+          prompt: 'a modern house at dusk',
+          width: 1024,
+          height: 1024,
+          priceUsd: 0.0032,
+          dryRun: false,
+          saved: {
+            version: 1,
+            project: 'webapp',
+            path: 'a-modern-house-at-dusk.png',
+            licensePath: 'a-modern-house-at-dusk.png.license.json',
+            license: null,
+          },
+        },
+      },
+    }),
+  )
+  await page.route('**/frames/*/assets/a-modern-house-at-dusk.png*', (route) =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: gradient('#e07a5f', '#3b2a5c'),
+    }),
+  )
+}
+
+/** Types `prompt` into Generate's field once it draws, so its button can run. */
+function promptOnLoad(prompt: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ text, frames }) => {
+        let left = frames
+        const type = () => {
+          const field = document.querySelector(
+            'textarea[aria-label="Describe the image"]',
+          )
+          if (!(field instanceof HTMLTextAreaElement)) {
+            if (--left > 0) requestAnimationFrame(type)
+            else console.error('No Generate field to type in')
+            return
+          }
+          Object.getOwnPropertyDescriptor(
+            HTMLTextAreaElement.prototype,
+            'value',
+          )?.set?.call(field, text)
+          field.dispatchEvent(new Event('input', { bubbles: true }))
+        }
+        document.addEventListener('DOMContentLoaded', type)
+      },
+      { text: prompt, frames: TAB_FRAMES * 2 },
+    )
+  }
+}
+
 /** Types `query` into Find's field once it draws and submits it, as Enter would. */
 function searchOnLoad(query: string): (page: Page) => Promise<void> {
   return async (page) => {
@@ -1152,6 +1214,29 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
           leftTab('Assets'),
           pressOnLoad('Generate…'),
           readyWhen('textarea[aria-label="Describe the image"]'),
+        ),
+      ),
+    },
+    {
+      section: 'assets-generate-done',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          offerReady,
+          generatedPicture,
+          leftTab('Assets'),
+          pressOnLoad('Generate…'),
+          promptOnLoad('a modern house at dusk'),
+          // Held until the prompt is in, and past the header tab of the same name.
+          pointerPressOnLoad(
+            '[role="tabpanel"] button[data-slot="button"][aria-disabled="false"]',
+          ),
+          readyWhen('[aria-label="Generated"] img'),
         ),
       ),
     },
