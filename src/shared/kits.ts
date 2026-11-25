@@ -56,6 +56,8 @@ export interface KitInstallRecord {
   kit: string
   /** Every file and folder the install wrote, absolute. */
   written: string[]
+  /** True only where the copy took the place of a kit the project held. */
+  replaced?: true
 }
 
 /** What removing a kit from a project answers, on the route and the verb alike. */

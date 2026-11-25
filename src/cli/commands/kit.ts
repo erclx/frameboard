@@ -1,6 +1,6 @@
 import { basename, resolve } from 'node:path'
 
-import { type Command, Option } from 'commander'
+import type { Command } from 'commander'
 
 import { installKit } from '@/server/kits/install'
 import { findKit, listKits } from '@/server/kits/list'
@@ -18,6 +18,7 @@ import {
 
 interface AddOptions extends CommonOptions {
   from?: string
+  replace?: boolean
 }
 
 export function registerKit(program: Command, context: ProgramContext): void {
@@ -50,13 +51,15 @@ export function registerKit(program: Command, context: ProgramContext): void {
     addVerb(
       kit,
       'add',
-      'Add a kit to a project as a copy under assets/kits/<kit>/, leaving its token sheets alone, so frame kit can set it on a frame. Refuses name-taken where the project already holds a kit by that name',
+      'Add a kit to a project as a copy under assets/kits/<kit>/, leaving its token sheets alone, so frame kit can set it on a frame. Refuses name-taken where the project already holds a kit by that name, unless --replace puts this copy in its place',
     )
       .argument('<project>', 'the project')
       .argument('[kit]', 'a kit `kit list` names')
       .option('--from <folder>', 'add the kit in this folder instead')
-      // Accepted and ignored, since a script written for the install that replaced a look may still pass it.
-      .addOption(new Option('--replace').hideHelp()),
+      .option(
+        '--replace',
+        'put this copy in place of a kit the project already holds by that name, dropping its old files and leaving every frame’s kit as it is',
+      ),
     context,
     async ([project = '', name], options) => {
       if ((name === undefined) === (options.from === undefined)) {
@@ -72,10 +75,14 @@ export function registerKit(program: Command, context: ProgramContext): void {
         folder === null
           ? findKit(root, name ?? '')
           : { name: basename(folder), path: folder }
-      const record = await installKit(root, project, found)
+      const record = await installKit(root, project, found, {
+        replace: options.replace,
+      })
       return {
         data: record,
-        human: `Added ${record.kit} to ${record.project}`,
+        human: record.replaced
+          ? `Replaced ${record.kit} in ${record.project}`
+          : `Added ${record.kit} to ${record.project}`,
       }
     },
   )
