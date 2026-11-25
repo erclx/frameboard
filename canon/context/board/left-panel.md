@@ -13,15 +13,13 @@ Owns the board's left side, being the project header, the page list, the layers 
 
 ### `src/client/board/left-panel/`
 
-Owns the left panel, being `project-header.tsx` with the way home, the name, and Hide UI, then Design's searchable pages list over a layers tree, Theme in `theme/` with kits, fonts, then tokens, and Assets, with `page-actions.ts` registering the `page.*` actions. The project name renames on a click, and its chevron opens the project menu.
+Owns the left panel, being `project-header.tsx` with the way home, the name, and Hide UI, then Design's searchable pages list over a layers tree, Theme in `theme/` with kits, fonts, then tokens, Assets, and `page-actions.ts` for the `page.*` actions. The name renames on a click, a rename keeping the open tab, and its chevron opens the project menu.
 
 - `board/frame-order.ts` holds the section grouping, so the selection chip's count and the Tab step read the order the rows draw
 - A row restacks within its own group, never into or out of a section, landing at the page-wide index beside the frame it drops by
 - A canvas click waits out `REVEAL_DELAY_MS` before it centers a frame, since a travel would move the point a double-click picks at
 - The reveal reports as a hand move, so it stops Follow, and a row click fits a frame larger than the view where a canvas click never does
 - An element row's F2 stops at the row, so the board's own F2 opens no second field, and its drag moves it among its siblings alone
-
-A rename keeps the open tab, and the Assets tab its search and collapsed folders, since both follow the project's identity, where another project opens on Design.
 
 ### `src/client/board/assets/`
 
