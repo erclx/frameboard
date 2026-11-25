@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.56.0](https://github.com/erclx/frameboard/compare/v0.55.0...v0.56.0) (2026-11-25)
+
+
+### Features
+
+* **canvas:** step frames on cmd or ctrl shift arrows ([#506](https://github.com/erclx/frameboard/issues/506)) ([bb123cb](https://github.com/erclx/frameboard/commit/bb123cbccadc1a289853b073feb4ce1a142c79b1))
+
+
+### Bug Fixes
+
+* **assets:** keep focus in the Delete confirm and return it to the tile ([#504](https://github.com/erclx/frameboard/issues/504)) ([48a3d6a](https://github.com/erclx/frameboard/commit/48a3d6a2b172454fe27b0c4553ac7b118e9ed1a3))
+* **capture:** shoot an element to its painted edges ([#508](https://github.com/erclx/frameboard/issues/508)) ([acedcbe](https://github.com/erclx/frameboard/commit/acedcbe6dfb793a4a7ef0cb6b4420ecea6907d1b))
+* **follow:** skip a change older than the newest claim ([#503](https://github.com/erclx/frameboard/issues/503)) ([40e107d](https://github.com/erclx/frameboard/commit/40e107dceb1d9811695ada7a607eebf8171bcea3))
+* **toast:** keep a toast's content clear of its close button ([#509](https://github.com/erclx/frameboard/issues/509)) ([895c82e](https://github.com/erclx/frameboard/commit/895c82ea15019e7a0ae4ee3c782fb8a3e5926f22))
+
 ## [0.55.0](https://github.com/erclx/frameboard/compare/v0.54.0...v0.55.0) (2026-11-25)
 
 
