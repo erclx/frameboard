@@ -13,7 +13,9 @@ Owns the right panel's shell and its frame-level controls, being the tabs, the f
 
 ### `src/client/board/inspector/`
 
-Owns the right panel under the avatar and zoom header, its Design, Slides, and Export tabs, and the frame controls for size, fill, height, device, clipping, preview, linked widths, transitions, export, motion, the phone link, and selection colors. Each write is one undo step, and a control acting on the live frame writes nothing to it. The active tab's body scrolls under the header, the View only line, the tabs, and the crumb, as do the Frame tool's presets and Play's line.
+Owns the right panel under the avatar and zoom header, its Design, Slides, and Export tabs, and the frame controls for size, fill, height, device, clipping, preview, linked widths, transitions, export, motion, the phone link, and selection colors. Each write is one undo step, and a control acting on the live frame writes nothing to it.
+
+The active tab's body scrolls under the header, the View only line, the tabs, and the crumb, as do the Frame tool's presets and Play's line.
 
 - An element selected inside a frame shows that frame as one row under the tab strip, and the Frame tool lists its presets and devices there as radio rows
 - `label-tip.tsx` keeps a label's sentence in a hidden node the control names in `aria-describedby`, shown on hover and keyboard focus
