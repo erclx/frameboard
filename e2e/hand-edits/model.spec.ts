@@ -1,4 +1,10 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs'
 import { join, resolve } from 'node:path'
 
 import { expect, type Page, test } from '@playwright/test'
@@ -30,7 +36,22 @@ const DRAW = { timeout: 20_000 }
 /** What a viewer answers once its script drew its model. */
 interface Viewer extends HTMLElement {
   loaded?: boolean
-  getCameraOrbit?: () => { theta: number }
+  getCameraOrbit?: () => { theta: number; radius: number }
+  getFieldOfView?: () => number
+  getDimensions?: () => { x: number; y: number; z: number }
+  getCameraTarget?: () => { z: number }
+}
+
+/** What a drawn viewer shows: its camera's distance, view, and target, and the model's size, or null before it draws. */
+function drawn(node: Viewer) {
+  if (!node.loaded) return null
+  return [
+    node.getCameraOrbit?.().radius,
+    node.getFieldOfView?.(),
+    node.getCameraTarget?.().z,
+    node.getDimensions?.().x,
+    node.getDimensions?.().y,
+  ].map((value) => Number((value ?? 0).toFixed(1)))
 }
 
 test.describe('a 3D model placed by hand', () => {
@@ -108,8 +129,8 @@ test.describe('a 3D model placed by hand', () => {
     expect(
       existsSync(join(board.root, 'webapp/assets/model-viewer.min.js')),
     ).toBe(true)
-    const section = page.getByRole('region', { name: 'Model' })
-    await expect(section.getByText('phone.glb')).toBeVisible(DRAW)
+    const section = page.getByRole('region', { name: 'Camera' })
+    await expect(section).toBeVisible(DRAW)
     await expect
       .poll(
         () => viewer(page).evaluate((node: Viewer) => node.loaded === true),
@@ -126,13 +147,12 @@ test.describe('a 3D model placed by hand', () => {
     await expect(chip).toBeVisible()
     await page.mouse.move(center.x, center.y)
     await page.mouse.down()
-    // An eighth of the model's height on screen, so an eighth of a turn whatever the zoom.
-    await page.mouse.move(center.x + box.height / 8, center.y, { steps: 6 })
+    await page.mouse.move(center.x + 60, center.y, { steps: 6 })
     await page.mouse.up()
 
-    await expect.poll(turned).toBeLessThan(0)
-    const angle = turned()
-    expect(angle).toBeGreaterThan(-90)
+    // Half a degree a pixel, whatever the model's size and the zoom.
+    const angle = -30
+    await expect.poll(turned).toBe(angle)
     expect(read()).toContain(
       `camera-orbit="${angle}deg 75deg auto" max-camera-orbit="auto auto auto"`,
     )
@@ -160,5 +180,95 @@ test.describe('a 3D model placed by hand', () => {
 
     await undo(page)
     await expect.poll(read).toBe(placed)
+  })
+
+  test('journey: a placed model sizes, moves nearer, moves, and turns, holds through a reload, and one undo each puts it back', async ({
+    page,
+  }) => {
+    // Each reload draws the model afresh, near 10 s on one core.
+    test.slow()
+    const assets = join(board.root, 'webapp/assets')
+    mkdirSync(assets, { recursive: true })
+    writeFileSync(join(assets, 'phone.glb'), PHONE)
+    copyFileSync(
+      resolve('dist/viewer/model-viewer.min.js'),
+      join(assets, 'model-viewer.min.js'),
+    )
+    writeFileSync(
+      path(),
+      read()
+        .replace('</head>', `${SCRIPT}</head>`)
+        .replace(
+          ROW,
+          '<model-viewer data-name="Phone" src="../assets/phone.glb" alt="" style="position: absolute; left: 40px; top: 160px; width: 640px; height: 480px"></model-viewer>',
+        ),
+    )
+    const rest = read()
+    const steps = [rest]
+    /** Waits for one write and keeps the file it left. */
+    const written = async (holds: RegExp) => {
+      await expect.poll(read).toMatch(holds)
+      steps.push(read())
+    }
+    const pick = async () => {
+      const section = page.getByRole('region', { name: 'Transform' })
+      await expect(async () => {
+        const box = await viewer(page).boundingBox()
+        if (!box) throw new Error('The model draws no box')
+        await page.mouse.dblclick(box.x + box.width / 4, box.y + box.height / 4)
+        await expect(section).toBeVisible({ timeout: 2000 })
+      }).toPass(DRAW)
+      await expect(tip('z')).toBeVisible(DRAW)
+      return section
+    }
+    const tip = (axis: string) =>
+      page.locator(`[data-model-handle="${axis}"] [data-model-handle-tip]`)
+    const mode = (name: string) =>
+      page
+        .getByRole('group', { name: 'Model handles' })
+        .getByRole('button', { name })
+        .click()
+    const drag = async (axis: string, dx: number, dy: number) => {
+      const box = await tip(axis).boundingBox()
+      if (!box) throw new Error(`No ${axis} handle`)
+      const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+      await page.mouse.move(at.x, at.y)
+      await page.mouse.down()
+      await page.mouse.move(at.x + dx, at.y + dy, { steps: 6 })
+      await page.mouse.up()
+    }
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}/p/webapp/home`)
+    await expect.poll(() => viewer(page).evaluate(drawn), DRAW).not.toBeNull()
+    const section = await pick()
+
+    await mode('Size')
+    await drag('x', 25, 0)
+    await written(/scale="1.5 1.5 1.5"/)
+    expect(read()).toMatch(/camera-orbit="0deg 75deg [\d.]+m"/)
+
+    const depth = section.getByRole('textbox', { name: /^Z/ })
+    await depth.fill('0.5')
+    await depth.press('Enter')
+    await written(/camera-target="auto auto -?[\d.]+m"/)
+
+    const shown = await viewer(page).evaluate(drawn)
+    expect(shown?.[4]).toBeCloseTo(2.3, 1)
+    await page.reload()
+    await expect.poll(() => viewer(page).evaluate(drawn), DRAW).toEqual(shown)
+    await pick()
+
+    await mode('Move')
+    await drag('x', 40, 0)
+    await written(/left: (?!40px)\d+px; top: 160px/)
+
+    await mode('Turn')
+    await drag('y', 60, 0)
+    await written(/orientation="0deg 0deg 30deg"/)
+
+    for (const before of steps.slice(0, -1).toReversed()) {
+      await undo(page)
+      await expect.poll(read).toBe(before)
+    }
   })
 })

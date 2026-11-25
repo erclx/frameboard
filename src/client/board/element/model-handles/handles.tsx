@@ -411,7 +411,7 @@ function Gizmo({
       >
         <div
           role="group"
-          aria-label="Handles"
+          aria-label="Model handles"
           data-label-control
           className="pointer-events-auto flex origin-bottom-left gap-0.5 rounded-[7px] bg-card p-0.5 shadow-[0_0_0_1px_var(--border)] [transform:scale(calc(1/var(--zoom,1)))_translateX(-50%)]"
         >
