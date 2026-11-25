@@ -38,12 +38,12 @@
     },
     "tooling": {
       "version": "5.128.0",
-      "syncedAt": "2026-11-25T05:16:15.916Z",
+      "syncedAt": "2026-11-25T05:16:54.877Z",
       "files": {
         ".github/workflows/deploy.yml": "sha256:25ab1f82d2ce1dbb909447e22a6c4b31b1f17d4b61b1414bf8b1ba118717fef2",
         ".github/workflows/phase-label-gate.yml": "sha256:40abb5f8b078badce41d6e2697ce569f00bb2dcda963b5ea476f84ec02d315fd",
         ".github/workflows/pr-local-preview.yml": "sha256:f75f4263eae2dade5be73c6ab2fed7c5f82f2bf2dc7e0d01f896a584455abb0e",
-        ".github/workflows/verify.yml": "sha256:0b6e3c9d3f347cf9c732886abbf6d08fbd78a0572568c8d30eb2703dbcc8ce35",
+        ".github/workflows/verify.yml": "sha256:d18c665fc11734a74d54f2b0b7666f7572042336c1dd8d1a17444f25fe4a4083",
         ".husky/commit-msg": "sha256:466995785613d23781be71a1338fec590dec636a8b2a0f13d7b850639358fbeb",
         ".husky/post-merge": "sha256:c40426a0d545cb0fcf94c61eb69409d7e3952a86cfe780ff1ebb6201320f504b",
         ".husky/post-rewrite": "sha256:4f35974c54e0cf6cb9ce587f8840c24132ea8d7e74ca5ae884ee546f7b878a91",
@@ -70,7 +70,7 @@
         },
         ".github/workflows/verify.yml": {
           "disposition": "customized",
-          "base": "sha256:8a7c3b12a77cdc3502d09986327dc25a99ec3db79c3fa1c770349d03ab3f4395"
+          "base": "sha256:d18c665fc11734a74d54f2b0b7666f7572042336c1dd8d1a17444f25fe4a4083"
         },
         ".oxlintrc.json": {
           "disposition": "customized",
