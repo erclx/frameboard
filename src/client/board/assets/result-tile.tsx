@@ -1,18 +1,21 @@
 import type { ReactNode } from 'react'
 
-import type { SaveState } from '../sourcing'
+import { Skeleton } from '@/client/components/ui/skeleton'
+
+import type { SaveState } from './sourcing'
 
 interface ResultTileProps {
   picture: ReactNode
   title: string
-  /** The size and license under the title. */
+  /** The line under the title, as its size and license. */
   meta: string
   picked: boolean
-  save: SaveState | undefined
+  /** The result's save, which marks the tile, absent for one already in `assets/`. */
+  save?: SaveState
   onPick: () => void
 }
 
-/** One found result, a toggle that shows it in the preview, marked once it is saved. */
+/** One result of Find or Generate, a toggle that shows it in the preview, marked once it is saved. */
 export function ResultTile({
   picture,
   title,
@@ -49,6 +52,23 @@ export function ResultTile({
     </li>
   )
 }
+
+/** A tile's shape, held grey while its result is on its way. */
+export function PendingTile() {
+  return (
+    <li className="overflow-hidden rounded-md bg-muted">
+      <span className="block h-24 bg-accent" />
+      <span className="block h-[38px] px-1.5 py-[5px]">
+        <Skeleton className="my-[3px] h-2 w-[70%] rounded-[3px] bg-foreground/10" />
+        <Skeleton className="my-[3px] h-2 w-[45%] rounded-[3px] bg-foreground/10" />
+      </span>
+    </li>
+  )
+}
+
+/** The grid the tiles sit in, four to a row at the dialog's full width. */
+export const RESULT_GRID =
+  'grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-2.5'
 
 const MARK = {
   saving: 'Saving…',

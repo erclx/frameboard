@@ -9,12 +9,12 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/client/components/ui/dropdown-menu'
-import { Skeleton } from '@/client/components/ui/skeleton'
 import { BoardWriteError } from '@/client/live/write'
 import { assetKind, isPlaceableKind } from '@/shared/asset-kinds'
 
 import type { PlaceableFile } from '../drag'
 import { Preview, PreviewSkeleton } from '../preview'
+import { PendingTile, RESULT_GRID, ResultTile } from '../result-tile'
 import {
   findImages,
   findModels,
@@ -27,7 +27,6 @@ import {
   saveStore,
 } from '../sourcing'
 import { ImagePicture, ModelPicture } from './picture'
-import { ResultTile } from './result-tile'
 import {
   EMPTY_SEARCH,
   type FindSearch,
@@ -46,7 +45,6 @@ const ALERT = `${LINE_BOX} text-destructive`
 const FOOT = 'mt-2.5 text-caption leading-[1.4] text-muted-foreground'
 const LINK =
   'rounded-sm text-foreground underline underline-offset-2 outline-none focus-visible:ring-3 focus-visible:ring-ring/50'
-const GRID = 'grid grid-cols-[repeat(auto-fill,minmax(130px,1fr))] gap-2.5'
 
 /** How many grey tiles hold the grid's shape while a search runs. */
 const PLACEHOLDERS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
@@ -200,7 +198,7 @@ export function FindView({
               if (last !== null) void run(last, credited, kind)
             }}
           >
-            <ul aria-label="Results" className={GRID}>
+            <ul aria-label="Results" className={RESULT_GRID}>
               {found.map((item) => (
                 <ResultTile
                   key={item.id}
@@ -441,15 +439,9 @@ function Body({
     case 'searching':
       return (
         <>
-          <ul aria-label="Searching" className={GRID}>
+          <ul aria-label="Searching" className={RESULT_GRID}>
             {PLACEHOLDERS.map((id) => (
-              <li key={id} className="overflow-hidden rounded-md bg-muted">
-                <span className="block h-24 bg-accent" />
-                <span className="block h-[38px] px-1.5 py-[5px]">
-                  <Skeleton className="my-[3px] h-2 w-[70%] rounded-[3px] bg-foreground/10" />
-                  <Skeleton className="my-[3px] h-2 w-[45%] rounded-[3px] bg-foreground/10" />
-                </span>
-              </li>
+              <PendingTile key={id} />
             ))}
           </ul>
           <p className={FOOT}>Searching {source}</p>

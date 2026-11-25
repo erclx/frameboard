@@ -2,12 +2,13 @@ import '../../../styles.css'
 
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { liveStore } from '@/client/live/store'
 import { BoardWriteError } from '@/client/live/write'
 import type { ImageGenerate, ImageOffer } from '@/shared/records/sourcing'
 
+import { resetRuns } from './run-store'
 import { GenerateView } from './view'
 
 function offer(overrides: Partial<ImageOffer> = {}): ImageOffer {
@@ -69,6 +70,10 @@ beforeEach(() => {
   act(() => liveStore.setState({ canWrite: true }))
 })
 
+afterEach(() => {
+  act(resetRuns)
+})
+
 describe('GenerateView', () => {
   it('shows the provider and its price before anything runs', async () => {
     const generate = vi.fn()
@@ -125,10 +130,15 @@ describe('GenerateView', () => {
     await user.click(screen.getByRole('button', { name: 'Generate' }))
     await user.click(screen.getByRole('button', { name: 'Generating' }))
 
-    expect(screen.getByRole('button', { name: 'Generating' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Generating' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
     expect(screen.getByRole('list', { name: 'Generating' })).toBeInTheDocument()
     act(() => land(generated('a-house-at-dusk.png')))
-    expect(await screen.findByText('a-house-at-dusk.png')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'a-house-at-dusk.png' }),
+    ).toBeVisible()
     expect(generate).toHaveBeenCalledTimes(1)
     expect(generate).toHaveBeenCalledWith('webapp', 'a house at dusk')
   })
@@ -181,18 +191,136 @@ describe('GenerateView', () => {
     destructive.remove()
   })
 
-  it('keeps Generate off in a read-only tab', async () => {
+  it('keeps Generate off in a read-only tab and says why', async () => {
     act(() => liveStore.setState({ canWrite: false }))
+    const generate = vi.fn()
     render(
       <GenerateView
         project="webapp"
         load={async () => offer()}
-        generate={vi.fn()}
+        generate={generate}
       />,
     )
 
-    await describeImage('a house')
+    const user = await describeImage('a house')
+    await user.click(screen.getByRole('button', { name: 'Generate' }))
 
-    expect(screen.getByRole('button', { name: 'Generate' })).toBeDisabled()
+    expect(screen.getByText(/nothing can be generated/)).toBeVisible()
+    expect(generate).not.toHaveBeenCalled()
+  })
+
+  describe('after the dialog closed', () => {
+    it('keeps a run going and holds Generate, sending nothing more', async () => {
+      const generate = vi.fn(() => new Promise<ImageGenerate>(() => {}))
+      const view = (
+        <GenerateView
+          project="webapp"
+          load={async () => offer()}
+          generate={generate}
+        />
+      )
+      const first = render(view)
+      const user = await describeImage('a house at dusk')
+      await user.click(screen.getByRole('button', { name: 'Generate' }))
+
+      first.unmount()
+      render(view)
+      await user.click(
+        await screen.findByRole('button', { name: 'Generating' }),
+      )
+
+      expect(
+        screen.getByRole('textbox', { name: 'Describe the image' }),
+      ).toHaveValue('a house at dusk')
+      expect(generate).toHaveBeenCalledTimes(1)
+    })
+
+    it('shows the picture a run landed while it was closed', async () => {
+      let land = (_: ImageGenerate) => {}
+      const view = (
+        <GenerateView
+          project="webapp"
+          load={async () => offer()}
+          generate={() => new Promise((done) => (land = done))}
+        />
+      )
+      const first = render(view)
+      const user = await describeImage('a house at dusk')
+      await user.click(screen.getByRole('button', { name: 'Generate' }))
+
+      first.unmount()
+      await act(async () => land(generated('a-house-at-dusk.png')))
+      render(view)
+
+      expect(
+        screen.getByRole('heading', { name: 'a-house-at-dusk.png' }),
+      ).toBeVisible()
+    })
+
+    it('shows why a run failed while it was closed', async () => {
+      let fail = (_: Error) => {}
+      const view = (
+        <GenerateView
+          project="webapp"
+          load={async () => offer()}
+          generate={() => new Promise((_, refuse) => (fail = refuse))}
+        />
+      )
+      const first = render(view)
+      const user = await describeImage('a house at dusk')
+      await user.click(screen.getByRole('button', { name: 'Generate' }))
+
+      first.unmount()
+      await act(async () => fail(new Error('fal answered 402')))
+      render(view)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'fal answered 402',
+      )
+    })
+
+    it('starts another project with no prompt and no picture', async () => {
+      const first = render(
+        <GenerateView
+          project="webapp"
+          load={async () => offer()}
+          generate={async () => generated('a-house-at-dusk.png')}
+        />,
+      )
+      const user = await describeImage('a house at dusk')
+      await user.click(screen.getByRole('button', { name: 'Generate' }))
+      await screen.findByRole('heading', { name: 'a-house-at-dusk.png' })
+
+      first.unmount()
+      render(<GenerateView project="mobile" load={async () => offer()} />)
+
+      expect(
+        screen.getByRole('textbox', { name: 'Describe the image' }),
+      ).toHaveValue('')
+      expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+    })
+  })
+
+  it('previews the newest picture, and an earlier one once it is picked', async () => {
+    const generate = vi
+      .fn()
+      .mockResolvedValueOnce(generated('a-house.png'))
+      .mockResolvedValueOnce(generated('a-house-2.png'))
+    render(
+      <GenerateView
+        project="webapp"
+        load={async () => offer()}
+        generate={generate}
+      />,
+    )
+    const user = await describeImage('a house')
+    await user.click(screen.getByRole('button', { name: 'Generate' }))
+    await screen.findByRole('heading', { name: 'a-house.png' })
+    await user.click(screen.getByRole('button', { name: 'Generate' }))
+    await screen.findByRole('heading', { name: 'a-house-2.png' })
+
+    await user.click(screen.getByRole('button', { name: /^a-house.png/ }))
+
+    expect(screen.getByRole('heading', { name: 'a-house.png' })).toBeVisible()
   })
 })
