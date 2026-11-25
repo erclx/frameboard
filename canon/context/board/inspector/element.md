@@ -15,7 +15,7 @@ The color picker the paint rows open is in `canon/context/board/inspector/color-
 
 ### `src/client/board/inspector/element/`
 
-Owns an element's sections, from Layout, Size, and Position, or a model's Transform and Camera, to type, rotation, paint, and Video, each read from the live node and the static cascade and writing its `style`, an attribute, or its text. A write goes through `src/server/routes/edit.ts` as one `POST /api/frames/edit` and one undo step.
+Owns an element's sections, from Layout, Size, and Position, or a model's Transform and Camera, to type, rotation, paint, Video, and a Present row to the Slides tab, each read from the live node and the static cascade and writing its `style`, an attribute, or its text. A write goes through `src/server/routes/edit.ts` as one undo step.
 
 - A token pick writes `var(--token)`, so it follows the theme, and over an inline `background` or `border` holding its part a paint longhand rewrites that part
 - Fill opacity below 100 percent writes `color-mix(in srgb, var(--token) N%, transparent)` over a token and an 8-digit hex over a raw hex, so children keep their own opacity
