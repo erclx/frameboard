@@ -1,6 +1,6 @@
 # Requirements
 
-A developer working with coding agents needs a local board where agents draw screens as plain HTML files the developer reviews and edits by hand.
+Developers working with coding agents need a local board where agents draw screens as plain HTML files they review and edit by hand.
 
 This record holds at most 650 words.
 
@@ -11,7 +11,7 @@ This record holds at most 650 words.
 - An agent draws by writing an HTML file and running commands with machine-readable output and no prompts
 - The files are the design, with no private copy
 - Frames render as real web pages, so animation, video, and interaction work
-- A board folder lives anywhere, with or without git, and an empty one starts with one command
+- A board folder lives anywhere, with or without git, and starts with one command
 - A new board's first page asks for a name and first screen size
 
 ### Projects and navigation
@@ -22,29 +22,31 @@ This record holds at most 650 words.
 
 ### Hand edits
 
-- Most edits a designer makes in a design tool are made by hand, outside the non-goals
+- Most design tool edits are made by hand, outside the non-goals
 - The developer adds, duplicates, renames, reorders, and deletes pages and frames, replaces, renames, and deletes assets, draws or picks a frame's size, selects several, and undoes their changes
-- A developer sets a frame's position, size, fill, and extra widths, and an element's name, look, and text, with colors showing their token names
-- A developer places text, a shape, an image, video, audio, or a 3D model in a frame, sizes it, deletes it, and edits text in place
+- A developer sets a frame's position, size, fill, and extra widths, and an element's name, look, and text, with colors showing token names
+- A developer places text, shapes, images, video, audio, or 3D models in a frame, sizes and deletes them, and edits text in place
+- A developer places, turns, and scales a 3D model along each axis, by field or by a handle on the canvas
 - A developer sets a container's flow, spacing, and alignment and each child's size, places an element freely or in the flow, and wraps a selection in one container
+- A developer builds a slide in steps, setting each element's order, effect, start, duration, and delay
 
 ### Working with the agent
 
-- The agent sees the developer's selection and works through notes pinned on frames, with images and replies, which reach a listening session or start one
+- The agent sees the selection and works through notes pinned on frames, with images and replies, reaching or starting a session
 - The board shows the frame an agent is editing and warns a second session
-- A frame breaking a content rule is reported at once to its agent and the board, and projects add rules or turn one off
+- A broken content rule is reported at once to its agent and the board, and projects add rules or turn one off
 - An agent screenshots a frame or page, and the developer exports a frame or element as PNG in either theme
-- A developer opens one project's frames read only on a phone on the same network
+- One project's frames open read only on a same-network phone
 
 ### Themes and tokens
 
 - Every frame works in light and dark, switched board-wide or flipped alone
-- Frames share one look through design tokens, a board-wide default with per-project overrides, edited by hand, and a project adds kits the board previews and sets one per frame
+- Frames share design tokens, a board-wide default with per-project overrides, edited by hand, and a project adds kits, previewed and set one per frame
 
 ## Richer frames
 
-- A developer plays controls drawn in a frame and keeps the values they set
-- A developer or an agent finds an openly licensed image, 3D model, or font, or generates one, saved into the project with its license
+- A developer plays a frame's drawn controls and keeps the values
+- A developer or agent finds or generates an openly licensed image, 3D model, or font, saved with its license
 
 ## Non-goals
 
@@ -71,4 +73,4 @@ This record holds at most 650 words.
 - Runs on macOS and Linux
 - A hand edit writes ordinary HTML and CSS on each element it names, its parent when placing one freely, a token sheet, or a renamed asset's links, and the browser lays out the rest.
 - Human and agent edits never silently overwrite each other.
-- Frameboard knows nothing about any consumer, which hands it a board folder and token stylesheet.
+- Frameboard knows no consumer, which hands it a board folder and token stylesheet.
