@@ -52,10 +52,9 @@ interface ElementOverlayProps {
 }
 
 /**
- * What draws past each frame's edge, where the iframe cannot paint: a dashed
- * ghost a press takes, for a selected frame under the Move tool, and a still
- * picture of the element, in every ghost and for a frame that shows overflow.
- * Mounted ahead of the frames, so a picture draws under its own frame's label.
+ * What draws past each frame's edge: a dashed ghost a press takes, for a
+ * selected frame under the Move tool, and a still picture in every ghost and on
+ * a frame showing overflow. Mounted before the frames, so labels draw over it.
  */
 export function ElementGhosts({ frames, container }: ElementOverlayProps) {
   const selected = useSelection((state) => state.frames)

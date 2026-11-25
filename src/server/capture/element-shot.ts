@@ -15,9 +15,9 @@ type Isolated =
   | { kind: 'unboxed'; tag: string }
 
 /**
- * Leaves one element showing alone on a transparent ground, answering its box,
- * which can run past the frame's and starts inside the page whatever its own
- * place, so the page is shot once and closed.
+ * Leaves one element showing alone on a transparent ground, so the page is
+ * shot once and closed. The box it answers can run past the frame's right and
+ * bottom, and is no reading of the element's place past the left or top.
  */
 export async function isolateElement(
   page: Page,

@@ -241,8 +241,7 @@ describe.skipIf(shell === null)(
         'studio/home/badge.html':
           '<style>body{margin:0;background:red}</style>' +
           '<span style="display:block;width:60px;height:40px;border-radius:20px;background:blue"></span>',
-        // Element 4 stands wholly past the top left, 5 crosses the left edge at
-        // a fraction, and 7 is a blue box its red parent crops on the left.
+        // Element 7 is a blue box its red parent crops on the left.
         'studio/home/past.html':
           '<style>body{margin:0;background:red;overflow:hidden}div{position:absolute;background:rgb(0,0,255)}</style>' +
           '<div style="left:-200px;top:-100px;width:80px;height:50px"></div>' +
