@@ -37,6 +37,7 @@ Holds the contract both sides import, since the frame bundle may import nothing 
 
 - `elements.ts` holds the element addressing helpers, `frameElements`, `elementIndex`, `elementAt`, and `renderedHash`, which the frame and the board's later readers both call
 - `live-element.ts`, `gap.ts`, `media.ts`, `model.ts`, `motion.ts`, and `controls.ts` each pair a reply's shape with its schema, and the pure parsers such as `flowOf` sit beside the shapes they read
+- `model-transform` pushes the attributes to write, since it waits on a viewer that frames its camera on a load and never on a live scale, and holds only what that framing would not answer
 
 ## Gotchas
 

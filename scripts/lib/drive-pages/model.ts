@@ -7,8 +7,8 @@ import { ASSETS_FOLDER } from '@/shared/board-files'
 import { layOne } from '../drive-seed.ts'
 
 /**
- * The page holding one model with a clip it never plays, so the Model section
- * has an angle, a rotation, a scale, and a clip to stage, and a double-click a
+ * The page holding one model with a clip it never plays, so its Transform and Camera
+ * have a rotation, a scale, an angle, and a clip to stage, and a double-click a
  * model to turn.
  */
 const MODEL = { project: 'webapp', page: 'model', frame: 'spin' }

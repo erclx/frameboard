@@ -66,5 +66,5 @@ Owns the width a frame is previewed at, held in this tab's memory alone, so a re
 - A frame's hide and lock are flags in the page's layout and never write into the frame, so neither binds the agent, whose writes the claim and the file hash govern
 - A hidden frame leaves the canvas and composite captures but stays in the layers panel, and a locked one still selects from there
 - An element's hide and lock are written on it, and every canvas press and nudge passes over a locked one, a pick landing on what sits behind it while a note still pins on it
-- A drag carries a selected element, its outline's corner resizes it, and a double-clicked model turns until Esc. Its frame moves from the label strip, since its bare `body` marquees.
+- A drag carries a selected element, a corner resizes it, and a double-clicked model turns until Esc, a model's handles over each. A frame moves from the label strip, since its bare `body` marquees.
 - A hand box write sends the boxes the gesture started from, and the server refuses the whole write with `stale-layout` when an agent moved a frame since, or `frame-locked` for a locked one

@@ -122,9 +122,9 @@ async function paddedHero(page: Page): Promise<void> {
   page.once('close', () => writeFileSync(path, original))
 }
 
-/** The Model section once the viewer lists its clip, which it does only after the model draws. */
+/** The Camera section once the viewer lists its clip, which it does only after the model draws. */
 const MODEL_READ =
-  'section[aria-labelledby="inspector-model"] button[aria-label="Clip"]:not(:disabled)'
+  'section[aria-labelledby="inspector-camera"] button[aria-label="Clip"]:not(:disabled)'
 
 /**
  * Serves hero with a model whose clip never plays, restoring hero on close.
@@ -149,7 +149,7 @@ async function modelOnHero(page: Page): Promise<void> {
       .replace('</head>', `  ${VIEWER_SCRIPT}\n  </head>`)
       .replace(
         '</h1>',
-        '</h1>\n    <model-viewer data-name="spin.glb" src="../assets/spin.glb" alt="" camera-orbit="-40deg 75deg auto" max-camera-orbit="auto auto auto" style="display: block; width: 240px; height: 180px"></model-viewer>',
+        '</h1>\n    <model-viewer data-name="spin.glb" src="../assets/spin.glb" alt="" camera-orbit="-40deg 75deg auto" max-camera-orbit="auto auto auto" style="position: absolute; left: 40px; top: 140px; width: 640px; height: 480px"></model-viewer>',
       ),
   )
   page.once('close', () => writeFileSync(path, original))
@@ -680,17 +680,44 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
       evidence: true,
       excludeViewports: STATE_ONLY,
       mask: [AVATAR],
-      // Hero's model selected, its Model section naming the file, the angle, and the clip.
+      // Hero's placed model selected, its handles in Move over Transform and Camera.
       setup: themed(
         both(
           modelOnHero,
           noAgentChanges,
           asWriter,
           modelSelected,
-          readyWhen(`body:has(${MODEL_READ})`),
+          readyWhen(
+            `body:has(${MODEL_READ}):has([data-model-handles="move"] [data-model-handle="x"])`,
+          ),
         ),
       ),
     },
+    ...(['Turn', 'Size'] as const).map((mode): CaptureCase => {
+      const drawn = mode.toLowerCase()
+      return {
+        section: `model-handles-${drawn}`,
+        writes: 'assets',
+        theme,
+        route: '/p/webapp/home',
+        evidence: true,
+        excludeViewports: STATE_ONLY,
+        mask: [AVATAR],
+        // The same model with its handles in this mode, along its own axes.
+        setup: themed(
+          both(
+            modelOnHero,
+            noAgentChanges,
+            asWriter,
+            modelSelected,
+            pressOnLoad(`^${mode}$`),
+            readyWhen(
+              `body:has(${MODEL_READ}):has([data-model-handles="${drawn}"])`,
+            ),
+          ),
+        ),
+      }
+    }),
     {
       section: 'model-turning',
       writes: 'assets',

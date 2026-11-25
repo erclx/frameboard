@@ -84,21 +84,16 @@ export async function turnInPlace(
   return true
 }
 
-/**
- * The angle a drag reaches from `from`, in whole degrees. A drag across the
- * model's height on screen is one full turn, toward the pointer, as the
- * viewer's own orbit drag moves.
- */
-export function turnedBy(
-  from: Angle,
-  drag: { dx: number; dy: number },
-  height: number,
-): Angle {
-  if (height <= 0) return from
-  const perPixel = 360 / height
-  const across = Math.round(from.theta - drag.dx * perPixel) % 360
+/** How far a drag turns the camera, in degrees a pixel, whatever the model's size on screen. */
+const DEGREES_PER_PIXEL = 0.5
+
+/** The angle a drag reaches from `from`, in whole degrees, toward the pointer as the viewer's own orbit drag moves. */
+export function turnedBy(from: Angle, drag: { dx: number; dy: number }): Angle {
+  const across =
+    Math.round(from.theta - Math.round(drag.dx * DEGREES_PER_PIXEL)) % 360
+  const down = from.phi - Math.round(drag.dy * DEGREES_PER_PIXEL)
   return {
     theta: across > 180 ? across - 360 : across <= -180 ? across + 360 : across,
-    phi: Math.min(180, Math.max(0, Math.round(from.phi - drag.dy * perPixel))),
+    phi: Math.min(180, Math.max(0, Math.round(down))),
   }
 }

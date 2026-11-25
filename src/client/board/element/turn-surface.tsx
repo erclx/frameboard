@@ -103,16 +103,14 @@ export function TurnSurface({
     if (event.button !== 0 || drag.current) return
     const from = model.reading
     const start = { x: event.clientX, y: event.clientY }
-    const { height } = event.currentTarget.getBoundingClientRect()
     const show = (changes: readonly ModelStage[]) => stage.current?.(changes)
     const move = (moved: PointerEvent) => {
       const held = drag.current
       if (!held) return
-      const angle = turnedBy(
-        angleOf(from),
-        { dx: moved.clientX - start.x, dy: moved.clientY - start.y },
-        height,
-      )
+      const angle = turnedBy(angleOf(from), {
+        dx: moved.clientX - start.x,
+        dy: moved.clientY - start.y,
+      })
       const last = held.shown ?? angleOf(from)
       if (angle.theta === last.theta && angle.phi === last.phi) return
       held.shown = angle

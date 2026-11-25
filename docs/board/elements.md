@@ -35,6 +35,7 @@ Images, videos, audio, and 3D models come from the project's `assets/` folder an
 - Dragging a tile from the Assets tab onto a frame places it where you let go. A video tile shows its first frame and length, plays muted on hover, and says when its codec cannot play.
   - A tile let go over empty canvas makes a frame the file's size, outlined while you drag, and one undo takes the frame and its media back
 - A model lands 240 by 135 as a `<model-viewer>`, and the first one placed copies the viewer's script into `assets/` and links it in the frame's head
+  - A selected model draws X, Y, and Z handles under a Move, Turn, and Size switch, and each drag writes once. Zoom in on a small one to reach them.
 - A dropped video is written with `controls`, so Play shows the browser's own strip to pause it and turn on its sound
 - A selected video in Edit draws a bar inside its bottom edge, and an audio's bar sits under it
   - The inspector's Video section carries the same play, scrub, and sound controls, which change nothing in the file

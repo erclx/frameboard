@@ -33,6 +33,8 @@ import {
   modelReadingSchema,
   type ModelStage,
   modelStageSchema,
+  type ModelTransform,
+  modelTransformSchema,
 } from './model'
 import { type FrameMotion, frameMotionSchema } from './motion'
 
@@ -220,6 +222,16 @@ export interface BridgeOps {
     args: ElementAddress & ModelStage
     value: boolean
     push: never
+  }
+  /**
+   * Shows a scale and a depth with the camera still, answering whether a drawn
+   * viewer took them, and pushes what a load needs to draw the same unless it
+   * is a `preview`.
+   */
+  'model-transform': {
+    args: ElementAddress & ModelTransform & { preview?: boolean }
+    value: boolean
+    push: ModelStage[]
   }
   /** Measures the named elements, pushing again on every resize, style change, or scroll until closed, null when the frame shows other bytes or misses one. */
   measure: {
@@ -425,6 +437,7 @@ const OPS: readonly string[] = [
   'media-act',
   'model',
   'model-stage',
+  'model-transform',
   'motion',
   'motion-moment',
   'motion-release',
@@ -650,6 +663,13 @@ const SCHEMAS: {
   'model-stage': {
     args: addressSchema.and(modelStageSchema),
     value: z.boolean(),
+  },
+  'model-transform': {
+    args: addressSchema
+      .and(modelTransformSchema)
+      .and(z.object({ preview: z.boolean().optional() })),
+    value: z.boolean(),
+    push: z.array(modelStageSchema),
   },
   paint: { args: z.object({ fill: z.string() }), value: z.string().nullable() },
   'preview-style': {

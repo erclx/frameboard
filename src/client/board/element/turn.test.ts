@@ -116,31 +116,22 @@ describe('turnInPlace', () => {
 })
 
 describe('turnedBy', () => {
-  it('turns the model toward the pointer, a full turn across its height', () => {
-    expect(turnedBy({ theta: 0, phi: 75 }, { dx: 50, dy: -20 }, 200)).toEqual({
-      theta: -90,
-      phi: 111,
+  it('nudges the model toward the pointer for a short drag', () => {
+    expect(turnedBy({ theta: 0, phi: 75 }, { dx: 51, dy: -20 })).toEqual({
+      theta: -26,
+      phi: 85,
     })
   })
 
   it('wraps a turn past the back of the model', () => {
-    expect(turnedBy({ theta: -170, phi: 75 }, { dx: 20, dy: 0 }, 360)).toEqual({
+    expect(turnedBy({ theta: -170, phi: 75 }, { dx: 40, dy: 0 })).toEqual({
       theta: 170,
       phi: 75,
     })
   })
 
   it('stops at the top and the bottom of the model', () => {
-    expect(turnedBy({ theta: 0, phi: 75 }, { dx: 0, dy: 200 }, 200).phi).toBe(0)
-    expect(turnedBy({ theta: 0, phi: 75 }, { dx: 0, dy: -200 }, 200).phi).toBe(
-      180,
-    )
-  })
-
-  it('holds the angle for a model with no height on screen', () => {
-    expect(turnedBy({ theta: 10, phi: 75 }, { dx: 40, dy: 40 }, 0)).toEqual({
-      theta: 10,
-      phi: 75,
-    })
+    expect(turnedBy({ theta: 0, phi: 75 }, { dx: 0, dy: 400 }).phi).toBe(0)
+    expect(turnedBy({ theta: 0, phi: 75 }, { dx: 0, dy: -400 }).phi).toBe(180)
   })
 })
