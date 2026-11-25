@@ -72,6 +72,45 @@ async function rightClick(path: string) {
   return screen.findByRole('menu')
 }
 
+type User = ReturnType<typeof userEvent.setup>
+
+/** Opens the tile's menu from its ⋯, which shows once the tile is focused. */
+async function openMoreByPointer(user: User, path: string) {
+  ;(await tileButton(path)).focus()
+  await user.click(screen.getByRole('button', { name: `Actions for ${path}` }))
+  return screen.findByRole('menu')
+}
+
+async function openMoreByEnter(user: User, path: string) {
+  ;(await tileButton(path)).focus()
+  await user.tab()
+  await user.keyboard('{Enter}')
+  return screen.findByRole('menu')
+}
+
+/** Picks a row and waits out the menu's close, whose focus return runs last. */
+async function pickByPointer(user: User, menu: HTMLElement, name: string) {
+  await user.click(within(menu).getByRole('menuitem', { name }))
+  await menuGone()
+}
+
+async function pickByEnter(user: User, menu: HTMLElement, name: string) {
+  within(menu).getByRole('menuitem', { name }).focus()
+  await user.keyboard('{Enter}')
+  await menuGone()
+}
+
+/** Reads past a modal's hiding, so a menu still closing behind the confirm counts as open. */
+async function menuGone() {
+  await waitFor(() =>
+    expect(screen.queryByRole('menu', { hidden: true })).toBeNull(),
+  )
+}
+
+function confirmButton(name: 'Cancel' | 'Delete') {
+  return screen.findByRole('button', { name })
+}
+
 function itemNames(menu: HTMLElement): string[] {
   return within(menu)
     .getAllByRole('menuitem')
@@ -315,6 +354,105 @@ describe('an asset tile menu in a writing tab', () => {
     await screen.findByRole('menu')
 
     expect(getComputedStyle(tile).boxShadow).not.toBe('none')
+  })
+})
+
+describe('focus in what an asset tile menu opens', () => {
+  beforeEach(() => {
+    act(() => liveStore.setState({ canWrite: true }))
+  })
+
+  afterEach(() => {
+    act(() => liveStore.setState({ canWrite: false, board: null }))
+  })
+
+  it('lands on Cancel when Delete is picked from the ⋯ menu by pointer', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+
+    const menu = await openMoreByPointer(user, 'lake.jpg')
+    await pickByPointer(user, menu, 'Delete')
+
+    expect(await confirmButton('Cancel')).toHaveFocus()
+  })
+
+  it('lands on Cancel when Delete is picked from the ⋯ menu by Enter', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+
+    const menu = await openMoreByEnter(user, 'lake.jpg')
+    await pickByEnter(user, menu, 'Delete')
+
+    expect(await confirmButton('Cancel')).toHaveFocus()
+  })
+
+  it('lands on Cancel when Delete is picked from a right-click', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+
+    await pickByPointer(user, await rightClick('lake.jpg'), 'Delete')
+
+    expect(await confirmButton('Cancel')).toHaveFocus()
+  })
+
+  it('lands on Cancel when the frames read answers after the menu has closed', async () => {
+    const user = userEvent.setup()
+    const { writes } = fakeWrites()
+    let answer: (frames: string[]) => void = () => {}
+    const read = new Promise<string[]>((resolve) => {
+      answer = resolve
+    })
+    renderFiles({ ...writes, frames: () => read })
+
+    const menu = await openMoreByEnter(user, 'lake.jpg')
+    await pickByEnter(user, menu, 'Delete')
+    answer(['studio/home/hero'])
+
+    const cancel = await confirmButton('Cancel')
+    await waitFor(() => expect(cancel).toHaveFocus())
+  })
+
+  it('cycles Cancel and Delete on Tab and Shift+Tab', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+    const menu = await openMoreByEnter(user, 'lake.jpg')
+    await pickByEnter(user, menu, 'Delete')
+
+    await user.tab()
+    expect(await confirmButton('Delete')).toHaveFocus()
+    await user.tab()
+    expect(await confirmButton('Cancel')).toHaveFocus()
+    await user.tab({ shift: true })
+    expect(await confirmButton('Delete')).toHaveFocus()
+  })
+
+  it('stays in the frames popover opened from the ⋯ menu', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+
+    const menu = await openMoreByEnter(user, 'lake.jpg')
+    await pickByEnter(user, menu, 'Show 1 frame using it')
+
+    const popover = await screen.findByRole('dialog', {
+      name: 'Frames using it',
+    })
+    expect(popover.contains(document.activeElement)).toBe(true)
+  })
+
+  it('returns to the tile when a press on the ⋯ closes its menu', async () => {
+    const user = userEvent.setup()
+    renderFiles(fakeWrites().writes)
+    await openMoreByPointer(user, 'lake.jpg')
+
+    await user.click(
+      screen.getByRole('button', {
+        name: 'Actions for lake.jpg',
+        hidden: true,
+      }),
+    )
+    await menuGone()
+
+    expect(await tileButton('lake.jpg')).toHaveFocus()
   })
 })
 

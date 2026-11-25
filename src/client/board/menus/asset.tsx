@@ -77,15 +77,35 @@ export function AssetMore({
   tile,
   className,
 }: AssetMoreProps) {
+  const content = useRef<HTMLDivElement>(null)
+  const more = useRef<HTMLButtonElement>(null)
+
+  /** Leaves focus where it is once something the menu opened has taken it. */
+  function focusOnClose(): HTMLElement | null | false {
+    const focused = document.activeElement
+    const moved =
+      focused !== null &&
+      focused !== document.body &&
+      focused !== more.current &&
+      !content.current?.contains(focused)
+    return moved ? false : tile.current
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
+        ref={more}
         aria-label={`Actions for ${path}`}
         className={className}
       >
         <Ellipsis aria-hidden className="size-3.5" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" finalFocus={tile} className="w-42">
+      <DropdownMenuContent
+        ref={content}
+        align="start"
+        finalFocus={focusOnClose}
+        className="w-42"
+      >
         <AssetItems acts={acts} frames={frames} canWrite />
       </DropdownMenuContent>
     </DropdownMenu>
