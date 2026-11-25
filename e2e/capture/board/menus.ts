@@ -2,6 +2,7 @@ import { type Page } from '@playwright/test'
 
 import type { ListResult } from '@/shared/records/list'
 
+import { wholeBoards } from '../../support/whole-boards'
 import type { CaptureCase } from '../types'
 import { elementsInFrame } from './editing'
 import {
@@ -136,7 +137,7 @@ async function untouchedBoard(page: Page): Promise<void> {
       ]
       socket.send(JSON.stringify(parsed))
     })
-    socket.onMessage((message) => server.send(message))
+    socket.onMessage((message) => server.send(wholeBoards(message)))
   })
 }
 
@@ -174,7 +175,7 @@ async function stackedAbout(page: Page): Promise<void> {
       }
       socket.send(JSON.stringify(parsed))
     })
-    socket.onMessage((message) => server.send(message))
+    socket.onMessage((message) => server.send(wholeBoards(message)))
   })
 }
 

@@ -327,6 +327,22 @@ describe('App', () => {
     expect(screen.getByRole('link', { name: /studio/ })).toBeVisible()
   })
 
+  it('lists a project a later board adds while home is open', () => {
+    const [studio] = BOARD.projects
+    if (!studio) throw new Error('no project')
+    receiveBoard(liveStore, BOARD)
+    renderAt('/')
+
+    act(() =>
+      receiveBoard(liveStore, {
+        ...BOARD,
+        projects: [studio, { ...studio, name: 'atlas', pages: [] }],
+      }),
+    )
+
+    expect(screen.getByRole('link', { name: /^atlas/ })).toBeInTheDocument()
+  })
+
   it("sends a project's route to its first page", () => {
     receiveBoard(liveStore, BOARD)
 

@@ -7,6 +7,7 @@ import {
 } from 'react'
 import { useDefaultLayout } from 'react-resizable-panels'
 import { Link, Redirect, useLocation } from 'wouter'
+import { useShallow } from 'zustand/react/shallow'
 
 import { buttonVariants } from '@/client/components/ui/button'
 import {
@@ -14,7 +15,13 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from '@/client/components/ui/resizable'
-import { identityOf, liveStore, renamedRef, useLive } from '@/client/live/store'
+import {
+  identityOf,
+  liveStore,
+  renamedRef,
+  under,
+  useLive,
+} from '@/client/live/store'
 import {
   useHomeAction,
   useNewProjectAction,
@@ -88,10 +95,13 @@ export function BoardScreen({ project, page }: BoardScreenProps) {
   const record = useLive((state) =>
     state.board?.projects.find((candidate) => candidate.name === project),
   )
-  const reloads = useLive((state) => state.reloads)
-  const kept = useLive((state) => state.kept)
-  const findings = useLive((state) => state.findings)
-  const claims = useLive((state) => state.claims)
+  // This project's alone, so a message about another renders nothing here.
+  const reloads = useLive(useShallow((state) => under(state.reloads, project)))
+  const kept = useLive(useShallow((state) => under(state.kept, project)))
+  const findings = useLive(
+    useShallow((state) => under(state.findings, project)),
+  )
+  const claims = useLive(useShallow((state) => under(state.claims, project)))
   const focus = useLive((state) => state.focus)
   const clearFocus = useCallback(() => liveStore.setState({ focus: null }), [])
   const hideUi = useMode((state) => state.hideUi)
