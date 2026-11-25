@@ -18,7 +18,11 @@ page-only = ["web"]
 
 [painted]
 paths = ["src/client/**/*.ts"]
-exclude = ["src/client/**/fixtures.ts", "src/client/**/*-harness.tsx"]
+exclude = [
+  "src/client/**/fixtures.ts",
+  "src/client/**/*-harness.tsx",
+  "scripts/perf-compare/**",
+]
 
 [device-classes]
 default = ["desktop"]

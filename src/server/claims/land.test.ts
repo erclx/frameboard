@@ -74,6 +74,44 @@ describe('landReserved', () => {
     expect(held?.set).toEqual(expect.any(String))
   })
 
+  it('keeps the device and fixed width a reservation by name holds', async () => {
+    await reserve(
+      board.root,
+      HOLDER,
+      [
+        {
+          frame: 'webapp/home/pricing-390',
+          box: { ...BOX, width: 390, height: 900, showDevice: true },
+        },
+      ],
+      NOW,
+    )
+    write('pricing-390')
+
+    await landReserved(board.root, NOW)
+
+    expect(layout().frames['pricing-390']).toMatchObject({
+      width: 390,
+      hugWidth: false,
+      hugHeight: true,
+      showDevice: true,
+    })
+  })
+
+  it('lands a reservation with no device without one', async () => {
+    await reserve(
+      board.root,
+      HOLDER,
+      [{ frame: 'webapp/home/pricing', box: BOX }],
+      NOW,
+    )
+    write('pricing')
+
+    await landReserved(board.root, NOW)
+
+    expect(layout().frames.pricing).not.toHaveProperty('showDevice')
+  })
+
   it('leaves a reservation whose file is not written yet as it was', async () => {
     await reserve(
       board.root,

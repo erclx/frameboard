@@ -19,20 +19,11 @@ export function drawsOverflow({
 /** How many of a frame's elements past its edge the board paints, each being one render on the server's serial queue. */
 const PAINTED_MAX = 20
 
-/**
- * The elements past a frame's edge the board paints, the first in document
- * order. One past the left or top edge is left out, since a page shot starts
- * at its own corner and the picture would hold the part inside the frame.
- */
+/** The elements past a frame's edge the board paints, the first in document order. */
 export function paintedIndexes(
-  ghosts: readonly { index: number; box: Box }[],
+  ghosts: readonly { index: number }[],
 ): ReadonlySet<number> {
-  return new Set(
-    ghosts
-      .filter(({ box }) => box.x >= 0 && box.y >= 0)
-      .slice(0, PAINTED_MAX)
-      .map(({ index }) => index),
-  )
+  return new Set(ghosts.slice(0, PAINTED_MAX).map(({ index }) => index))
 }
 
 /**

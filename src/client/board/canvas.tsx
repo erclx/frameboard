@@ -10,12 +10,13 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 
 import { useCharacterKeysOn } from '@/client/actions/character-keys'
 import { findAction, isEnabled } from '@/client/actions/registry'
 import { cn } from '@/client/lib/cn'
 import { TAB_ID } from '@/client/live/socket'
-import { identityOf, liveStore, useLive } from '@/client/live/store'
+import { identityOf, liveStore, under, useLive } from '@/client/live/store'
 import { type Structure, structure } from '@/client/live/structure'
 import { useUnseen } from '@/client/live/unseen'
 import { writeBoard } from '@/client/live/write'
@@ -41,7 +42,7 @@ import { POSE_BAR_ROOM } from './device/poses'
 import { showsDeviceBar } from './device/turn'
 import { useElementActions } from './element/actions'
 import { BindingLinks } from './element/binding-links'
-import { ElementOverlay } from './element/overlay'
+import { ElementGhosts, ElementOverlay } from './element/overlay'
 import { pickElementRead } from './element/pick'
 import { followReports } from './element/report'
 import {
@@ -237,7 +238,7 @@ export function Canvas({
   useEffect(() => followSpacePan(window), [])
   useNoteTool()
   usePlaceTools()
-  const unseen = useUnseen((state) => state.unseen)
+  const unseen = useUnseen(useShallow((state) => under(state.unseen, page.ref)))
   const [settled, setSettled] = useState<{ view: View; size: Size } | null>(
     null,
   )
@@ -922,6 +923,7 @@ export function Canvas({
           <>
             <SectionBoxes page={page.ref} sections={page.sections} />
             <ReservedBoxes page={page.ref} frames={page.frames} />
+            <ElementGhosts frames={frames} container={layer} />
             {frames.map((frame) => {
               const identity = identityOf(aliases, frame.ref)
               const live = liveIdentities?.has(identity) ?? false

@@ -273,15 +273,15 @@ async function laptopOverflowing(page: Page): Promise<void> {
   })
 }
 
-/** A badge below a desktop frame's edge and a card crossing its right one. */
+/** A badge below a desktop frame's edge, a ribbon over its top left corner, and a card crossing its right edge. */
 const PAST_EDGE = join(
   import.meta.dirname,
   '../../../scripts/lib/drive-past-edge.html',
 )
 
-/** Both pictures asked for, whose loading holds the page's own, beside the check's finding. */
-const PAINTED_BOTH =
-  'body:has([data-findings-badge="webapp/home/hero"]) div:has(> img[src^="/api/frames/png"]) + div > img[src^="/api/frames/png"]'
+/** Every picture asked for, whose loading holds the page's own, beside the check's finding. */
+const PAINTED_ALL =
+  'body:has([data-findings-badge="webapp/home/hero"]) div:has(> img[src^="/api/frames/png"]) + div:has(> img[src^="/api/frames/png"]) + div > img[src^="/api/frames/png"]'
 
 /**
  * Serves the past-edge page in the hero's place, with its clipping switched
@@ -772,7 +772,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
         ),
       ),
     },
-    // Clip content off with nothing selected, the badge and the card whole past the edge.
+    // Clip content off with nothing selected, the badge, the ribbon, and the card whole past the edge.
     {
       section: 'clip-off',
       writes: 'board',
@@ -786,7 +786,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           asWriter,
           heroPastEdge(true),
           noAgentChanges,
-          readyWhen(PAINTED_BOTH, '[data-element-ghost]'),
+          readyWhen(PAINTED_ALL, '[data-element-ghost]'),
         ),
       ),
     },
@@ -805,7 +805,7 @@ export function canvasCases(theme: 'light' | 'dark'): CaptureCase[] {
           heroPastEdge(false),
           noAgentChanges,
           onCanvas({ select: ['webapp/home/hero'] }),
-          readyWhen(PAINTED_BOTH),
+          readyWhen(PAINTED_ALL),
         ),
       ),
     },

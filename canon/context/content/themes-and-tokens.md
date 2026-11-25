@@ -34,7 +34,7 @@ Owns the fonts a project installed, read from each `assets/fonts/<id>/font.licen
 
 Owns design kits, each a folder of plain files being `kit.json`, a `tokens.css` with a dark block, a `kit.css` of `kit-` classes, a `kit.md` an agent reads, and a `kit` page of sample frames. Clean, Sketch, and Wireframe sit in `shipped/`, copied to `dist/kits/` at build.
 
-- `install.ts` copies a kit's folder into the project's `assets/kits/<kit>/`, touching no sheet and no page, and refuses `name-taken` where the project holds a kit by that name
+- `install.ts` copies a kit's folder into the project's `assets/kits/<kit>/`, touching no sheet or page, refusing `name-taken` over a held kit or, for the CLI's `--replace`, swapping in a staged copy
 - `remove.ts` takes that folder out and clears the kit from every frame naming it under every page's lock, and `project.ts` lists a project's kits with the frames naming each
 - `save.ts` writes a project's look into the board's `.kits/`, a dot folder so home never lists it, taking whichever sheet reaches the project and an `assets/kit/` only where it holds `kit.json`
 - `list.ts` answers the shipped kits in picker order, then the board's own, each with its preview frame's laid-out size

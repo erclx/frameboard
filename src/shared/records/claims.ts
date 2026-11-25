@@ -11,6 +11,8 @@ export const claimBoxSchema = z.object({
   height: z.number(),
   hugWidth: z.boolean().optional(),
   hugHeight: z.boolean().optional(),
+  /** Set on a box its frame's name sized, which lands inside the device its width names. */
+  showDevice: z.boolean().optional(),
 })
 
 export type ClaimBox = z.infer<typeof claimBoxSchema>

@@ -15,8 +15,9 @@ type Isolated =
   | { kind: 'unboxed'; tag: string }
 
 /**
- * Leaves one element showing alone on a transparent ground, answering its box,
- * which can run past the frame's, so the page is shot once and closed.
+ * Leaves one element showing alone on a transparent ground, so the page is
+ * shot once and closed. The box it answers can run past the frame's right and
+ * bottom, and is no reading of the element's place past the left or top.
  */
 export async function isolateElement(
   page: Page,
@@ -38,7 +39,9 @@ export async function isolateElement(
       { ref, index },
     )
   }
-  return isolated.box
+  const { box } = isolated
+  if (box.x >= 0 && box.y >= 0) return box
+  return page.evaluate(shiftIntoView)
 }
 
 // Runs in the page, counting as `readLiveElements` does, and hides by
@@ -78,4 +81,58 @@ function hideAllBut(index: number): Isolated {
       height: rect.height,
     },
   }
+}
+
+// Runs in the page and moves the root, so an ancestor's crop moves along. A
+// moved root anchors absolute and fixed boxes, so a box that resizes is held
+// at its used size, and no other, which would turn an auto height definite.
+function shiftIntoView(): ElementBox {
+  const root = document.documentElement
+  const target = document.querySelector<HTMLElement>('[data-frameboard-shot]')
+  if (!target) throw new Error('No element is isolated.')
+  const painted = (): ElementBox => {
+    const { left, top, right, bottom } = target.getBoundingClientRect()
+    // Adding zero turns the negative zero a rounded place can be into zero.
+    const x = Math.round(left + window.scrollX) + 0
+    const y = Math.round(top + window.scrollY) + 0
+    return {
+      x,
+      y,
+      width: Math.max(1, Math.round(right + window.scrollX) - x),
+      height: Math.max(1, Math.round(bottom + window.scrollY) - y),
+    }
+  }
+  const hold = (element: HTMLElement, styles: Record<string, string>) => {
+    for (const [name, value] of Object.entries(styles)) {
+      element.style.setProperty(name, value, 'important')
+    }
+  }
+  const chain: { element: HTMLElement; width: string; height: string }[] = []
+  for (
+    let element: HTMLElement | null = target;
+    element && element !== root;
+    element = element.parentElement
+  ) {
+    const { width, height } = getComputedStyle(element)
+    chain.unshift({ element, width, height })
+  }
+  // Anchored first, since a box the root newly anchors can move and resize.
+  hold(root, { transition: 'none', translate: '0px' })
+  for (const { element, ...used } of chain) {
+    for (const side of ['width', 'height'] as const) {
+      const size = used[side]
+      if (getComputedStyle(element)[side] === size) continue
+      hold(element, {
+        transition: 'none',
+        [side]: size,
+        [`min-${side}`]: size,
+        [`max-${side}`]: size,
+      })
+    }
+  }
+  const { x, y } = painted()
+  // A zoomed root scales its own translate.
+  const shift = (at: number) => `${Math.max(0, -at) / root.currentCSSZoom}px`
+  hold(root, { translate: `${shift(x)} ${shift(y)}` })
+  return painted()
 }

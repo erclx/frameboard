@@ -30,6 +30,7 @@ describe('docs', () => {
         controls: string[]
         kits: string[]
         images: string[]
+        layout: string[]
         models: string[]
         names: { pattern: string }
         frameSizes: Record<string, { width: number; height: number }>
@@ -160,6 +161,14 @@ describe('docs', () => {
     ])
   })
 
+  it('says editing --new reads a name for its size as frame add does', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.layout.join('\n')).toMatch(
+      /frame add takes a name ending in -<px>.*editing --new with no size flag reads the name the same way/,
+    )
+  })
+
   it('states the drawn controls contract by its attribute names', async () => {
     const { contentFormat } = await docs()
 
@@ -270,6 +279,12 @@ describe('docs', () => {
     expect(kits).toContain('frame kit <frame-ref> none')
     expect(kits).toContain('kit remove')
     expect(kits).toContain('layout.json entry')
+  })
+
+  it('names --replace as taking a newer copy and keeping each frame on it', async () => {
+    const { contentFormat } = await docs()
+
+    expect(contentFormat.kits[1]).toMatch(/--replace .*keeps its kit/)
   })
 
   it('names the legacy folder as loading only where it holds kit.json', async () => {

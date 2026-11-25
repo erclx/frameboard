@@ -262,7 +262,7 @@ describe('claims store', () => {
       const dropped = await release(
         board.root,
         'sess-a',
-        'webapp/home/hero',
+        ['webapp/home/hero'],
         NOW,
       )
 
@@ -270,6 +270,44 @@ describe('claims store', () => {
       expect(
         (await readClaims(board.root, NOW)).map((each) => each.frame),
       ).toEqual(['shop/cart/total'])
+    })
+
+    it('drops every frame named in one write and keeps the rest', async () => {
+      await claim(board.root, fieldsFor('sess-a'), NOW)
+      await claim(board.root, fieldsFor('sess-a', 'webapp/home/about'), NOW)
+      await claim(board.root, fieldsFor('sess-a', 'shop/cart/total'), NOW)
+
+      const dropped = await release(
+        board.root,
+        'sess-a',
+        ['webapp/home/hero', 'shop/cart/total'],
+        NOW,
+      )
+
+      expect(dropped.map((each) => each.frame)).toEqual([
+        'webapp/home/hero',
+        'shop/cart/total',
+      ])
+      expect(
+        (await readClaims(board.root, NOW)).map((each) => each.frame),
+      ).toEqual(['webapp/home/about'])
+    })
+
+    it('leaves another session claim on a frame named beside its own', async () => {
+      await claim(board.root, fieldsFor('sess-a'), NOW)
+      await claim(board.root, fieldsFor('sess-b', 'webapp/home/about'), NOW)
+
+      const dropped = await release(
+        board.root,
+        'sess-a',
+        ['webapp/home/hero', 'webapp/home/about'],
+        NOW,
+      )
+
+      expect(dropped.map((each) => each.frame)).toEqual(['webapp/home/hero'])
+      expect(
+        (await readClaims(board.root, NOW)).map((each) => each.frame),
+      ).toEqual(['webapp/home/about'])
     })
 
     it('drops every claim of the session with no frame, and nobody else', async () => {
@@ -291,7 +329,7 @@ describe('claims store', () => {
       const dropped = await release(
         board.root,
         'sess-b',
-        'webapp/home/hero',
+        ['webapp/home/hero'],
         NOW,
       )
 
