@@ -57,6 +57,7 @@ import { PhoneLink } from './phone-link'
 import { FRAME_TOOL_GROUPS } from './presets'
 import { replaceColor } from './recolor'
 import { SelectionColors } from './selection-colors'
+import { StepsSection } from './steps-section'
 import { InspectorTabs } from './tabs'
 
 /**
@@ -99,6 +100,7 @@ export function InspectorPanel({
   )
   const inFrame = element && frames.length === 1 ? element : null
   const several = inFrame && (elements?.length ?? 0) > 1 ? elements : undefined
+  const held = (several ?? (inFrame ? [inFrame] : [])).map(({ index }) => index)
   const canWrite = useLive((state) => state.canWrite)
   // The selection's page while one holds, else the page the canvas shows.
   const slidesPage = page && frames.length > 0 ? shown : openPage
@@ -192,6 +194,14 @@ export function InspectorPanel({
           }
           slides={
             <>
+              {page && frames.length === 1 && frames[0] ? (
+                <StepsSection
+                  key={`steps:${frames[0].ref}`}
+                  page={page}
+                  frame={frames[0].ref}
+                  selected={held}
+                />
+              ) : null}
               {page && inFrame && !several ? (
                 <ElementSlides page={page} element={inFrame} />
               ) : null}

@@ -265,14 +265,18 @@ describe('InspectorPanel', () => {
       expect(screen.queryByRole('button', { name: /on a phone/ })).toBeNull()
     })
 
-    it('draws This slide then Page on one frame’s Slides', async () => {
+    it('draws Steps, This slide, then Page on one frame’s Slides', async () => {
       act(() => select(selectionStore, PAGE, [SWATCHES.ref]))
       renderPanel()
 
       await userEvent.click(screen.getByRole('tab', { name: 'Slides' }))
 
       await waitFor(() =>
-        expect(regions()).toEqual(['inspector-slide', 'inspector-page']),
+        expect(regions()).toEqual([
+          'inspector-steps',
+          'inspector-slide',
+          'inspector-page',
+        ]),
       )
     })
 

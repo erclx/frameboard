@@ -480,6 +480,7 @@ describe('InspectorPanel with an element selected', () => {
       'Text',
       'Stroke',
       'Shadow',
+      'Present',
     ])
     expect(screen.getByRole('textbox', { name: 'Text' })).toHaveValue('Hello')
   })
@@ -902,10 +903,10 @@ describe('InspectorPanel with an element selected', () => {
         .getAllByRole('button')
         .filter((button) => button.closest('section')),
     ].filter(
-      // Export and a label's tip write nothing to the board, so they stay live in a tab that reads.
+      // Export, the row leading to Slides, and a label's tip write nothing to the board, so they stay live in a tab that reads.
       (control) =>
         !control.closest(
-          '[aria-labelledby="inspector-frame"], [aria-labelledby="inspector-export"]',
+          '[aria-labelledby="inspector-frame"], [aria-labelledby="inspector-export"], [aria-labelledby="inspector-present-row"]',
         ) && !control.matches('[aria-label^="About "]'),
     )
     expect(controls.length).toBeGreaterThan(5)
