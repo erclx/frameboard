@@ -17,7 +17,16 @@ const cleanups: (() => void)[] = []
 /** The close button's ring, which a focused toast draws outside its box. */
 const RING = 3
 
+/** Where the content of a toast with a close button ends, its 1px border and 34px padding. */
+const END = 35
+
 const box = (element: Element) => element.getBoundingClientRect()
+
+/** How far an element ends from the right edge of the toast holding it. */
+function fromEdge(element: Element): number {
+  const root = element.closest('[data-slot="toast"]')
+  return (root ? box(root).right : Number.NaN) - box(element).right
+}
 
 afterEach(() => {
   while (cleanups.length) cleanups.pop()?.()
@@ -165,6 +174,14 @@ describe('a toast with an action', () => {
     expect(action.right + RING).toBeLessThanOrEqual(close.left)
   })
 
+  it('ends the action where the reference draws it', async () => {
+    raise({ title: 'Deleted webapp', actionProps: { children: 'Undo' } })
+
+    const action = await screen.findByRole('button', { name: 'Undo' })
+
+    expect(fromEdge(action)).toBeCloseTo(END, 1)
+  })
+
   it('reaches the action by Tab ahead of the close button', async () => {
     raise({ title: 'Deleted webapp', actionProps: { children: 'Undo' } })
     const action = await screen.findByRole('button', { name: 'Undo' })
@@ -229,6 +246,14 @@ describe('a toast with no action', () => {
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
     expect(title.right + RING).toBeLessThanOrEqual(close.left)
     expect(detail.right + RING).toBeLessThanOrEqual(close.left)
+  })
+
+  it('ends its text where an action ends', async () => {
+    raise({ title: 'Nothing written' })
+
+    const title = await screen.findByText('Nothing written')
+
+    expect(fromEdge(title)).toBeCloseTo(END, 1)
   })
 
   it('breaks a long unbroken title before it runs under the close button', async () => {

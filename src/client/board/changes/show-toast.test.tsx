@@ -85,6 +85,17 @@ describe('the show offer', () => {
     expect(go.right + RING).toBeLessThanOrEqual(close.left)
   })
 
+  it('ends Go where the reference draws it', async () => {
+    renderStack()
+
+    act(() => receiveShow(SHOP_HERO))
+
+    const go = await screen.findByRole('button', { name: 'Go' })
+    const root = go.closest('[data-show-offer]')
+    // The 1px border and the content's 34px padding.
+    expect((root ? box(root).right : 0) - box(go).right).toBeCloseTo(35, 1)
+  })
+
   it('breaks a long unbroken name before it runs under Go', async () => {
     renderStack()
 
