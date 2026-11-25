@@ -1118,6 +1118,24 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       ),
     },
     {
+      // Opened by key, so the shown section holds the ring.
+      section: 'theme-tab-section-focus',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          fontsByKey,
+          readyWhen(
+            '[role="dialog"] [role="tab"]:focus-visible:not([data-pointer-focus])',
+          ),
+        ),
+      ),
+    },
+    {
       // Find a font opened on a search for serif, three results in their samples.
       section: 'theme-tab-fonts-find',
       theme,
