@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>build</title>
+    <script type="module" src="../assets/model-viewer.min.js"></script>
+  </head>
+  <body
+    style="
+      margin: 0;
+      height: 720px;
+      padding: 72px 96px;
+      box-sizing: border-box;
+      background: var(--surface);
+      color: var(--text);
+      font-family: var(--font-text);
+      font-size: 28px;
+    "
+  >
+    <h1 data-name="Title" data-step="1" style="margin: 0; font-size: 64px">
+      A slide that builds
+    </h1>
+    <p
+      data-name="Subtitle"
+      data-step="1"
+      data-step-effect="fade"
+      style="margin: 8px 0 32px"
+    >
+      Four presses, eight steps.
+    </p>
+    <p
+      data-name="First finding"
+      data-step="2"
+      data-step-effect="fly"
+      data-step-duration="2000"
+      style="margin: 0 0 16px"
+    >
+      This one takes two seconds.
+    </p>
+    <p
+      data-name="Second finding"
+      data-step="3"
+      data-step-effect="fly"
+      data-step-start="after"
+      data-step-delay="1000"
+      style="margin: 0 0 16px"
+    >
+      This one waits a second more.
+    </p>
+    <div data-name="Clips" style="display: flex; gap: 48px">
+      <model-viewer
+        data-name="Phone"
+        data-step="4"
+        data-step-effect="zoom"
+        data-step-play
+        src="../assets/spin.glb"
+        alt="A phone turning once around"
+        style="display: block; width: 320px; height: 280px"
+      ></model-viewer>
+      <p
+        data-name="Phone caption"
+        data-step="5"
+        data-step-effect="wipe"
+        data-step-start="with"
+        style="margin: 0; width: 240px"
+      >
+        The model turns as it appears.
+      </p>
+      <video
+        data-name="Demo clip"
+        data-step="6"
+        data-step-effect="fade"
+        data-step-play
+        loop
+        muted
+        src="../assets/clip.webm"
+        style="width: 320px; height: 180px"
+      ></video>
+    </div>
+    <p
+      data-name="Close"
+      data-step="7"
+      data-step-effect="fade"
+      data-step-start="after"
+      style="margin: 32px 0 0"
+    >
+      Questions
+    </p>
+  </body>
+</html>
