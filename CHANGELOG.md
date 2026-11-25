@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.53.0](https://github.com/erclx/frameboard/compare/v0.52.0...v0.53.0) (2026-11-25)
+
+
+### Features
+
+* **canvas:** paint an element past a frame's left or top edge ([#487](https://github.com/erclx/frameboard/issues/487)) ([9d27103](https://github.com/erclx/frameboard/commit/9d27103342c6556b66f8309939ae5d7341ef65c2))
+* **claims:** release several frames and reserve at a named size ([#490](https://github.com/erclx/frameboard/issues/490)) ([07c4ccd](https://github.com/erclx/frameboard/commit/07c4ccd41183837d6590593424d79768ff74c594))
+* **kits:** update a held kit in one call with kit add --replace ([#489](https://github.com/erclx/frameboard/issues/489)) ([5797956](https://github.com/erclx/frameboard/commit/57979567eb03ec48803da7ec8e99fe61b470f42f))
+
+
+### Bug Fixes
+
+* **device:** fit a shown phone to its page and status bar on the board ([#485](https://github.com/erclx/frameboard/issues/485)) ([926c3d8](https://github.com/erclx/frameboard/commit/926c3d8202ce3ec3dd9f2b05ec71e06a48745978))
+
+
+### Performance Improvements
+
+* **live:** send a tab a patch per write batch ([#488](https://github.com/erclx/frameboard/issues/488)) ([b7c91c9](https://github.com/erclx/frameboard/commit/b7c91c9826eab3cb5b48065b48b2ff41e437ba2b))
+
 ## [0.52.0](https://github.com/erclx/frameboard/compare/v0.51.0...v0.52.0) (2026-11-24)
 
 
