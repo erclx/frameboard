@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { createLiveStore } from '@/client/live/store'
 import type { Gap } from '@/shared/frame-bridge/gap'
 import type { ElementTree, TreeElement } from '@/shared/records/elements'
-import { frameOf } from '@/test/board'
+import { boardOf, frameOf, pageOf } from '@/test/board'
 import { BRIDGE } from '@/test/frame-bridge'
 
 import { request } from '../bridge/channel'
@@ -23,6 +23,7 @@ import {
   placeFile,
   placeFileFrame,
   placeFree,
+  placeInFrame,
   placeResult,
   wrapSelection,
 } from './write'
@@ -1515,6 +1516,105 @@ describe('placeFileFrame', () => {
 
     expect(placed).toBeNull()
     expect(selection.getState().frames).toEqual([])
+  })
+})
+
+describe('placeInFrame', () => {
+  const PHOTO = { project: 'studio', path: 'photo.png', kind: 'image' } as const
+  const LANDED = { ref: HERO.ref, index: 3, hash: ANSWERED }
+  const WHOLE = { x: 0, y: 0, width: 1000, height: 800 }
+
+  /** A canvas showing this area of `studio/home`, over a board holding `frames`. */
+  function canvas(visible = WHOLE, frames = [HERO], page = 'studio/home') {
+    const live = createLiveStore()
+    live.setState({ board: boardOf(pageOf(frames)) })
+    return {
+      live,
+      view: { page: () => page, visible: () => visible },
+      selection: createSelectionStore(),
+      mode: createModeStore(1280),
+      measure: async () => ({ width: 40, height: 20 }),
+    }
+  }
+
+  it('lands at the center of the part of the frame in view, then selects it', async () => {
+    const container = await mount('')
+    const deps = canvas({ x: 300, y: 0, width: 1000, height: 250 })
+    const { sent, send } = server(200, { ok: true, data: LANDED })
+
+    const placed = await placeInFrame(HERO.ref, PHOTO, {
+      ...deps,
+      container,
+      send,
+    })
+
+    // In view are x 300 to 500 and y 50 to 250 on the board, under a frame at 100, 50.
+    expect(sent).toMatchObject([
+      {
+        ref: HERO.ref,
+        at: { left: 300, top: 100 },
+        element: { kind: 'asset', path: 'photo.png', width: 40, height: 20 },
+      },
+    ])
+    expect(placed).toEqual({ frame: HERO.ref, index: 3, hash: ANSWERED })
+    expect(deps.selection.getState().element?.index).toBe(3)
+  })
+
+  it('lands in the named frame under one stacked above it', async () => {
+    const container = await mount('')
+    const cover = frameOf('cover', { box: HERO.box, order: 5 })
+    const { sent, send } = server(200, { ok: true, data: LANDED })
+
+    await placeInFrame(HERO.ref, PHOTO, {
+      ...canvas(WHOLE, [HERO, cover]),
+      container,
+      send,
+    })
+
+    expect(sent).toMatchObject([{ ref: HERO.ref }])
+  })
+
+  it('answers null with nothing sent for a frame with no live page', async () => {
+    layer = document.createElement('div')
+    document.body.append(layer)
+    const { sent, send } = server(200, { ok: true, data: LANDED })
+
+    const placed = await placeInFrame(HERO.ref, PHOTO, {
+      ...canvas(),
+      container: layer,
+      send,
+    })
+
+    expect(placed).toBeNull()
+    expect(sent).toEqual([])
+  })
+
+  it('answers null with nothing sent for a frame out of view', async () => {
+    const container = await mount('')
+    const { sent, send } = server(200, { ok: true, data: LANDED })
+
+    const placed = await placeInFrame(HERO.ref, PHOTO, {
+      ...canvas({ x: 2000, y: 0, width: 400, height: 400 }),
+      container,
+      send,
+    })
+
+    expect(placed).toBeNull()
+    expect(sent).toEqual([])
+  })
+
+  it('answers null with nothing sent for a frame of a page the canvas left', async () => {
+    const container = await mount('')
+    const { sent, send } = server(200, { ok: true, data: LANDED })
+
+    const placed = await placeInFrame(HERO.ref, PHOTO, {
+      ...canvas(WHOLE, [HERO], 'studio/about'),
+      container,
+      send,
+    })
+
+    expect(placed).toBeNull()
+    expect(sent).toEqual([])
   })
 })
 
