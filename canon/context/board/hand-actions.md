@@ -19,7 +19,6 @@ Owns picking, walking, and outlining elements, with the board's `selection.ts`: 
 - An undo or redo keeps the element only while the tree at the answered hash matches the picked one in each index, parent, tag, and every name but its own
 - A move key reads the tree inside the frame's turn rather than at the press, and an element edit holds the turn until Layers reads the bytes it answered
 - `held.ts` keeps a released outline at the drop until the frame measures the element at the answered hash, since `ResizeObserver` never fires on a move
-- `model-handles/` draws a selected model's handles in the notes layer, above the press that moves it, each tip taking its own press and Esc putting it back. They hide during any drag beside them and where the box holds no room clear of the corner marks.
 - `focusOnBoard()` gates the walks and exempts a note pin, a note card, a media bar, and any `data-label-control`, so Tab there moves focus natively
 
 ### `src/client/board/menus/`
@@ -67,5 +66,5 @@ Owns the width a frame is previewed at, held in this tab's memory alone, so a re
 - A frame's hide and lock are flags in the page's layout and never write into the frame, so neither binds the agent, whose writes the claim and the file hash govern
 - A hidden frame leaves the canvas and composite captures but stays in the layers panel, and a locked one still selects from there
 - An element's hide and lock are written on it, and every canvas press and nudge passes over a locked one, a pick landing on what sits behind it while a note still pins on it
-- A drag carries a selected element, its outline's corner resizes it, and a double-clicked model turns until Esc. Its frame moves from the label strip, since its bare `body` marquees.
+- A drag carries a selected element, a corner resizes it, and a double-clicked model turns until Esc, a model's handles over each. A frame moves from the label strip, since its bare `body` marquees.
 - A hand box write sends the boxes the gesture started from, and the server refuses the whole write with `stale-layout` when an agent moved a frame since, or `frame-locked` for a locked one
