@@ -7,7 +7,7 @@ description: The left panel's header, its Design, Theme, and Assets tabs, the pa
 
 ## Overview
 
-Owns the board's left side, being the project header, the page list, the layers tree, the Theme and Assets tabs, and the first-run guide a new board shows. It also owns find, which takes the panel's place under Cmd+F.
+Owns the board's left side, being the project header, the page list, the layers tree, the Theme and Assets tabs, and the first-run guide a new board shows. It also owns find, which takes the panel's place under Cmd+F. Each tab's lists or body scroll under the project name and the tabs.
 
 ## Layout
 
