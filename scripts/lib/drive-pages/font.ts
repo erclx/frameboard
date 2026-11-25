@@ -7,10 +7,10 @@ import { ASSETS_FOLDER } from '@/shared/board-files'
 import { FONT_LICENSE_TEXT, FONTS_FOLDER } from '@/shared/fonts'
 import type { FontLicenseFile } from '@/shared/records/sourcing'
 
-/** The picked design's own Lora file, tracked beside its reference, so the seed needs no network. */
+/** A fixture font file, so the seed needs no network. */
 const LORA_FILE = join(
   import.meta.dirname,
-  '../../../canon/design/assets/groundwork-61/fonts/lora.woff2',
+  '../../../test/fixtures/fonts/lora.woff2',
 )
 
 /**

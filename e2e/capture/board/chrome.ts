@@ -76,8 +76,8 @@ function leftTab(name: string): (page: Page) => Promise<void> {
 
 const themeTab = leftTab('Theme')
 
-/** The picked design's own font files, tracked beside its reference, so a shot draws real faces offline. */
-const DESIGN_FONTS = 'canon/design/assets/groundwork-61/fonts'
+/** The fixture fonts, so a shot draws real faces offline. */
+const FIXTURE_FONTS = 'test/fixtures/fonts'
 
 /** Lora installed in `webapp`, used by `frames` and drawn from its file through the project's font sheet. */
 function installedLora(frames: string[]): (page: Page) => Promise<void> {
@@ -122,7 +122,7 @@ function installedLora(frames: string[]): (page: Page) => Promise<void> {
         contentType: 'font/woff2',
         body: readFileSync(
           join(
-            DESIGN_FONTS,
+            FIXTURE_FONTS,
             new URL(route.request().url()).pathname.split('/').pop() ?? '',
           ),
         ),
@@ -131,7 +131,7 @@ function installedLora(frames: string[]): (page: Page) => Promise<void> {
   }
 }
 
-/** A search for `serif` answering three families, their samples drawn from the design's files. */
+/** A search for `serif` answering three families, their samples drawn from the fixture files. */
 async function foundSerifs(page: Page): Promise<void> {
   const result = (number: number, id: string, family: string) => ({
     number,
@@ -171,7 +171,7 @@ async function foundSerifs(page: Page): Promise<void> {
     return id === 'lora' || id === 'playfair-display'
       ? route.fulfill({
           contentType: 'font/woff2',
-          body: readFileSync(join(DESIGN_FONTS, `${id}.woff2`)),
+          body: readFileSync(join(FIXTURE_FONTS, `${id}.woff2`)),
         })
       : route.abort()
   })

@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>theme-dialog-1280</title>
+    <style>
+      :root {
+        --canvas: #ececec;
+        --panel: #ffffff;
+        --raised: #f2f2f2;
+        --hover: #f5f5f5;
+        --sel: #e8e8e8;
+        --border: #e4e4e4;
+        --text: #1a1a1a;
+        --muted: #6e6e6e;
+        --faint: #a5a5a5;
+        --accent: #2f7bf0;
+        --accentfill: #1f6fe5;
+        --accentfg: #ffffff;
+        --claim: #7f2db5;
+        --note: #c77a00;
+        --destructive: #d92d2d;
+        --good: #1a7f45;
+      }
+      [data-theme='dark'] {
+        --canvas: #1f1f1f;
+        --panel: #2a2a2a;
+        --raised: #363636;
+        --hover: #323232;
+        --sel: #3d3d3d;
+        --border: #353535;
+        --text: #e6e6e6;
+        --muted: #a0a0a0;
+        --faint: #6b6b6b;
+        --accent: #4e92f6;
+        --accentfill: #2068dc;
+        --accentfg: #ffffff;
+        --claim: #e8b4ff;
+        --note: #f5b84a;
+        --destructive: #ff6b6b;
+        --good: #5fc48a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        font-family: Geist, 'DejaVu Sans', sans-serif;
+        font-size: 12px;
+        color: var(--text);
+        background: var(--canvas);
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+      .lab {
+        height: 28px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 12px;
+        background: var(--text);
+        color: var(--panel);
+        font-size: 11px;
+      }
+      .lab b {
+        font-weight: 600;
+      }
+      .lab span {
+        opacity: 0.75;
+      }
+      .app {
+        position: relative;
+        height: 772px;
+        display: grid;
+        grid-template-columns: 240px 1fr 240px;
+      }
+      .app.wide {
+        grid-template-columns: 1fr;
+      }
+      .pl,
+      .pr {
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+      }
+      .pr {
+        border-right: 0;
+        border-left: 1px solid var(--border);
+      }
+      .hd {
+        height: 44px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+      }
+      .hd .sp {
+        flex: 1;
+      }
+      .dot {
+        width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        background: var(--text);
+      }
+      .seg {
+        display: flex;
+        margin: 8px;
+        padding: 2px;
+        background: var(--raised);
+        border-radius: 7px;
+        flex: none;
+      }
+      .seg span {
+        flex: 1;
+        height: 24px;
+        line-height: 24px;
+        text-align: center;
+        border-radius: 5px;
+        color: var(--muted);
+        font-weight: 500;
+      }
+      .seg .on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .body {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0 8px 8px;
+      }
+      .h3 {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 10px 4px 6px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .h3 .n {
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .row {
+        height: 28px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 4px;
+        border-radius: 5px;
+      }
+      .row .r {
+        margin-left: auto;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .fld {
+        height: 26px;
+        border-radius: 5px;
+        background: var(--raised);
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+        gap: 6px;
+        color: var(--text);
+      }
+      .fld i {
+        font-style: normal;
+        color: var(--muted);
+      }
+      .grid2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+      .tile {
+        border-radius: 6px;
+        background: var(--raised);
+        overflow: hidden;
+      }
+      .tile .im {
+        background: var(--sel);
+        height: 72px;
+      }
+      .tile .t {
+        padding: 5px 6px 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 11px;
+      }
+      .tile .m {
+        padding: 0 6px 6px;
+        color: var(--muted);
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .cv {
+        position: relative;
+        overflow: hidden;
+      }
+      .fr {
+        position: absolute;
+        left: 50%;
+        top: 40px;
+        width: 300px;
+        height: 620px;
+        margin-left: -150px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+      }
+      .fr::before {
+        content: attr(data-n);
+        position: absolute;
+        top: -18px;
+        left: 0;
+        color: var(--muted);
+        font-size: 11px;
+      }
+      .tb {
+        position: absolute;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        height: 40px;
+        width: 420px;
+        border-radius: 10px;
+        background: var(--panel);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .btn {
+        height: 28px;
+        padding: 0 12px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        background: var(--panel);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .btn.pri {
+        background: var(--text);
+        color: var(--panel);
+        box-shadow: none;
+      }
+      .scrim {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.28);
+      }
+      .dlg {
+        position: absolute;
+        background: var(--panel);
+        border-radius: 10px;
+        box-shadow:
+          0 0 0 1px var(--border),
+          0 12px 32px rgba(0, 0, 0, 0.18);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .dh {
+        height: 48px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .x {
+        margin-left: auto;
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .bar {
+        height: 10px;
+        border-radius: 3px;
+        background: var(--sel);
+      }
+
+      .sw {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        background: var(--sel);
+        box-shadow: inset 0 0 0 1px var(--border);
+      }
+      .bdg {
+        font-size: 9px;
+        color: var(--muted);
+        box-shadow: 0 0 0 1px var(--border);
+        border-radius: 3px;
+        padding: 1px 4px;
+      }
+      .sec {
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 6px;
+      }
+      .fn {
+        font-size: 14px;
+      }
+      .grp {
+        height: 30px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 4px;
+        font-weight: 600;
+        font-size: 11px;
+      }
+      .grp .n {
+        color: var(--muted);
+        font-weight: 400;
+        margin-left: auto;
+      }
+      .lnk {
+        color: var(--text);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+        font-size: 11px;
+        padding: 4px;
+      }
+      .card {
+        border-radius: 8px;
+        background: var(--raised);
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="lab">
+      <b>theme-dialog-1280 · arm 2</b
+      ><span
+        >Cost: tokens sit one click away from the canvas, and a dialog hides the
+        frames while you edit</span
+      ><span>Ref: the dialog picked for Find and Generate</span>
+    </div>
+    <div class="app">
+      <aside class="pl">
+        <div class="hd">
+          drive <span class="muted">▾</span><span class="sp"></span
+          ><span class="muted">◫</span>
+        </div>
+        <div class="seg">
+          <span class="">Design</span><span class="on">Theme</span
+          ><span class="">Assets</span>
+        </div>
+        <div class="body">
+          <div class="card" style="margin: 4px 0 8px">
+            <b>Kits</b><span class="muted">None yet</span>
+          </div>
+          <div class="card" style="margin-bottom: 8px">
+            <b>Fonts · 13</b><span class="fn">Geist, Inter, Lora…</span>
+          </div>
+          <div class="card" style="margin-bottom: 8px">
+            <b>Colors · 6</b>
+            <div style="display: flex; gap: 4px">
+              <span class="sw"></span><span class="sw"></span
+              ><span class="sw"></span><span class="sw"></span
+              ><span class="sw"></span><span class="sw"></span>
+            </div>
+          </div>
+          <div class="card" style="margin-bottom: 8px">
+            <b>Radius, type, other · 5</b>
+          </div>
+          <span class="btn pri" style="width: 100%">Edit theme…</span>
+        </div>
+      </aside>
+      <main class="cv">
+        <div class="fr" data-n="signup"></div>
+        <div class="tb"></div>
+      </main>
+      <aside class="pr">
+        <div class="hd">
+          <span class="dot"></span><span class="sp"></span
+          ><span class="muted">91% ▾</span>
+        </div>
+        <div class="seg">
+          <span class="on">Design</span><span class="">Slides</span
+          ><span class="">Export</span>
+        </div>
+        <div class="body">
+          <div class="h3">Frame</div>
+          <div class="row">
+            <div class="bar" style="width: 70px"></div>
+            <div class="bar" style="width: 40px; margin-left: auto"></div>
+          </div>
+          <div class="row">
+            <div class="bar" style="width: 70px"></div>
+            <div class="bar" style="width: 40px; margin-left: auto"></div>
+          </div>
+          <div class="row">
+            <div class="bar" style="width: 70px"></div>
+            <div class="bar" style="width: 40px; margin-left: auto"></div>
+          </div>
+          <div class="row">
+            <div class="bar" style="width: 70px"></div>
+            <div class="bar" style="width: 40px; margin-left: auto"></div>
+          </div>
+          <div class="row">
+            <div class="bar" style="width: 70px"></div>
+            <div class="bar" style="width: 40px; margin-left: auto"></div>
+          </div>
+          <div class="row">
+            <div class="bar" style="width: 70px"></div>
+            <div class="bar" style="width: 40px; margin-left: auto"></div>
+          </div>
+        </div>
+      </aside>
+      <div class="scrim"></div>
+      <div
+        class="dlg"
+        style="left: 160px; top: 60px; width: 960px; height: 640px"
+      >
+        <div class="dh">Theme · drive<span class="x">Esc ✕</span></div>
+        <div
+          style="
+            flex: 1;
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            min-height: 0;
+          "
+        >
+          <div style="border-right: 1px solid var(--border); padding: 8px">
+            <div class="row" style="">Kits<span class="r">0</span></div>
+            <div class="row" style="background: var(--sel); font-weight: 600">
+              Fonts<span class="r">13</span>
+            </div>
+            <div class="row" style="">Colors<span class="r">6</span></div>
+            <div class="row" style="">Radius<span class="r">2</span></div>
+            <div class="row" style="">Font tokens<span class="r">2</span></div>
+            <div class="row" style="">Other<span class="r">1</span></div>
+          </div>
+          <div
+            style="
+              padding: 16px;
+              display: flex;
+              flex-direction: column;
+              gap: 12px;
+              min-height: 0;
+            "
+          >
+            <div style="display: flex; align-items: center">
+              <b style="font-size: 13px">Fonts</b
+              ><span class="btn" style="margin-left: auto">+ Find a font</span>
+            </div>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 10px;
+                overflow: hidden;
+              "
+            >
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>Geist</b
+                ><span class="muted">Built in</span>
+              </div>
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>Geist Mono</b
+                ><span class="muted">Built in</span>
+              </div>
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>Inter</b
+                ><span class="muted">Built in</span>
+              </div>
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>Source Serif 4</b
+                ><span class="muted">Built in</span>
+              </div>
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>Caveat</b
+                ><span class="muted">Built in</span>
+              </div>
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>DM Sans</b
+                ><span class="muted">OFL</span>
+              </div>
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>Lora</b
+                ><span class="muted">OFL</span>
+              </div>
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>Merriweather</b
+                ><span class="muted">OFL</span>
+              </div>
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>Montserrat</b
+                ><span class="muted">OFL</span>
+              </div>
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>Playfair Display</b
+                ><span class="muted">OFL</span>
+              </div>
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>Poppins</b
+                ><span class="muted">OFL</span>
+              </div>
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>Roboto</b
+                ><span class="muted">OFL</span>
+              </div>
+              <div class="card" style="gap: 2px">
+                <span style="font-size: 22px">Aa</span><b>Space Grotesk</b
+                ><span class="muted">OFL</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
