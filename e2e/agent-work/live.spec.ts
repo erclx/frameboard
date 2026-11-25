@@ -140,6 +140,33 @@ test.describe('the live board', () => {
     ).toBe(true)
   })
 
+  test('follows a project the CLI renames, keeping its frames, its panel tab, and the tab open', async ({
+    page,
+  }) => {
+    await page.getByRole('tab', { name: 'Assets', exact: true }).click()
+    const search = page.getByRole('searchbox', { name: 'Search assets' })
+    await search.fill('dot')
+
+    await cli(['project', 'rename', 'studio', 'atelier', '--json'], {
+      cwd: board.root,
+    })
+
+    await expect(page).toHaveURL(/\/p\/atelier\/home$/)
+    // Written past the rename's batch, so its reload lands after any the rename caused.
+    writeFileSync(
+      join(board.root, 'atelier/home/mobile.html'),
+      '<!doctype html><title>mobile</title><p>edited</p>',
+    )
+    await expect
+      .poll(() => marks(page))
+      .toEqual({ 'atelier/home/hero': true, 'atelier/home/mobile': false })
+    await expect(search).toHaveValue('dot')
+    const shown = await cli(['show', 'atelier/home/hero', '--json'], {
+      cwd: board.root,
+    })
+    expect(shown.json().data).toMatchObject({ tabs: 1 })
+  })
+
   test('marks a frame with check findings and clears the mark on a fix', async ({
     page,
   }) => {
