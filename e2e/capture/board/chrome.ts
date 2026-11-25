@@ -81,9 +81,10 @@ const THEME_SECTIONS = ['kits', 'fonts', 'color', 'radius', 'font', 'other']
 function themeDialog(section: string): (page: Page) => Promise<void> {
   const at = THEME_SECTIONS.indexOf(section) + 1
   const card = `aside[aria-label="Pages and layers"] [role="tabpanel"] button[aria-haspopup="dialog"]:nth-of-type(${Math.min(at, 4)})`
-  const tab = `[role="dialog"] [role="tab"]:nth-of-type(${at})`
+  // A focused tab shows its section. Past the opening focus, which would put Radius back.
+  const tab = `[role="dialog"] [role="tablist"]:focus-within [role="tab"]:nth-of-type(${at})`
   return at > 4
-    ? both(themeTab, pointerPressOnLoad(card), pointerPressOnLoad(tab))
+    ? both(themeTab, pointerPressOnLoad(card), focusOnLoad(tab))
     : both(themeTab, pointerPressOnLoad(card))
 }
 
@@ -1630,6 +1631,21 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           asWriter,
           openOverlayOnLoad('commands', 'add'),
+          readyWhen('[role="listbox"] [role="option"]'),
+        ),
+      ),
+    },
+    {
+      // The palette's way into the Theme dialog, in a reading tab too.
+      section: 'palette-edit-theme',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          openOverlayOnLoad('commands', 'edit theme'),
           readyWhen('[role="listbox"] [role="option"]'),
         ),
       ),
