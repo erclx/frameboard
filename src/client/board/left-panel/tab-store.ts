@@ -15,3 +15,10 @@ export const leftTabStore = createStore<{
   tab: 'design',
   project: null,
 }))
+
+/** Follows a rename of the project the panel last showed, so it keeps its tab. */
+export function renameLeftTab(before: string, after: string): void {
+  if (leftTabStore.getState().project === before) {
+    leftTabStore.setState({ project: after })
+  }
+}

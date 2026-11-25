@@ -13,6 +13,7 @@ import { boardOf, frameOf, pageOf } from '@/test/board'
 import { BoardTabs } from '../start'
 import { type BoardFeed, createBoardFeed } from './feed'
 import { createHub, type LiveHub } from './hub'
+import type { Folders } from './project-folders'
 
 /** A tab's end of the socket, holding the board the messages make. */
 interface Tab {
@@ -24,6 +25,18 @@ interface Tab {
 const home = (...names: string[]) =>
   boardOf(pageOf(names.map((name) => frameOf(name))))
 
+/** A board of projects by name, each with the one home page. */
+function projectsOf(...names: string[]): ListResult {
+  const { root, projects } = home('hero')
+  return {
+    root,
+    projects: names.map((name) => ({
+      ...(projects[0] as ListResult['projects'][number]),
+      name,
+    })),
+  }
+}
+
 describe('createBoardFeed', () => {
   let server: Server
   let hub: LiveHub
@@ -31,8 +44,14 @@ describe('createBoardFeed', () => {
   let feed: BoardFeed
   let sockets: WebSocket[]
   let port: number
-  /** The board on disk, which a hello scans. */
+  /** The board on disk, which every scan reads. */
   let disk: ListResult
+  /** The identity of each project folder on disk, none for one left out. */
+  let ids: Record<string, string>
+  /** The renames found on disk, as the feed's caller hears them. */
+  let found: [string, string][]
+  /** What crosses the next scan, run once it holds what it read. */
+  let crossing: (() => void) | undefined
   /** What a hello's scan waits on, so a test can hold it in its turn. */
   let turn: Promise<void>
 
@@ -40,6 +59,9 @@ describe('createBoardFeed', () => {
     sockets = []
     tabs = new BoardTabs()
     disk = home('hero')
+    ids = { studio: 's' }
+    found = []
+    crossing = undefined
     turn = Promise.resolve()
     server = createServer()
     hub = createHub({
@@ -53,10 +75,21 @@ describe('createBoardFeed', () => {
       },
       snapshot: async (deliver) => {
         await turn
-        feed.join(disk, deliver)
+        await feed.join(await feed.scan(), deliver)
       },
     })
-    feed = createBoardFeed(hub)
+    feed = createBoardFeed(hub, {
+      look: async () => {
+        const board = disk
+        const folders: Folders = new Map(
+          board.projects.map(({ name }) => [name, ids[name] ?? null]),
+        )
+        crossing?.()
+        crossing = undefined
+        return { board, folders }
+      },
+      onFound: (before, after) => found.push([before, after]),
+    })
     server.on('upgrade', hub.handleUpgrade)
     await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
     port = (server.address() as AddressInfo).port
@@ -109,10 +142,30 @@ describe('createBoardFeed', () => {
     return tab.received.slice(0, -1)
   }
 
+  /** Scans `board` from disk and pushes it, as a batch does. */
+  async function push(board: ListResult): Promise<void> {
+    disk = board
+    await feed.push(await feed.scan())
+  }
+
+  /** What `tab` was told past its board, a patch as its projects with a star on each that moved. */
+  const told = (tab: Tab) =>
+    tab.received.flatMap((message) => {
+      if (message.type === 'renamed') {
+        return [`${message.before} > ${message.after}`]
+      }
+      if (message.type !== 'patch') return []
+      return [
+        message.data.projects
+          .map((each) => (typeof each === 'string' ? each : `${each.name}*`))
+          .join(' '),
+      ]
+    })
+
   it('sends a joined tab a patch of what a push changed', async () => {
     const tab = await joined()
 
-    feed.push(home('hero', 'about'))
+    await push(home('hero', 'about'))
 
     const sent = (await settled(tab)).at(-1)
     expect(sent).toEqual({
@@ -133,7 +186,7 @@ describe('createBoardFeed', () => {
   it('sends a patch of names alone for a push that changed nothing', async () => {
     const tab = await joined()
 
-    feed.push(home('hero'))
+    await push(home('hero'))
 
     expect((await settled(tab)).at(-1)).toEqual({
       type: 'patch',
@@ -150,12 +203,12 @@ describe('createBoardFeed', () => {
     await expect.poll(() => tabs.count).toBe(1)
 
     disk = home('hero', 'about')
-    feed.push(disk)
+    await push(disk)
     scanned()
     await expect
       .poll(() => tab.received.map((message) => message.type))
       .toContain('access')
-    feed.push(home('hero', 'about', 'pricing'))
+    await push(home('hero', 'about', 'pricing'))
 
     const boards = (await settled(tab))
       .map((message) => message.type)
@@ -172,7 +225,7 @@ describe('createBoardFeed', () => {
     const second = await joined()
 
     expect((await settled(first)).at(-1)?.type).toBe('patch')
-    feed.push(disk)
+    await push(disk)
     await settled(first)
     expect(first.board()).toEqual(disk)
     expect(second.board()).toEqual(disk)
@@ -189,17 +242,135 @@ describe('createBoardFeed', () => {
     ])
   })
 
-  it('brings a tab back from a rename between a batch scan and its push', async () => {
-    const tab = await joined()
-    const scanned = home('hero', 'about')
-
+  /** The board's own rename of the one project, written and announced. */
+  function renameStudio(): void {
+    disk = renameOnBoard(disk, 'studio', 'atelier')
+    ids = { atelier: 's' }
     feed.rename('studio', 'atelier')
-    feed.push(scanned)
-    const renamed = renameOnBoard(scanned, 'studio', 'atelier')
-    feed.push(renamed)
+  }
+
+  it('scans again ahead of a push when a rename overtook its scan', async () => {
+    const tab = await joined()
+    disk = home('hero', 'about')
+    crossing = renameStudio
+
+    const sent = await feed.push(await feed.scan())
 
     await settled(tab)
-    expect(tab.board()).toEqual(renamed)
+    expect(sent).toBe(disk)
+    expect(told(tab)).toEqual(['studio > atelier', 'atelier*'])
+    expect(tab.board()).toEqual(disk)
+  })
+
+  it('scans again ahead of a hello when a rename overtook its scan', async () => {
+    const first = await joined()
+    crossing = renameStudio
+
+    const second = await open()
+    await expect
+      .poll(() => second.received.map((message) => message.type))
+      .toContain('access')
+
+    await settled(first)
+    expect(told(first)).toEqual(['studio > atelier'])
+    expect(second.board()).toEqual(disk)
+  })
+
+  describe('a project renamed outside the board', () => {
+    it('is announced ahead of the patch of the push that finds it', async () => {
+      const tab = await joined()
+
+      ids = { atelier: 's' }
+      await push(renameOnBoard(disk, 'studio', 'atelier'))
+
+      expect((await settled(tab)).slice(-2)).toEqual([
+        { type: 'renamed', before: 'studio', after: 'atelier' },
+        { type: 'patch', data: { root: '/board', projects: ['atelier'] } },
+      ])
+      expect(found).toEqual([['studio', 'atelier']])
+    })
+
+    it('is announced to the tabs already joined by the hello that finds it', async () => {
+      const first = await joined()
+      disk = renameOnBoard(disk, 'studio', 'atelier')
+      ids = { atelier: 's' }
+
+      const second = await open()
+      await expect
+        .poll(() => second.received.map((message) => message.type))
+        .toContain('access')
+      await push(disk)
+
+      await settled(first)
+      expect(told(first)).toEqual(['studio > atelier', 'atelier'])
+      expect(first.board()).toEqual(disk)
+      expect(second.board()).toEqual(disk)
+    })
+
+    it('is announced once when history announces it after the push that found it', async () => {
+      const tab = await joined()
+
+      ids = { atelier: 's' }
+      await push(renameOnBoard(disk, 'studio', 'atelier'))
+      feed.rename('studio', 'atelier')
+      await push(disk)
+
+      await settled(tab)
+      expect(told(tab)).toEqual(['studio > atelier', 'atelier', 'atelier'])
+    })
+
+    it('is announced from the name the board gave it last', async () => {
+      const tab = await joined()
+
+      feed.rename('studio', 'atelier')
+      ids = { workshop: 's' }
+      await push(renameOnBoard(disk, 'studio', 'workshop'))
+
+      await settled(tab)
+      expect(told(tab)).toEqual([
+        'studio > atelier',
+        'atelier > workshop',
+        'workshop',
+      ])
+      expect(found).toEqual([['atelier', 'workshop']])
+    })
+
+    it('is announced by the batch after one that lost sight of its folder', async () => {
+      const tab = await joined()
+
+      ids = {}
+      await push(disk)
+      ids = { atelier: 's' }
+      await push(renameOnBoard(disk, 'studio', 'atelier'))
+
+      await settled(tab)
+      expect(found).toEqual([['studio', 'atelier']])
+    })
+
+    it('is announced in the order that frees each name', async () => {
+      disk = projectsOf('a', 'c')
+      ids = { a: '1', c: '3' }
+      const tab = await joined()
+
+      ids = { a: '3', b: '1' }
+      await push(projectsOf('a', 'b'))
+
+      await settled(tab)
+      expect(told(tab).slice(0, 2)).toEqual(['a > b', 'c > a'])
+    })
+
+    it('is left to the patch when two projects swapped names', async () => {
+      disk = projectsOf('a', 'b')
+      ids = { a: '1', b: '2' }
+      const tab = await joined()
+
+      ids = { a: '2', b: '1' }
+      await push(projectsOf('a', 'b'))
+
+      await settled(tab)
+      expect(told(tab)).toEqual(['a b'])
+      expect(found).toEqual([])
+    })
   })
 
   it.each<[string, [string, string][]]>([
@@ -228,7 +399,7 @@ describe('createBoardFeed', () => {
         feed.rename(from, to)
         after = renameOnBoard(after, from, to)
       }
-      feed.push(after)
+      await push(after)
 
       await settled(tab)
       expect(tab.board()).toEqual(after)
@@ -239,7 +410,7 @@ describe('createBoardFeed', () => {
     const tab = await joined()
 
     feed.rename('studio', 'atelier')
-    feed.push(renameOnBoard(disk, 'studio', 'atelier'))
+    await push(renameOnBoard(disk, 'studio', 'atelier'))
 
     expect((await settled(tab)).slice(-2)).toEqual([
       { type: 'renamed', before: 'studio', after: 'atelier' },
@@ -259,7 +430,7 @@ describe('createBoardFeed', () => {
     tab.socket.ping()
     await pinged
     disk = home('hero', 'about')
-    feed.push(disk)
+    await push(disk)
     scanned()
 
     await expect

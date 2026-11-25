@@ -20,5 +20,5 @@ Each group holds accepted frames a build matches, light and dark. Each line link
 - [Palette](palette.md): The command palette and the shortcuts sheet
 - [Present](present.md): A page presented full screen one frame at a time, its step bar and slide overview, and the presenter view
 - [Shell](shell.md): The board frame around the canvas and its side panels
-- [Tabs](tabs.md): The left panel's Theme and Assets tabs
+- [Tabs](tabs.md): The left panel's Theme and Assets tabs, and the dialog Find and Generate open in
 - [Toolbar](toolbar.md): The floating toolbar under the canvas

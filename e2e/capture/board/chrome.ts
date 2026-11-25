@@ -12,9 +12,11 @@ import { pointerPressOnLoad } from './canvas'
 import {
   actWhen,
   asWriter,
+  AT_END,
   AVATAR,
   both,
   chooseOnLoad,
+  focusOnLoad,
   LIVE_BOARD,
   noAgentChanges,
   noTokens,
@@ -23,6 +25,7 @@ import {
   pressOnLoad,
   readyWhen,
   ROW_FRAMES,
+  scrolledToEnd,
   SERVED_BOARD,
   STATE_ONLY,
   TAB_FRAMES,
@@ -207,6 +210,8 @@ function searchFontsOnLoad(text: string): (page: Page) => Promise<void> {
 }
 
 const REMOVE_LORA = 'button[aria-label="Remove Lora"]'
+const CONFIRM_REMOVE =
+  '[role="dialog"] [data-slot="dialog-footer"] button:last-child'
 
 /**
  * Names the board sheet at a long absolute path in the token read, filtered
@@ -341,17 +346,25 @@ async function answerAssets(page: Page, files: unknown[]): Promise<void> {
   )
 }
 
-/** Four found images, their thumbnails served as gradients so no remote image loads. */
+/**
+ * Five found images, their thumbnails served as gradients so no remote image
+ * loads, and the last one's refused so its tile names its file type.
+ */
 const FOUND = [
   ['old', 'Old & modern house', 'cc0', '#9fc09a', '#4f7d5a'],
   ['praktica', 'Praktica BX20', 'cc0', '#c9ae8a', '#8a6a44'],
-  ['plattekill', 'House in Plattekill', 'pdm', '#9fb2d0', '#586e96'],
+  // One line too long for its tile, so the capture shows the ellipsis.
+  ['plattekill', 'House in Plattekill, New York', 'pdm', '#9fb2d0', '#586e96'],
   ['glass', 'Glass house', 'cc0', '#d6b4a0', '#a5645a'],
+  ['plan', 'House plan', 'cc0', null, null],
 ] as const
 
 async function foundThumbnails(page: Page): Promise<void> {
   await page.route('https://images.example.org/**', (route) => {
-    const found = FOUND.find(([id]) => route.request().url().includes(id))
+    const found = FOUND.find(([id]) =>
+      route.request().url().includes(`/${id}.`),
+    )
+    if (found?.[3] === null) return route.abort()
     return route.fulfill({
       contentType: 'image/svg+xml',
       body: gradient(found?.[3] ?? '#888', found?.[4] ?? '#444'),
@@ -359,7 +372,7 @@ async function foundThumbnails(page: Page): Promise<void> {
   })
 }
 
-/** Answers a search with the four found images. */
+/** Answers a search with the five found images. */
 async function foundImages(page: Page): Promise<void> {
   await foundThumbnails(page)
   await page.route('**/sourcing/find*', (route) =>
@@ -385,14 +398,6 @@ async function foundImages(page: Page): Promise<void> {
             thumbnail: `https://images.example.org/${id}.svg`,
             width: 1024,
             height: 768,
-            // One line too long for its tile, so the capture shows the ellipsis.
-            ...(id === 'glass'
-              ? {
-                  width: 5334,
-                  height: 3772,
-                  landingUrl: 'https://www.rawpixel.com/image/glass',
-                }
-              : {}),
           })),
         },
       },
@@ -455,6 +460,68 @@ async function offerReady(page: Page): Promise<void> {
       },
     }),
   )
+}
+
+/** Answers a generation with one picture, drawn as a gradient, so nothing spends. */
+async function generatedPicture(page: Page): Promise<void> {
+  await page.route('**/sourcing/generate', (route) =>
+    route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          version: 1,
+          provider: 'fal',
+          model: 'fal-ai/flux/schnell',
+          prompt: 'a modern house at dusk',
+          width: 1024,
+          height: 1024,
+          priceUsd: 0.0032,
+          dryRun: false,
+          saved: {
+            version: 1,
+            project: 'webapp',
+            path: 'a-modern-house-at-dusk.png',
+            licensePath: 'a-modern-house-at-dusk.png.license.json',
+            license: null,
+          },
+        },
+      },
+    }),
+  )
+  await page.route('**/frames/*/assets/a-modern-house-at-dusk.png*', (route) =>
+    route.fulfill({
+      contentType: 'image/svg+xml',
+      body: gradient('#e07a5f', '#3b2a5c'),
+    }),
+  )
+}
+
+/** Types `prompt` into Generate's field once it draws, so its button can run. */
+function promptOnLoad(prompt: string): (page: Page) => Promise<void> {
+  return async (page) => {
+    await page.addInitScript(
+      ({ text, frames }) => {
+        let left = frames
+        const type = () => {
+          const field = document.querySelector(
+            'textarea[aria-label="Describe the image"]',
+          )
+          if (!(field instanceof HTMLTextAreaElement)) {
+            if (--left > 0) requestAnimationFrame(type)
+            else console.error('No Generate field to type in')
+            return
+          }
+          Object.getOwnPropertyDescriptor(
+            HTMLTextAreaElement.prototype,
+            'value',
+          )?.set?.call(field, text)
+          field.dispatchEvent(new Event('input', { bubbles: true }))
+        }
+        document.addEventListener('DOMContentLoaded', type)
+      },
+      { text: prompt, frames: TAB_FRAMES * 2 },
+    )
+  }
 }
 
 /** Types `query` into Find's field once it draws and submits it, as Enter would. */
@@ -886,6 +953,22 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       setup: themed(both(asWriter, themeTab)),
     },
     {
+      // Its last token row at the panel's foot, under the same header and tabs.
+      section: 'theme-tab-scrolled',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          themeTab,
+          scrolledToEnd('Pages and layers'),
+          readyWhen(`[${AT_END}] section[aria-labelledby^="tokens-"] li`),
+        ),
+      ),
+    },
+    {
       // A board sheet outside the board folder at a long path, which wraps inside the note.
       section: 'theme-tab-long-path',
       theme,
@@ -965,6 +1048,25 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
           themeTab,
           actWhen(REMOVE_LORA, 'Remove Lora', 'click'),
           readyWhen('[role="dialog"]'),
+        ),
+      ),
+    },
+    {
+      // Remove under keyboard focus, its ring the focus blue rather than red.
+      section: 'theme-tab-fonts-remove-focus',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          installedLora(['webapp/home/hero']),
+          themeTab,
+          actWhen(REMOVE_LORA, 'Remove Lora', 'click'),
+          focusOnLoad(CONFIRM_REMOVE),
+          readyWhen(`${CONFIRM_REMOVE}:focus-visible`),
         ),
       ),
     },
@@ -1081,7 +1183,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       setup: themed(
         both(
           leftTab('Assets'),
-          leftTab('Find'),
+          pressOnLoad('Find…'),
           readyWhen('input[aria-label="Search free images"]'),
         ),
       ),
@@ -1097,7 +1199,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           searchHeld,
           leftTab('Assets'),
-          leftTab('Find'),
+          pressOnLoad('Find…'),
           searchOnLoad('modern house'),
           readyWhen('[aria-label="Searching"]'),
         ),
@@ -1115,9 +1217,10 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
           asWriter,
           foundImages,
           leftTab('Assets'),
-          leftTab('Find'),
+          pressOnLoad('Find…'),
           searchOnLoad('modern house'),
-          readyWhen('[aria-label="Results"] img'),
+          // The refused thumbnail has given way to its file type.
+          readyWhen('[aria-label="Results"] li:last-child b'),
         ),
       ),
     },
@@ -1132,7 +1235,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           searchFailed,
           leftTab('Assets'),
-          leftTab('Find'),
+          pressOnLoad('Find…'),
           searchOnLoad('modern house'),
           readyWhen('[role="alert"]'),
         ),
@@ -1149,8 +1252,31 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           offerReady,
           leftTab('Assets'),
-          leftTab('Generate'),
+          pressOnLoad('Generate…'),
           readyWhen('textarea[aria-label="Describe the image"]'),
+        ),
+      ),
+    },
+    {
+      section: 'assets-generate-done',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      setup: themed(
+        both(
+          asWriter,
+          offerReady,
+          generatedPicture,
+          leftTab('Assets'),
+          pressOnLoad('Generate…'),
+          promptOnLoad('a modern house at dusk'),
+          // Held until the prompt is in, and past the header tab of the same name.
+          pointerPressOnLoad(
+            '[role="tabpanel"] button[data-slot="button"][aria-disabled="false"]',
+          ),
+          readyWhen('[aria-label="Generated"] img'),
         ),
       ),
     },

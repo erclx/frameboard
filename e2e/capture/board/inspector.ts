@@ -19,6 +19,7 @@ import type { CaptureCase } from '../types'
 import { probeFrames, type ProbeWindow } from './frame-probe'
 import {
   asWriter,
+  AT_END,
   AVATAR,
   both,
   chooseOnLoad,
@@ -35,6 +36,7 @@ import {
   pressOnLoad,
   readyWhen,
   ROW_FRAMES,
+  scrolledToEnd,
   SERVED_BOARD,
   STATE_ONLY,
   themedFor,
@@ -609,6 +611,23 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
           asWriter,
           headlineOnHero,
           readyWhen('#inspector-selection-colors ~ ul li'),
+        ),
+      ),
+    },
+    {
+      section: 'element-inspector-scrolled',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      // Selection colors at the panel's foot, under the header, tabs, and crumb.
+      setup: themed(
+        both(
+          asWriter,
+          headlineOnHero,
+          scrolledToEnd('Inspector'),
+          readyWhen(`[${AT_END}] #inspector-selection-colors ~ ul li`),
         ),
       ),
     },

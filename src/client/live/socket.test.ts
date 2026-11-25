@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { leftTabStore } from '@/client/board/left-panel/tab-store'
 import { createModeStore } from '@/client/board/mode'
 import {
   awaitHash,
@@ -11,6 +12,7 @@ import {
   selectElement,
   whenSettled,
 } from '@/client/board/selection'
+import { pinnedProjects, togglePin } from '@/client/home/pins'
 import { createThemeStore, flipFrame } from '@/client/theme/store'
 import { patchBetween } from '@/shared/board-sync/patch'
 import { boardOf, frameOf, pageOf } from '@/test/board'
@@ -294,6 +296,88 @@ describe('connectLive access', () => {
 
     expect(selection.getState().frames).toEqual(['studio/start/hero'])
     stop()
+  })
+
+  describe("the left panel's project", () => {
+    beforeEach(() => {
+      leftTabStore.setState({ tab: 'assets', project: 'studio' })
+    })
+
+    afterEach(() => {
+      leftTabStore.setState({ tab: 'design', project: null })
+    })
+
+    const heard = (renames: [string, string][]) => {
+      const stop = connectLive(createLiveStore())
+      const socket = FakeSocket.instances[0]
+      socket?.receive({ type: 'board', data: boardWithHome() })
+      for (const [before, after] of renames) {
+        socket?.receive({ type: 'renamed', before, after })
+      }
+      stop()
+      return leftTabStore.getState().project
+    }
+
+    it.each<[string, [string, string][], string]>([
+      ['a rename', [['studio', 'atelier']], 'atelier'],
+      [
+        'a second rename',
+        [
+          ['studio', 'atelier'],
+          ['atelier', 'workshop'],
+        ],
+        'workshop',
+      ],
+      [
+        'a rename and its undo',
+        [
+          ['studio', 'atelier'],
+          ['atelier', 'studio'],
+        ],
+        'studio',
+      ],
+      ['a page rename', [['studio/home', 'studio/start']], 'studio'],
+      ["another project's rename", [['shop', 'store']], 'studio'],
+    ])('is the one it showed after %s', (_, renames, project) => {
+      expect(heard(renames)).toBe(project)
+    })
+  })
+
+  describe('the home pin', () => {
+    beforeEach(() => {
+      localStorage.clear()
+    })
+
+    afterEach(() => {
+      localStorage.clear()
+    })
+
+    function hear(before: string, after: string): void {
+      const stop = connectLive(createLiveStore())
+      const socket = FakeSocket.instances[0]
+      socket?.receive({ type: 'board', data: boardWithHome() })
+      socket?.receive({ type: 'renamed', before, after })
+      stop()
+    }
+
+    it("follows a project's rename", () => {
+      togglePin('studio')
+
+      hear('studio', 'atelier')
+
+      expect(pinnedProjects()).toEqual(new Set(['atelier']))
+    })
+
+    it.each([
+      ['a page', 'studio/home', 'studio/start'],
+      ['a frame', 'studio/home/hero', 'studio/home/lead'],
+    ])('stays through the rename of %s', (_, before, after) => {
+      togglePin('studio')
+
+      hear(before, after)
+
+      expect(pinnedProjects()).toEqual(new Set(['studio']))
+    })
   })
 
   it('tells its caller when the socket drops', () => {

@@ -7,22 +7,11 @@ import { nextFreeName } from '@/shared/names'
 import type { FrameRecord } from '@/shared/records/list'
 
 import { assetUrl } from '../assets/describe'
-import {
-  draggedFile,
-  type DraggedResult,
-  draggedResult,
-  type PlaceableFile,
-} from '../assets/drag'
+import { draggedFile, type PlaceableFile } from '../assets/drag'
 import type { Box } from '../geometry/box'
 import type { BoardPoint } from '../notes/pick'
 import { type AssetSize, naturalSize } from './asset-size'
-import {
-  fileFrameBox,
-  fileFrameName,
-  placeFile,
-  placeFileFrame,
-  placeResult,
-} from './write'
+import { fileFrameBox, fileFrameName, placeFile, placeFileFrame } from './write'
 
 /** A point in the viewport, as a pointer or a native drag reports it. */
 export interface ClientPoint {
@@ -63,8 +52,6 @@ interface AssetDropOptions {
   place?: typeof placeFile
   /** Lands a file dropped on bare canvas in a frame of its own, `placeFileFrame` in the app. */
   placeFrame?: typeof placeFileFrame
-  /** Saves a dropped found result, then lands its file the way a tile's lands, `placeResult` in the app. */
-  placeFound?: typeof placeResult
   /** Reads a file's natural size for the ghost, from the server in the app. */
   measure?: typeof naturalSize
 }
@@ -84,7 +71,6 @@ export function useAssetDrop(
     toBoard,
     place = placeFile,
     placeFrame = placeFileFrame,
-    placeFound = placeResult,
     measure = naturalSize,
   }: AssetDropOptions,
 ): void {
@@ -112,11 +98,7 @@ export function useAssetDrop(
       }
       return sizes.get(url)
     }
-    const follow = (
-      point: ClientPoint | null,
-      file?: PlaceableFile | null,
-      result?: DraggedResult | null,
-    ) => {
+    const follow = (point: ClientPoint | null, file?: PlaceableFile | null) => {
       over = point && file ? { point, file } : null
       if (!point) {
         // The next drag reads each file again, since it may have been replaced.
@@ -127,26 +109,18 @@ export function useAssetDrop(
       }
       const at = toBoard(point)
       const all = frames()
-      const bare = !overFrame(all, at)
-      // A found result is not saved yet, so its ghost takes the size its source reports.
-      const size =
-        bare && file
-          ? sizeOf(file)
-          : bare && result
-            ? result.natural
-            : undefined
-      const path = file?.path ?? (result ? `${result.name}.image` : null)
+      const size = file && !overFrame(all, at) ? sizeOf(file) : undefined
       tileDragStore.setState({
         at,
         ghost:
-          path !== null && size !== undefined
+          file && size !== undefined
             ? {
                 box: fileFrameBox(size, at),
                 name: nextFreeName(
-                  fileFrameName(path),
+                  fileFrameName(file.path),
                   all.map((frame) => frame.name),
                 ),
-                hugging: file?.kind === 'audio' ? 'height' : undefined,
+                hugging: file.kind === 'audio' ? 'height' : undefined,
               }
             : null,
       })
@@ -154,37 +128,21 @@ export function useAssetDrop(
     const stopTarget = dropTargetForElements({
       element,
       canDrop: ({ source }) =>
-        liveStore.getState().canWrite &&
-        (draggedFile(source.data) !== null ||
-          draggedResult(source.data) !== null),
+        liveStore.getState().canWrite && draggedFile(source.data) !== null,
       onDragEnter: ({ source, location }) =>
-        follow(
-          location.current.input,
-          draggedFile(source.data),
-          draggedResult(source.data),
-        ),
+        follow(location.current.input, draggedFile(source.data)),
       onDrag: ({ source, location }) =>
-        follow(
-          location.current.input,
-          draggedFile(source.data),
-          draggedResult(source.data),
-        ),
+        follow(location.current.input, draggedFile(source.data)),
       onDragLeave: () => follow(null),
       onDrop: ({ source, location }) => {
         follow(null)
+        const file = draggedFile(source.data)
+        if (!file) return
         const at = toBoard(location.current.input)
         const all = frames()
-        const land = (file: PlaceableFile) =>
-          overFrame(all, at)
-            ? place(container, page, all, at, file)
-            : placeFrame(page, all, at, file)
-        const file = draggedFile(source.data)
-        if (file) {
-          void land(file)
-          return
-        }
-        const result = draggedResult(source.data)
-        if (result) void placeFound(result, land)
+        void (overFrame(all, at)
+          ? place(container, page, all, at, file)
+          : placeFrame(page, all, at, file))
       },
     })
     return () => {
@@ -202,7 +160,6 @@ export function useAssetDrop(
     toBoard,
     place,
     placeFrame,
-    placeFound,
     measure,
   ])
 }

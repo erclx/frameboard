@@ -383,9 +383,9 @@ export function endTransition(id: number): void {
 }
 
 /**
- * Ends presenting and returns to the board with the presented frame
- * selected and in view, leaving full screen when it is still on and closing
- * the presenter window. Writes nothing to the board and records no undo step.
+ * Ends presenting, full screen, and the presenter window, then selects and
+ * reveals the presented frame unless another page's canvas is mounted. Writes
+ * nothing to the board and records no undo step.
  */
 export function leavePresenting(): void {
   const { page, frame } = presentStore.getState()
@@ -404,6 +404,8 @@ export function leavePresenting(): void {
     (candidate) => candidate.ref === frame,
   )
   if (!shown || shown.hidden) return
+  const mounted = canvasView.page()
+  if (mounted !== null && mounted !== page) return
   select(selectionStore, page, [shown.ref])
   canvasView.reveal(shown.box)
 }

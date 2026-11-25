@@ -105,6 +105,10 @@ function saved(path: string): SavedImage {
   }
 }
 
+function preview(): HTMLElement {
+  return screen.getByRole('region', { name: 'Preview' })
+}
+
 async function searchFor(query: string) {
   const user = userEvent.setup()
   await user.type(
@@ -142,11 +146,11 @@ describe('FindView', () => {
       within(screen.getByRole('list', { name: 'Searching' })).getAllByRole(
         'listitem',
       ),
-    ).toHaveLength(4)
+    ).toHaveLength(8)
     expect(screen.getByText('Searching Openverse')).toBeInTheDocument()
   })
 
-  it('lists each result with its license, size, and site, and counts them', async () => {
+  it('lists each result with its size and license, and counts them', async () => {
     render(
       <FindView
         project="webapp"
@@ -163,38 +167,135 @@ describe('FindView', () => {
     ).getAllByRole('listitem')
     expect(tiles).toHaveLength(2)
     expect(tiles[0]).toHaveTextContent('Photo a1')
-    expect(tiles[0]).toHaveTextContent('1024 × 768 · Flickr')
-    expect(tiles[1]).toHaveTextContent('pdm')
+    expect(tiles[0]).toHaveTextContent('1024 × 768 · CC0')
+    expect(tiles[1]).toHaveTextContent('1024 × 768 · PDM')
     expect(
       screen.getByText('2 public domain images from Openverse'),
     ).toBeInTheDocument()
   })
 
-  it('ends a result line too long for its tile in an ellipsis, with the full line as its title', async () => {
-    const meta = '5334 × 3772 · Rawpixel'
+  it('ends a title too long for its tile in an ellipsis, with the whole title in the preview', async () => {
+    const title = 'A '.repeat(45).trim()
     render(
-      <div className="w-[240px]">
+      <div className="flex h-[620px] w-[920px]">
         <FindView
           project="webapp"
-          find={async (_, query) =>
-            answer(query, [
-              result('a1', {
-                width: 5334,
-                height: 3772,
-                landingUrl: 'https://www.rawpixel.com/image/a1',
-              }),
-            ])
-          }
+          find={async (_, query) => answer(query, [result('a1', { title })])}
         />
       </div>,
     )
 
     await searchFor('paper texture')
 
-    const line = await screen.findByText(meta)
-    expect(line).toHaveAttribute('title', meta)
+    const tile = await screen.findByRole('button', { name: new RegExp(title) })
+    const line = within(tile).getByText(title)
     expect(getComputedStyle(line).textOverflow).toBe('ellipsis')
     expect(line.scrollWidth).toBeGreaterThan(line.clientWidth)
+    const whole = within(preview()).getByRole('heading', { name: title })
+    expect(whole.scrollWidth).toBeLessThanOrEqual(whole.clientWidth)
+  })
+
+  it('calls a result with no title and no size what it is', async () => {
+    render(
+      <FindView
+        project="webapp"
+        find={async (_, query) =>
+          answer(query, [
+            result('a1', { title: null, width: null, height: null }),
+          ])
+        }
+      />,
+    )
+
+    await searchFor('house')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Untitled image' }),
+    ).toBeVisible()
+    expect(within(preview()).getByText('CC0 · Openverse')).toBeVisible()
+  })
+
+  describe('the pick', () => {
+    const find = async (_: string, query: string) =>
+      answer(query, [result(`${query}-1`), result(`${query}-2`)])
+
+    it('opens on the first result once results land', async () => {
+      render(<FindView project="webapp" find={find} />)
+
+      await searchFor('house')
+
+      expect(
+        await screen.findByRole('button', { name: /Photo house-1/ }),
+      ).toHaveAttribute('aria-pressed', 'true')
+      expect(
+        within(preview()).getByRole('heading', { name: 'Photo house-1' }),
+      ).toBeVisible()
+    })
+
+    it('moves the preview to the result picked', async () => {
+      render(<FindView project="webapp" find={find} />)
+      const user = await searchFor('house')
+      const second = await screen.findByRole('button', {
+        name: /Photo house-2/,
+      })
+
+      await user.click(second)
+
+      expect(second).toHaveAttribute('aria-pressed', 'true')
+      expect(
+        screen.getByRole('button', { name: /Photo house-1/ }),
+      ).toHaveAttribute('aria-pressed', 'false')
+      expect(
+        within(preview()).getByRole('heading', { name: 'Photo house-2' }),
+      ).toBeVisible()
+    })
+
+    it('is dropped by a new search, which picks its own first result', async () => {
+      render(<FindView project="webapp" find={find} />)
+      const user = await searchFor('house')
+      await user.click(
+        await screen.findByRole('button', { name: /Photo house-2/ }),
+      )
+
+      const field = screen.getByRole('searchbox')
+      await user.clear(field)
+      await user.type(field, 'cabin{Enter}')
+
+      expect(
+        await screen.findByRole('heading', { name: 'Photo cabin-1' }),
+      ).toBeVisible()
+    })
+
+    it('returns with its search once the view mounts again', async () => {
+      const first = render(<FindView project="webapp" find={find} />)
+      const user = await searchFor('house')
+      await user.click(
+        await screen.findByRole('button', { name: /Photo house-2/ }),
+      )
+
+      first.unmount()
+      render(<FindView project="webapp" find={find} />)
+
+      expect(
+        within(preview()).getByRole('heading', { name: 'Photo house-2' }),
+      ).toBeVisible()
+    })
+
+    it('has no buttons while a search finds nothing', async () => {
+      render(
+        <FindView
+          project="webapp"
+          find={async (_, query) => answer(query, [])}
+        />,
+      )
+
+      await searchFor('house')
+
+      await screen.findByText('No public domain images found.')
+      expect(
+        screen.queryByRole('button', { name: /Save|Insert/ }),
+      ).not.toBeInTheDocument()
+    })
   })
 
   it('says nothing matched and widens to credited licenses from the same line', async () => {
@@ -212,12 +313,11 @@ describe('FindView', () => {
       true,
       expect.any(AbortSignal),
     )
-    await user.click(screen.getByRole('button', { name: 'Filter: Images' }))
     expect(
-      await screen.findByRole('menuitemcheckbox', {
-        name: 'Include credited licenses',
+      screen.getByRole('button', {
+        name: 'Licenses: Include credited licenses',
       }),
-    ).toBeChecked()
+    ).toBeVisible()
   })
 
   it('names Openverse not answering and searches again from the line', async () => {
@@ -298,16 +398,18 @@ describe('FindView', () => {
     const user = await searchFor('house')
     await screen.findByRole('list', { name: 'Results' })
 
-    await user.click(screen.getByRole('button', { name: 'Filter: Images' }))
     await user.click(
-      await screen.findByRole('menuitemcheckbox', {
+      screen.getByRole('button', { name: 'Licenses: Free licenses only' }),
+    )
+    await user.click(
+      await screen.findByRole('menuitemradio', {
         name: 'Include credited licenses',
       }),
     )
 
     await waitFor(() =>
       expect(screen.getByRole('list', { name: 'Results' })).toHaveTextContent(
-        'by',
+        'BY',
       ),
     )
     expect(find).toHaveBeenLastCalledWith(
@@ -335,14 +437,16 @@ describe('FindView', () => {
 
     await user.clear(field)
     await user.type(field, 'cabin{Enter}')
-    await screen.findByText('Photo newer')
+    await screen.findByRole('heading', { name: 'Photo newer' })
     act(() => answerFirst(answer('house', [result('older')])))
 
     expect(screen.queryByText('Photo older')).not.toBeInTheDocument()
-    expect(screen.getByText('Photo newer')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Photo newer' }),
+    ).toBeInTheDocument()
   })
 
-  describe('after leaving the tab', () => {
+  describe('after the dialog closed', () => {
     it('shows the last query, its results, and each Saved mark on return', async () => {
       const find = vi.fn(async (_: string, query: string) =>
         answer(query, [result('a1'), result('b2')]),
@@ -358,9 +462,9 @@ describe('FindView', () => {
       )
       const user = await searchFor('house')
       await user.click(
-        await screen.findByRole('button', { name: 'Save Photo a1' }),
+        await screen.findByRole('button', { name: 'Save to assets' }),
       )
-      await screen.findByRole('button', { name: 'Saved Photo a1' })
+      await screen.findByRole('button', { name: 'Saved to assets' })
 
       first.unmount()
       render(<FindView project="webapp" find={find} save={save} />)
@@ -369,15 +473,15 @@ describe('FindView', () => {
         screen.getByRole('searchbox', { name: 'Search free images' }),
       ).toHaveValue('house')
       expect(
-        screen.getByRole('button', { name: 'Saved Photo a1' }),
+        screen.getByRole('button', { name: /Photo a1.*Saved|Saved.*Photo a1/ }),
       ).toBeVisible()
       expect(
-        screen.getByRole('button', { name: 'Save Photo b2' }),
-      ).toBeInTheDocument()
+        screen.getByRole('button', { name: /Photo b2/ }),
+      ).not.toHaveTextContent('Saved')
       expect(find).toHaveBeenCalledTimes(1)
     })
 
-    it('lands a search still running when the tab closed', async () => {
+    it('lands a search still running when the dialog closed', async () => {
       let land = (_: ImageFind) => {}
       const find = vi.fn(() => new Promise<ImageFind>((done) => (land = done)))
       const first = render(<FindView project="webapp" find={find} />)
@@ -387,7 +491,9 @@ describe('FindView', () => {
       await act(async () => land(answer('house', [result('a1')])))
       render(<FindView project="webapp" find={find} />)
 
-      expect(screen.getByText('Photo a1')).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'Photo a1' }),
+      ).toBeInTheDocument()
     })
 
     it('keeps Models picked, with its results', async () => {
@@ -402,12 +508,12 @@ describe('FindView', () => {
         />,
       )
       const user = await searchFor('chair')
-      await screen.findByText('Photo a1')
-      await user.click(screen.getByRole('button', { name: 'Filter: Images' }))
+      await screen.findByRole('heading', { name: 'Photo a1' })
+      await user.click(screen.getByRole('button', { name: 'Kind: Images' }))
       await user.click(
         await screen.findByRole('menuitemradio', { name: 'Models' }),
       )
-      await screen.findByText('Sofa 02')
+      await screen.findByRole('heading', { name: 'Sofa 02' })
 
       first.unmount()
       render(
@@ -415,9 +521,11 @@ describe('FindView', () => {
       )
 
       expect(
-        screen.getByRole('button', { name: 'Filter: Models' }),
+        screen.getByRole('button', { name: 'Kind: Models' }),
       ).toBeInTheDocument()
-      expect(screen.getByText('Sofa 02')).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'Sofa 02' }),
+      ).toBeInTheDocument()
     })
 
     it('starts another project empty', async () => {
@@ -428,7 +536,7 @@ describe('FindView', () => {
         />,
       )
       await searchFor('house')
-      await screen.findByText('Photo a1')
+      await screen.findByRole('heading', { name: 'Photo a1' })
 
       first.unmount()
       render(<FindView project="mobile" find={vi.fn()} />)
@@ -440,7 +548,7 @@ describe('FindView', () => {
     })
   })
 
-  it('saves a result once however fast Save is pressed, then marks it Saved', async () => {
+  it('saves a result once however fast Save is pressed, then marks its tile', async () => {
     let land = (_: SavedImage) => {}
     const send = vi.fn(() => new Promise<SavedImage>((done) => (land = done)))
     render(
@@ -451,16 +559,18 @@ describe('FindView', () => {
       />,
     )
     const user = await searchFor('house')
-    const save = await screen.findByRole('button', { name: 'Save Photo a1' })
+    const save = await screen.findByRole('button', { name: 'Save to assets' })
 
     await user.click(save)
     await user.click(save)
-    act(() => land(saved('house.jpg')))
+    await act(async () => land(saved('house.jpg')))
     await user.click(
-      await screen.findByRole('button', { name: 'Saved Photo a1' }),
+      await screen.findByRole('button', { name: 'Saved to assets' }),
     )
 
-    expect(screen.getByRole('button', { name: 'Saved Photo a1' })).toBeVisible()
+    expect(screen.getByRole('button', { name: /Photo a1/ })).toHaveTextContent(
+      'Saved',
+    )
     expect(send).toHaveBeenCalledTimes(1)
     expect(send).toHaveBeenCalledWith('/api/projects/webapp/sourcing/save', {
       id: 'a1',
@@ -481,9 +591,11 @@ describe('FindView', () => {
     )
     const user = await searchFor('house')
     await user.click(
-      await screen.findByRole('button', { name: 'Save Photo a1' }),
+      await screen.findByRole('button', { name: 'Save to assets' }),
     )
-    const marked = await screen.findByRole('button', { name: 'Saved Photo a1' })
+    const marked = await screen.findByRole('button', {
+      name: 'Saved to assets',
+    })
 
     present = false
     await user.click(marked)
@@ -491,10 +603,11 @@ describe('FindView', () => {
     await waitFor(() => expect(send).toHaveBeenCalledTimes(2))
   })
 
-  it('names a failed save under the grid and lets it be saved again', async () => {
+  it('says why a save failed beside its button, which saves again', async () => {
     const send = vi
       .fn()
       .mockRejectedValueOnce(new Error('The image host answered 500.'))
+      .mockResolvedValueOnce(saved('house.jpg'))
     render(
       <FindView
         project="webapp"
@@ -505,18 +618,22 @@ describe('FindView', () => {
     const user = await searchFor('house')
 
     await user.click(
-      await screen.findByRole('button', { name: 'Save Photo a1' }),
+      await screen.findByRole('button', { name: 'Save to assets' }),
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Photo a1: The image host answered 500.',
+      'The image host answered 500.',
     )
+    expect(screen.getByRole('button', { name: /Photo a1/ })).toHaveTextContent(
+      'Not saved',
+    )
+    await user.click(screen.getByRole('button', { name: 'Save to assets' }))
     expect(
-      screen.getByRole('button', { name: 'Save again Photo a1' }),
-    ).toBeEnabled()
+      await screen.findByRole('button', { name: 'Saved to assets' }),
+    ).toBeVisible()
   })
 
-  it('lists results in a read-only tab with Save off and the reason', async () => {
+  it('shows results in a read-only tab with no buttons and the reason', async () => {
     act(() => liveStore.setState({ canWrite: false }))
     render(
       <FindView
@@ -527,18 +644,20 @@ describe('FindView', () => {
 
     await searchFor('house')
 
-    expect(await screen.findByText('Photo a1')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'Photo a1' }),
+    ).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: /Save/ }),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByText(/This tab is read-only, so results cannot be saved/),
+      screen.getByText(/This tab is read-only, so nothing can be saved/),
     ).toBeInTheDocument()
   })
 
   describe('on Models', () => {
     async function pickModels(user: ReturnType<typeof userEvent.setup>) {
-      await user.click(screen.getByRole('button', { name: 'Filter: Images' }))
+      await user.click(screen.getByRole('button', { name: 'Kind: Images' }))
       await user.click(
         await screen.findByRole('menuitemradio', { name: 'Models' }),
       )
@@ -560,7 +679,7 @@ describe('FindView', () => {
       expect(findModels).not.toHaveBeenCalled()
     })
 
-    it('searches the typed query again for models, listing each with its polycount and Poly Haven', async () => {
+    it('searches the typed query again for models, listing each with its polycount and naming Poly Haven', async () => {
       const find = vi.fn(async (_: string, query: string) =>
         answer(query, [result('a1')]),
       )
@@ -569,7 +688,7 @@ describe('FindView', () => {
       )
       render(<FindView project="webapp" find={find} findModels={findModels} />)
       const user = await searchFor('chair')
-      await screen.findByText('Photo a1')
+      await screen.findByRole('heading', { name: 'Photo a1' })
 
       await pickModels(user)
 
@@ -578,7 +697,10 @@ describe('FindView', () => {
       ).getAllByRole('listitem')
       expect(tiles).toHaveLength(1)
       expect(tiles[0]).toHaveTextContent('Sofa 02')
-      expect(tiles[0]).toHaveTextContent('2.7k tris · Poly Haven')
+      expect(tiles[0]).toHaveTextContent('2.7k tris · CC0')
+      expect(
+        within(preview()).getByText('2.7k tris · CC0 · Poly Haven'),
+      ).toBeVisible()
       expect(findModels).toHaveBeenCalledWith(
         'webapp',
         'chair',
@@ -592,9 +714,11 @@ describe('FindView', () => {
       render(<FindView project="webapp" find={vi.fn()} findModels={vi.fn()} />)
       await pickModels(user)
 
-      await user.click(screen.getByRole('button', { name: 'Filter: Models' }))
+      await user.click(
+        screen.getByRole('button', { name: 'Licenses: Free licenses only' }),
+      )
 
-      const credited = await screen.findByRole('menuitemcheckbox', {
+      const credited = await screen.findByRole('menuitemradio', {
         name: 'Include credited licenses',
       })
       expect(credited).toHaveAttribute('aria-disabled', 'true')
@@ -602,7 +726,7 @@ describe('FindView', () => {
         'Every Poly Haven model is CC0.',
       )
       expect(
-        screen.getByRole('menuitemradio', { name: 'Models' }),
+        screen.getByRole('menuitemradio', { name: 'Free licenses only' }),
       ).toBeChecked()
     })
 
@@ -624,13 +748,15 @@ describe('FindView', () => {
         screen.getByRole('searchbox', { name: 'Search free models' }),
         'chair{Enter}',
       )
-      const save = await screen.findByRole('button', { name: 'Save Sofa 02' })
+      const save = await screen.findByRole('button', {
+        name: 'Save to assets',
+      })
 
       await user.click(save)
       await user.click(save)
 
       expect(
-        await screen.findByRole('button', { name: 'Saved Sofa 02' }),
+        await screen.findByRole('button', { name: 'Saved to assets' }),
       ).toBeVisible()
       expect(send).toHaveBeenCalledTimes(1)
       expect(send).toHaveBeenCalledWith(
@@ -639,7 +765,7 @@ describe('FindView', () => {
       )
     })
 
-    it('draws a grey block for a model with no thumbnail, never a broken image', async () => {
+    it('names the file type and source of a model with no thumbnail', async () => {
       render(
         <FindView
           project="webapp"
@@ -659,6 +785,7 @@ describe('FindView', () => {
       const tile = await screen.findByRole('listitem')
 
       expect(tile.querySelector('img')).toBeNull()
+      expect(tile).toHaveTextContent('GLBPoly Haven')
     })
 
     it('lists models in a read-only tab with Save off', async () => {
@@ -679,7 +806,9 @@ describe('FindView', () => {
         'chair{Enter}',
       )
 
-      expect(await screen.findByText('Sofa 02')).toBeInTheDocument()
+      expect(
+        await screen.findByRole('heading', { name: 'Sofa 02' }),
+      ).toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: /Save/ }),
       ).not.toBeInTheDocument()
@@ -710,17 +839,18 @@ describe('FindView', () => {
     })
   })
 
-  it('holds the kind and the license choice in the search field, with no rows of controls under it', () => {
+  it('holds the kind and the license menus in the search row', () => {
     render(<FindView project="webapp" find={vi.fn()} />)
 
     const search = screen.getByRole('search')
 
     expect(
-      within(search).getByRole('button', { name: 'Filter: Images' }),
+      within(search).getByRole('button', { name: 'Kind: Images' }),
     ).toBeVisible()
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('group', { name: 'What to find' }),
-    ).not.toBeInTheDocument()
+      within(search).getByRole('button', {
+        name: 'Licenses: Free licenses only',
+      }),
+    ).toBeVisible()
   })
 })

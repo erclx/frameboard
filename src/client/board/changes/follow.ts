@@ -13,6 +13,7 @@ import {
 import { boardUrl } from '@/shared/board-urls'
 import type { ListResult } from '@/shared/records/list'
 
+import { presenting, presentStore } from '../present/store'
 import { canvasView } from '../view'
 
 export interface FollowState {
@@ -35,7 +36,8 @@ let unfollow: (() => void) | null = null
 
 /**
  * Follows a session, centering each frame it changes or claims at the current
- * zoom. Any hand move or the session leaving stops it.
+ * zoom. Any hand move or the session leaving stops it, and a presentation holds
+ * it still, dropping every move that lands before it ends.
  */
 export function follow(
   session: string,
@@ -69,7 +71,7 @@ export function follow(
   }
 
   const head = (next: string | null) => {
-    if (next === null) return
+    if (next === null || presenting()) return
     target = next
     travel()
   }
@@ -96,6 +98,11 @@ export function follow(
     )
     if (claimed.length > 0) head(claimed.at(-1)?.frame ?? null)
     else if (state.board !== previous.board) travel()
+  })
+  const stopPresent = presentStore.subscribe(() => {
+    if (!presenting()) return
+    target = null
+    carried = undefined
   })
   const stopHand = canvasView.onHandMove(stopFollow)
   const stopAttach = canvasView.onAttach(() => {
@@ -124,6 +131,7 @@ export function follow(
     unregister()
     stopAttach()
     stopHand()
+    stopPresent()
     stopLive()
     stopUnseen()
   }

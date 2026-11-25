@@ -136,8 +136,9 @@ export function useActionGroup(group: string): Action[] {
 }
 
 /**
- * `board` skips a field or a dialog but a toast. `frame`, for a frame's window,
- * skips only a composing or page-prevented press, so Esc leaves from a field.
+ * `board` skips a field, a dialog but a toast, and every press while a modal is
+ * open. `frame`, for a frame's window, skips only a composing or page-prevented
+ * press, so Esc leaves from a field.
  */
 export type TypingRule = 'board' | 'frame'
 
@@ -226,7 +227,11 @@ function isTyping(event: KeyboardEvent): boolean {
     return true
   if (target.closest?.('[data-slot="toast"]') != null)
     return event.key === 'Enter'
-  return target.closest?.('[role="dialog"]') != null
+  // A modal's Tab rests on a guard outside its node, or on the body between the two.
+  return (
+    target.closest?.('[role="dialog"]') != null ||
+    document.querySelector('[data-slot="dialog-content"][data-open]') !== null
+  )
 }
 
 function isFramePressTaken(event: KeyboardEvent): boolean {
