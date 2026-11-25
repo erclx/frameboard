@@ -147,8 +147,8 @@ function stage(
   value: string | null,
 ): void {
   state(viewer, name, value)
-  if (name === 'camera-orbit') {
-    // The camera eases toward a new orbit, which a drag and a typed angle show at once.
+  if (name === 'camera-orbit' || name === 'orientation' || name === 'scale') {
+    // The camera eases toward an orbit, and a transform throws in the viewer before it asks for a redraw.
     void settle(viewer)
   }
   if (name === 'camera-target') void settleTarget(viewer)

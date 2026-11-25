@@ -167,6 +167,23 @@ describe('model-stage', () => {
     })
   })
 
+  it('draws a staged turn at once, which the viewer leaves for its next camera move', async () => {
+    const frame = await frameOf(spinning(), SCRIPT)
+    const asked = await ask(frame, 'model', DRAWN)
+    await expect.poll(() => latest(asked)?.loaded).toBe(true)
+    asked.close()
+
+    await ask(frame, 'model-stage', {
+      ...DRAWN,
+      name: 'orientation',
+      value: '0deg 0deg 40deg',
+    })
+
+    await expect
+      .poll(() => frame.contentDocument?.querySelector('model-viewer'))
+      .toHaveProperty('drawn.orientation', '0deg 0deg 40deg')
+  })
+
   it('rests a model at its own size once its scale goes', async () => {
     const frame = await frameOf(spinning('scale="2 2 2"'), SCRIPT)
     const asked = await ask(frame, 'model', DRAWN)

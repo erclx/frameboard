@@ -57,6 +57,8 @@ class StubViewer extends HTMLElement {
   orientation = '0 0 0'
   scale = '1 1 1'
 
+  // What is on screen, which a live transform leaves as it was, since the viewer throws before it asks for a redraw.
+  drawn = { orientation: '0 0 0' }
   // What the last framing measured, which a live scale leaves as it was.
   framed = { radius: 1, idealAspect: 1 }
   applied = { x: 1, y: 1, z: 1 }
@@ -78,6 +80,7 @@ class StubViewer extends HTMLElement {
       this.transform()
       this.frame()
       this.camera = this.goal()
+      this.draw()
       this.dispatchEvent(new CustomEvent('load'))
     })
   }
@@ -166,8 +169,13 @@ class StubViewer extends HTMLElement {
     return this.camera.view
   }
 
+  draw() {
+    this.drawn = { orientation: this.orientation }
+  }
+
   jumpCameraToGoal() {
     this.camera = this.goal()
+    this.draw()
     this.dispatchEvent(new CustomEvent('camera-change'))
   }
 
