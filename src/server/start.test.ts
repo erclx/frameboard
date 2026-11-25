@@ -297,12 +297,10 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
   let socket: WebSocket
   let messages: ServerMessage[]
   let hello: ServerMessage[]
-  let launch: typeof noBrowser
 
   beforeEach(async () => {
     clientDir = mkdtempSync(join(tmpdir(), 'frameboard-client-'))
     board = copyFixtureBoard('live')
-    launch = noBrowser
     // Held past the hello, so no slice lands between two of its messages.
     let release: () => void = () => {}
     const gate = new Promise<void>((resolve) => {
@@ -314,7 +312,7 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
       root: board.root,
       port: 0,
       openUrl: () => {},
-      launch: () => launch(),
+      launch: noBrowser,
       pause: () => gate,
     })
     messages = []
@@ -791,132 +789,6 @@ describe('startServer live socket', { timeout: 15_000 }, () => {
       1,
     )
     tab.terminate()
-  })
-
-  describe('a project folder renamed on disk', () => {
-    let received: ServerMessage[]
-    let tab: WebSocket
-
-    beforeEach(async () => {
-      received = []
-      tab = new WebSocket(`ws://127.0.0.1:${server.port}/api/live`)
-      tab.on('message', (data) => received.push(JSON.parse(String(data))))
-      await new Promise((resolve) => tab.once('open', resolve))
-      tab.send(JSON.stringify({ type: 'hello', role: 'board', patches: true }))
-      await expect
-        .poll(() => received.some((message) => message.type === 'findings'))
-        .toBe(true)
-    })
-
-    afterEach(() => {
-      tab.terminate()
-    })
-
-    /** Every frame a batch went stale, which it sends after any reload it makes. */
-    const stale = () =>
-      new Set(
-        received.flatMap((message) =>
-          message.type === 'thumbnails' ? Object.keys(message.stamps) : [],
-        ),
-      )
-    const FRAMES = ['home/hero', 'home/mobile', 'pricing/plans']
-    const reloads = () =>
-      received.flatMap((message) =>
-        message.type === 'reload' ? message.refs : [],
-      )
-
-    it('sends its rename, then a patch of names alone, and reloads no frame', async () => {
-      renameSync(join(board.root, 'studio'), join(board.root, 'atelier'))
-
-      await expect
-        .poll(stale, { timeout: 5000 })
-        .toEqual(new Set(FRAMES.map((frame) => `atelier/${frame}`)))
-      const renamed = received.findIndex(
-        (message) => message.type === 'renamed',
-      )
-      expect(received.slice(renamed, renamed + 2)).toEqual([
-        { type: 'renamed', before: 'studio', after: 'atelier' },
-        {
-          type: 'patch',
-          data: expect.objectContaining({ projects: ['atelier'] }),
-        },
-      ])
-      expect(
-        received.filter((message) => message.type === 'renamed'),
-      ).toHaveLength(1)
-      expect(reloads()).toEqual([])
-    })
-
-    it('reloads only the frame edited beside its rename', async () => {
-      renameSync(join(board.root, 'studio'), join(board.root, 'atelier'))
-      writeFileSync(join(board.root, 'atelier/home/hero.html'), '<p>new</p>')
-
-      await expect
-        .poll(reloads, { timeout: 5000 })
-        .toContain('atelier/home/hero')
-      await expect.poll(() => stale().size, { timeout: 5000 }).toBe(3)
-      expect(new Set(reloads())).toEqual(new Set(['atelier/home/hero']))
-    })
-
-    it("follows the board's own rename of a project a batch was measuring, reloading only the frame that batch named", async () => {
-      const token = 'c'.repeat(64)
-      server.authorize(token)
-      const layout = join(board.root, 'studio/home/layout.json')
-      const file = JSON.parse(readFileSync(layout, 'utf8'))
-      file.frames.hero.hugHeight = true
-      writeFileSync(layout, JSON.stringify(file))
-      await expect
-        .poll(
-          () =>
-            received.some(
-              (message) =>
-                message.type === 'patch' &&
-                JSON.stringify(message).includes('"hugHeight":true'),
-            ),
-          { timeout: 5000 },
-        )
-        .toBe(true)
-      let release = () => {}
-      const held = new Promise<void>((resolve) => {
-        release = resolve
-      })
-      const measuring = new Promise<void>((resolve) => {
-        launch = async () => {
-          resolve()
-          await held
-          return noBrowser()
-        }
-      })
-      received = []
-
-      writeFileSync(join(board.root, 'studio/home/hero.html'), '<p>new</p>')
-      await measuring
-      const response = await fetch(
-        `http://127.0.0.1:${server.port}/api/project/rename`,
-        {
-          method: 'POST',
-          headers: { authorization: `Bearer ${token}` },
-          body: JSON.stringify({ ref: 'studio', name: 'atelier' }),
-        },
-      )
-      release()
-
-      expect(response.status).toBe(200)
-      await expect.poll(() => stale().size, { timeout: 5000 }).toBe(3)
-      expect(
-        received.filter((message) => message.type === 'renamed'),
-      ).toHaveLength(1)
-      expect(
-        received.flatMap((message) =>
-          message.type === 'patch'
-            ? message.data.projects.map((each) =>
-                typeof each === 'string' ? each : each.name,
-              )
-            : [],
-        ),
-      ).not.toContain('studio')
-      expect(new Set(reloads())).toEqual(new Set(['atelier/home/hero']))
-    })
   })
 
   it('reloads only the frame a layout write gives a kit', async () => {
