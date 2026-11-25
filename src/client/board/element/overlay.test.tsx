@@ -24,7 +24,7 @@ import {
   selectionStore,
 } from '../selection'
 import { heldOutline, holdOutline } from './held'
-import { ElementOverlay } from './overlay'
+import { ElementGhosts, ElementOverlay } from './overlay'
 import { newTextStore } from './text-in-place'
 
 const HASH = 'c'.repeat(64)
@@ -654,7 +654,7 @@ describe('ElementOverlay', () => {
       act(() => select(selectionStore, 'studio/home', [HERO.ref]))
 
       const { container: drawn } = render(
-        <ElementOverlay frames={[HERO]} container={container} />,
+        <ElementGhosts frames={[HERO]} container={container} />,
       )
 
       await waitFor(() => expect(ghosts(drawn)).toHaveLength(1))
@@ -677,7 +677,7 @@ describe('ElementOverlay', () => {
       )
       act(() => select(selectionStore, 'studio/home', [HERO.ref]))
       const { container: drawn } = render(
-        <ElementOverlay frames={[HERO]} container={container} />,
+        <ElementGhosts frames={[HERO]} container={container} />,
       )
       await waitFor(() => expect(ghosts(drawn)).toHaveLength(2))
 
@@ -697,7 +697,7 @@ describe('ElementOverlay', () => {
       const container = await mountFrame(PAST)
       act(() => select(selectionStore, 'studio/home', [HERO.ref]))
       const { container: drawn } = render(
-        <ElementOverlay frames={[HERO]} container={container} />,
+        <ElementGhosts frames={[HERO]} container={container} />,
       )
       const box = container
         .querySelector('iframe')
@@ -715,7 +715,7 @@ describe('ElementOverlay', () => {
       act(() => select(selectionStore, 'studio/home', [HERO.ref]))
 
       const { container: drawn } = render(
-        <ElementOverlay frames={[scrolling]} container={container} />,
+        <ElementGhosts frames={[scrolling]} container={container} />,
       )
 
       expect(ghosts(drawn)).toEqual([])
@@ -734,12 +734,12 @@ describe('ElementOverlay', () => {
         const container = await mountFrame(PAST)
         act(() => select(selectionStore, 'studio/home', [HERO.ref]))
         const { container: drawn, rerender } = render(
-          <ElementOverlay frames={[HERO]} container={container} />,
+          <ElementGhosts frames={[HERO]} container={container} />,
         )
         await waitFor(() => expect(ghosts(drawn)).toHaveLength(1))
 
         rerender(
-          <ElementOverlay
+          <ElementGhosts
             frames={[{ ...HERO, ...shown }]}
             container={container}
           />,
@@ -753,7 +753,7 @@ describe('ElementOverlay', () => {
       const container = await mountFrame(PAST)
 
       const { container: drawn } = render(
-        <ElementOverlay frames={[HERO]} container={container} />,
+        <ElementGhosts frames={[HERO]} container={container} />,
       )
 
       expect(ghosts(drawn)).toEqual([])
@@ -768,7 +768,7 @@ describe('ElementOverlay', () => {
       act(() => select(selectionStore, 'studio/home', [HERO.ref]))
 
       const { container: drawn } = render(
-        <ElementOverlay frames={[HERO]} container={container} />,
+        <ElementGhosts frames={[HERO]} container={container} />,
       )
 
       expect(ghosts(drawn)).toEqual([])
@@ -794,7 +794,7 @@ describe('ElementOverlay', () => {
 
     async function draw(frame: FrameRecord = OPEN, source = PAST) {
       const container = await mountFrame(source)
-      return render(<ElementOverlay frames={[frame]} container={container} />)
+      return render(<ElementGhosts frames={[frame]} container={container} />)
     }
 
     async function drawPainted(frame: FrameRecord = OPEN, source = PAST) {
@@ -941,7 +941,7 @@ describe('ElementOverlay', () => {
       const layerShown = layer ?? null
 
       rerender(
-        <ElementOverlay
+        <ElementGhosts
           frames={[{ ...OPEN, ...shown }]}
           container={layerShown}
         />,
@@ -954,7 +954,7 @@ describe('ElementOverlay', () => {
       const { container, rerender } = await drawPainted()
       const layerShown = layer ?? null
 
-      rerender(<ElementOverlay frames={[HERO]} container={layerShown} />)
+      rerender(<ElementGhosts frames={[HERO]} container={layerShown} />)
 
       expect(pictures(container)).toEqual([])
     })
@@ -1019,7 +1019,7 @@ describe('ElementOverlay', () => {
       act(() => holdBoxes({ [HERO.ref]: grown }))
       const dragged = pictures(container)[0]?.src
       rerender(
-        <ElementOverlay
+        <ElementGhosts
           frames={[{ ...OPEN, box: grown }]}
           container={layer ?? null}
         />,
@@ -1030,40 +1030,24 @@ describe('ElementOverlay', () => {
     })
 
     it.each([
-      ['left', 'left:-50px;top:20px'],
-      ['top', 'left:20px;top:-25px'],
+      ['left', 'left:-50px;top:20px', ['50px', '70px']],
+      ['top', 'left:20px;top:-25px', ['120px', '25px']],
     ])(
-      'ghosts an element past the %s edge and paints none, which a page shot trims',
-      async (_edge, place) => {
-        act(() => select(selectionStore, 'studio/home', [HERO.ref]))
-
+      'paints an element past the %s edge at its place',
+      async (_edge, place, expected) => {
         const { container } = await drawPainted(
           OPEN,
           SOURCE.replace(
             '<h1>Hello, world</h1>',
-            `<div style="position:absolute;${place};width:100px;height:50px"></div>${BOX}`,
+            `<div style="position:absolute;${place};width:100px;height:50px"></div>`,
           ),
         )
 
-        const ghosts = [...container.querySelectorAll('[data-element-ghost]')]
-        expect(
-          ghosts.map((ghost) => ghost.querySelectorAll('img').length),
-        ).toEqual([0, 1])
+        expect(asked(container).get('element')).toBe('3')
+        const at = pictures(container)[0]?.parentElement?.style
+        expect([at?.left, at?.top]).toEqual(expected)
       },
     )
-
-    it('paints twenty past the right or bottom edge behind one past the left', async () => {
-      const { container } = await drawPainted(
-        OPEN,
-        SOURCE.replace(
-          '<h1>Hello, world</h1>',
-          `<div style="position:absolute;left:-50px;top:20px;width:100px;height:50px"></div>${BOX.repeat(21)}`,
-        ),
-      )
-
-      await waitFor(() => expect(pictures(container)).toHaveLength(20))
-      expect(asked(container, 0).get('element')).toBe('4')
-    })
 
     it('paints the first twenty in document order and leaves the rest', async () => {
       const { container } = await drawPainted(
