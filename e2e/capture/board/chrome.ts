@@ -341,17 +341,25 @@ async function answerAssets(page: Page, files: unknown[]): Promise<void> {
   )
 }
 
-/** Four found images, their thumbnails served as gradients so no remote image loads. */
+/**
+ * Five found images, their thumbnails served as gradients so no remote image
+ * loads, and the last one's refused so its tile names its file type.
+ */
 const FOUND = [
   ['old', 'Old & modern house', 'cc0', '#9fc09a', '#4f7d5a'],
   ['praktica', 'Praktica BX20', 'cc0', '#c9ae8a', '#8a6a44'],
-  ['plattekill', 'House in Plattekill', 'pdm', '#9fb2d0', '#586e96'],
+  // One line too long for its tile, so the capture shows the ellipsis.
+  ['plattekill', 'House in Plattekill, New York', 'pdm', '#9fb2d0', '#586e96'],
   ['glass', 'Glass house', 'cc0', '#d6b4a0', '#a5645a'],
+  ['plan', 'House plan', 'cc0', null, null],
 ] as const
 
 async function foundThumbnails(page: Page): Promise<void> {
   await page.route('https://images.example.org/**', (route) => {
-    const found = FOUND.find(([id]) => route.request().url().includes(id))
+    const found = FOUND.find(([id]) =>
+      route.request().url().includes(`/${id}.`),
+    )
+    if (found?.[3] === null) return route.abort()
     return route.fulfill({
       contentType: 'image/svg+xml',
       body: gradient(found?.[3] ?? '#888', found?.[4] ?? '#444'),
@@ -359,7 +367,7 @@ async function foundThumbnails(page: Page): Promise<void> {
   })
 }
 
-/** Answers a search with the four found images. */
+/** Answers a search with the five found images. */
 async function foundImages(page: Page): Promise<void> {
   await foundThumbnails(page)
   await page.route('**/sourcing/find*', (route) =>
@@ -385,14 +393,6 @@ async function foundImages(page: Page): Promise<void> {
             thumbnail: `https://images.example.org/${id}.svg`,
             width: 1024,
             height: 768,
-            // One line too long for its tile, so the capture shows the ellipsis.
-            ...(id === 'glass'
-              ? {
-                  width: 5334,
-                  height: 3772,
-                  landingUrl: 'https://www.rawpixel.com/image/glass',
-                }
-              : {}),
           })),
         },
       },
@@ -1081,7 +1081,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
       setup: themed(
         both(
           leftTab('Assets'),
-          leftTab('Find'),
+          pressOnLoad('Find…'),
           readyWhen('input[aria-label="Search free images"]'),
         ),
       ),
@@ -1097,7 +1097,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           searchHeld,
           leftTab('Assets'),
-          leftTab('Find'),
+          pressOnLoad('Find…'),
           searchOnLoad('modern house'),
           readyWhen('[aria-label="Searching"]'),
         ),
@@ -1115,9 +1115,10 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
           asWriter,
           foundImages,
           leftTab('Assets'),
-          leftTab('Find'),
+          pressOnLoad('Find…'),
           searchOnLoad('modern house'),
-          readyWhen('[aria-label="Results"] img'),
+          // The refused thumbnail has given way to its file type.
+          readyWhen('[aria-label="Results"] li:last-child b'),
         ),
       ),
     },
@@ -1132,7 +1133,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           searchFailed,
           leftTab('Assets'),
-          leftTab('Find'),
+          pressOnLoad('Find…'),
           searchOnLoad('modern house'),
           readyWhen('[role="alert"]'),
         ),
@@ -1149,7 +1150,7 @@ export function chromeCases(theme: 'light' | 'dark'): CaptureCase[] {
         both(
           offerReady,
           leftTab('Assets'),
-          leftTab('Generate'),
+          pressOnLoad('Generate…'),
           readyWhen('textarea[aria-label="Describe the image"]'),
         ),
       ),
