@@ -136,8 +136,9 @@ export function useActionGroup(group: string): Action[] {
 }
 
 /**
- * `board` skips a field or a dialog but a toast. `frame`, for a frame's window,
- * skips only a composing or page-prevented press, so Esc leaves from a field.
+ * `board` skips a field, a dialog but a toast, and every press while a modal is
+ * open. `frame`, for a frame's window, skips only a composing or page-prevented
+ * press, so Esc leaves from a field.
  */
 export type TypingRule = 'board' | 'frame'
 

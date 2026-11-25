@@ -61,7 +61,7 @@ Owns the change kinds a step holds and what each restores, which is only what th
 
 ## Gotchas
 
-- `bindKeys` skips a press inside a field or an open dialog in the board's window, which keeps Esc from the palette and the sheet off `selection.clear` and `mode.exitPlay`
+- `bindKeys` skips a press in a field, a dialog, or anywhere but a toast under an open modal, which keeps Esc from the palette and the sheet off `selection.clear` and `mode.exitPlay`
 - A frame skips only a composing press or one the page prevented, so Esc leaves an entered frame from a focused field, and binds a character key only while the switch is on
 - A toast is a dialog to base-ui but takes board keys, undo among them, by its `data-slot="toast"` marker, while Enter there stays with the toast, which runs Show, or the button holding focus
 - A held key runs its action once and prevents the auto-repeats, unless the action sets `repeat`, as the nudges, resizes, pans, zoom steps, undo, and redo do
