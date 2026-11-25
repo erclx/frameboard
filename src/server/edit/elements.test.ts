@@ -67,12 +67,9 @@ describe('elementTree', () => {
 
   it('carries the step an element holds, every default filled in', () => {
     const tree = elementTree(
-      `<body>
-        <p>plain</p>
-        <p data-step="4">bare</p>
-        <video data-step="2" data-step-effect="fly" data-step-start="after" data-step-duration="900" data-step-delay="250" data-step-play></video>
-        <p data-step="0">none</p>
-      </body>`,
+      '<body><p>plain</p><p data-step="4">bare</p>' +
+        '<video data-step="2" data-step-effect="fly" data-step-start="after" data-step-duration="900" data-step-delay="250" data-step-play></video>' +
+        '<p data-step="0">none</p></body>',
     )
 
     expect(Array.isArray(tree) && tree.map((row) => row.step)).toEqual([

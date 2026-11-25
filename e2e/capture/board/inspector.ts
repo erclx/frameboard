@@ -122,26 +122,17 @@ async function paddedHero(page: Page): Promise<void> {
   page.once('close', () => writeFileSync(path, original))
 }
 
-/**
- * Serves `about` as a slide of eight steps in four presses, one a model that
- * plays, its viewer left undrawn, and puts the file back once the page closes.
- */
+/** Eight steps in four presses, one of them a model that plays, its viewer never loaded. */
+const STEPS_FRAME = join(
+  import.meta.dirname,
+  '../../../test/fixtures/frames/steps.html',
+)
+
+/** Serves the stepped slide in `about`'s place, and puts the file back once the page closes. */
 async function aboutBuilds(page: Page): Promise<void> {
   const path = join(SERVED_BOARD, 'webapp/home/about.html')
   const original = readFileSync(path, 'utf8')
-  writeFileSync(
-    path,
-    `<!doctype html><title>about</title><body style="margin: 24px; font-family: sans-serif">
-      <h1 data-name="Title" data-step="1">Field notes</h1>
-      <p data-name="Subtitle" data-step="1" data-step-effect="fade">Spring</p>
-      <p data-name="First finding" data-step="2" data-step-effect="fly" data-step-duration="900">Less to load</p>
-      <p data-name="Second finding" data-step="3" data-step-effect="fly" data-step-start="after" data-step-delay="250">Fewer steps</p>
-      <p data-name="A name of forty characters, all of them" data-step="4" data-step-start="after">Nothing to install</p>
-      <model-viewer data-name="Demo model" data-step="5" data-step-effect="zoom" data-step-play style="display: block; width: 300px; height: 120px"></model-viewer>
-      <p data-name="Caption" data-step="6" data-step-effect="wipe" data-step-start="with">The demo, unedited</p>
-      <p data-name="Close" data-step="7" data-step-effect="fade">Questions</p>
-    </body>`,
-  )
+  writeFileSync(path, readFileSync(STEPS_FRAME, 'utf8'))
   page.once('close', () => writeFileSync(path, original))
 }
 
