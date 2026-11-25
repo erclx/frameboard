@@ -91,12 +91,12 @@ Owns the follower `inbox --follow` runs, apart from `commands/` since it holds a
 
 ### `src/cli/commands/editing.ts`
 
-Owns claims, written into `.run/claims.json` under the record lock with no server, where `--release` drops one claim or all of the session's. Its `--session` and `--agent` default to `CLAUDE_CODE_SESSION_ID` and `claude` through `src/cli/session.ts`, which `notes` and `inbox` share, and the claim names the agent on the board's change toast.
+Owns claims, written into `.run/claims.json` under the record lock with no server, where `--release` drops each claim named or all of the session's. Its `--session` and `--agent` default to `CLAUDE_CODE_SESSION_ID` and `claude` through `src/cli/session.ts`, which `notes` and `inbox` share, and the claim names the agent on the board's change toast.
 
 - A claim is cooperative, so another live session's claim refuses `frame-claimed` with exit 4, and it lapses five minutes after the last `editing`
 - A new frame is reserved first with `editing <ref>... --new`, which refuses an existing frame as `name-taken`, and a plain `editing <ref>` or `--release` takes a reserved ref
-- The set lands in one row past every frame and reservation on its page unless `--x`, `--y`, or a size flag sets it, and `frame add` with no position takes that box
-- Two refs with no `--new` refuse `usage`, so a single ref keeps its old arguments, `{ claim }` answer, and refusals
+- The set lands in one row past every frame and device body on its page unless `--x` or `--y` places it, sized by a flag or a `-<px>` name, and `frame add` with no position takes that box
+- Two refs with neither `--new` nor `--release` refuse `usage`, so a single ref keeps its old arguments, `{ claim }` answer, and refusals
 - The developer's hand edit on a held frame waits in the board until the claim drops, and the server refuses one sent anyway
 
 ### `plugins/frameboard/`

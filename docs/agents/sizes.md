@@ -9,7 +9,7 @@ The `frame add`, `frame resize`, and `frame device` flags that size a frame, sho
 
 ## Sizes
 
-`frame add` with no size takes one from the frame's name or its content, unless `editing --new` reserved a box for it. A frame whose file went missing keeps the position and device its `layout.json` entry holds, and hugs its content from that entry's box.
+`frame add` with no size takes one from the frame's name or its content, unless `editing --new` reserved a box for it, whose size and device it keeps. A frame whose file went missing keeps the position and device its `layout.json` entry holds, and hugs its content from that entry's box.
 
 - A name ending in the width of a preset or device, such as `overview-390`, fixes that width and turns the device on
 - Any other name hugs its content on both axes, which a running server measures once the frame is placed and after each write
