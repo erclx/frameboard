@@ -848,7 +848,10 @@ async function pushBatch(
   }
   const held = await tracker.update(board, paths, await claims.read())
   if (held.length > 0) settleLater(held)
-  const due = recheckRefs(root, paths, board, tokens)
+  // A kit set in `layout.json` moves what its frame's checks read.
+  const due = [
+    ...new Set([...recheckRefs(root, paths, board, tokens), ...rekitted]),
+  ]
   const changed = await recheck(board, due)
   if (Object.keys(changed).length > 0) {
     hub.broadcast({ type: 'findings', findings: changed })
