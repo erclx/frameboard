@@ -12,7 +12,7 @@ import type { ProjectKitRecord } from '@/shared/records/list'
 import type { FontList, InstalledFont } from '@/shared/records/sourcing'
 import type { TokenRow, TokenTable } from '@/shared/records/tokens'
 import { boardOf, frameOf, pageOf } from '@/test/board'
-import { contrastOnPage } from '@/test/contrast'
+import { contrastOnPage, ringContrastOnPage } from '@/test/contrast'
 import { keyboardFocus } from '@/test/focus-ring'
 import { pointerOff, pointerOver, realClick } from '@/test/real-pointer'
 
@@ -251,19 +251,27 @@ describe('ThemeDialog', () => {
       stop()
     })
 
-    it('rings a section focused by a key', async () => {
-      const stop = markPointerFocus(window)
-      await openOn('kits')
+    it.each(['light', 'dark'])(
+      'rings a section focused by a key at 3:1 or better in %s',
+      async (theme) => {
+        document.documentElement.classList.toggle('dark', theme === 'dark')
+        const stop = markPointerFocus(window)
+        await openOn('kits')
 
-      await keyboardFocus(sectionTab('Colors'))
+        await keyboardFocus(sectionTab('Colors'))
+        await Promise.all(
+          sectionTab('Colors')
+            .getAnimations()
+            .map((motion) => motion.finished),
+        )
 
-      await waitFor(() =>
-        expect(getComputedStyle(sectionTab('Colors')).boxShadow).toContain(
-          '0px 0px 0px 3px',
-        ),
-      )
-      stop()
-    })
+        expect(ringContrastOnPage(sectionTab('Colors'))).toBeGreaterThanOrEqual(
+          3,
+        )
+        stop()
+        document.documentElement.classList.remove('dark')
+      },
+    )
 
     it.each(['light', 'dark'])(
       'reads a hovered section’s count at 4.5:1 or better in %s',

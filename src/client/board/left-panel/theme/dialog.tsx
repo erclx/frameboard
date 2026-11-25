@@ -108,7 +108,7 @@ export function ThemeDialog({
 }
 
 const SECTION =
-  'group/section outline-none h-7 w-full flex-none group-data-vertical/tabs:justify-between rounded-[5px] border-0 px-1 text-xs font-normal text-foreground hover:bg-accent data-active:bg-accent data-active:font-semibold group-data-[variant=default]/tabs-list:data-active:shadow-none dark:text-foreground dark:data-active:border-transparent dark:data-active:bg-accent after:hidden'
+  'group/section outline-none focus-visible:ring-ring h-7 w-full flex-none group-data-vertical/tabs:justify-between rounded-[5px] border-0 px-1 text-xs font-normal text-foreground hover:bg-accent data-active:bg-accent data-active:font-semibold group-data-[variant=default]/tabs-list:data-active:shadow-none dark:text-foreground dark:data-active:border-transparent dark:data-active:bg-accent after:hidden'
 
 /** The sections with what each holds. */
 function SectionList({ counts }: Pick<ThemeDialogProps, 'counts'>) {
