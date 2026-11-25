@@ -10,7 +10,6 @@ import {
 
 import { reportRefusal } from '@/client/board/left-panel/page-actions'
 import { leftTabStore } from '@/client/board/left-panel/tab-store'
-import type { AssetMenuActs } from '@/client/board/menus/asset'
 import { placeAtCenter } from '@/client/board/place/write'
 import { canvasView } from '@/client/board/view'
 import { Button } from '@/client/components/ui/button'
@@ -43,7 +42,7 @@ import {
 } from './groups'
 import { fetchAssets } from './list'
 import { fetchInstalledFonts, useInstalledFonts } from './sourcing'
-import { Tile } from './tile'
+import { Tile, type TileActs } from './tile'
 import { ASSET_WRITES, type AssetWrites, uploadAssets } from './upload'
 
 const CODE = 'font-mono text-label font-normal text-foreground'
@@ -91,6 +90,9 @@ export function FilesView({
   const [over, setOver] = useState(false)
   const [busy, setBusy] = useState(false)
   const [refusals, setRefusals] = useState<{ id: string; text: string }[]>([])
+  const adder = useRef<HTMLButtonElement>(null)
+  // Where the confirm hands focus back to, read once it has closed and `deleting` is gone.
+  const returnTo = useRef<HTMLElement | null>(null)
   const picker = useRef<HTMLInputElement>(null)
   const replacer = useRef<HTMLInputElement>(null)
   const replacing = useRef<string | null>(null)
@@ -134,7 +136,7 @@ export function FilesView({
   }
 
   /** Deletes a file no frame links at once, and asks first, naming them, for one some frame does. */
-  async function askDelete(file: AssetFile) {
+  async function askDelete(file: AssetFile, tile: HTMLElement | null) {
     if (file.frames === 0) {
       remove(file.path)
       return
@@ -142,13 +144,16 @@ export function FilesView({
     try {
       const frames = await writes.frames(project, file.path)
       if (frames.length === 0) remove(file.path)
-      else setDeleting({ path: file.path, frames })
+      else {
+        returnTo.current = tile
+        setDeleting({ path: file.path, frames })
+      }
     } catch (error) {
       reportRefusal('Couldn’t delete the file')(error)
     }
   }
 
-  function actsFor(file: AssetFile): Omit<AssetMenuActs, 'copy'> {
+  function actsFor(file: AssetFile): TileActs {
     if (!canWrite) return {}
     return {
       place:
@@ -160,7 +165,7 @@ export function FilesView({
         replacing.current = file.path
         replacer.current?.click()
       },
-      remove: () => void askDelete(file),
+      remove: (tile) => void askDelete(file, tile),
     }
   }
 
@@ -247,6 +252,7 @@ export function FilesView({
           assets/ · {count} {count === 1 ? 'file' : 'files'}
         </h3>
         <button
+          ref={adder}
           type="button"
           aria-label="Add files"
           disabled={!canWrite}
@@ -414,7 +420,13 @@ export function FilesView({
           if (!open) setDeleting(null)
         }}
       >
-        <DialogContent showCloseButton={false} className="gap-3 p-4">
+        <DialogContent
+          showCloseButton={false}
+          finalFocus={() =>
+            returnTo.current?.isConnected ? returnTo.current : adder.current
+          }
+          className="gap-3 p-4"
+        >
           <DialogTitle className="text-title font-semibold">
             Delete {deleting ? fileName(deleting.path) : null}?
           </DialogTitle>
@@ -428,7 +440,9 @@ export function FilesView({
             <Button
               variant="destructive"
               onClick={() => {
-                if (deleting) remove(deleting.path)
+                if (!deleting) return
+                returnTo.current = besideTile(returnTo.current)
+                remove(deleting.path)
                 setDeleting(null)
               }}
             >
@@ -439,6 +453,13 @@ export function FilesView({
       </Dialog>
     </div>
   )
+}
+
+/** The tile after one in its group, or the one before it for the last. */
+function besideTile(tile: HTMLElement | null): HTMLElement | null {
+  const item = tile?.closest('li')
+  const beside = item?.nextElementSibling ?? item?.previousElementSibling
+  return beside?.querySelector('button') ?? null
 }
 
 /** The listed frames past which Delete's confirm counts the rest. */
