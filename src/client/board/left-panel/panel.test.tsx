@@ -17,7 +17,7 @@ import { memoryLocation } from 'wouter/memory-location'
 
 import { bindKeys, registerActions } from '@/client/actions/registry'
 import { TooltipProvider } from '@/client/components/ui/tooltip'
-import { liveStore } from '@/client/live/store'
+import { liveStore, receiveBoard, receiveRename } from '@/client/live/store'
 import { createStructure } from '@/client/live/structure'
 import { unseenStore } from '@/client/live/unseen'
 import { useProjectActions } from '@/client/projects/actions'
@@ -159,7 +159,7 @@ beforeEach(() => {
 
 afterEach(() => {
   while (cleanups.length > 0) cleanups.pop()?.()
-  liveStore.setState({ canWrite: false })
+  liveStore.setState({ canWrite: false, board: null, aliases: {} })
   act(() => {
     unseenStore.setState({ unseen: {}, cursor: null })
     clear(selectionStore)
@@ -283,6 +283,22 @@ describe('LeftPanel', () => {
     )
 
     expect(screen.getByRole('tab', { name: 'Design' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+  })
+
+  it('keeps its tab through a rename of its project', async () => {
+    const studio = project([page('home')])
+    receiveBoard(liveStore, { root: '/board', projects: [studio] })
+    renderPanel(studio, 'home', <p>the files</p>)
+    await userEvent.click(screen.getByRole('tab', { name: 'Assets' }))
+    cleanup()
+
+    receiveRename(liveStore, 'studio', 'atelier')
+    renderPanel({ ...studio, name: 'atelier' }, 'home', <p>the files</p>)
+
+    expect(screen.getByRole('tab', { name: 'Assets' })).toHaveAttribute(
       'aria-selected',
       'true',
     )

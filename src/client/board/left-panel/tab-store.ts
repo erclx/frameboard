@@ -9,7 +9,7 @@ export type LeftTab = 'design' | 'theme' | 'assets'
  */
 export const leftTabStore = createStore<{
   tab: LeftTab
-  /** The project the panel last showed, null before it first mounts. */
+  /** The identity of the project the panel last showed, which a rename keeps, null before it first mounts. */
   project: string | null
 }>()(() => ({
   tab: 'design',
