@@ -99,10 +99,9 @@ interface ModelHandlesProps {
 }
 
 /**
- * A selected model's X, Y, and Z handles under their Move, Turn, and Size
- * switch, at one screen size in the notes layer. A drag previews and its
- * release writes once, and the Transform section's fields do the same by
- * keyboard, so the handles themselves take no focus.
+ * A selected model's X, Y, and Z handles under their mode switch, in the
+ * notes layer. They take no focus, since each Transform field does the same
+ * by keyboard.
  */
 export function ModelHandles(props: ModelHandlesProps) {
   const { element, box, locked } = props

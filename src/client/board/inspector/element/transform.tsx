@@ -69,10 +69,8 @@ interface TransformSectionProps {
 }
 
 /**
- * The Transform section for a selected model: its place on the page with its
- * depth in its own scene, its own rotation, and its size per axis. A size or a
- * depth writes the camera's distance and view beside it, so a load draws what
- * the page showed.
+ * The Transform section for a selected model. A size or a depth writes the
+ * camera's distance and view beside it, so a load draws what the page showed.
  */
 export function TransformSection({
   element,

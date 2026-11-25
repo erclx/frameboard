@@ -143,7 +143,7 @@ describe('AppearanceSection on a model', () => {
     )
   }
 
-  it('leaves the turns to the Model section for a model with none', () => {
+  it('leaves the turns to the Transform section for a model with none', () => {
     renderModel()
 
     expect(

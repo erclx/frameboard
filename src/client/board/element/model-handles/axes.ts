@@ -11,7 +11,7 @@ export interface Vector {
   y: number
 }
 
-/** A handle's length in screen pixels, at any zoom. */
+/** In screen pixels, at any zoom. */
 export const HANDLE = 50
 
 /** How near its tip a press takes a handle, a 24 pixel target across. */
@@ -25,7 +25,6 @@ const TOWARD: Vector = { x: -0.58, y: 0.41 }
 
 const RADIANS = Math.PI / 180
 
-/** One handle as drawn, and what the model's page reads a drag along it as. */
 export interface Handle {
   axis: Axis
   /** From the gizmo's center, in screen pixels. */
@@ -43,7 +42,7 @@ const unit = ({ x, y }: Vector): Vector => {
   return length < 0.01 ? { x: 1, y: 0 } : { x: x / length, y: y / length }
 }
 
-/** A direction in the model's scene as its camera sees it: right, up, and toward the viewer. */
+/** A scene's direction as its camera sees it: right, up, and toward the viewer. */
 function seen(direction: Axes, { theta, phi }: Angle): Axes {
   const [st, ct] = [Math.sin(theta * RADIANS), Math.cos(theta * RADIANS)]
   const [sp, cp] = [Math.sin(phi * RADIANS), Math.cos(phi * RADIANS)]
@@ -54,7 +53,6 @@ function seen(direction: Axes, { theta, phi }: Angle): Axes {
   }
 }
 
-/** The handle of an axis as its camera sees it. */
 function handleOf(axis: Axis, { x, y, z }: Axes): Handle {
   const drawn = { x: x + z * TOWARD.x, y: -y + z * TOWARD.y }
   const length = Math.hypot(drawn.x, drawn.y)
@@ -93,11 +91,7 @@ function ownAxes(turn: Turn): Axes[] {
   ]
 }
 
-/**
- * The handles a mode draws. Move's X and Y are the page's own and only a
- * placed model has them, its Z the scene's, and Turn and Size draw the model's
- * axes through its camera.
- */
+/** Move's X and Y are the page's own and a placed model's alone, its Z the scene's, and the rest the model's. */
 export function handlesOf(
   mode: HandleMode,
   reading: ModelReading,
@@ -121,7 +115,6 @@ export function handlesOf(
   )
 }
 
-/** How far a drag goes along a handle, in pixels. */
 function alongOf({ tip }: Handle, drag: Vector): number {
   return across(drag, unit(tip))
 }

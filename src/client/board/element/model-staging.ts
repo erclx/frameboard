@@ -6,13 +6,12 @@ import {
   stagedTerms,
 } from '@/shared/frame-bridge/model'
 
-/** The camera's place around a model in degrees, `theta` across and `phi` down from the top. */
+/** In degrees, `theta` across and `phi` down from the top. */
 export interface Angle {
   theta: number
   phi: number
 }
 
-/** A model's own rotation about each axis, in degrees. */
 export type Turn = Axes
 
 /** The orbit a viewer takes with none stated, from its `DEFAULT_CAMERA_ORBIT`. */
@@ -27,8 +26,8 @@ function degreesOf(term: string | undefined): number | null {
 }
 
 /**
- * The angle the Model section shows: the one the file states, else the live
- * camera's, which also answers an orbit stated as `auto` or a `calc()`.
+ * The angle the file states, else the live camera's, which also answers an
+ * orbit stated as `auto` or a `calc()`.
  */
 export function angleOf({ staged, orbit }: ModelReading): Angle {
   const [theta, phi] = stagedTerms(staged['camera-orbit']).map(degreesOf)
@@ -83,7 +82,6 @@ export function scaleOf(scale: string | null): Axes {
   return [x, y, z].every(Number.isFinite) ? { x, y, z } : { x: 1, y: 1, z: 1 }
 }
 
-/** Whether a scale is the same on every axis. */
 export function isEven({ x, y, z }: Axes): boolean {
   return x === y && y === z
 }
@@ -121,7 +119,6 @@ export function depthOf({ staged, bounds }: ModelReading): number | null {
   return rounded(bounds.center.z - Number(read[1]) * per)
 }
 
-/** The size and depth a reading shows, the depth null where it has none to count from. */
 export function transformOf(reading: ModelReading): ModelTransform {
   return { scale: scaleOf(reading.staged.scale), depth: depthOf(reading) }
 }

@@ -224,10 +224,9 @@ export interface BridgeOps {
     push: never
   }
   /**
-   * Shows a scale and a depth on a live viewer with its camera standing still,
-   * pushing every attribute the file needs for a fresh load to draw the same,
-   * or none under `preview`, which states the two alone. Answers whether the
-   * page showed a drawn viewer at the address.
+   * Shows a scale and a depth with the camera still, answering whether a drawn
+   * viewer took them, and pushes what a load needs to draw the same unless it
+   * is a `preview`.
    */
   'model-transform': {
     args: ElementAddress & ModelTransform & { preview?: boolean }

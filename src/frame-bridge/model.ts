@@ -267,10 +267,8 @@ async function showTransform(
 }
 
 /**
- * Shows a transform as a fresh load of the returned attributes would draw
- * it. A load frames its camera from the scaled model, so each of distance and
- * view is stated wherever the framing alone would not answer what the page
- * showed, and goes again once it would.
+ * Shows a transform as a fresh load of the returned attributes would, each of
+ * distance and view stated only where the framing alone answers another.
  */
 async function holdTransform(
   viewer: Viewer,

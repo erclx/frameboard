@@ -53,7 +53,7 @@ interface AppearanceSectionProps {
   /** The corner radius in px. */
   radius: number
   rotation: Rotation
-  /** Whether the element is a model, which turns in its own Model section. */
+  /** Whether the element is a model, which turns in its own Transform section. */
   model?: boolean
   disabled: boolean
   write: WriteElement
