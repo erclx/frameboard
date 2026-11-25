@@ -1,6 +1,6 @@
 import '../../styles.css'
 
-import { act, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -258,6 +258,32 @@ describe('selecting a row', () => {
       index: 5,
       hash: HASH,
     })
+  })
+
+  it('ignores the second press of a double-click, which can sit over another row', async () => {
+    holdTree([
+      stepped('Title', 4, { number: 1 }),
+      stepped('Body', 5, { number: 2 }),
+    ])
+    mount()
+    await userEvent.click(screen.getByRole('button', { name: /^Body,/ }))
+
+    // The browser counts presses by place and time, so it names the row now under the pointer.
+    fireEvent.click(screen.getByRole('button', { name: /^Title,/ }), {
+      detail: 2,
+    })
+
+    expect(selectionStore.getState().element?.index).toBe(5)
+  })
+
+  it('selects a row by keyboard', async () => {
+    holdTree([stepped('Title', 4, { number: 1 })])
+    mount()
+    screen.getByRole('button', { name: /^Title,/ }).focus()
+
+    await userEvent.keyboard('{Enter}')
+
+    expect(selectionStore.getState().element?.index).toBe(4)
   })
 
   it('marks the selected element’s row', () => {

@@ -219,7 +219,10 @@ function StepRow({
           starts,
         ].join(', ')}
         title={element.name}
-        onClick={onSelect}
+        onClick={(event) => {
+          // A first select adds the crumb above the list, so a double-click's second press sits over another row.
+          if (event.detail < 2) onSelect()
+        }}
         className={cn(
           'flex min-w-0 flex-1 items-center gap-1.5 self-stretch rounded-[5px] text-left outline-none focus-visible:ring-2 focus-visible:ring-inset',
           // The focus blue sits below 3:1 on the selected tint.
