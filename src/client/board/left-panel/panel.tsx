@@ -248,8 +248,7 @@ export function LeftPanel({
           </TabsContent>
           <TabsContent
             value="theme"
-            // Relative, so a tip's hidden node scrolls with the tab rather than stretching the panel.
-            // Filled, since a scroll layer with no fill loses its text's subpixel smoothing.
+            // Relative so a tip's hidden node scrolls inside it, and filled so its text keeps its subpixel smoothing.
             className="relative min-h-0 overflow-y-auto bg-sidebar text-xs"
           >
             {theme}

@@ -13,10 +13,9 @@ Owns the right panel's shell and its frame-level controls, being the tabs, the f
 
 ### `src/client/board/inspector/`
 
-Owns the right panel under the avatar and zoom header, its Design, Slides, and Export tabs, and the frame controls for size, fill, height, device, clipping, preview, linked widths, transitions, export, motion, the phone link, and selection colors. Each write is one undo step, and a control acting on the live frame writes nothing to it.
+Owns the right panel under the avatar and zoom header, its Design, Slides, and Export tabs, and the frame controls for size, fill, height, device, clipping, preview, linked widths, transitions, export, motion, the phone link, and selection colors. Each write is one undo step, and a control acting on the live frame writes nothing to it. The active tab's body scrolls under the header, the View only line, the tabs, and the crumb, as do the Frame tool's presets and Play's line.
 
 - An element selected inside a frame shows that frame as one row under the tab strip, and the Frame tool lists its presets and devices there as radio rows
-- The active tab's body scrolls under the header, the View only line, the tabs, and the crumb, as do the Frame tool's presets and Play's line, and each tab opens at its top
 - `label-tip.tsx` keeps a label's sentence in a hidden node the control names in `aria-describedby`, shown on hover and keyboard focus
 - Stroke's `+` writes `border: 1px solid var(--border)`, else the first color token, else `#808080` in a project naming none
 - Every number is `number-field.tsx` on base-ui's `NumberField`, stepping by one or ten with Shift and scrubbing from a prefix zone at least 24px wide
