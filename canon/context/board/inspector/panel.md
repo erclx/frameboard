@@ -23,7 +23,7 @@ Owns the right panel under the avatar and zoom header, its Design, Slides, and E
 
 ## Gotchas
 
-- The Steps list sits above an element's Present section, since a row's click adds that section and would otherwise move the list out from under a double-click
+- The Steps list sits above an element's Present section, since a row's click adds that section, and a list under it would leave a control that writes under a double-click's second press
 - base-ui commits a keyboard step on every press, so the number field steps on its own keys and takes base-ui's commit only for a scrub release
 - base-ui reformats a typed number only on blur, so Enter blurs the field and focuses it again, else a refused value stays shown
 - A tab's body scrolls itself under the header, the tabs, and the crumb, and is `relative`, else a tip's hidden node inside it stretches the panel
