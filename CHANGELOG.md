@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.54.0](https://github.com/erclx/frameboard/compare/v0.53.0...v0.54.0) (2026-11-25)
+
+
+### Features
+
+* **inspector:** scroll each side panel's tab under its header ([#494](https://github.com/erclx/frameboard/issues/494)) ([d68c6b2](https://github.com/erclx/frameboard/commit/d68c6b2772e5e6a338b9296bb4d63576d9f7e84f))
+* **layers:** draw the music glyph on an audio element's row ([#492](https://github.com/erclx/frameboard/issues/492)) ([dfd9976](https://github.com/erclx/frameboard/commit/dfd997603e74d512282daf2610e133c4b0e83b75))
+* **live:** follow a project renamed outside the board ([#496](https://github.com/erclx/frameboard/issues/496)) ([660c770](https://github.com/erclx/frameboard/commit/660c770daf1874a4d2e18f21cb609d5c7f6a661d))
+* **ui:** draw a focused button's ring at 3 to 1 or more ([#493](https://github.com/erclx/frameboard/issues/493)) ([f1976ec](https://github.com/erclx/frameboard/commit/f1976ec5799b06c19412261ca75cbe5f4e0ac503))
+
+
+### Bug Fixes
+
+* **follow:** hold still while a page presents ([#491](https://github.com/erclx/frameboard/issues/491)) ([6379974](https://github.com/erclx/frameboard/commit/6379974e77780cdb8814464ff09eeabe4f17374f))
+
 ## [0.53.0](https://github.com/erclx/frameboard/compare/v0.52.0...v0.53.0) (2026-11-25)
 
 
