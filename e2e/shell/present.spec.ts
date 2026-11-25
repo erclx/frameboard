@@ -1,15 +1,19 @@
 import { execFile } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 import { expect, type Page, test } from '@playwright/test'
+
+import { shippedViewerPath } from '@/server/models/viewer'
+import { VIEWER_FILE } from '@/shared/model-viewer'
 
 import {
   copyFixtureBoard,
   type FixtureBoard,
 } from '../../test/support/fixture-board'
 import { type BoardServer, serveBoard } from '../support/board-server'
+import { undo } from '../support/history'
 
 const BOARD = '/p/webapp/home'
 const CLI = resolve('dist/cli.js')
@@ -324,5 +328,128 @@ test.describe("a transition of the project's own", () => {
     expect(
       await arriving.evaluate((layer) => layer.getAnimations().length),
     ).toBe(1)
+  })
+})
+
+test.describe('a slide tuned by hand', () => {
+  // The suite runs with motion reduced, under which no step moves or waits.
+  test.use({ contextOptions: { reducedMotion: 'no-preference' } })
+
+  /** How long a fresh viewer gets to draw, since with no GPU Chromium compiles the first model in software. */
+  const DRAW = { timeout: 20_000 }
+
+  const path = () => join(board.root, 'webapp/home/about.html')
+  const read = () => readFileSync(path(), 'utf8')
+  const inPresent = (page: Page, selector: string) =>
+    shown(page).contentFrame().locator(selector)
+  const steps = (page: Page) => page.getByRole('region', { name: 'Steps' })
+
+  async function selectAbout(page: Page) {
+    await page.goto(await server.ticketUrl())
+    await page.goto(`${server.url}${BOARD}`)
+    await page.getByRole('button', { name: 'Select about' }).click()
+    await page.getByRole('tab', { name: 'Slides' }).click()
+  }
+
+  test('reorders in one undo and presents each step at its own length and delay', async ({
+    page,
+  }) => {
+    writeFileSync(
+      path(),
+      '<!doctype html><html><head><title>about</title></head><body>' +
+        '<p id="one" data-step="1" data-step-effect="fade">One</p>' +
+        '<p id="two" data-step="2" data-step-effect="fly">Two</p>' +
+        '<p id="three" data-step="5" data-step-effect="wipe">Three</p></body></html>',
+    )
+    const before = read()
+    await selectAbout(page)
+    const row = (name: string) =>
+      steps(page).getByRole('button', { name: new RegExp(`^${name},`) })
+
+    await row('Three').dragTo(row('One'), { targetPosition: { x: 20, y: 4 } })
+
+    await expect.poll(read).toContain('id="three" data-step="1"')
+    expect(read()).toContain('id="one" data-step="2"')
+    expect(read()).toContain('id="two" data-step="3"')
+    await undo(page)
+    await expect.poll(read).toBe(before)
+
+    await row('One').click()
+    const duration = page.getByRole('textbox', { name: 'Duration' })
+    await duration.fill('900')
+    await duration.press('Enter')
+    await expect.poll(read).toContain('data-step-duration="900"')
+    const delay = page.getByRole('textbox', { name: 'Delay' })
+    await delay.fill('250')
+    await delay.press('Enter')
+    await expect.poll(read).toContain('data-step-delay="250"')
+
+    await page.getByRole('button', { name: 'Present page' }).click()
+    await expect(
+      bar(page).getByRole('img', { name: 'Step 0 of 3' }),
+    ).toBeAttached()
+    await page.keyboard.press('ArrowRight')
+
+    await expect(inPresent(page, '#one')).toHaveCSS(
+      'animation-duration',
+      '0.9s',
+    )
+    await expect(inPresent(page, '#one')).toHaveCSS('animation-delay', '0.25s')
+  })
+
+  test('starts a video and a model’s clip on their presses and rests them on a step back', async ({
+    page,
+  }) => {
+    test.slow()
+    const assets = join(board.root, 'webapp/assets')
+    mkdirSync(assets, { recursive: true })
+    copyFileSync(
+      resolve('test/fixtures/media/clip.webm'),
+      join(assets, 'clip.webm'),
+    )
+    copyFileSync(
+      resolve('test/fixtures/models/spin.glb'),
+      join(assets, 'spin.glb'),
+    )
+    copyFileSync(shippedViewerPath(), join(assets, VIEWER_FILE))
+    writeFileSync(
+      path(),
+      '<!doctype html><html><head><title>about</title>' +
+        `<script type="module" src="../assets/${VIEWER_FILE}"></script></head><body>` +
+        '<video data-step="1" data-step-effect="fade" data-step-play loop src="../assets/clip.webm" style="width: 160px; height: 90px"></video>' +
+        '<model-viewer data-step="2" data-step-play src="../assets/spin.glb" style="display: block; width: 160px; height: 160px"></model-viewer></body></html>',
+    )
+    await selectAbout(page)
+    await page.getByRole('button', { name: 'Present page' }).click()
+    const video = inPresent(page, 'video')
+    const model = inPresent(page, 'model-viewer')
+    const clip = (node: Element) => {
+      const { paused, currentTime } = node as HTMLMediaElement
+      return { paused, started: currentTime > 0 }
+    }
+    const loaded = (node: Element) =>
+      (node as Element & { loaded?: boolean }).loaded
+    await expect.poll(() => model.evaluate(loaded), DRAW).toBe(true)
+    expect(await video.evaluate(clip)).toEqual({ paused: true, started: false })
+
+    await page.keyboard.press('ArrowRight')
+    await expect
+      .poll(() => video.evaluate(clip))
+      .toEqual({ paused: false, started: true })
+    expect(await model.evaluate(clip)).toEqual({ paused: true, started: false })
+
+    await page.keyboard.press('ArrowRight')
+    await expect
+      .poll(() => model.evaluate(clip), DRAW)
+      .toEqual({ paused: false, started: true })
+
+    await page.keyboard.press('ArrowLeft')
+    await expect
+      .poll(() => model.evaluate(clip))
+      .toEqual({ paused: true, started: false })
+    await page.keyboard.press('ArrowLeft')
+    await expect
+      .poll(() => video.evaluate(clip))
+      .toEqual({ paused: true, started: false })
   })
 })

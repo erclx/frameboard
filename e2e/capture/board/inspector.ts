@@ -122,6 +122,29 @@ async function paddedHero(page: Page): Promise<void> {
   page.once('close', () => writeFileSync(path, original))
 }
 
+/**
+ * Serves `about` as a slide of eight steps in four presses, one a model that
+ * plays, its viewer left undrawn, and puts the file back once the page closes.
+ */
+async function aboutBuilds(page: Page): Promise<void> {
+  const path = join(SERVED_BOARD, 'webapp/home/about.html')
+  const original = readFileSync(path, 'utf8')
+  writeFileSync(
+    path,
+    `<!doctype html><title>about</title><body style="margin: 24px; font-family: sans-serif">
+      <h1 data-name="Title" data-step="1">Field notes</h1>
+      <p data-name="Subtitle" data-step="1" data-step-effect="fade">Spring</p>
+      <p data-name="First finding" data-step="2" data-step-effect="fly" data-step-duration="900">Less to load</p>
+      <p data-name="Second finding" data-step="3" data-step-effect="fly" data-step-start="after" data-step-delay="250">Fewer steps</p>
+      <p data-name="A name of forty characters, all of them" data-step="4" data-step-start="after">Nothing to install</p>
+      <model-viewer data-name="Demo model" data-step="5" data-step-effect="zoom" data-step-play style="display: block; width: 300px; height: 120px"></model-viewer>
+      <p data-name="Caption" data-step="6" data-step-effect="wipe" data-step-start="with">The demo, unedited</p>
+      <p data-name="Close" data-step="7" data-step-effect="fade">Questions</p>
+    </body>`,
+  )
+  page.once('close', () => writeFileSync(path, original))
+}
+
 /** The Camera section once the viewer lists its clip, which it does only after the model draws. */
 const MODEL_READ =
   'section[aria-labelledby="inspector-camera"] button[aria-label="Clip"]:not(:disabled)'
@@ -1041,6 +1064,72 @@ export function inspectorCases(theme: 'light' | 'dark'): CaptureCase[] {
           headlineOnHero,
           inspectorTab('Slides'),
           readyWhen('[aria-labelledby="inspector-step"]'),
+        ),
+      ),
+    },
+    {
+      section: 'steps-list',
+      writes: 'board',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      // A slide of eight steps, a line between its presses and one name cut.
+      setup: themed(
+        both(
+          aboutBuilds,
+          noAgentChanges,
+          asWriter,
+          onCanvas({ select: ['webapp/home/about'] }),
+          inspectorTab('Slides'),
+          readyWhen(
+            '[aria-labelledby="inspector-steps"] [aria-label="Preview Close"]:not(:disabled)',
+          ),
+        ),
+      ),
+    },
+    {
+      section: 'step-play',
+      writes: 'board',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      // The slide's model selected, its row tinted over its time and its Play switch.
+      setup: themed(
+        both(
+          aboutBuilds,
+          noAgentChanges,
+          asWriter,
+          elementInFrame('webapp/home/about', 'model-viewer'),
+          inspectorTab('Slides'),
+          readyWhen(
+            'body:has([aria-labelledby="inspector-steps"] [aria-current="true"]) [aria-labelledby="inspector-step"] [role="switch"]:not(:disabled)',
+          ),
+        ),
+      ),
+    },
+    {
+      section: 'present-row',
+      writes: 'board',
+      theme,
+      route: '/p/webapp/home',
+      evidence: true,
+      excludeViewports: STATE_ONLY,
+      mask: [AVATAR],
+      // A stepped element's Design tab at its end, where one row names its step.
+      setup: themed(
+        both(
+          aboutBuilds,
+          noAgentChanges,
+          asWriter,
+          elementInFrame('webapp/home/about', '[data-step="2"]'),
+          scrolledToEnd('Inspector'),
+          readyWhen(
+            `[${AT_END}] [aria-labelledby="inspector-present-row"] button`,
+          ),
         ),
       ),
     },
