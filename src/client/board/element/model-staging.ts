@@ -1,38 +1,21 @@
-import type { ModelReading, ModelStage } from '@/shared/frame-bridge/model'
+import {
+  type Axes,
+  type ModelReading,
+  type ModelStage,
+  type ModelTransform,
+  stagedTerms,
+} from '@/shared/frame-bridge/model'
 
-/** The camera's place around a model in degrees, `theta` across and `phi` down from the top. */
+/** In degrees, `theta` across and `phi` down from the top. */
 export interface Angle {
   theta: number
   phi: number
 }
 
-/** A model's own rotation about each axis, in degrees. */
-export interface Turn {
-  x: number
-  y: number
-  z: number
-}
+export type Turn = Axes
 
 /** The orbit a viewer takes with none stated, from its `DEFAULT_CAMERA_ORBIT`. */
 const DEFAULT_ANGLE: Angle = { theta: 0, phi: 75 }
-
-/** A value's terms, split on the spaces outside any `calc()`. */
-function terms(value: string | null): string[] {
-  const found: string[] = []
-  let depth = 0
-  let term = ''
-  for (const character of value?.trim() ?? '') {
-    if (character === '(') depth += 1
-    if (character === ')') depth -= 1
-    if (/\s/.test(character) && depth === 0) {
-      if (term) found.push(term)
-      term = ''
-    } else {
-      term += character
-    }
-  }
-  return term ? [...found, term] : found
-}
 
 /** A term as degrees, a bare number being radians as the viewer reads one, or null for any other. */
 function degreesOf(term: string | undefined): number | null {
@@ -43,11 +26,11 @@ function degreesOf(term: string | undefined): number | null {
 }
 
 /**
- * The angle the Model section shows: the one the file states, else the live
- * camera's, which also answers an orbit stated as `auto` or a `calc()`.
+ * The angle the file states, else the live camera's, which also answers an
+ * orbit stated as `auto` or a `calc()`.
  */
 export function angleOf({ staged, orbit }: ModelReading): Angle {
-  const [theta, phi] = terms(staged['camera-orbit']).map(degreesOf)
+  const [theta, phi] = stagedTerms(staged['camera-orbit']).map(degreesOf)
   if (typeof theta === 'number' && typeof phi === 'number') {
     return { theta, phi }
   }
@@ -63,8 +46,10 @@ export function orbitStages(
   staged: ModelReading['staged'],
   { theta, phi }: Angle,
 ): ModelStage[] {
-  const radius = terms(staged['camera-orbit'])[2] ?? 'auto'
-  const [maxTheta = 'auto', maxPhi = 'auto'] = terms(staged['max-camera-orbit'])
+  const radius = stagedTerms(staged['camera-orbit'])[2] ?? 'auto'
+  const [maxTheta = 'auto', maxPhi = 'auto'] = stagedTerms(
+    staged['max-camera-orbit'],
+  )
   return [
     { name: 'camera-orbit', value: `${theta}deg ${phi}deg ${radius}` },
     { name: 'max-camera-orbit', value: `${maxTheta} ${maxPhi} ${radius}` },
@@ -73,7 +58,7 @@ export function orbitStages(
 
 /** A stated `orientation` as its turn about each axis, the viewer's roll, pitch, and yaw being Z, X, and Y. */
 export function turnOf(orientation: string | null): Turn {
-  const [roll, pitch, yaw] = terms(orientation).map(degreesOf)
+  const [roll, pitch, yaw] = stagedTerms(orientation).map(degreesOf)
   return { x: pitch ?? 0, y: yaw ?? 0, z: roll ?? 0 }
 }
 
@@ -85,25 +70,55 @@ export function turnStage({ x, y, z }: Turn): ModelStage {
   }
 }
 
-/** A stated `scale` as one number, 1 for none and null for axes that differ. */
-export function scaleOf(scale: string | null): number | null {
-  const [x = 1, y = x, z = x] = terms(scale).map(Number)
-  return x === y && y === z && Number.isFinite(x) ? x : null
+/** The smallest size an axis takes, since a viewer draws nothing at zero and turns a negative one inside out. */
+export const SCALE_MIN = 0.01
+
+/** A value at four decimals, past what a field shows and short of a drag's float noise. */
+const rounded = (value: number) => Number(value.toFixed(4))
+
+/** A stated `scale` per axis, one term naming every axis and a missing one taking the first. */
+export function scaleOf(scale: string | null): Axes {
+  const [x = 1, y = x, z = x] = stagedTerms(scale).map(Number)
+  return [x, y, z].every(Number.isFinite) ? { x, y, z } : { x: 1, y: 1, z: 1 }
 }
 
-export function scaleStage(scale: number): ModelStage {
-  return {
-    name: 'scale',
-    value: scale === 1 ? null : `${scale} ${scale} ${scale}`,
-  }
+export function isEven({ x, y, z }: Axes): boolean {
+  return x === y && y === z
 }
 
-/** The file a viewer's `src` names, as the section's header shows it. */
-export function fileName(src: string): string {
-  const last = src.split(/[?#]/)[0]?.split('/').at(-1) ?? ''
-  try {
-    return decodeURIComponent(last)
-  } catch {
-    return last
-  }
+/**
+ * A scale with one axis at `value`, held at the smallest size, a linked one
+ * carrying the other axes by the same ratio.
+ */
+export function scaledTo(
+  from: Axes,
+  axis: keyof Axes,
+  value: number,
+  linked: boolean,
+): Axes {
+  const held = Math.max(SCALE_MIN, value)
+  if (!linked) return { ...from, [axis]: rounded(held) }
+  const { x, y, z } = from
+  // An axis at zero has no ratio to carry the others by.
+  if (from[axis] === 0) return { x: held, y: held, z: held }
+  const least = Math.min(...[x, y, z].map(Math.abs).filter((size) => size > 0))
+  const ratio = Math.max(Math.abs(held / from[axis]), SCALE_MIN / least)
+  return { x: rounded(x * ratio), y: rounded(y * ratio), z: rounded(z * ratio) }
+}
+
+/**
+ * How many meters nearer than its center a model stands: zero for a target
+ * left to the viewer, and null for one stated as no length this reads.
+ */
+export function depthOf({ staged, bounds }: ModelReading): number | null {
+  const term = stagedTerms(staged['camera-target'])[2] ?? 'auto'
+  if (term === 'auto') return 0
+  const read = /^(-?\d*\.?\d+)(m|cm|mm)?$/.exec(term)
+  if (!read?.[1] || !bounds) return null
+  const per = read[2] === 'cm' ? 0.01 : read[2] === 'mm' ? 0.001 : 1
+  return rounded(bounds.center.z - Number(read[1]) * per)
+}
+
+export function transformOf(reading: ModelReading): ModelTransform {
+  return { scale: scaleOf(reading.staged.scale), depth: depthOf(reading) }
 }

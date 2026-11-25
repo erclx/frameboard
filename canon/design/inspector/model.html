@@ -2,421 +2,127 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>model-section-720</title>
+    <title>model-handles-1280</title>
     <style>
       :root {
         --canvas: #ececec;
-        --panel: #fff;
+        --panel: #ffffff;
         --raised: #f2f2f2;
+        --hover: #f5f5f5;
+        --sel: #e8e8e8;
         --border: #e4e4e4;
         --text: #1a1a1a;
         --muted: #6e6e6e;
         --faint: #a5a5a5;
         --accent: #2f7bf0;
         --accentfill: #1f6fe5;
-        --accentfg: #fff;
-        --frame: #fff;
+        --accentfg: #ffffff;
+        --claim: #7f2db5;
+        --note: #c77a00;
+        --destructive: #d92d2d;
+        --good: #1a7f45;
       }
       [data-theme='dark'] {
         --canvas: #1f1f1f;
         --panel: #2a2a2a;
         --raised: #363636;
-        --border: #3a3a3a;
+        --hover: #323232;
+        --sel: #3d3d3d;
+        --border: #353535;
         --text: #e6e6e6;
         --muted: #a0a0a0;
         --faint: #6b6b6b;
         --accent: #4e92f6;
         --accentfill: #2068dc;
-        --accentfg: #fff;
-        --frame: #262626;
+        --accentfg: #ffffff;
+        --claim: #e8b4ff;
+        --note: #f5b84a;
+        --destructive: #ff6b6b;
+        --good: #5fc48a;
       }
+
       * {
         box-sizing: border-box;
+      }
+      html,
+      body {
         margin: 0;
+        height: 100%;
       }
       body {
-        font-family: Geist, 'Noto Sans', 'DejaVu Sans', sans-serif;
+        font-family: Geist, 'DejaVu Sans', sans-serif;
         font-size: 12px;
         color: var(--text);
         background: var(--canvas);
+        overflow: hidden;
         -webkit-font-smoothing: antialiased;
       }
-      .stage {
+      .lab {
+        height: 28px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 12px;
+        background: var(--text);
+        color: var(--panel);
+        font-size: 11px;
+      }
+      .lab b {
+        font-weight: 600;
+      }
+      .lab span {
+        opacity: 0.75;
+      }
+      .app {
         position: relative;
+        height: 772px;
+        display: grid;
+        grid-template-columns: 240px 1fr 240px;
+      }
+      .app.wide {
+        grid-template-columns: 1fr;
+      }
+      .pl,
+      .pr {
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
         overflow: hidden;
-        width: 720px;
-        height: 480px;
-        background: var(--canvas);
       }
-      .cap {
-        position: absolute;
-        left: 16px;
-        top: 12px;
-        right: 16px;
-        color: var(--muted);
-        font-size: 11px;
-        line-height: 1.45;
-      }
-      .cap b {
-        color: var(--text);
-        font-weight: 600;
-      }
-      .abs {
-        position: absolute;
-      }
-      .flabel {
-        position: absolute;
-        color: var(--muted);
-        font-size: 11px;
-      }
-      .frame {
-        position: absolute;
-        background: var(--frame);
-        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
-      }
-      .sel {
-        outline: 1.5px solid var(--accent);
-      }
-      .dash {
-        outline: 1px dashed var(--accent);
-      }
-      .vid {
-        position: absolute;
-        background: linear-gradient(
-          160deg,
-          #0f172a 0%,
-          #1e3a5f 35%,
-          #0d9488 70%,
-          #334155 100%
-        );
-        color: #fff;
-        display: grid;
-        place-items: center;
-        font-size: 15px;
-        letter-spacing: 0.01em;
-      }
-      .vid small {
-        display: block;
-        font-size: 8px;
-        opacity: 0.6;
-        text-align: center;
-        margin-top: 2px;
-      }
-      .aud {
-        position: absolute;
-        height: 26px;
-        border-radius: 13px;
-        background: var(--raised);
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        padding: 0 9px;
-        color: var(--muted);
-        font-size: 9px;
-      }
-      .tile {
-        position: absolute;
-        width: 92px;
-        height: 82px;
-        border-radius: 8px;
-        background: var(--panel);
-        border: 1px solid var(--border);
-        padding: 5px;
-        font-size: 10px;
-        color: var(--text);
-      }
-      .tile i {
-        display: block;
-        height: 48px;
-        border-radius: 5px;
-        background: linear-gradient(160deg, #0f172a, #1e3a5f 40%, #0d9488);
-        margin-bottom: 4px;
-      }
-      .tile.drag {
-        opacity: 0.85;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
-        transform: rotate(-3deg);
-      }
-      .ghost {
-        position: absolute;
-        border: 1.5px dashed var(--accent);
-        background: color-mix(in srgb, var(--accent) 10%, transparent);
-        border-radius: 2px;
-        color: var(--accent);
-        display: grid;
-        place-items: center;
-        font-size: 11px;
-        font-weight: 500;
-      }
-      .chip {
-        position: absolute;
-        padding: 2px 7px;
-        border-radius: 4px;
-        background: var(--accentfill);
-        color: #fff;
-        font-size: 10px;
-        font-weight: 500;
-        white-space: nowrap;
-      }
-      .hint {
-        position: absolute;
-        padding: 5px 10px;
-        border-radius: 7px;
-        background: rgba(30, 30, 30, 0.86);
-        color: #eee;
-        font-size: 11px;
-        white-space: nowrap;
-      }
-      .toast {
-        position: absolute;
-        right: 16px;
-        bottom: 16px;
-        padding: 9px 12px;
-        border-radius: 9px;
-        background: var(--panel);
-        border: 1px solid var(--border);
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
-        font-size: 11px;
-        line-height: 1.4;
-      }
-      .toast b {
-        display: block;
-        font-weight: 600;
-      }
-      .toast span {
-        color: var(--muted);
-      }
-      .cur {
-        position: absolute;
-        width: 0;
-        height: 0;
-        border-left: 6px solid transparent;
-        border-right: 6px solid transparent;
-        border-bottom: 13px solid var(--text);
-        transform: rotate(-30deg);
-      }
-      .nodrop {
-        position: absolute;
-        width: 16px;
-        height: 16px;
-        border-radius: 8px;
-        border: 2px solid #d92d2d;
-        background: var(--panel);
-      }
-      .nodrop:after {
-        content: '';
-        position: absolute;
-        left: 1px;
-        right: 1px;
-        top: 5px;
-        height: 2px;
-        background: #d92d2d;
-        transform: rotate(45deg);
-      }
-      .bar {
-        position: absolute;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        height: 24px;
-        padding: 0 6px;
-        border-radius: 6px;
-        background: var(--panel);
-        border: 1px solid var(--border);
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-        color: var(--text);
-      }
-      .bar.onvid {
-        background: rgba(20, 20, 20, 0.72);
-        border-color: transparent;
-        color: #fff;
-        box-shadow: none;
-        backdrop-filter: blur(6px);
-      }
-      .bar .b {
-        width: 18px;
-        height: 18px;
-        display: grid;
-        place-items: center;
-        flex: none;
-      }
-      .bar .t {
-        flex: 1;
-        height: 3px;
-        border-radius: 2px;
-        background: color-mix(in srgb, currentColor 25%, transparent);
-        position: relative;
-        min-width: 20px;
-      }
-      .bar .t u {
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 28%;
-        background: var(--accent);
-        border-radius: 2px;
-      }
-      .bar .t s {
-        position: absolute;
-        left: 28%;
-        top: 50%;
-        width: 10px;
-        height: 10px;
-        margin: -5px 0 0 -5px;
-        border-radius: 5px;
-        background: var(--accent);
-      }
-      .bar .t.ringall {
-        outline: 2px solid #fff;
-        outline-offset: 5px;
-        border-radius: 3px;
-      }
-      .bar .t.ringthumb s {
-        box-shadow:
-          0 0 0 2px var(--panel),
-          0 0 0 3.5px var(--accent);
-      }
-      .bar .tm {
-        font:
-          10px ui-monospace,
-          'DejaVu Sans Mono',
-          monospace;
-        color: inherit;
-        opacity: 0.7;
-        white-space: nowrap;
-      }
-      .play {
-        width: 0;
-        height: 0;
-        border-left: 7px solid currentColor;
-        border-top: 4.5px solid transparent;
-        border-bottom: 4.5px solid transparent;
-      }
-      .pause {
-        width: 7px;
-        height: 9px;
-        border-left: 2.5px solid currentColor;
-        border-right: 2.5px solid currentColor;
-      }
-      .spk {
-        width: 9px;
-        height: 8px;
-        background: currentColor;
-        clip-path: polygon(0 30%, 40% 30%, 100% 0, 100% 100%, 40% 70%, 0 70%);
-      }
-      .insp {
-        position: absolute;
-        right: 0;
-        top: 40px;
-        bottom: 0;
-        width: 190px;
-        background: var(--panel);
+      .pr {
+        border-right: 0;
         border-left: 1px solid var(--border);
-        border-top: 1px solid var(--border);
-        padding: 12px;
-        font-size: 11px;
       }
-      .insp h4 {
-        font-size: 11px;
-        font-weight: 600;
-        margin-bottom: 8px;
-      }
-      .insp .row {
+      .hd {
+        height: 44px;
+        flex: none;
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        height: 24px;
-        color: var(--text);
-      }
-      .sw {
-        width: 22px;
-        height: 13px;
-        border-radius: 7px;
-        background: var(--faint);
-        position: relative;
-      }
-      .sw:after {
-        content: '';
-        position: absolute;
-        top: 2px;
-        left: 2px;
-        width: 9px;
-        height: 9px;
-        border-radius: 5px;
-        background: #fff;
-      }
-      .sw.on {
-        background: var(--accentfill);
-      }
-      .sw.on:after {
-        left: 11px;
-      }
-      .new {
-        color: var(--accent);
+        gap: 8px;
+        padding: 0 12px;
+        border-bottom: 1px solid var(--border);
         font-weight: 600;
-        font-size: 9px;
-        margin-left: 5px;
       }
-      .native {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 26px;
-        background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        padding: 0 8px;
-        color: #fff;
-        font-size: 9px;
-      }
-      .native .t {
+      .hd .sp {
         flex: 1;
-        height: 3px;
-        border-radius: 2px;
-        background: rgba(255, 255, 255, 0.35);
-        position: relative;
       }
-      .native .t u {
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 28%;
-        background: #fff;
-        border-radius: 2px;
+      .dot {
+        width: 22px;
+        height: 22px;
+        border-radius: 11px;
+        background: var(--text);
       }
-      .pill {
-        position: absolute;
-        left: 50%;
-        bottom: 12px;
-        transform: translateX(-50%);
-        display: flex;
-        gap: 2px;
-        padding: 3px;
-        background: var(--raised);
-        border-radius: 8px;
-        font-size: 11px;
-      }
-      .pill span {
-        padding: 4px 9px;
-        border-radius: 6px;
-        color: var(--muted);
-      }
-      .pill .on {
-        background: var(--accentfill);
-        color: #fff;
-      }
-      .itabs {
+      .seg {
         display: flex;
         margin: 8px;
         padding: 2px;
         background: var(--raised);
         border-radius: 7px;
+        flex: none;
       }
-      .itabs span {
+      .seg span {
         flex: 1;
         height: 24px;
         line-height: 24px;
@@ -424,330 +130,374 @@
         border-radius: 5px;
         color: var(--muted);
         font-weight: 500;
-        font-size: 12px;
       }
-      .itabs .on {
+      .seg .on {
         background: var(--panel);
         color: var(--text);
         box-shadow: 0 0 0 1px var(--border);
       }
-      .q {
-        display: inline-grid;
-        place-items: center;
-        width: 12px;
-        height: 12px;
-        margin-left: 4px;
-        border-radius: 6px;
-        box-shadow: 0 0 0 1px var(--faint);
-        color: var(--muted);
-        font-size: 8px;
-        font-weight: 500;
-        line-height: 1;
-        vertical-align: 1px;
+      .body {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0 8px 8px;
       }
-      .qtip {
-        position: absolute;
-        z-index: 8;
-        width: 200px;
-        padding: 5px 8px;
-        border-radius: 6px;
-        background: var(--text);
-        color: var(--panel);
+      .h3 {
         font-size: 11px;
-        font-weight: 400;
-        line-height: 1.45;
-      }
-      .crumb {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        height: 36px;
-        padding: 0 12px;
-        border-bottom: 1px solid var(--border);
-        white-space: nowrap;
-        overflow: hidden;
-      }
-      .crumb .up {
-        color: var(--muted);
-        border-radius: 4px;
-        padding: 1px 3px;
-        margin-left: -3px;
-      }
-      .crumb .up.hov {
-        background: var(--raised);
-        color: var(--text);
-      }
-      .crumb .sl {
-        color: var(--faint);
-      }
-      .crumb b {
         font-weight: 600;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .ihint {
-        padding: 10px 12px 12px;
-        color: var(--muted);
-        line-height: 1.5;
-      }
-      .xsel {
+        padding: 10px 4px 6px;
         display: flex;
         justify-content: space-between;
+      }
+      .h3 .n {
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .row {
+        height: 28px;
+        display: flex;
         align-items: center;
+        gap: 8px;
+        padding: 0 4px;
+        border-radius: 5px;
+      }
+      .row .r {
+        margin-left: auto;
+        color: var(--muted);
+        font-size: 10px;
+      }
+      .fld {
         height: 26px;
+        border-radius: 5px;
+        background: var(--raised);
+        display: flex;
+        align-items: center;
         padding: 0 8px;
-        border-radius: 6px;
-        background: var(--raised);
+        gap: 6px;
         color: var(--text);
       }
-      .xsel i {
+      .fld i {
         font-style: normal;
         color: var(--muted);
-      }
-      .xlab {
-        display: block;
-        color: var(--muted);
-        margin: 8px 0 4px 2px;
-      }
-      .xlab:first-child {
-        margin-top: 0;
-      }
-      .xbtn {
-        display: grid;
-        place-items: center;
-        height: 26px;
-        margin-top: 8px;
-        border-radius: 6px;
-        box-shadow: 0 0 0 1px var(--border);
-        color: var(--text);
-      }
-      .xfile {
-        margin-top: 6px;
-        color: var(--muted);
-        font:
-          10px/1.5 'Geist Mono',
-          'DejaVu Sans Mono',
-          monospace;
-      }
-      .insp .itabs {
-        margin: -4px -4px 10px;
-      }
-      .flab {
-        color: var(--muted);
-        font-size: 11px;
-        margin: 4px 0 2px;
-      }
-      .fgrid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        column-gap: 12px;
-      }
-      .isec {
-        margin: 0 -12px;
-        padding: 0 12px 12px;
-      }
-      .ihead {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-weight: 600;
-        margin-bottom: 8px;
-      }
-      .ihead i {
-        font-style: normal;
-        font-weight: 400;
-        color: var(--muted);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      .cap2 {
-        display: block;
-        font-size: 11px;
-        color: var(--muted);
-        margin: 0 0 4px 2px;
-      }
-      .cap2.next {
-        margin-top: 6px;
       }
       .grid2 {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 6px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
       }
-      .grid3 {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
-      }
-      .fld {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        height: 26px;
-        padding: 0 8px;
-        background: var(--raised);
+      .tile {
         border-radius: 6px;
-        min-width: 0;
+        background: var(--raised);
+        overflow: hidden;
       }
-      .fld .k {
-        color: var(--muted);
-        min-width: 8px;
+      .tile .im {
+        background: var(--sel);
+        height: 72px;
       }
-      .fld .v {
-        color: var(--text);
-        font-variant-numeric: tabular-nums;
-      }
-      .fld .car {
-        margin-left: auto;
-        color: var(--muted);
-        display: grid;
-      }
-      .srow {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        height: 24px;
-        margin-top: 6px;
-      }
-      .model {
-        position: absolute;
-        display: grid;
-        place-items: center;
-      }
-      .hd {
-        position: absolute;
-        width: 7px;
-        height: 7px;
-        background: var(--panel);
-        box-shadow: 0 0 0 1.5px var(--accent);
-      }
-      .size {
-        position: absolute;
-        padding: 1px 6px;
-        border-radius: 4px;
-        background: var(--accentfill);
-        color: #fff;
-        font-size: 10px;
-        font-weight: 500;
+      .tile .t {
+        padding: 5px 6px 0;
         white-space: nowrap;
-        transform: translateX(-50%);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 11px;
       }
-      .mhint {
-        margin: 0 0 8px;
-        padding: 6px 8px;
-        border-radius: 6px;
-        background: var(--raised);
+      .tile .m {
+        padding: 0 6px 6px;
+        color: var(--muted);
+        font-size: 10px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .cv {
+        position: relative;
+        overflow: hidden;
+      }
+      .fr {
+        position: absolute;
+        left: 50%;
+        top: 40px;
+        width: 300px;
+        height: 620px;
+        margin-left: -150px;
+        background: var(--panel);
+        border: 1px solid var(--border);
+      }
+      .fr::before {
+        content: attr(data-n);
+        position: absolute;
+        top: -18px;
+        left: 0;
         color: var(--muted);
         font-size: 11px;
-        line-height: 1.4;
       }
-      .mhint b {
+      .tb {
+        position: absolute;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        height: 40px;
+        width: 420px;
+        border-radius: 10px;
+        background: var(--panel);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .btn {
+        height: 28px;
+        padding: 0 12px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 500;
+        background: var(--panel);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .btn.pri {
+        background: var(--text);
+        color: var(--panel);
+        box-shadow: none;
+      }
+      .scrim {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.28);
+      }
+      .dlg {
+        position: absolute;
+        background: var(--panel);
+        border-radius: 10px;
+        box-shadow:
+          0 0 0 1px var(--border),
+          0 12px 32px rgba(0, 0, 0, 0.18);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .dh {
+        height: 48px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+        font-size: 13px;
+      }
+      .x {
+        margin-left: auto;
+        color: var(--muted);
+        font-weight: 400;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .bar {
+        height: 10px;
+        border-radius: 3px;
+        background: var(--sel);
+      }
+
+      .f3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+      }
+      .f2 {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 4px;
+      }
+      .sec {
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 8px;
+      }
+      .lbl {
+        font-size: 10px;
+        color: var(--muted);
+        padding: 6px 2px 3px;
+      }
+      .mdl {
+        position: absolute;
+        left: 50%;
+        top: 300px;
+        width: 200px;
+        height: 150px;
+        margin-left: -100px;
+        background: var(--sel);
+        outline: 1.5px solid var(--text);
+      }
+      .mdl::after {
+        content: 'spin.glb';
+        position: absolute;
+        bottom: -18px;
+        left: 0;
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .ax {
+        position: absolute;
+        background: var(--text);
+      }
+      .axl {
+        position: absolute;
+        font-size: 10px;
+        font-weight: 600;
+      }
+      .chip {
+        position: absolute;
+        display: flex;
+        gap: 2px;
+        padding: 2px;
+        border-radius: 7px;
+        background: var(--panel);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .chip span {
+        width: 26px;
+        height: 22px;
+        border-radius: 5px;
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .chip .on {
+        background: var(--sel);
         color: var(--text);
         font-weight: 600;
       }
-      .mhint kbd {
-        font:
-          500 10px 'Geist Mono',
-          'DejaVu Sans Mono',
-          monospace;
-        padding: 0 4px;
-        border-radius: 4px;
-        background: var(--panel);
-        box-shadow: 0 0 0 1px var(--border);
-        color: var(--text);
-      }
-      .insp {
-        overflow: hidden;
+      .chip span {
+        width: auto;
+        padding: 0 8px;
       }
     </style>
   </head>
   <body>
-    <div class="stage">
-      <div class="cap">
-        <b>model-section-720</b> · a selected model shows a Model section, and a
-        double-click turns it by drag, writing the angle on release
-      </div>
-      <div class="flabel" style="left: 40px; top: 52px">hero</div>
-      <div
-        class="frame"
-        style="left: 40px; top: 70px; width: 420px; height: 300px"
-      ></div>
-      <div
-        class="abs"
-        style="left: 56px; top: 84px; font-size: 13px; font-weight: 600"
-      >
-        New phone
-      </div>
-      <div
-        class="model sel"
-        style="left: 150px; top: 112px; width: 200px; height: 220px"
-      >
-        <svg width="150" height="190" viewBox="0 0 150 190" aria-hidden="true">
-          <polygon points="28,44 96,14 126,30 58,62" fill="#3a4150" />
-          <polygon points="28,44 58,62 58,176 28,156" fill="#161a22" />
-          <polygon points="58,62 126,30 126,142 58,176" fill="#232936" />
-          <polygon points="63,68 121,41 121,138 63,167" fill="#4e92f6" />
-          <polygon points="84,62 100,54.5 100,59.5 84,67" fill="#0c0f14" />
-        </svg>
-      </div>
-      <span class="hd" style="left: 147px; top: 109px"></span
-      ><span class="hd" style="left: 346px; top: 109px"></span
-      ><span class="hd" style="left: 147px; top: 328px"></span
-      ><span class="hd" style="left: 346px; top: 328px"></span
-      ><span class="size" style="left: 250px; top: 338px">200 × 220</span>
-      <div class="chip" style="left: 40px; top: 376px">
-        Turning, Esc to leave
-      </div>
-      <div class="insp">
-        <div class="itabs">
-          <span class="on">Design</span><span>Slides</span><span>Export</span>
+    <div class="lab">
+      <b>model-handles-1280 · arm 2</b
+      ><span
+        >Cost: a new canvas mode to learn, and drag handles sit close to the
+        mesh-editing non-goal</span
+      ><span>Ref: the operator’s reference canvas handles</span>
+    </div>
+    <div class="app">
+      <aside class="pl">
+        <div class="hd">
+          drive <span class="muted">▾</span><span class="sp"></span
+          ><span class="muted">◫</span>
         </div>
-        <div class="isec">
-          <div class="ihead"><span>Model</span><i>phone.glb</i></div>
-          <p class="mhint">
-            <b>Double-click</b> the model to turn it by hand.
-            <kbd>Esc</kbd> leaves.
-          </p>
-          <span class="cap2">Camera · where you look from</span>
-          <div class="grid2">
-            <label class="fld"
-              ><span class="k">Around</span><span class="v">-40°</span></label
-            ><label class="fld"
-              ><span class="k">Height</span><span class="v">75°</span></label
-            >
-          </div>
-          <span class="cap2 next">Model · how it sits</span>
-          <div class="grid3">
-            <label class="fld"
-              ><span class="k">X</span><span class="v">0°</span></label
-            ><label class="fld"
-              ><span class="k">Y</span><span class="v">0°</span></label
-            ><label class="fld"
-              ><span class="k">Z</span><span class="v">0°</span></label
-            >
-          </div>
-          <span class="cap2 next">Scale</span
-          ><label class="fld"><span class="v">1</span></label
-          ><span class="cap2 next">Clip in this file · 1</span
-          ><label class="fld"
-            ><span class="v">Spin</span
-            ><span class="car"
-              ><svg
-                width="10"
-                height="10"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M6 9l6 6 6-6" /></svg></span
-          ></label>
-          <div class="srow">Play on load<span class="sw on"></span></div>
+        <div class="seg">
+          <span class="on">Design</span><span class="">Theme</span
+          ><span class="">Assets</span>
         </div>
-      </div>
+        <div class="body">
+          <div class="h3">Pages</div>
+          <div class="row" style="background: var(--sel)">page-1</div>
+          <div class="h3" style="margin-top: 12px">Layers</div>
+          <div class="row" style="padding-left: 4px">signup</div>
+          <div class="row" style="padding-left: 18px">Container</div>
+          <div class="row" style="padding-left: 18px">tile.png</div>
+          <div class="row" style="padding-left: 18px; background: var(--sel)">
+            spin.glb
+          </div>
+          <div class="row" style="padding-left: 18px">voice.ogg</div>
+        </div>
+      </aside>
+      <main class="cv">
+        <div class="fr" data-n="signup"></div>
+        <div class="tb"></div>
+        <div class="mdl"></div>
+        <div
+          class="ax"
+          style="left: calc(50% - 1px); top: 330px; width: 2px; height: 90px"
+        ></div>
+        <div class="axl" style="left: calc(50% - 4px); top: 314px">Y</div>
+        <div
+          class="ax"
+          style="left: 50%; top: 419px; width: 90px; height: 2px"
+        ></div>
+        <div class="axl" style="left: calc(50% + 94px); top: 412px">X</div>
+        <div
+          class="ax"
+          style="
+            left: calc(50% - 46px);
+            top: 419px;
+            width: 64px;
+            height: 2px;
+            transform: rotate(-35deg);
+            transform-origin: right center;
+          "
+        ></div>
+        <div class="axl" style="left: calc(50% - 62px); top: 440px">Z</div>
+        <div class="chip" style="left: calc(50% - 46px); top: 262px">
+          <span class="on">Move</span><span>Turn</span><span>Size</span>
+        </div>
+      </main>
+      <aside class="pr">
+        <div class="hd">
+          <span class="dot"></span><span class="sp"></span
+          ><span class="muted">91% ▾</span>
+        </div>
+        <div class="seg">
+          <span class="on">Design</span><span class="">Slides</span
+          ><span class="">Export</span>
+        </div>
+        <div class="body">
+          <div class="row" style="padding: 6px 4px">
+            <span class="muted">signup /</span>&nbsp;<b>spin.glb</b>
+          </div>
+          <div class="sec">
+            <div class="h3">Transform</div>
+            <div class="lbl">Position</div>
+            <div class="f3">
+              <div class="fld"><i>X</i>195</div>
+              <div class="fld"><i>Y</i>542</div>
+              <div class="fld"><i>Z</i>0</div>
+            </div>
+            <div class="lbl">Rotation</div>
+            <div class="f3">
+              <div class="fld"><i>X</i>0°</div>
+              <div class="fld"><i>Y</i>0°</div>
+              <div class="fld"><i>Z</i>0°</div>
+            </div>
+            <div class="lbl" style="display: flex">
+              Scale<span style="margin-left: auto">⛓ linked</span>
+            </div>
+            <div class="f3">
+              <div class="fld"><i>X</i>1</div>
+              <div class="fld"><i>Y</i>1</div>
+              <div class="fld"><i>Z</i>1</div>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="h3">
+              Camera <span class="n">where you look from</span>
+            </div>
+            <div class="f2">
+              <div class="fld"><i>Around</i>0°</div>
+              <div class="fld"><i>Height</i>75°</div>
+            </div>
+            <div class="lbl">Clip</div>
+            <div class="fld"><i></i>Spin ▾</div>
+          </div>
+          <div class="sec">
+            <div class="h3">Layout</div>
+            <div class="f2">
+              <div class="fld"><i>W</i>195</div>
+              <div class="fld"><i>H</i>110</div>
+            </div>
+          </div>
+          <div class="sec">
+            <div class="h3">Appearance</div>
+            <div class="f2">
+              <div class="fld"><i>◑</i>100%</div>
+              <div class="fld"><i>◜</i>0</div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
   </body>
 </html>

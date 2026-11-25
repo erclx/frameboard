@@ -18,7 +18,6 @@ const HASH = 'c'.repeat(64)
 /** The viewer after html, head, and body, the injected style and script skipped. */
 const VIEWER = { frame: FRAME, index: 3, hash: HASH }
 const FRAME_BOX = { x: 0, y: 0, width: 400, height: 300 }
-/** 200 tall, so a drag of 50 pixels is a quarter turn. */
 const BOX = { x: 100, y: 40, width: 200, height: 200 }
 
 let root: HTMLElement | null = null
@@ -121,7 +120,7 @@ describe('TurnSurface', () => {
     ])
 
     await waitFor(() =>
-      expect(viewer.getAttribute('camera-orbit')).toBe('-90deg 75deg auto'),
+      expect(viewer.getAttribute('camera-orbit')).toBe('-25deg 75deg auto'),
     )
     expect(writes).toEqual([])
   })
@@ -137,7 +136,7 @@ describe('TurnSurface', () => {
 
     expect(writes).toEqual([
       [
-        { name: 'camera-orbit', value: '-90deg 75deg auto' },
+        { name: 'camera-orbit', value: '-25deg 75deg auto' },
         { name: 'max-camera-orbit', value: 'auto auto auto' },
       ],
     ])

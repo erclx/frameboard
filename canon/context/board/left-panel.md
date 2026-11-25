@@ -15,7 +15,7 @@ Owns the board's left side, being the project header, the page list, the layers 
 
 Owns the left panel, being `project-header.tsx` with the way home, the name, and Hide UI, then Design's searchable pages list over a layers tree, Theme in `theme/`, Assets, and `page-actions.ts` for the `page.*` actions. The name renames on a click, a rename keeping the open tab, and its chevron opens the project menu.
 
-- `board/frame-order.ts` holds the section grouping, so the selection chip's count and the Tab step read the order the rows draw
+- `board/frame-order.ts` holds the section grouping the rows draw, apart from the canvas order the selection chip's count and the Tab step read
 - A row restacks within its own group, never into or out of a section, landing at the page-wide index beside the frame it drops by
 - A canvas click waits out `REVEAL_DELAY_MS` before it centers a frame, since a travel would move the point a double-click picks at
 - The reveal reports as a hand move, so it stops Follow, and a row click fits a frame larger than the view where a canvas click never does

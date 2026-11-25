@@ -27,7 +27,7 @@ description: The right panel for a frame or an element
 - A stepped element's effect tiles and its three start buttons
 - The Motion section held mid-way
 - The Video section with its Controls, Autoplay, Loop, and Muted in the file switches
-- The Model section with its double-click hint, Camera and Model turns, and clip count over a model being turned
+- The Transform section's Position, Rotation, and linked Scale over the Camera section and its clip, with the canvas handles in Move, Turn, and Size
 - The phone link card open on a frame
 - The Export section with its Name field and one line per file
 - Each panel under its Design, Slides, or Export tab

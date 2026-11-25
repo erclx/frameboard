@@ -23,6 +23,7 @@ import { heldStore, holdOutline } from './held'
 import { hasBox, useGhosts, useMeasures } from './measures'
 import { useLiveMedia } from './media'
 import { MediaBar } from './media-bar'
+import { ModelHandles } from './model-handles/handles'
 import { drawsOverflow, paintedIndexes, pictureUrl } from './overflow'
 import { newTextStore } from './text-in-place'
 import { TurnSurface } from './turn-surface'
@@ -352,6 +353,14 @@ function ElementOutline({ element, frames, container }: ElementOutlineProps) {
           container={container}
         />
       ) : null}
+      <ModelHandles
+        element={element}
+        box={box}
+        placed={measure?.placed ?? null}
+        read={read}
+        locked={locked}
+        container={container}
+      />
       <div
         data-element-selection
         data-element-locked={locked || undefined}
