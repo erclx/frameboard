@@ -948,7 +948,7 @@ export function Canvas({
                 </Fragment>
               )
             })}
-            <SelectionOverlay frames={frames} sections={page.sections} />
+            <SelectionOverlay frames={page.frames} />
             <ElementOverlay frames={frames} container={layer} />
             <BindingLinks frames={frames} container={layer} />
             {/* Under the drop line, which a shape placed in the flow lands at. */}

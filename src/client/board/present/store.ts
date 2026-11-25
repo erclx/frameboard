@@ -9,9 +9,9 @@ import {
 } from '@/shared/present-transition'
 import type { FrameRecord, PageRecord } from '@/shared/records/list'
 
+import { readingOrder } from '../frame-order'
 import { select, selectionStore } from '../selection'
 import { canvasView } from '../view'
-import { readingOrder } from './order'
 import { canPlayOwn } from './own-transitions'
 import {
   type Audience,

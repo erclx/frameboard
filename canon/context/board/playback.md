@@ -36,7 +36,7 @@ Owns Play's state and surfaces, being the frame `entered.ts` holds, the `shield.
 Owns present mode, a page's frames one at a time over the window on black through the Fullscreen API, each fit to at most twice its size and recording no undo step. `store.ts` holds the page, frame, step, and presenter window, `sync.ts` is the channel to that window, `overlay.tsx` takes the keys, and `overview.tsx` is the slide grid.
 
 - It asks for full screen or the presenter window inside the starting press, since the browser grants either only then and never both, and a refusal presents in the window
-- Tab on the board and the Layers panel keep Layers order, so the two orders differ on one page
+- It walks `board/frame-order.ts`'s reading order, as Tab on the board does, and the Layers panel alone keeps stacking order
 - Leaving returns focus to what opened presenting, or the Present button once that is gone, selects its frame over its own canvas, and shows the toasts `app.tsx` held, a timed one having lapsed unseen
 - Reduced motion makes every transition a cut, a step taken before own keyframes arrive cuts, and a transition with no `leave` keeps its leaving slide still
 - The frame walks a slide's steps and hides a group an agent adds at the step it holds, and only present mode hides one, so Edit and a capture show every one
