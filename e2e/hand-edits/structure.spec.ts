@@ -144,25 +144,24 @@ test.describe('page structure by hand, and its undo', () => {
     )
   }
 
-  // Waits for the rename's board, then holds while its reloads, sent straight after, land.
-  async function batchHandled(
-    page: Page,
-    from: number,
-    ref: string,
-  ): Promise<void> {
+  // Waits for the rename's patch, then holds while its reloads, sent straight after, land.
+  async function batchHandled(page: Page, from: number): Promise<void> {
     await expect
       .poll(() =>
-        page.evaluate(
-          ([since, frame]) =>
-            (window as unknown as { liveRead: string[] }).liveRead
-              .slice(since)
-              .some(
-                (text) =>
-                  text.startsWith('{"type":"board"') &&
-                  text.includes(`"ref":"${frame}"`),
-              ),
-          [from, ref] as const,
-        ),
+        page.evaluate((since) => {
+          const read = (
+            window as unknown as { liveRead: string[] }
+          ).liveRead.slice(since)
+          const renamed = read.findIndex((text) =>
+            text.startsWith('{"type":"renamed"'),
+          )
+          return (
+            renamed >= 0 &&
+            read
+              .slice(renamed)
+              .some((text) => text.startsWith('{"type":"patch"'))
+          )
+        }, from),
       )
       .toBe(true)
     // The window a reload would land in, asserting nothing happened across it.
@@ -183,7 +182,7 @@ test.describe('page structure by hand, and its undo', () => {
     await page.keyboard.press('Enter')
 
     await expect(page).toHaveURL(/\/p\/studio\/start$/)
-    await batchHandled(page, before, 'studio/start/hero')
+    await batchHandled(page, before)
     await expect(
       page.locator('[data-frame="studio/start/hero"] iframe'),
     ).toBeAttached()
@@ -206,7 +205,7 @@ test.describe('page structure by hand, and its undo', () => {
     await page.keyboard.press('Enter')
 
     await expect(page).toHaveURL(/\/p\/atelier\/home$/)
-    await batchHandled(page, beforeRename, 'atelier/home/hero')
+    await batchHandled(page, beforeRename)
     await expect(
       page.locator('[data-frame="atelier/home/hero"] iframe'),
     ).toBeAttached()
@@ -217,7 +216,7 @@ test.describe('page structure by hand, and its undo', () => {
     await undo(page)
 
     await expect(page).toHaveURL(/\/p\/studio\/home$/)
-    await batchHandled(page, beforeUndo, 'studio/home/hero')
+    await batchHandled(page, beforeUndo)
     await expect(
       page.locator('[data-frame="studio/home/hero"] iframe'),
     ).toBeAttached()

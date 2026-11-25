@@ -50,3 +50,12 @@ Owns the socket and the store every screen reads, being unseen marks, seen repli
 - `canWrite` is false until the server's `access` message and whenever the socket drops, and `writeBoard` marks the tab read-only on a 401
 - A look clears a shown mark by the show's id and time, never by hash, since the hash may already have been seen
 - A show of a frame whose write is still unseen leaves the write's mark, so its glow and the changed title stay
+
+### `src/shared/board-sync/`
+
+Owns the patch that keeps a tab's board equal to the server's and the rename both ends apply, shared since neither end is correct alone. `src/server/live/feed.ts` builds a patch against the board the tabs hold, and `src/client/live/socket.ts` applies it through `receiveBoard`.
+
+- Each level of a patch lists its children in order, a name for one held as it stands and a record for one that moved, so an add, a removal, and a reorder need no case of their own
+- A name the tab does not hold makes it ask for the whole board with `resync`, and it applies no patch until that board comes
+- A batch that changed nothing still sends a patch, since `useTokenTable`, `useAssetList`, and `useInstalledFonts` read a new `board` object as a batch having come
+- Both ends decide a rename by `takesRename`, so a change to that rule on one end alone leaves the next patch naming records the tab lacks

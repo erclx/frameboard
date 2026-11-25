@@ -48,17 +48,17 @@ export function App() {
 }
 
 function Shell() {
-  const projects = useLive((state) => state.board?.projects)
+  const loaded = useLive((state) => state.board !== null)
   const connected = useLive((state) => state.connected)
   useEffect(() => watchExpiredLink(), [])
-  useTabTitle()
 
   return (
     <div className="relative h-svh overflow-auto bg-background text-foreground">
-      {projects ? (
+      <TabTitle />
+      {loaded ? (
         <Switch>
           <Route path="/">
-            <Home projects={projects} />
+            <HomeRoute />
           </Route>
           <Route path="/p/:project/:page/presenter">
             <PresenterRoute />
@@ -106,7 +106,7 @@ function Shell() {
           </Route>
         </Switch>
       )}
-      {projects && !connected ? (
+      {loaded && !connected ? (
         <p
           role="status"
           className="absolute top-3 left-1/2 -translate-x-1/2 rounded-xl border border-border bg-card px-3 py-1 text-body text-muted-foreground"
@@ -114,9 +114,20 @@ function Shell() {
           Reconnecting to frameboard serve
         </p>
       ) : null}
-      {projects ? <ViewOnlyNotice /> : null}
+      {loaded ? <ViewOnlyNotice /> : null}
     </div>
   )
+}
+
+/** Draws nothing, so a count in the title renders no screen. */
+function TabTitle() {
+  useTabTitle()
+  return null
+}
+
+function HomeRoute() {
+  const projects = useLive((state) => state.board?.projects)
+  return projects ? <Home projects={projects} /> : null
 }
 
 /** The presenter window, following the presentation its query names. */
