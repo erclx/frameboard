@@ -41,6 +41,16 @@ const TRANSFORMS = {
   'a quarter turn': { own: 'rotate:90deg' },
   'a moved parent': { parent: 'transform:translate(1.3px,.6px)' },
   'a scaled parent': { parent: 'transform:scale(1.5)' },
+  'a mirrored parent': { parent: 'transform:scaleX(-1)' },
+  'a flipped parent': { parent: 'transform:scaleY(-1)' },
+  'a contained parent': { parent: 'contain:layout style' },
+  'a paint contained parent': { parent: 'contain:paint' },
+  'a parent of auto visibility': { parent: 'content-visibility:auto' },
+  'a hint of perspective': { own: 'will-change:perspective' },
+  'a perspective function': {
+    own: 'transform:perspective(300px) translateZ(0)',
+  },
+  'a path turning it': { own: 'offset-path:ray(0deg);offset-distance:4px' },
   'a parent at the end of its animation': {
     parent: 'animation:grow 1ms both',
   },
@@ -363,6 +373,12 @@ describe.skipIf(shell === null)(
             fractionalFrame(place, size, transform),
           ]),
         ),
+        // Element 6 overruns its scroller only while element 5 is stretched.
+        'studio/home/scrolled.html':
+          '<!doctype html><style>body{margin:0}</style>' +
+          '<div id="scroller" style="width:80px;height:100px;overflow:auto"><div style="height:35px;padding-top:45px;scale:1 3;transform-origin:0 0">' +
+          '<div style="width:40px;height:10px;background:rgb(0,0,255)"></div></div></div>' +
+          "<script>document.getElementById('scroller').scrollTop = 70</script>",
         // The controls' column would draw blue right of the green photo.
         'studio/home/tuner.html':
           '<style>body{margin:0;background:#fff;display:flex}#photo{width:100px;height:100px;background:#0a0}.controls{width:100px;height:100px;background:#00f}</style>' +
@@ -1016,6 +1032,28 @@ describe.skipIf(shell === null)(
         })
       },
     )
+
+    it('shoots an element inside a scroller where it stands scrolled', async () => {
+      const render = createWarmRenderer({
+        baseUrl: () => host.url,
+        browser: createWarmBrowser(async () => requireShell(shell)),
+        scale: 1,
+      })
+
+      const bytes = await render(
+        {
+          ref: 'studio/home/scrolled',
+          box: { width: 200, height: 160 },
+          element: 6,
+        },
+        'light',
+      )
+
+      expect(await paintedExtent(requireShell(shell), bytes)).toEqual({
+        clear: { left: 0, top: 0, right: 0, bottom: 0 },
+        painted: [40, 30],
+      })
+    })
 
     it('keeps the crop of an ancestor over an element past the left edge', async () => {
       const render = createWarmRenderer({

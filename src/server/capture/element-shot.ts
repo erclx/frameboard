@@ -87,6 +87,7 @@ function hideAllBut(index: number): Isolated {
 // walks the spaces from the root down and moves the rectangle by their snaps.
 function paintedBox(scale: number): ElementBox {
   type Styled = HTMLElement | SVGElement
+  type Reshape = Pick<CSSStyleDeclaration, 'rotate' | 'scale' | 'transform'>
   const target = document.querySelector<Styled>('[data-frameboard-shot]')
   if (!target) throw new Error('No element is isolated.')
 
@@ -129,16 +130,42 @@ function paintedBox(scale: number): ElementBox {
         : [axis === 'x' ? 1 : 0, axis === 'y' ? 1 : 0, axis === 'z' ? 1 : 0]
     return new DOMMatrix().rotateAxisAngle(x, y, z, angle)
   }
-  const linear = (rotate: string, scale: string, transform: string) => {
+  const linear = ({ rotate, scale, transform }: Reshape, path: DOMMatrix) => {
     let matrix = rotate === 'none' ? new DOMMatrix() : turned(rotate)
     if (scale !== 'none') {
       const [x = 1, y = x, z = 1] = scale.split(' ').map(Number)
       matrix = matrix.scale(x, y, z)
     }
+    matrix = matrix.multiply(path)
     return transform === 'none'
       ? matrix
       : matrix.multiply(new DOMMatrix(transform))
   }
+  // A path's turn is in no computed value, so three points are carried along it.
+  const along = (element: Styled, path: string) => {
+    const landed = (transform: string) => {
+      hold(element, { transform: `${transform} scale(0)` })
+      const { x, y } = rect(element)
+      return { x, y }
+    }
+    const origin = landed('translate(0px)')
+    hold(element, { 'offset-path': path })
+    const start = landed('translate(0px)')
+    const right = landed('translate(100px)')
+    const down = landed('translateY(100px)')
+    hold(element, { 'offset-path': 'none', transform: 'translate(0px)' })
+    const unit = 100 * element.currentCSSZoom
+    return new DOMMatrix([
+      (right.x - start.x) / unit,
+      (right.y - start.y) / unit,
+      (down.x - start.x) / unit,
+      (down.y - start.y) / unit,
+      (start.x - origin.x) / element.currentCSSZoom,
+      (start.y - origin.y) / element.currentCSSZoom,
+    ])
+  }
+  const off = (...terms: number[]) =>
+    terms.some((term) => Math.abs(term) > 1e-6)
 
   const reshapes = ({ effect }: Animation) =>
     effect instanceof KeyframeEffect &&
@@ -163,6 +190,13 @@ function paintedBox(scale: number): ElementBox {
   }
 
   const replaced = 'img, svg, video, canvas, object, embed, iframe'
+  const hints = [
+    'transform',
+    'transform-style',
+    'rotate',
+    'scale',
+    'perspective',
+  ]
   const spaces = []
   for (let at: Element | null = outermost; at; at = at.parentElement) {
     if (!(at instanceof HTMLElement || at instanceof SVGElement)) continue
@@ -171,10 +205,12 @@ function paintedBox(scale: number): ElementBox {
     // A box of no kind that transforms keeps the value and ignores it.
     const inline = display === 'inline' && !at.matches(replaced)
     if (inline || display === 'contents') continue
+    const contain = computed.contain.split(' ')
     // Chromium starts the space these make on a whole pixel.
     const layered =
-      /\b(transform|rotate|scale)\b/.test(computed.willChange) ||
-      /\b(paint|strict|content)\b/.test(computed.contain) ||
+      computed.willChange.split(', ').some((hint) => hints.includes(hint)) ||
+      ['paint', 'strict', 'content'].some((kind) => contain.includes(kind)) ||
+      ['layout', 'style'].every((kind) => contain.includes(kind)) ||
       computed.contentVisibility !== 'visible' ||
       at.getAnimations().some(reshapes)
     const still = [
@@ -185,22 +221,23 @@ function paintedBox(scale: number): ElementBox {
       offsetPath,
     ].every((value) => value === 'none')
     if (still && !layered) continue
-    const matrix = linear(rotate, computed.scale, transform)
     spaces.unshift({
       element: at,
       style: at.getAttribute('style'),
-      matrix,
+      layered,
+      reshape: { rotate, scale: computed.scale, transform },
       translate,
+      offsetPath,
       origin: computed.transformOrigin.split(' ').map(parseFloat),
       zoom: at.currentCSSZoom,
-      // A space under anything but a move loses the fraction it starts at.
-      keepsFraction:
-        !layered &&
-        offsetPath === 'none' &&
-        [matrix.m11, matrix.m12, matrix.m21, matrix.m22].join() === '1,0,0,1',
     })
   }
 
+  // Flat content can fit a scroller it overran, which clamps where it stands.
+  const scrolled: { element: Element; left: number; top: number }[] = []
+  for (let at: Element | null = outermost; at; at = at.parentElement) {
+    scrolled.push({ element: at, left: at.scrollLeft, top: at.scrollTop })
+  }
   for (const { element } of spaces) {
     hold(element, {
       transition: 'none',
@@ -222,12 +259,18 @@ function paintedBox(scale: number): ElementBox {
     hold(element, { translate })
     const slid = rect(element)
     hold(element, { translate: 'none' })
+    const matrix = linear(
+      space.reshape,
+      space.offsetPath === 'none'
+        ? new DOMMatrix()
+        : along(element, space.offsetPath),
+    )
     const [x = 0, y = 0, z = 0] = space.origin
     const own = new DOMMatrix()
       .translate(slid.x - place.x, slid.y - place.y)
       .scale(zoom)
       .translate(x, y, z)
-      .multiply(space.matrix)
+      .multiply(matrix)
       .translate(-x, -y, -z)
       .scale(1 / zoom)
     const from = { x: place.x - start.x, y: place.y - start.y }
@@ -236,9 +279,14 @@ function paintedBox(scale: number): ElementBox {
     laid = laid.translate(from.x, from.y).multiply(own)
     painted = painted.translate(whole.x, whole.y).multiply(own)
     start = place
-    fraction = space.keepsFraction
-      ? { x: exact.x - whole.x, y: exact.y - whole.y }
-      : { x: 0, y: 0 }
+    const { m12, m13, m14, m21, m23, m24, m31, m32, m34 } = matrix
+    const straight =
+      !space.layered && !off(m12, m13, m14, m21, m23, m24, m31, m32, m34)
+    // A space keeps the fraction it starts at along each axis it only moves.
+    fraction = {
+      x: straight && !off(matrix.m11 - 1) ? exact.x - whole.x : 0,
+      y: straight && !off(matrix.m22 - 1) ? exact.y - whole.y : 0,
+    }
   }
   const { x: flatX, y: flatY, ...size } = rect(outermost)
   const box = { x: flatX - start.x, y: flatY - start.y, ...size }
@@ -261,6 +309,10 @@ function paintedBox(scale: number): ElementBox {
   // Settled before its transition comes back, which would run from flat.
   rect(target)
   for (const { element, style } of spaces) restore(element, style)
+  for (const { element, left, top } of scrolled) {
+    if (element.scrollLeft === left && element.scrollTop === top) continue
+    element.scrollTo({ left, top, behavior: 'instant' })
+  }
 
   // Less of a pixel than this paints no alpha.
   const slack = 0.002
