@@ -1,10 +1,17 @@
 import { existsSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 import { type Command, Option } from 'commander'
 
 import { hugsOf, sizeOf, type SizeOptions } from '@/server/board/frames'
+import { readRecord } from '@/server/board/json-record'
 import { type ResolvedRef, resolveFrameRef } from '@/server/board/refs'
-import { type Box, scanPage } from '@/server/board/scan'
+import {
+  type Box,
+  LAYOUT_FILE,
+  layoutSpec,
+  scanPage,
+} from '@/server/board/scan'
 import {
   claim,
   readClaims,
@@ -13,14 +20,15 @@ import {
   reserve,
 } from '@/server/claims/store'
 import { FrameboardError } from '@/shared/errors'
+import { bezelBox, type Device, deviceForWidth } from '@/shared/frame-device'
 import {
   DEFAULT_FRAME_SIZE,
-  FRAME_GAP,
   FRAME_SIZE_NAMES,
   FRAME_SIZES,
+  namedWidth,
 } from '@/shared/frame-sizes'
-import { drawnExtent } from '@/shared/frame-widths'
-import type { Claim } from '@/shared/records/claims'
+import { drawnExtent, xPast } from '@/shared/frame-widths'
+import type { Claim, ClaimBox } from '@/shared/records/claims'
 
 import {
   act,
@@ -51,7 +59,7 @@ export function registerEditing(
   const command = addVerb(
     program,
     'editing',
-    'Claim a frame before rewriting it, so the board shows it and another session is told it is taken. With --new, reserve frames not written yet, so the board shows where each will land. Bare, list the live claims',
+    'Claim a frame before rewriting it, so the board shows it and another session is told it is taken. With --new, reserve frames not written yet, so the board shows where each will land, a -<px> name with no size flag giving its width and device. Bare, list the live claims',
     { project: true },
   )
     .argument(
@@ -261,24 +269,75 @@ async function reservationsOf(
     })
   }
 
-  const size = { ...FRAME_SIZES[DEFAULT_FRAME_SIZE], ...sizeOf(options) }
-  const hugs = hugsOf(options)
   const live = await readClaims(root, now)
-  const nextX = new Map<string, number>()
+  const edges = new Map<string, number>()
   const reservations: Reservation[] = []
   for (const frame of frames) {
     const page = `${frame.project}/${frame.page}`
-    const x = nextX.get(page) ?? options.x ?? (await rightOf(root, frame, live))
-    nextX.set(page, x + size.width + FRAME_GAP)
-    reservations.push({
-      frame: refOf(frame),
-      box: { x, y: options.y ?? 0, ...size, ...hugs },
-    })
+    const size = await reservedSize(frame, options)
+    const device = deviceOf(size)
+    const edge = edges.get(page)
+    const x =
+      edge === undefined
+        ? (options.x ??
+          Math.max(
+            xPast(await rightOf(root, frame, live), size.width, device),
+            0,
+          ))
+        : xPast(edge, size.width, device)
+    const box = { x, y: options.y ?? 0, ...size }
+    const body = bezelBox(box, device, 'upright')
+    edges.set(page, body.x + body.width)
+    reservations.push({ frame: refOf(frame), box })
   }
   return reservations
 }
 
-/** Where a new row starts on a frame's page, past its frames' drawn rows and reserved boxes. */
+/**
+ * The size a frame reserves, as `frame add` would size it: a flag's, else the
+ * width its name states in that width's device, else the default hugging.
+ */
+async function reservedSize(
+  frame: ResolvedRef,
+  options: EditingOptions,
+): Promise<Omit<ClaimBox, 'x' | 'y'>> {
+  const size = {
+    ...FRAME_SIZES[DEFAULT_FRAME_SIZE],
+    ...sizeOf(options),
+    ...hugsOf(options),
+  }
+  const sized =
+    options.size !== undefined ||
+    options.width !== undefined ||
+    options.height !== undefined
+  const width = sized ? undefined : namedWidth(frame.name)
+  if (width === undefined || (await hasEntry(frame))) return size
+  return { ...size, width, hugWidth: false, showDevice: true }
+}
+
+/** Whether the page's layout holds an entry for a frame, none where it does not parse. */
+async function hasEntry(frame: ResolvedRef): Promise<boolean> {
+  try {
+    const layout = await readRecord(
+      join(dirname(frame.path), LAYOUT_FILE),
+      layoutSpec,
+    )
+    return Object.hasOwn(layout.frames, frame.name)
+  } catch (error) {
+    if (error instanceof FrameboardError) return false
+    throw error
+  }
+}
+
+/** The device a reserved box will land in, none for one no name sized. */
+function deviceOf({
+  showDevice,
+  width,
+}: Pick<ClaimBox, 'showDevice' | 'width'>): Device | null {
+  return showDevice ? deviceForWidth(width) : null
+}
+
+/** The right edge of a page's frames' drawn rows and reserved bodies. */
 async function rightOf(
   root: string,
   frame: ResolvedRef,
@@ -289,10 +348,12 @@ async function rightOf(
   const boxes: Box[] = [
     ...page.frames.map((each) => drawnExtent(each.box, each.widths, each)),
     ...live.flatMap((each) =>
-      each.box && each.frame.startsWith(prefix) ? [each.box] : [],
+      each.box && each.frame.startsWith(prefix)
+        ? [bezelBox(each.box, deviceOf(each.box), 'upright')]
+        : [],
     ),
   ]
-  return Math.max(...boxes.map((box) => box.x + box.width + FRAME_GAP), 0)
+  return Math.max(...boxes.map((box) => box.x + box.width))
 }
 
 function describe(claims: Claim[], now: Date): string {

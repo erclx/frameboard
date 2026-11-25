@@ -345,6 +345,45 @@ describe('frame', () => {
       expect(result.json().data).not.toHaveProperty('showDevice')
     })
 
+    it('lands in the box and device a reservation took from the name', async () => {
+      const run = on('basic')
+      const ref = 'webapp/home/pricing-390'
+      await run('editing', ref, '--new', '--x', '-500', '--session', 'sess-a')
+
+      const result = await run('frame', 'add', ref)
+
+      expect(result.json().data).toMatchObject({
+        box: { x: -500, width: 390 },
+        hugWidth: false,
+        hugHeight: true,
+        device: 'phone',
+      })
+    })
+
+    it('takes a size flag over the device a reservation took from the name', async () => {
+      const run = on('basic')
+      const ref = 'webapp/home/pricing-390'
+      await run('editing', ref, '--new', '--session', 'sess-a')
+
+      const result = await run('frame', 'add', ref, '--size', 'tablet')
+
+      expect(result.json().data).toMatchObject({ box: { width: 834 } })
+      expect(result.json().data).not.toHaveProperty('showDevice')
+    })
+
+    it('holds a --scroll frame at the screen height of a reservation by name', async () => {
+      const run = on('basic')
+      const ref = 'webapp/home/pricing-390'
+      await run('editing', ref, '--new', '--session', 'sess-a')
+
+      const result = await run('frame', 'add', ref, '--scroll')
+
+      expect(result.json().data).toMatchObject({
+        box: { width: 390, height: 844 },
+        device: 'phone',
+      })
+    })
+
     it('lands past the last frame with room for its body', async () => {
       const run = on('basic')
 
