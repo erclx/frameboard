@@ -10,10 +10,9 @@ import { leftTabStore } from '../tab-store'
 import { closeTheme, openTheme, themeDialogStore } from './dialog-store'
 
 /**
- * Registers Add kit and Edit theme in the palette, each opening the Theme
- * dialog on Kits over its tab. Add kit opens its list too and takes a writing
- * tab, while Edit theme only looks. The dialog closes with the project it
- * opened in.
+ * Registers Add kit, for a writing tab, and Edit theme in the palette, each
+ * opening the Theme dialog on Kits over its tab. The dialog closes with the
+ * project it opened in.
  */
 export function useThemeActions(project: string): void {
   useEffect(() => {
