@@ -77,5 +77,5 @@ Owns the model viewer script a frame loads to show a `<model-viewer>`. `viewer.t
 - A cookie write needs the board's own `Origin`, since cookies and SameSite ignore the port and another `127.0.0.1` port would otherwise write
 - The frame route answers 404 for board records, dot-named paths, and paths leaving the project by realpath, and routes refuse a foreign `Host` and the socket a foreign `Origin`, against DNS rebinding
 - `serve` reads `FRAMEBOARD_DISPATCH` from its environment once at start and never from a board file, so a cloned board cannot make Send run anything
-- Exporting `FRAMEBOARD_DISPATCH` under a running server changes nothing until it restarts
+- `live/project-folders.ts` finds a project renamed on disk by its folder's device, inode, and birth time, so a copy then delete, or a disk keeping no birth time, reads as one gone and another come
 - A dispatched note lands `delivered` to the session id the route minted, so the started session's inbox never prints it again, and a command exiting 0 or still running after 2 s counts as started
