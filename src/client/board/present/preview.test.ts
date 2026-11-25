@@ -170,6 +170,23 @@ describe('previewStepOn', () => {
     ).toBe(false)
   })
 
+  it('plays for the length it is given', async () => {
+    vi.useRealTimers()
+    const doc = await liveSlide(
+      'studio/home/hero',
+      '<p id="one" data-step="1">One</p>',
+    )
+    const one = doc.getElementById('one')
+    if (!one) throw new Error('No step element')
+    const index = frameElements(doc).indexOf(one)
+
+    previewStepOn({ frame: 'studio/home/hero', index, hash: '' }, 'fade', 1800)
+
+    await expect
+      .poll(() => doc.defaultView?.getComputedStyle(one).animationDuration)
+      .toBe('1.8s')
+  })
+
   it('takes the marks back when a second preview starts', async () => {
     vi.useRealTimers()
     const doc = await liveSlide(

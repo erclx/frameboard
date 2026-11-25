@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useStore } from 'zustand'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
@@ -125,6 +125,31 @@ export function useElementTree(ref: string | null): TreeEntry | null {
   return useStore(trees.store, (state) =>
     ref ? (state.byRef[ref] ?? null) : null,
   )
+}
+
+/**
+ * A frame's tree as a list of its elements draws it, or why the server refused
+ * it. A re-read keeps the last one up rather than flashing a notice, and the
+ * server refuses a row gone stale as any stale key.
+ */
+export function useShownTree(ref: string): {
+  tree: ElementTree | null
+  refused: string | null
+} {
+  const entry = useElementTree(ref)
+  const [last, setLast] = useState<{ ref: string; tree: ElementTree } | null>(
+    null,
+  )
+  const ready = entry?.status === 'ready' ? entry.tree : null
+  if (ready && (last?.tree !== ready || last.ref !== ref)) {
+    setLast({ ref, tree: ready })
+  }
+  if (entry?.status === 'refused') {
+    return { tree: null, refused: entry.message }
+  }
+  const held =
+    entry?.status === 'loading' && last?.ref === ref ? last.tree : null
+  return { tree: ready ?? held, refused: null }
 }
 
 /** Asks for a frame's tree at its current reload count, outside React. */

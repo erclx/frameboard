@@ -357,6 +357,7 @@ function Presenting({
               room={room}
               walk={role === 'enter' ? 'live' : 'off'}
               keys={role === 'enter'}
+              plays
               held={role === 'enter' && leaving !== null}
               wake={wake}
             />
@@ -420,6 +421,8 @@ interface LiveProps {
   walk: StepWalk
   /** Whether the frame takes the present keys and the pointer, which only the audience's arriving frame does. */
   keys: boolean
+  /** Whether a playing step starts its clip, which only the audience's does, so nothing sounds twice. */
+  plays?: boolean
   /** Whether the frame's own animations wait, as they do while it arrives, so its clock starts once it lands. */
   held: boolean
   wake?: () => void
@@ -525,7 +528,11 @@ function openingStep(): number {
  * present store and showing the step it holds, calling `ready` once the page
  * shows the step it should, or the frame refused.
  */
-function walkLive(iframe: HTMLIFrameElement, ready: () => void): () => void {
+function walkLive(
+  iframe: HTMLIFrameElement,
+  plays: boolean,
+  ready: () => void,
+): () => void {
   const opening = openingStep()
   let revealed = opening
   /** The group the last press revealed, which a reread keeps entering. */
@@ -548,9 +555,14 @@ function walkLive(iframe: HTMLIFrameElement, ready: () => void): () => void {
     return moved
   }
 
-  const walk = subscribe(iframe, 'steps', { shown: opening }, (count) => {
-    if (replied && recount(count)) void show()
-  })
+  const walk = subscribe(
+    iframe,
+    'steps',
+    { shown: opening, ...(plays ? { plays } : {}) },
+    (count) => {
+      if (replied && recount(count)) void show()
+    },
+  )
   void walk.opened.then(async (count) => {
     if (count !== null) {
       replied = true
@@ -580,6 +592,7 @@ function walkLive(iframe: HTMLIFrameElement, ready: () => void): () => void {
 function useStepWalk(
   iframe: RefObject<HTMLIFrameElement | null>,
   walk: StepWalk,
+  plays: boolean,
 ): boolean {
   const [loaded, setLoaded] = useState(false)
 
@@ -594,7 +607,7 @@ function useStepWalk(
     }
     element.addEventListener('load', waited)
     const stop = followPage(element, () => {
-      if (walk === 'live') return walkLive(element, ready)
+      if (walk === 'live') return walkLive(element, plays, ready)
       const hidden = subscribe(element, 'steps', { shown: 0 }, () => {})
       void hidden.opened.then(ready)
       return hidden.close
@@ -604,7 +617,7 @@ function useStepWalk(
       clearTimeout(timer)
       element.removeEventListener('load', waited)
     }
-  }, [iframe, walk])
+  }, [iframe, walk, plays])
 
   return loaded
 }
@@ -618,6 +631,7 @@ function PresentedFrame({
   frame,
   walk,
   keys,
+  plays = false,
   held,
   wake,
 }: {
@@ -653,7 +667,7 @@ function PresentedFrame({
           : {}),
       }
     : {}
-  const loaded = useStepWalk(iframe, walk)
+  const loaded = useStepWalk(iframe, walk, plays)
   // The iframe stays mounted across slides, so only its first page waits.
   const waiting = useWaitingOnFirstLoad(iframe, true)
   const theme = useFrameTheme(frame.ref)

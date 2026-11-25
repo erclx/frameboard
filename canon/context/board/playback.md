@@ -39,13 +39,13 @@ Owns present mode, a page's frames one at a time over the window on black throug
 - It walks `board/frame-order.ts`'s reading order, as Tab on the board does, and the Layers panel alone keeps stacking order
 - Leaving returns focus to what opened presenting, or the Present button once that is gone, selects its frame over its own canvas, and shows the toasts `app.tsx` held, a timed one having lapsed unseen
 - Reduced motion makes every transition a cut, a step taken before own keyframes arrive cuts, and a transition with no `leave` keeps its leaving slide still
-- The frame walks a slide's steps and hides a group an agent adds at the step it holds, and only present mode hides one, so Edit and a capture show every one
+- The frame walks a slide's steps and hides a group an agent adds at the step it holds, and only present mode hides one or starts its clip, so Edit and a capture show every one at rest
 
 ### `src/client/board/present/presenter/`
 
 Owns the presenter view, a second copy of the app at `/p/:project/:page/presenter?id=` kept in step over a BroadcastChannel named for the presentation. It draws the slide now at its step, the next slide at its first, the speaker note, a timer, and the clock, and sends its presses back.
 
-- Only the audience holds the state, and the window mirrors what it hears into its own present store, which its slide counts steps into
+- Only the audience holds the state and plays a step's clip, and the window mirrors what it hears into its own present store, which its slide counts steps into
 - Opening it takes the audience out of full screen in every engine, so leaving full screen ends presenting only once the window is closed
 - It mounts no canvas and follows no `show`, and swallows every key so the board's bindings never run against a board it does not draw
 - A flip lives in one tab's memory, so the audience sends each frame's theme and the window flips its own copy to match

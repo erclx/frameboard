@@ -1,4 +1,4 @@
-import type { StepEffect } from '@/shared/present-transition'
+import { STEP_MS, type StepEffect } from '@/shared/present-transition'
 
 import { subscribe } from '../bridge/channel'
 import { liveIframe } from '../frame-dom'
@@ -111,18 +111,22 @@ export function previewTransition(
 }
 
 /**
- * Plays `effect` once on the selected element in its frame's live page, one
+ * Plays `effect` once for `ms` on an element in its frame's live page, one
  * preview at a time, the frame ending it on its own and the board closing it
  * to end it early. Nothing plays while the page does not show the element.
  */
-export function previewStepOn(element: ElementKey, effect: StepEffect): void {
+export function previewStepOn(
+  element: ElementKey,
+  effect: StepEffect,
+  ms: number = STEP_MS,
+): void {
   playPreview(() => {
     const iframe = liveIframe(element.frame)
     if (!iframe) return () => {}
     return subscribe(
       iframe,
       'step-preview',
-      { index: element.index, effect },
+      { index: element.index, effect, ms },
       () => {},
     ).close
   })

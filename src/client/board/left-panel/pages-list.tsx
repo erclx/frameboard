@@ -13,8 +13,9 @@ import { boardUrl } from '@/shared/board-urls'
 import type { PageRecord } from '@/shared/records/list'
 
 import { ActionTooltip } from '../chrome/action-tooltip'
+import { DropLine } from '../chrome/drop-line'
+import { useReorderMonitor, useReorderRow } from '../chrome/reorder'
 import { PageMenu, PagesSpaceMenu } from '../menus/page'
-import { DropLine } from './drop-line'
 import {
   deletePage,
   type PageWriteContext,
@@ -24,7 +25,6 @@ import {
   stopRename,
   useRenamingPage,
 } from './page-actions'
-import { useReorderMonitor, useReorderRow } from './reorder'
 import { PanelSection } from './section'
 
 interface PagesListProps {

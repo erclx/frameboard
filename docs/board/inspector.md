@@ -13,7 +13,9 @@ The right panel's Design tab edits what is selected, and each edit writes ordina
 - Its Layout section sets a container's flow, gap, alignment, and padding, and a child's size as Fixed, Hug, or Fill, on that element alone even where a shared rule sets the flow
 - Use auto layout in the Layout header, Shift+A, or a right-click on two or more elements wraps them in one flow container named Container, a row or a column by how they sit, when they share a parent
 - Position's Absolute takes an element out of the flow where it rendered, its X and Y or a drag move it inside its parent, and its right-click menu brings it to the front or back
-- Every inspector number steps on arrows and scrubs from its label
+- An element's Present row names the step it appears on while presenting, and opens the Slides tab where its steps are set
+
+Every inspector number steps on arrows and scrubs from its label.
 
 ## Model
 

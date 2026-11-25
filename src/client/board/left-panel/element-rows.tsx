@@ -4,11 +4,13 @@ import { type MouseEvent, useCallback, useRef, useState } from 'react'
 import { RenameField } from '@/client/components/rename-field'
 import { cn } from '@/client/lib/cn'
 import { useLive } from '@/client/live/store'
-import type { ElementTree, TreeElement } from '@/shared/records/elements'
+import type { TreeElement } from '@/shared/records/elements'
 import type { FrameRecord } from '@/shared/records/list'
 
+import { DropLine } from '../chrome/drop-line'
+import { useReorderMonitor, useReorderRow } from '../chrome/reorder'
 import { flagElements } from '../element/flags'
-import { useElementTree } from '../element/tree'
+import { useShownTree } from '../element/tree'
 import { writeElement } from '../inspector/element/write'
 import { ElementRowMenu } from '../menus/layers'
 import { moveElementTo } from '../place/write'
@@ -20,9 +22,7 @@ import {
   selectionStore,
   toggleElement,
 } from '../selection'
-import { DropLine } from './drop-line'
 import { elementGlyph } from './layer-glyphs'
-import { useReorderMonitor, useReorderRow } from './reorder'
 import { HIDDEN_TEXT, RowFlags } from './row-flags'
 import { addsOne, spanTo } from './row-pick'
 
@@ -58,20 +58,9 @@ export function ElementRows({
   isOpen,
   toggle,
 }: ElementRowsProps) {
-  const entry = useElementTree(frame.ref)
+  const { tree, refused } = useShownTree(frame.ref)
   const canWrite = useLive((state) => state.canWrite)
   const [renaming, setRenaming] = useState<number | null>(null)
-  const [last, setLast] = useState<{ ref: string; tree: ElementTree } | null>(
-    null,
-  )
-  const ready = entry?.status === 'ready' ? entry.tree : null
-  if (ready && (last?.tree !== ready || last.ref !== frame.ref)) {
-    setLast({ ref: frame.ref, tree: ready })
-  }
-  // A re-read keeps the last rows up rather than flashing a notice, and the server refuses a row gone stale as any stale key.
-  const tree =
-    ready ??
-    (entry?.status === 'loading' && last?.ref === frame.ref ? last.tree : null)
   const prefix = siblingList(frame.ref, null).slice(0, -1)
   const watches = useCallback(
     (list: string) => list.startsWith(prefix),
@@ -89,9 +78,9 @@ export function ElementRows({
     [tree, frame.ref, page],
   )
   useReorderMonitor(watches, move)
-  if (entry?.status === 'refused') {
+  if (refused !== null) {
     return (
-      <Notice depth={1} title={entry.message}>
+      <Notice depth={1} title={refused}>
         This frame cannot be addressed
       </Notice>
     )

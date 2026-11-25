@@ -3,6 +3,7 @@ import type { DefaultTreeAdapterTypes } from 'parse5'
 import { buildCascade, type Cascade } from '@/server/checks/cascade'
 import type { FrameSource, Sheet } from '@/server/checks/frame-source'
 import { LOCKED_ATTRIBUTE, UNRENDERED_TAGS } from '@/shared/element-marks'
+import { stepAttributes, stepOf } from '@/shared/present-steps'
 import type { Layout, TreeElement } from '@/shared/records/elements'
 
 import { type Element, hasTag, parseFrame } from './address'
@@ -61,6 +62,10 @@ export function elementTree(
     if (UNRENDERED_TAGS.has(element.tagName)) continue
     inBody.add(element)
     const next = nextElement(element)
+    const step = stepOf(
+      element.tagName,
+      stepAttributes((name) => attribute(element, name)),
+    )
     const unlistedNext =
       next && UNRENDERED_TAGS.has(next.tagName) ? index.get(next) : undefined
     listed.push({
@@ -80,6 +85,7 @@ export function elementTree(
       ...(attribute(element, LOCKED_ATTRIBUTE) === undefined
         ? {}
         : { locked: true }),
+      ...(step ? { step } : {}),
       ...(unlistedNext === undefined ? {} : { unlistedNext }),
     })
   }

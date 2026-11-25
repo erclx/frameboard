@@ -13,7 +13,7 @@ import {
   scaleOf,
   translates,
 } from '@/shared/frame-bridge/live-element'
-import { STEP_ATTRIBUTES } from '@/shared/present-transition'
+import { stepAttributes } from '@/shared/present-steps'
 
 import type { Handlers } from './handler'
 
@@ -106,11 +106,7 @@ export function readLive(element: Element): LiveElement {
     placement: placementOf(element, style),
     layout: readLayout(element, style),
     inline: inlinePaints(element),
-    step: {
-      step: element.getAttribute(STEP_ATTRIBUTES.step),
-      effect: element.getAttribute(STEP_ATTRIBUTES.effect),
-      start: element.getAttribute(STEP_ATTRIBUTES.start),
-    },
+    step: stepAttributes((name) => element.getAttribute(name)),
   }
 }
 

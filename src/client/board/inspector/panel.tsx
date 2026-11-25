@@ -31,6 +31,7 @@ import { FillSection } from './element/fill'
 import { LayoutSection } from './element/layout'
 import { CameraSection } from './element/model'
 import { PositionSection } from './element/position'
+import { PresentRow } from './element/present-row'
 import { SeveralElements } from './element/several'
 import { ShadowSection } from './element/shadow'
 import { StepSection } from './element/step'
@@ -56,6 +57,7 @@ import { PhoneLink } from './phone-link'
 import { FRAME_TOOL_GROUPS } from './presets'
 import { replaceColor } from './recolor'
 import { SelectionColors } from './selection-colors'
+import { StepsSection } from './steps-section'
 import { InspectorTabs } from './tabs'
 
 /**
@@ -98,6 +100,7 @@ export function InspectorPanel({
   )
   const inFrame = element && frames.length === 1 ? element : null
   const several = inFrame && (elements?.length ?? 0) > 1 ? elements : undefined
+  const held = (several ?? (inFrame ? [inFrame] : [])).map(({ index }) => index)
   const canWrite = useLive((state) => state.canWrite)
   // The selection's page while one holds, else the page the canvas shows.
   const slidesPage = page && frames.length > 0 ? shown : openPage
@@ -191,6 +194,14 @@ export function InspectorPanel({
           }
           slides={
             <>
+              {page && frames.length === 1 && frames[0] ? (
+                <StepsSection
+                  key={`steps:${frames[0].ref}`}
+                  page={page}
+                  frame={frames[0].ref}
+                  selected={held}
+                />
+              ) : null}
               {page && inFrame && !several ? (
                 <ElementSlides page={page} element={inFrame} />
               ) : null}
@@ -278,13 +289,24 @@ const NOT_ON_SCREEN = (
 function ElementSlides({ page, element }: ElementProps) {
   const canWrite = useLive((state) => state.canWrite)
   const live = useLiveElement(element)
+  const media = useLiveMedia(element)
+  const model = useLiveModel(element)
   if (!live) return NOT_ON_SCREEN
+  const holdsNone =
+    model?.reading.loaded === true && model.reading.clips.length === 0
+  const clip =
+    model || media?.reading.tag === 'video'
+      ? holdsNone
+        ? 'none'
+        : 'held'
+      : undefined
   return (
     <StepSection
       step={live.step}
+      clip={clip}
       disabled={!canWrite}
       write={(change) => writeElement(page, element, change)}
-      onPreview={(effect) => previewStepOn(element, effect)}
+      onPreview={(effect, ms) => previewStepOn(element, effect, ms)}
       onPreviewEnd={stopPreview}
     />
   )
@@ -447,6 +469,7 @@ function ElementDesign({ page, element }: ElementProps) {
         disabled={disabled}
         write={write}
       />
+      <PresentRow step={live.step} />
       <SelectionColors
         key={`colors:${element.frame}\n${element.index}`}
         colors={styles?.colors ?? []}

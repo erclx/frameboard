@@ -13,7 +13,7 @@ Owns the right panel's shell and its frame-level controls, being the tabs, the f
 
 ### `src/client/board/inspector/`
 
-Owns the right panel under the avatar and zoom header, its Design, Slides, and Export tabs, and the frame controls for size, fill, height, device, clipping, preview, linked widths, transitions, export, motion, the phone link, and selection colors. Each write is one undo step, and a control acting on the live frame writes nothing to it.
+Owns the right panel under the avatar and zoom header, its Design, Slides, and Export tabs, and the frame controls for size, fill, height, device, clipping, preview, linked widths, transitions, steps, export, motion, the phone link, and selection colors. Each write is one undo step, and a control acting on the live frame writes nothing to it.
 
 - An element selected inside a frame shows that frame as one row under the tab strip, and the Frame tool lists its presets and devices there as radio rows
 - `label-tip.tsx` keeps a label's sentence in a hidden node the control names in `aria-describedby`, shown on hover and keyboard focus
@@ -23,6 +23,7 @@ Owns the right panel under the avatar and zoom header, its Design, Slides, and E
 
 ## Gotchas
 
+- The Steps list sits above an element's Present section, since a row's click adds that section, and a list under it would leave a control that writes under a double-click's second press
 - base-ui commits a keyboard step on every press, so the number field steps on its own keys and takes base-ui's commit only for a scrub release
 - base-ui reformats a typed number only on blur, so Enter blurs the field and focuses it again, else a refused value stays shown
 - A tab's body scrolls itself under the header, the tabs, and the crumb, and is `relative`, else a tip's hidden node inside it stretches the panel

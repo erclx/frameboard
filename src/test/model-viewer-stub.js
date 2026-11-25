@@ -77,10 +77,7 @@ class StubViewer extends HTMLElement {
     setTimeout(() => {
       this.loaded = true
       this.availableAnimations = ['Spin']
-      if (this.hasAttribute('autoplay')) {
-        this.paused = false
-        this.currentTime = 0.4
-      }
+      if (this.hasAttribute('autoplay')) this.play()
       this.transform()
       this.frame()
       this.camera = this.goal()
@@ -197,6 +194,12 @@ class StubViewer extends HTMLElement {
     this.camera = this.goal()
     this.draw()
     this.dispatchEvent(new CustomEvent('camera-change'))
+  }
+
+  play() {
+    this.paused = false
+    this.currentTime = 0.4
+    this.dispatchEvent(new CustomEvent('play'))
   }
 
   pause() {

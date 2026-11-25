@@ -11,6 +11,7 @@ import {
 import {
   INSPECTOR_TABS,
   type InspectorTab,
+  inspectorTabId,
   inspectorTabStore,
 } from './tab-store'
 
@@ -52,7 +53,12 @@ export function InspectorTabs({
     >
       <TabsList className="m-2 h-7 w-auto shrink-0 rounded-[7px] p-0.5">
         {INSPECTOR_TABS.map((one) => (
-          <TabsTrigger key={one} value={one} className={TAB}>
+          <TabsTrigger
+            key={one}
+            value={one}
+            id={inspectorTabId(one)}
+            className={TAB}
+          >
             {LABELS[one]}
           </TabsTrigger>
         ))}

@@ -16,6 +16,15 @@ A transition and a step answer different questions, so pick by what moves.
 - Reach for a step when a slide builds up point by point, and for a transition when the deck moves between ideas
 - Set a transition on the page so every slide shares it, and on one frame only when that slide arrives differently
 
+## Time a step and start its clip
+
+A step plays at the block's default length with no wait, so write a time only where the default reads wrong.
+
+- Give a step its own `data-step-duration` when its entrance carries the point, such as a wipe across a chart, and leave a list's points at the default
+- Give one a `data-step-delay` when the audience needs a beat before it, and prefer `data-step-start="after"` over a delay guessed at the length of the step before
+- Put `data-step-play` on a video or a model a press reveals, and leave `autoplay` off it, since an autoplaying clip starts at load, before anyone sees it
+- Expect the developer to tune these by hand in the Slides tab, where a drag renumbers every step from 1, so read the numbers back before editing one
+
 ## Add a slide transition of the project's own
 
 - Write `assets/transitions/<name>.css` holding `@keyframes enter` and optionally `@keyframes leave`, as the `present` block of `frameboard docs` allows

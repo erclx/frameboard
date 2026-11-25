@@ -199,6 +199,9 @@ export const STEP_ATTRIBUTES = {
   step: 'data-step',
   effect: 'data-step-effect',
   start: 'data-step-start',
+  duration: 'data-step-duration',
+  delay: 'data-step-delay',
+  play: 'data-step-play',
 } as const
 
 /** The entrances a step takes, a slide tool's first five. */
@@ -228,8 +231,14 @@ export const STEP_START_LABELS = {
   after: 'After last',
 } as const satisfies Record<StepStart, string>
 
-/** How long one step's entrance runs. Appear runs none. */
+/** How long a step's entrance runs where it holds no length of its own. Appear runs none. */
 export const STEP_MS = 400
+
+/** The shortest and longest entrance a step holds, as a transition's. */
+export const STEP_DURATION_MS = TRANSITION_MS
+
+/** The shortest and longest wait a step holds before its entrance. */
+export const STEP_DELAY_MS = { min: 0, max: 10_000 } as const
 
 /** Each effect's keyframes, which a presented page's step style and the inspector's tiles both mount. */
 export const STEP_KEYFRAMES = `

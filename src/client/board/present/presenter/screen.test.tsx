@@ -216,6 +216,19 @@ describe('steps', () => {
     expect(shows(doc, 'b')).toBe('hidden')
   })
 
+  it('plays no clip as the audience’s press reveals it', async () => {
+    const { send } = open(slidesOf({ first: undefined }))
+    const doc = await documentIn('Now')
+    doc.body.innerHTML =
+      '<video id="a" muted data-step="1" data-step-play></video>'
+    await screen.findByRole('img', { name: 'Step 0 of 1' })
+
+    send(presented({ step: 1 }))
+
+    await expect.poll(() => shows(doc, 'a')).toBe('visible')
+    expect(doc.querySelector('video')?.paused).toBe(true)
+  })
+
   it('shows the next slide at its first step', async () => {
     open(slidesOf({ first: undefined, second: undefined }))
     const doc = await documentIn('Next')
